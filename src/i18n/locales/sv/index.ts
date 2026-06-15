@@ -5,14 +5,18 @@
 import type { Catalog } from "../en/index";
 
 import app from "./app";
+import changelog from "./changelog";
 import common from "./common";
+import menu from "./menu";
 import pwa from "./pwa";
 import settings from "./settings";
 import toast from "./toast";
 
 export const sv: Catalog = {
   app,
+  changelog,
   common,
+  menu,
   pwa,
   settings,
   toast,
