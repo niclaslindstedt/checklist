@@ -61,6 +61,43 @@ export function GripIcon({ className }: IconProps) {
   );
 }
 
+export function ArrowDownIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" />
+    </svg>
+  );
+}
+
+// Indeterminate spinner: a 270° arc that callers spin with
+// `animate-spin`. The gap makes the rotation legible.
+export function SpinnerIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M8 1.5a6.5 6.5 0 1 1-6.5 6.5" />
+    </svg>
+  );
+}
+
 export function CloseIcon({ className }: IconProps) {
   return (
     <svg

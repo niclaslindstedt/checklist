@@ -1,12 +1,14 @@
 import { useSyncExternalStore } from "react";
 import type { Workbox } from "workbox-window";
 
-// Single source of truth for the PWA update lifecycle, driving the
-// `UpdateToast` "a new build is ready — reload to apply" prompt. Ported
-// from budget (trimmed of its download-progress fill). The registration
-// lives in a module singleton here rather than inside the component so
-// the SW is registered exactly once; the first subscriber starts it and
-// `useSyncExternalStore` fans the state out to all consumers.
+// Single source of truth for the PWA update lifecycle, shared by the
+// `UpdateToast` ("a new build is ready — reload to apply" prompt) and
+// the header "checklist" wordmark (which fills with the accent colour
+// from the bottom — a vertical power bar — while a new build downloads).
+// Both surfaces mount independently, so the registration and progress
+// tracking live in a module singleton here rather than inside either
+// component; the first subscriber starts it, and `useSyncExternalStore`
+// fans the state out to all consumers. Ported from budget.
 //
 // We register the service worker ourselves via `workbox-window` rather
 // than vite-plugin-pwa's `useRegisterSW` virtual module — the hook's
@@ -21,8 +23,21 @@ import type { Workbox } from "workbox-window";
 // event, and the user clicks Reload at a moment of their choosing. We
 // deliberately do NOT `skipWaiting()` from the SW or `clientsClaim` —
 // the page would silently swap to new JS, breaking in-progress edits.
+//
+// Download progress: vite-plugin-pwa's generated SW precaches its assets
+// during the `install` event, but workbox exposes no progress API.
+// Instead we watch the shared precache Cache Storage from the window:
+// each asset workbox finishes fetching lands in the cache, so summing the
+// byte sizes (from the build-time `precache-manifest.json`) of the
+// entries already present, against the manifest total, yields a real
+// percentage. Content-hashed assets — the bulk of the bytes — change URL
+// every build, so they only count once the new SW actually downloads
+// them, which is what makes the fill track the real transfer.
 
 export type PwaUpdateState = {
+  // 0..100 while a new build is downloading or sitting ready; null when
+  // idle (no update in flight). Drives the header wordmark fill.
+  progress: number | null;
   // True once a new build has fully installed and is waiting to take
   // over. Drives the reload prompt.
   needRefresh: boolean;
@@ -32,8 +47,10 @@ export type PwaUpdateState = {
 };
 
 const HOUR_MS = 60 * 60 * 1000;
+const POLL_MS = 200;
 
 let state: PwaUpdateState = {
+  progress: null,
   needRefresh: false,
   incomingVersion: null,
 };
@@ -48,6 +65,7 @@ function emit() {
 function setState(patch: Partial<PwaUpdateState>) {
   const next = { ...state, ...patch };
   if (
+    next.progress === state.progress &&
     next.needRefresh === state.needRefresh &&
     next.incomingVersion === state.incomingVersion
   ) {
@@ -55,6 +73,14 @@ function setState(patch: Partial<PwaUpdateState>) {
   }
   state = next;
   emit();
+}
+
+// Slot-specific Workbox precache cache id. Must stay in sync with the
+// `CACHE_ID` derived from `VITE_BASE` in `vite.config.ts`.
+function cacheIdForBase(base: string): string {
+  if (base === "/preview/") return "checklist-preview";
+  if (base === "/branch/") return "checklist-branch";
+  return "checklist";
 }
 
 // The running bundle only knows its OWN version (`BUILD_LABEL`), which
@@ -81,6 +107,114 @@ async function fetchIncomingVersion(base: string): Promise<string | null> {
   }
 }
 
+type PrecacheManifest = {
+  totalBytes: number;
+  assets: Record<string, number>;
+};
+
+async function fetchPrecacheManifest(
+  base: string,
+): Promise<PrecacheManifest | null> {
+  try {
+    const res = await fetch(`${base}precache-manifest.json`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data: unknown = await res.json();
+    if (
+      data &&
+      typeof data === "object" &&
+      "totalBytes" in data &&
+      typeof (data as { totalBytes: unknown }).totalBytes === "number" &&
+      "assets" in data &&
+      typeof (data as { assets: unknown }).assets === "object"
+    ) {
+      return data as PrecacheManifest;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Sum the manifest byte sizes of every precached asset already present in
+// this slot's precache cache. Workbox names that cache
+// `<cacheId>-precache-v2-<scope>`; entries are keyed by the request URL
+// (with a `?__WB_REVISION__=` query for revisioned ones), so we compare
+// by pathname to ignore the query and to ignore the other deploy slots'
+// caches sharing this origin.
+async function cachedBytes(
+  cacheId: string,
+  manifest: PrecacheManifest,
+): Promise<number> {
+  if (typeof caches === "undefined") return 0;
+  const names = await caches.keys();
+  const cacheName = names.find((n) => n.startsWith(`${cacheId}-precache`));
+  if (!cacheName) return 0;
+  const cache = await caches.open(cacheName);
+  const requests = await cache.keys();
+  const present = new Set<string>();
+  for (const req of requests) {
+    try {
+      present.add(new URL(req.url).pathname);
+    } catch {
+      // Ignore unparseable cache keys.
+    }
+  }
+  let bytes = 0;
+  for (const [path, size] of Object.entries(manifest.assets)) {
+    if (present.has(path)) bytes += size;
+  }
+  return bytes;
+}
+
+// While the incoming SW is in its `installing` state, poll the precache
+// cache and translate "bytes cached so far" into a 0..99 fill. We cap at
+// 99 here so the jump to 100 coincides with the `waiting` event, the
+// moment the build is genuinely ready to apply.
+function trackInstall(installing: ServiceWorker | null, base: string) {
+  if (!installing) return;
+  const cacheId = cacheIdForBase(base);
+  let stopped = false;
+  let timer: number | undefined;
+
+  const stop = () => {
+    stopped = true;
+    if (timer !== undefined) window.clearTimeout(timer);
+  };
+
+  const poll = async () => {
+    if (stopped) return;
+    const manifest = await fetchPrecacheManifest(base);
+    if (manifest && manifest.totalBytes > 0) {
+      const bytes = await cachedBytes(cacheId, manifest);
+      const pct = Math.min(99, Math.round((bytes / manifest.totalBytes) * 100));
+      // Never walk the fill backwards (a slot's old entries can drop out
+      // mid-install when caches are cleaned up).
+      const prev = state.progress ?? 0;
+      setState({ progress: Math.max(prev, pct) });
+    }
+    if (!stopped) timer = window.setTimeout(() => void poll(), POLL_MS);
+  };
+
+  // Seed the fill immediately from whatever is already cached, then poll
+  // for the rest.
+  setState({ progress: state.progress ?? 0 });
+  void poll();
+
+  installing.addEventListener("statechange", () => {
+    if (installing.state === "installing") return;
+    stop();
+    // "installed" hands off to the `waiting` event (→ 100 + prompt). A
+    // first install with no prior controller goes straight to "activated";
+    // "redundant" means it was superseded. Either way there is no waiting
+    // build to advertise, so clear the fill.
+    if (installing.state === "activated" || installing.state === "redundant") {
+      setState({ progress: null });
+    }
+  });
+}
+
 function start() {
   if (started) return;
   started = true;
@@ -104,7 +238,7 @@ function start() {
     wb = instance;
 
     instance.addEventListener("waiting", () => {
-      setState({ needRefresh: true });
+      setState({ progress: 100, needRefresh: true });
       void fetchIncomingVersion(base).then((version) =>
         setState({ incomingVersion: version }),
       );
@@ -120,6 +254,13 @@ function start() {
       .register()
       .then((reg) => {
         if (!reg) return;
+        // A new worker may already be mid-install when we register
+        // (another tab kicked it off); track it so the fill picks up.
+        if (reg.installing) trackInstall(reg.installing, base);
+        reg.addEventListener("updatefound", () =>
+          trackInstall(reg.installing, base),
+        );
+
         void reg.update();
         window.setInterval(() => {
           if (document.visibilityState === "visible") void reg.update();
@@ -146,6 +287,7 @@ function getSnapshot(): PwaUpdateState {
 }
 
 const SERVER_SNAPSHOT: PwaUpdateState = {
+  progress: null,
   needRefresh: false,
   incomingVersion: null,
 };
@@ -158,7 +300,7 @@ export type PwaUpdate = PwaUpdateState & {
   // Apply the waiting build: posts SKIP_WAITING to it; the `controlling`
   // listener reloads the page once it takes over.
   reload: () => void;
-  // Hide the prompt until a fresher build arrives.
+  // Hide the prompt and clear the fill until a fresher build arrives.
   dismiss: () => void;
 };
 
@@ -171,6 +313,6 @@ export function usePwaUpdate(): PwaUpdate {
   return {
     ...snapshot,
     reload: () => wb?.messageSkipWaiting(),
-    dismiss: () => setState({ needRefresh: false }),
+    dismiss: () => setState({ needRefresh: false, progress: null }),
   };
 }
