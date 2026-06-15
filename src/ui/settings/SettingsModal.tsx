@@ -1,0 +1,136 @@
+import { useEffect, useMemo, useState } from "react";
+
+import { useDevMode } from "../../dev/useDevMode.ts";
+import type { Settings } from "../../settings/types.ts";
+import type { UpdateSetting } from "../../settings/useSettings.ts";
+import { Button } from "../form/index.ts";
+import { CloseIcon } from "../icons.tsx";
+import { Modal } from "../Modal.tsx";
+import { AppearanceTab } from "./tabs/appearance.tsx";
+import { DeveloperTab } from "./tabs/developer.tsx";
+import { GeneralTab } from "./tabs/general.tsx";
+import { LogsTab } from "./tabs/logs.tsx";
+
+// Settings dialog. Lands on the General tab; Theme is always present;
+// Developer and Logs appear only when developer mode is on. Modelled on
+// the budget project's tabbed SettingsModal — a left rail on desktop,
+// a horizontal strip on mobile — pared to the checklist's four tabs.
+// Settings apply immediately (the theme engine previews the live values),
+// so the footer offers Reset + Close rather than Save / Cancel.
+
+type TabId = "general" | "theme" | "developer" | "logs";
+
+const TAB_LABELS: Record<TabId, string> = {
+  general: "General",
+  theme: "Theme",
+  developer: "Developer",
+  logs: "Logs",
+};
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  settings: Settings;
+  onUpdate: UpdateSetting;
+  onReset: () => void;
+};
+
+export function SettingsModal({
+  open,
+  onClose,
+  settings,
+  onUpdate,
+  onReset,
+}: Props) {
+  const { devMode } = useDevMode();
+  const [activeTab, setActiveTab] = useState<TabId>("general");
+
+  const tabs: TabId[] = useMemo(
+    () =>
+      devMode
+        ? ["general", "theme", "developer", "logs"]
+        : ["general", "theme"],
+    [devMode],
+  );
+
+  // If developer mode is switched off while the Developer / Logs tab is
+  // active, fall back to General so we never show an empty panel.
+  useEffect(() => {
+    if (!tabs.includes(activeTab)) setActiveTab("general");
+  }, [tabs, activeTab]);
+
+  return (
+    <Modal open={open} onClose={onClose} labelledBy="settings-title">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3">
+        <h2
+          id="settings-title"
+          className="text-sm font-bold tracking-wide text-fg-bright"
+        >
+          Settings
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close settings"
+          className="-mr-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <CloseIcon className="h-5 w-5" />
+        </button>
+      </header>
+
+      <div className="flex flex-1 flex-col overflow-hidden sm:flex-row">
+        <div
+          role="tablist"
+          aria-label="Settings sections"
+          className="flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-surface-3 p-2 sm:w-40 sm:flex-col sm:gap-0.5 sm:overflow-x-visible sm:overflow-y-auto sm:border-r sm:border-b-0"
+        >
+          {tabs.map((tab) => {
+            const active = tab === activeTab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                id={`settings-tab-${tab}`}
+                aria-controls={`settings-tabpanel-${tab}`}
+                aria-selected={active}
+                onClick={() => setActiveTab(tab)}
+                className={`shrink-0 cursor-pointer rounded px-3 py-1.5 text-left text-sm whitespace-nowrap sm:w-full ${
+                  active
+                    ? "bg-accent/15 font-bold text-accent"
+                    : "text-fg hover:bg-surface-2"
+                }`}
+              >
+                {TAB_LABELS[tab]}
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          role="tabpanel"
+          id={`settings-tabpanel-${activeTab}`}
+          aria-labelledby={`settings-tab-${activeTab}`}
+          tabIndex={0}
+          className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
+        >
+          {activeTab === "general" && <GeneralTab />}
+          {activeTab === "theme" && (
+            <AppearanceTab settings={settings} onUpdate={onUpdate} />
+          )}
+          {activeTab === "developer" && <DeveloperTab />}
+          {activeTab === "logs" && <LogsTab />}
+        </div>
+      </div>
+
+      <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
+        <Button variant="secondary" onClick={onReset}>
+          Reset appearance
+        </Button>
+        <Button variant="primary" onClick={onClose}>
+          Done
+        </Button>
+      </footer>
+    </Modal>
+  );
+}

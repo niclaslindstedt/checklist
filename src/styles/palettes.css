@@ -1,9 +1,12 @@
 /* Colour palettes — one block per `data-theme` the engine can set.
-   Each block remaps the colour subset of the :root tokens. Imported by
-   ../styles.css. Palettes mirror the budget project's One Dark / One
-   Light slots so the two apps feel related. Add a block here and a
-   preset to `src/theme/themes.ts` to introduce a new theme — the engine
-   needs no change. */
+   Each block remaps the colour subset of the :root tokens defined in
+   ./theme.css. Imported by ../styles.css. Cloned from the budget
+   project's palettes (the two apps share a look), minus budget's
+   month-wheel colours which have no checklist analogue.
+
+   Add a block here and a preset to `src/theme/themes.ts` to introduce a
+   new theme — the engine needs no change. `custom` has no block: the
+   theme engine writes the user's slots inline on <html> instead. */
 
 /* One Dark — applied when `data-theme="dark"` and as the pre-boot
    default (no attribute yet) so the first paint is coherent. */
@@ -15,11 +18,18 @@
   --surface-3: #21252b;
   --fg: #abb2bf;
   --fg-bright: #e6e6e6;
-  --muted: #828897;
+  --muted: #9097a8;
   --line: #3e4451;
   --accent: #98c379;
+  --meta: #e5c07b;
   --link: #61afef;
+  --path: #56b6c2;
+  --flag: #d19a66;
+  --pipe: #c678dd;
   --danger: #e06c75;
+  --success: #98c379;
+  --positive: #b5e3a0;
+  --negative: #f0b4ba;
 }
 
 /* One Light — applied when `data-theme="light"`. */
@@ -33,6 +43,219 @@
   --muted: #6a6f7c;
   --line: #ccd0d6;
   --accent: #3f8c3e;
+  --meta: #9c6a00;
   --link: #2960c2;
+  --path: #0a6e92;
+  --flag: #ad4c00;
+  --pipe: #872187;
   --danger: #c9434c;
+  --success: #3f8c3e;
+  --positive: #5fa057;
+  --negative: #d77a82;
+}
+
+/* Dracula — popular VS Code dark theme. */
+:root[data-theme="dracula"] {
+  --page-bg: #21222c;
+  --surface: #282a36;
+  --surface-2: #343746;
+  --surface-3: #191a21;
+  --fg: #f8f8f2;
+  --fg-bright: #ffffff;
+  --muted: #8b93c2;
+  --line: #44475a;
+  --accent: #50fa7b;
+  --meta: #f1fa8c;
+  --link: #8be9fd;
+  --path: #bd93f9;
+  --flag: #ffb86c;
+  --pipe: #ff79c6;
+  --danger: #ff5555;
+  --success: #50fa7b;
+  --positive: #a8ffb8;
+  --negative: #ffb3c5;
+}
+
+/* Monokai — the classic TextMate / Sublime / VS Code dark theme. */
+:root[data-theme="monokai"] {
+  --page-bg: #1e1f1c;
+  --surface: #272822;
+  --surface-2: #3e3d32;
+  --surface-3: #1b1c18;
+  --fg: #f8f8f2;
+  --fg-bright: #ffffff;
+  --muted: #9c9882;
+  --line: #49483e;
+  --accent: #a6e22e;
+  --meta: #e6db74;
+  --link: #66d9ef;
+  --path: #66d9ef;
+  --flag: #fd971f;
+  --pipe: #ae81ff;
+  --danger: #f92672;
+  --success: #a6e22e;
+  --positive: #b6e354;
+  --negative: #f49ab1;
+}
+
+/* GitHub Dark Default. */
+:root[data-theme="githubDark"] {
+  --page-bg: #010409;
+  --surface: #0d1117;
+  --surface-2: #161b22;
+  --surface-3: #010409;
+  --fg: #c9d1d9;
+  --fg-bright: #f0f6fc;
+  --muted: #8b949e;
+  --line: #30363d;
+  --accent: #7ee787;
+  --meta: #d29922;
+  --link: #79c0ff;
+  --path: #56d4dd;
+  --flag: #ffa657;
+  --pipe: #d2a8ff;
+  --danger: #ff7b72;
+  --success: #7ee787;
+  --positive: #aff5b4;
+  --negative: #ffb8b3;
+}
+
+/* GitHub Light Default. */
+:root[data-theme="githubLight"] {
+  --page-bg: #f6f8fa;
+  --surface: #ffffff;
+  --surface-2: #eaeef2;
+  --surface-3: #d0d7de;
+  --fg: #1f2328;
+  --fg-bright: #0d1117;
+  --muted: #6e7781;
+  --line: #d0d7de;
+  --accent: #1a7f37;
+  --meta: #9a6700;
+  --link: #0969da;
+  --path: #0550ae;
+  --flag: #bc4c00;
+  --pipe: #8250df;
+  --danger: #cf222e;
+  --success: #1a7f37;
+  --positive: #4ac26b;
+  --negative: #e5717f;
+}
+
+/* Solarized Light — Ethan Schoonover's iconic warm light theme. */
+:root[data-theme="solarizedLight"] {
+  --page-bg: #eee8d5;
+  --surface: #fdf6e3;
+  --surface-2: #f5efdc;
+  --surface-3: #e3ddc9;
+  --fg: #586e75;
+  --fg-bright: #073642;
+  --muted: #657b83;
+  --line: #d6cfb8;
+  --accent: #859900;
+  --meta: #b58900;
+  --link: #268bd2;
+  --path: #2aa198;
+  --flag: #cb4b16;
+  --pipe: #6c71c4;
+  --danger: #dc322f;
+  --success: #859900;
+  --positive: #719e00;
+  --negative: #d33682;
+}
+
+/* Quiet Light — a calm low-contrast VS Code light theme. */
+:root[data-theme="quietLight"] {
+  --page-bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface-2: #ebebeb;
+  --surface-3: #e0e0e0;
+  --fg: #333333;
+  --fg-bright: #1a1a1a;
+  --muted: #767676;
+  --line: #d4d4d4;
+  --accent: #4f894c;
+  --meta: #ae6e29;
+  --link: #4b83cd;
+  --path: #1d8696;
+  --flag: #aa6624;
+  --pipe: #7e54a5;
+  --danger: #b73525;
+  --success: #4f894c;
+  --positive: #6c9d56;
+  --negative: #cf6e6a;
+}
+
+/* Excel Light — Microsoft Excel's light-mode look. */
+:root[data-theme="excel"] {
+  --page-bg: #e6e6e6;
+  --surface: #ffffff;
+  --surface-2: #f3f2f1;
+  --surface-3: #e1dfdd;
+  --fg: #252423;
+  --fg-bright: #171717;
+  --muted: #605e5c;
+  --line: #d4d4d4;
+  --accent: #217346;
+  --meta: #a6730a;
+  --link: #0563c1;
+  --path: #0e7490;
+  --flag: #c55a11;
+  --pipe: #7030a0;
+  --danger: #c00000;
+  --success: #217346;
+  --positive: #3f7d3a;
+  --negative: #c84031;
+}
+
+/* System theme — follow the OS colour-scheme. Dark is the default (set
+   in the unscoped `:root` above); only the light branch needs a rule. */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --page-bg: #eef0f2;
+    --surface: #f8f9fa;
+    --surface-2: #f1f3f5;
+    --surface-3: #e4e7eb;
+    --fg: #2f323a;
+    --fg-bright: #15171c;
+    --muted: #6a6f7c;
+    --line: #ccd0d6;
+    --accent: #3f8c3e;
+    --meta: #9c6a00;
+    --link: #2960c2;
+    --path: #0a6e92;
+    --flag: #ad4c00;
+    --pipe: #872187;
+    --danger: #c9434c;
+    --success: #3f8c3e;
+    --positive: #5fa057;
+    --negative: #d77a82;
+  }
+}
+
+/* Pre-React fallback: a browser whose OS is in light mode and that
+   hasn't received a `data-theme` attribute yet should still flip to the
+   Light palette so the brief pre-mount flash is coherent. Once React
+   runs, `data-theme=...` on `<html>` takes precedence. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --page-bg: #eef0f2;
+    --surface: #f8f9fa;
+    --surface-2: #f1f3f5;
+    --surface-3: #e4e7eb;
+    --fg: #2f323a;
+    --fg-bright: #15171c;
+    --muted: #6a6f7c;
+    --line: #ccd0d6;
+    --accent: #3f8c3e;
+    --meta: #9c6a00;
+    --link: #2960c2;
+    --path: #0a6e92;
+    --flag: #ad4c00;
+    --pipe: #872187;
+    --danger: #c9434c;
+    --success: #3f8c3e;
+    --positive: #5fa057;
+    --negative: #d77a82;
+  }
 }

@@ -24,8 +24,10 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   it off. Swipe a row **left** to uncover Delete, **right** to archive
   (archived items are hidden, not destroyed).
 - **Quiet, monospaced UI.** A plain-text-editor feel, reminiscent of
-  Obsidian. Ships dark by default; a theme engine is wired in for
-  light / system support (no picker UI yet).
+  Obsidian. Ships dark by default, with a **Settings** cogwheel that opens
+  a theme picker: eleven presets (One Dark/Light, Dracula, Monokai, GitHub
+  Dark/Light, Solarized Light, Quiet Light, Excel, System) plus a fully
+  custom theme, four fonts, and an adjustable text size.
 - **Reusable templates.** Define a checklist once and stamp out as
   many instances as you need. *(Data model in place; UI on the roadmap.)*
 - **Shareable lists.** Export a checklist as a URL or JSON blob; anyone

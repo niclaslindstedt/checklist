@@ -20,6 +20,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onOpenSettings={noop}
       />,
     );
     expect(screen.getByText("Buy milk")).toBeTruthy();
@@ -35,6 +36,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onOpenSettings={noop}
       />,
     );
     expect(screen.getByText(/nothing here yet/i)).toBeTruthy();
@@ -50,6 +52,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onOpenSettings={noop}
       />,
     );
     const input = screen.getByLabelText("Add item");
@@ -68,9 +71,27 @@ describe("ChecklistView", () => {
         onToggle={onToggle}
         onRemove={noop}
         onArchive={noop}
+        onOpenSettings={noop}
       />,
     );
     fireEvent.click(screen.getByLabelText("Check item"));
     expect(onToggle).toHaveBeenCalledWith("i1");
+  });
+
+  it("opens settings when the cogwheel is clicked", () => {
+    const onOpenSettings = vi.fn();
+    render(
+      <ChecklistView
+        items={items}
+        checkedCount={0}
+        onAdd={noop}
+        onToggle={noop}
+        onRemove={noop}
+        onArchive={noop}
+        onOpenSettings={onOpenSettings}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Open settings"));
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
   });
 });

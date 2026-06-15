@@ -10,7 +10,7 @@
 // updates React state for an immediate re-render, then persists the whole
 // document through the adapter.
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   activeItems,
@@ -49,19 +49,41 @@ function withActiveList(snapshot: Snapshot): Snapshot {
   return { ...snapshot, checklists: [list] };
 }
 
-export function useChecklist(
-  adapter: StorageAdapter = new BrowserLocalStorageAdapter(),
-): UseChecklist {
-  // Adapter and concurrency token survive re-renders; the adapter is
-  // built once even when the default argument is used.
-  const adapterRef = useRef(adapter);
+export function useChecklist(adapter?: StorageAdapter): UseChecklist {
+  // A stable fallback for callers (and tests) that don't pass an adapter.
+  // App always passes a memoized one, so the swap effect below only fires
+  // on a real backend change (e.g. the developer fake-data toggle).
+  const [fallback] = useState(() => new BrowserLocalStorageAdapter());
+  const active = adapter ?? fallback;
+
+  // Adapter and concurrency token survive re-renders.
+  const adapterRef = useRef(active);
   const revisionRef = useRef<string | undefined>(undefined);
 
   // Seed from the adapter's synchronous fast path so the first paint
   // shows stored data instead of a flash of empty list.
   const [doc, setDoc] = useState<Snapshot>(() =>
-    withActiveList(parse(adapterRef.current.loadSync?.()?.text)),
+    withActiveList(parse(active.loadSync?.()?.text)),
   );
+
+  // Reload whenever the active adapter instance changes. On first mount
+  // this re-confirms the loadSync seed (same bytes, no flicker); on a
+  // mid-session swap (fake-data on/off) it loads the new backend's
+  // document and replaces what's on screen. The concurrency token resets
+  // so the first save against the new backend isn't rejected.
+  useEffect(() => {
+    adapterRef.current = active;
+    revisionRef.current = undefined;
+    let cancelled = false;
+    void active.load().then((stored) => {
+      if (cancelled) return;
+      revisionRef.current = stored?.revision;
+      setDoc(withActiveList(parse(stored?.text)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [active]);
 
   const list: Checklist =
     doc.checklists[0] ?? withActiveList(doc).checklists[0]!;
