@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { ChecklistItem } from "../domain/types.ts";
+import { useT } from "../i18n";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
@@ -31,6 +32,7 @@ export function ChecklistRow({
   style,
 }: Props) {
   const swipe = useRowSwipe(onArchive);
+  const t = useT();
 
   return (
     <li
@@ -40,7 +42,7 @@ export function ChecklistRow({
     >
       {/* Archive — uncovered by swiping the row right. */}
       <div className="absolute inset-0 flex items-center justify-start bg-surface-2 pl-4 text-xs font-semibold tracking-wide text-muted uppercase">
-        Archive
+        {t("app.archive")}
       </div>
 
       {/* Delete — uncovered by swiping the row left. */}
@@ -50,7 +52,7 @@ export function ChecklistRow({
           onClick={onDelete}
           className="h-full w-24 bg-danger text-xs font-semibold tracking-wide text-white uppercase"
         >
-          Delete
+          {t("app.delete")}
         </button>
       </div>
 
@@ -65,7 +67,7 @@ export function ChecklistRow({
         <Checkbox
           checked={item.checked}
           onChange={() => onToggle()}
-          ariaLabel={item.checked ? "Uncheck item" : "Check item"}
+          ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
         />
         <span
           className={`min-w-0 flex-1 truncate ${
@@ -76,7 +78,7 @@ export function ChecklistRow({
         </span>
         <button
           type="button"
-          aria-label="Drag to reorder"
+          aria-label={t("app.dragToReorder")}
           {...dragHandleProps}
           className="-mr-1 flex shrink-0 cursor-grab touch-none items-center justify-center p-1 text-muted"
         >

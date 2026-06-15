@@ -24,6 +24,7 @@ import {
   type ThemeFamily,
   type ThemePreset,
 } from "../../../theme/themes.ts";
+import { useT } from "../../../i18n";
 import type { Settings } from "../../../settings/types.ts";
 import type { UpdateSetting } from "../../../settings/useSettings.ts";
 import { Field, Section, SegmentedRow, ToggleRow } from "../shared.tsx";
@@ -39,6 +40,7 @@ export function AppearanceTab({
   settings: Settings;
   onUpdate: UpdateSetting;
 }) {
+  const t = useT();
   const isCustom = settings.theme === "custom";
 
   // The non-default font families load on demand; pull them all in when
@@ -80,8 +82,8 @@ export function AppearanceTab({
 
   return (
     <>
-      <Section title="Theme">
-        <Field label="Mode">
+      <Section title={t("settings.appearance.theme")}>
+        <Field label={t("settings.appearance.mode")}>
           <ThemeModeRow
             value={settings.theme}
             onChange={handleThemeChange}
@@ -89,12 +91,12 @@ export function AppearanceTab({
           />
           {settings.theme === "system" && (
             <p className="text-xs text-muted">
-              Follows your operating system's light / dark setting.
+              {t("settings.appearance.systemNote")}
             </p>
           )}
         </Field>
         {(family === "dark" || family === "light") && (
-          <Field label="Variant">
+          <Field label={t("settings.appearance.variant")}>
             <ThemeVariantRow
               value={settings.theme}
               onChange={handleThemeChange}
@@ -103,14 +105,14 @@ export function AppearanceTab({
         )}
       </Section>
 
-      <Section title="Font">
-        <Field label="Font family">
+      <Section title={t("settings.appearance.font")}>
+        <Field label={t("settings.appearance.fontFamily")}>
           <select
             value={settings.fontFamily}
             onChange={(e) =>
               onUpdate("fontFamily", e.target.value as FontFamilyId)
             }
-            aria-label="Font family"
+            aria-label={t("settings.appearance.fontFamily")}
             className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
           >
             {FONT_FAMILIES.map((f) => (
@@ -120,11 +122,11 @@ export function AppearanceTab({
             ))}
           </select>
         </Field>
-        <Field label="Text size">
+        <Field label={t("settings.appearance.textSize")}>
           <select
             value={settings.fontScale}
             onChange={(e) => onUpdate("fontScale", Number(e.target.value))}
-            aria-label="Text size"
+            aria-label={t("settings.appearance.textSize")}
             className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
           >
             {FONT_SCALE_PRESETS.map((p) => (
@@ -138,7 +140,7 @@ export function AppearanceTab({
 
       {isCustom && (
         <>
-          <Section title="Colours">
+          <Section title={t("settings.appearance.colours")}>
             {COLOR_GROUPS.map((group) => (
               <Field key={group.id} label={group.label}>
                 <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-x-2 gap-y-2.5">
@@ -155,10 +157,10 @@ export function AppearanceTab({
             ))}
           </Section>
 
-          <Section title="Shape & motion">
-            <Field label="Corner radius">
+          <Section title={t("settings.appearance.shapeMotion")}>
+            <Field label={t("settings.appearance.cornerRadius")}>
               <SegmentedRow
-                ariaLabel="Corner radius"
+                ariaLabel={t("settings.appearance.cornerRadius")}
                 value={settings.customTheme.radius}
                 options={RADIUS_PRESETS.map((p) => ({
                   value: p,
@@ -167,9 +169,9 @@ export function AppearanceTab({
                 onChange={(v) => updateCustom("radius", v)}
               />
             </Field>
-            <Field label="Density">
+            <Field label={t("settings.appearance.density")}>
               <SegmentedRow
-                ariaLabel="Density"
+                ariaLabel={t("settings.appearance.density")}
                 value={settings.customTheme.density}
                 options={DENSITY_PRESETS.map((p) => ({
                   value: p,
@@ -178,9 +180,9 @@ export function AppearanceTab({
                 onChange={(v) => updateCustom("density", v)}
               />
             </Field>
-            <Field label="Border width">
+            <Field label={t("settings.appearance.borderWidth")}>
               <SegmentedRow
-                ariaLabel="Border width"
+                ariaLabel={t("settings.appearance.borderWidth")}
                 value={settings.customTheme.borderWidth}
                 options={BORDER_WIDTH_PRESETS.map((p) => ({
                   value: p,
@@ -190,8 +192,8 @@ export function AppearanceTab({
               />
             </Field>
             <ToggleRow
-              label="Reduce motion"
-              hint="Disable transitions and animations across the app."
+              label={t("settings.appearance.reduceMotion")}
+              hint={t("settings.appearance.reduceMotionHint")}
               checked={settings.customTheme.reduceMotion}
               onChange={(v) => updateCustom("reduceMotion", v)}
             />

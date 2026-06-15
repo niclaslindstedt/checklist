@@ -1,5 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { useT } from "../i18n";
+
 // Minimal accessible modal: a dimmed backdrop with a centered card.
 // Closes on Escape and backdrop click, locks body scroll while open,
 // and moves focus into the card on open / restores it on close. Cloned
@@ -16,6 +18,7 @@ type Props = {
 };
 
 export function Modal({ open, onClose, labelledBy, children }: Props) {
+  const t = useT();
   const cardRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -52,7 +55,7 @@ export function Modal({ open, onClose, labelledBy, children }: Props) {
     <div className="fixed inset-0 z-50 flex items-stretch justify-center sm:items-center sm:p-4">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("common.close")}
         tabIndex={-1}
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-black/50"
