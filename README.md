@@ -9,7 +9,7 @@ Dropbox. Hosted on GitHub Pages; talks to no other servers.
 [![Pages](https://github.com/niclaslindstedt/checklist/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/pages.yml)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm--NC--1.0.0-blue.svg)](LICENSE)
 
-Try it: **<https://niclaslindstedt.github.io/checklist/>**
+Try it: **<https://checklist.niclaslindstedt.se>**
 
 ## Why?
 
@@ -59,7 +59,19 @@ npm test         # run the test suite
 
 To deploy your own copy, fork the repo and enable GitHub Pages with
 "GitHub Actions" as the source. The `pages.yml` workflow builds and
-publishes on every push to `main`.
+publishes on every push to `main`. It assembles up to three slots into
+one deployment:
+
+- `/` — the latest released `v*` tag (or `main`, before the first
+  release).
+- `/preview/` — the current `main`.
+- `/branch/` — an optional feature-branch preview, parked via a
+  `pages.yml` `workflow_dispatch` with a `branch_ref`.
+
+The production app is served from the root (`/`) under the custom domain
+in [`public/CNAME`](public/CNAME). Releases are cut by dispatching the
+`Release` workflow; see [`AGENTS.md`](AGENTS.md) → "Releases and
+changelog".
 
 ## Usage
 
@@ -81,8 +93,9 @@ to `localStorage`. The full list of keys and defaults is documented in
 [`docs/configuration.md`](docs/configuration.md).
 
 The build is configured via `vite.config.ts`. The only build-time
-input is the GitHub Pages base path (`VITE_BASE`), which the
-`pages.yml` workflow sets automatically.
+input is the base path (`VITE_BASE`), which the `pages.yml` workflow
+sets automatically per slot (`/` for production, `/preview/` for `main`,
+`/branch/` for the optional feature-branch preview).
 
 ## Examples
 

@@ -25,6 +25,7 @@ make test          # full test suite
 make lint          # zero-warning linter
 make fmt           # format in place
 make fmt-check     # verify formatting (CI)
+make changelog VERSION=X.Y.Z   # preview a release's CHANGELOG locally
 ```
 
 ## Commit and PR conventions
@@ -33,6 +34,10 @@ make fmt-check     # verify formatting (CI)
 - PRs are squash-merged; the **PR title** becomes the single commit on `main`,
   so it must follow conventional-commit format.
 - Breaking changes use `<type>!:` or a `BREAKING CHANGE:` footer.
+- Every PR with a **user-visible** change ships a changeset fragment
+  under `.changes/unreleased/` (see "Releases and changelog"). The
+  `changeset` CI job enforces this; opt out with the `no-changelog`
+  label when a change is genuinely invisible to users.
 
 ## Architecture summary
 
@@ -67,6 +72,7 @@ the DOM.
 | Docs update          | `docs/...` |
 | Example template     | `examples/<slug>.json` |
 | LLM prompt           | `prompts/<name>/<major>_<minor>_<patch>.md` (see `prompts/README.md`) |
+| Changelog entry      | `.changes/unreleased/<unix-ts>-<slug>.md` (see `Releases and changelog`) |
 
 ## Test conventions
 
@@ -105,6 +111,107 @@ the build / deploy pipeline     | `README.md` Install/Quick start, `.github/work
   fragments are not sent to servers.
 - **`src/domain/` is pure.** No imports from `ui/`, `storage/`,
   `window`, `document`, or `fetch`. Enforced by lint rule and CI.
+
+## Releases and changelog
+
+### Deployment slots
+
+The app is hosted on GitHub Pages under the custom domain
+**checklist.niclaslindstedt.se** (set by `public/CNAME`, which Vite
+copies into every build; the Pages workflow keeps a single CNAME in the
+root of the artifact). `.github/workflows/pages.yml` assembles up to
+three slots into one Pages artifact:
+
+- `/` — the latest released `v*` tag. Before the first release exists,
+  `main` is served here instead (no `/preview/` slot yet).
+- `/preview/` — the current `main`. Every push to `main` rebuilds it.
+- `/branch/` — an opt-in, stable slot for a feature branch. A maintainer
+  dispatches `pages.yml` (`workflow_dispatch`) with a `branch_ref`; the
+  build is force-pushed to the auto-managed `branch-deploy` orphan
+  branch and rehydrated into every subsequent deploy until the next
+  dispatch overwrites it. Delete the `branch-deploy` branch to clear the
+  slot.
+
+The base path each slot is built with comes from `VITE_BASE` (`/`,
+`/preview/`, or `/branch/`), read by `vite.config.ts`.
+
+> **Storage caveat.** All three slots share one origin, and
+> `localStorage` / `IndexedDB` are per-origin (not per-path), so
+> `/preview/` and `/branch/` currently read and write the **same** data
+> as production. If you need true isolation between slots, namespace the
+> storage keys by base path before using the preview/branch slots for
+> destructive testing.
+
+### Semver and release cadence
+
+Bumps are chosen at release time via the `bump` input on
+`.github/workflows/release.yml` (`workflow_dispatch` only):
+
+- `patch` — bug fixes, no visible behaviour change beyond the fix.
+- `minor` — new user-facing feature or visible behaviour change.
+  Default and most common.
+- `major` — breaking change to the persisted-data shape an older build
+  cannot read, or a deliberate UX overhaul.
+
+### Changeset fragments
+
+When a PR introduces a **user-visible** change, drop a small markdown
+file in `.changes/unreleased/<unix-ts>-<slug>.md`:
+
+```
+---
+type: Added
+title: Custom domain
+---
+
+One sentence users will read in the changelog.
+```
+
+`type:` is one of `Added | Changed | Fixed | Removed | Security |
+Deprecated` (Keep a Changelog). `title:` (optional, expected for
+`Added` / `Changed`) is a short noun phrase bolded at the head of the
+bullet; the body is a **one-sentence** summary. The timestamp prefix on
+the filename keeps the lexical sort deterministic so collation roughly
+mirrors commit order. The collator
+(`scripts/release/collate-changelog.mjs`) validates the front-matter at
+release time — an unknown `type:`, a malformed front-matter line, or an
+empty body fails the run loudly.
+
+The `changeset` job in `ci.yml` enforces a fragment per PR. Pure
+refactors, CI / build / test tweaks, dependency bumps that don't change
+behaviour, and docs-only edits pass via the skip-list in
+`scripts/release/check-changeset.mjs` — extend it when adding new
+"obviously not user-visible" path patterns. Opt a genuinely invisible
+change out by labelling the PR `no-changelog`.
+
+**Don't add a fragment for fixes to features introduced since the last
+release.** If the feature's `Added` fragment is still sitting in
+`.changes/unreleased/`, fold the fix into that fragment instead of
+adding a sibling `Fixed` entry that narrates a regression no user saw.
+
+Preview a release locally with `make changelog VERSION=X.Y.Z` — this
+**consumes** the fragments, so run it on a scratch branch or revert
+afterwards.
+
+### End-to-end release flow
+
+1. Maintainer dispatches the `Release` workflow with a
+   `patch | minor | major` bump.
+2. The workflow runs `npm version <bump> --no-git-tag-version` and
+   `scripts/release/collate-changelog.mjs`, which converts
+   `.changes/unreleased/*.md` into a new `## [X.Y.Z] - YYYY-MM-DD`
+   section in `CHANGELOG.md` and deletes the consumed fragments.
+3. It commits the bump + changelog + fragment deletion, tags `vX.Y.Z`,
+   and pushes both to `main`.
+4. `gh release create` publishes a GitHub Release whose body is the new
+   section (sliced by `scripts/release/extract-section.mjs`).
+5. The workflow chains into `pages.yml` via `workflow_call` so the new
+   tag is served at `/` immediately, without waiting for the next push.
+
+To cut a release from an earlier commit (when `main` has advanced past
+the intended release point), set the optional `commit` input — the
+workflow tags that commit and pushes **only the tag**, leaving `main`
+untouched. Reconciling `main` afterwards is the maintainer's job.
 
 ## Maintenance skills
 

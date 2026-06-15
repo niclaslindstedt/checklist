@@ -97,5 +97,10 @@ the cloud-storage hosts. It is registered in production builds only.
 
 `vite build` produces a fully static bundle in `dist/`. The GitHub
 Pages workflow (`.github/workflows/pages.yml`) publishes it on every
-push to `main`. The base path is injected via `VITE_BASE` so the same
-bundle works at `/`, `/checklist/`, or any subpath.
+push to `main`, serving the production app from the root (`/`) under
+the custom domain in `public/CNAME`. The base path is injected via
+`VITE_BASE` so the same bundle works at `/`, `/preview/`, `/branch/`,
+or any subpath. The released `v*` tag is served at `/`, the current
+`main` at `/preview/`, and an optional dispatched feature branch at
+`/branch/`. See `AGENTS.md` → "Releases and changelog" for the full
+release flow.

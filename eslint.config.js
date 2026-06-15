@@ -9,6 +9,19 @@ export default [
   },
   js.configs.recommended,
   {
+    // Node tooling scripts (release / changelog automation). These run
+    // under Node, so expose its globals rather than the browser's.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      ecmaVersion: 2022,
+      globals: {
+        process: "readonly",
+        console: "readonly",
+      },
+    },
+  },
+  {
     files: ["src/**/*.ts", "tests/**/*.ts", "*.ts"],
     languageOptions: {
       parser: tsparser,

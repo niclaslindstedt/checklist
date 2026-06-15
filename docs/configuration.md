@@ -25,7 +25,7 @@ deployment origin to each provider's allowed redirect URIs.
 
 | Env var      | Read by             | Default | Effect |
 |--------------|---------------------|---------|--------|
-| `VITE_BASE`  | `vite.config.ts`    | `/`     | Public path the bundle is served from. CI sets this to `/checklist/` for GitHub Pages. |
+| `VITE_BASE`  | `vite.config.ts`    | `/`     | Public path the bundle is served from. The Pages workflow sets it per slot: `/` for the released production build, `/preview/` for `main`, `/branch/` for the optional feature-branch preview. |
 
 ## Things that are deliberately not configurable
 
