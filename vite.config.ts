@@ -1,12 +1,63 @@
+import { readFileSync } from "node:fs";
 import process from "node:process";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
-import { defineConfig } from "vitest/config";
+import { defineConfig, type Plugin } from "vitest/config";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.
 const base = process.env.VITE_BASE ?? "/";
+
+const pkg = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+// Short build identifier rendered next to the "checklist" header and
+// surfaced in the update prompt so you can tell at a glance which build
+// is running. Shape: `<pkg.version>[.<run>][-<slot>][+<commit>]`:
+//
+//   - `<run>`    — the `GITHUB_RUN_NUMBER` GitHub Actions populates
+//                  automatically (omitted for local builds).
+//   - `<slot>`   — `pre` for the `/preview/` slot, `br` for `/branch/`,
+//                  omitted for the production `/` slot.
+//   - `<commit>` — the short `GITHUB_SHA` as semver build metadata after
+//                  the `+` (omitted for local builds).
+//
+// e.g. `0.1.0` for a local build, `0.1.0.42-pre+a1b2c3d` for a CI
+// preview build. Mirrors budget's BUILD_LABEL, extended with the commit
+// hash.
+const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
+const COMMIT_HASH = (process.env.GITHUB_SHA ?? "").slice(0, 7);
+const BUILD_SLOT =
+  base === "/preview/" ? "pre" : base === "/branch/" ? "br" : "";
+const BUILD_LABEL =
+  pkg.version +
+  (GITHUB_RUN_NUMBER ? `.${GITHUB_RUN_NUMBER}` : "") +
+  (BUILD_SLOT ? `-${BUILD_SLOT}` : "") +
+  (COMMIT_HASH ? `+${COMMIT_HASH}` : "");
+
+// Emit a tiny `version.json` carrying this build's BUILD_LABEL into the
+// slot root (`/version.json`, `/preview/version.json`, …). The running
+// page knows only its OWN BUILD_LABEL, so the update prompt can't name
+// the *incoming* build from anything in the loaded bundle. It fetches
+// this file (cache-bypassed) when the workbox `waiting` event fires to
+// learn the version it's about to upgrade to. Deliberately kept out of
+// precache (`json` isn't in `workbox.globPatterns`) so the active SW
+// lets the fetch reach the network and return the freshly-deployed file.
+function emitVersionJson(): Plugin {
+  return {
+    name: "emit-version-json",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: `${JSON.stringify({ version: BUILD_LABEL })}\n`,
+      });
+    },
+  };
+}
 
 export default defineConfig({
   base,
@@ -14,7 +65,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      // `UpdateToast` registers the SW itself via `workbox-window` (so it
+      // can pass `updateViaCache: "none"`) and the new build parks in the
+      // `waiting` state until the user clicks Reload — no silent swap, no
+      // auto-injected `<script>`.
+      registerType: "prompt",
+      injectRegister: null,
       // Static assets copied verbatim from `public/` that the service
       // worker should also precache so the install / favicon / iOS
       // home-screen icon resolve offline. The `icons` array below is
@@ -84,7 +140,12 @@ export default defineConfig({
         ],
       },
     }),
+    emitVersionJson(),
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
+  },
   test: {
     // Domain/storage/share tests run in node. UI tests opt into jsdom with a
     // `// @vitest-environment jsdom` docblock at the top of the file.

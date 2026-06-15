@@ -1,0 +1,21 @@
+// Composed English catalog. Each top-level group lives in its own file
+// under this directory; this index re-assembles them so the rest of the
+// app keeps a single `en` object to import. The `Catalog` type is
+// derived here, then consumed by `sv/index.ts` and the runtime in
+// `src/i18n/index.ts`. Mirrors budget's catalog layout.
+
+import type { Widen } from "./_widen";
+
+import app from "./app";
+import common from "./common";
+import pwa from "./pwa";
+import toast from "./toast";
+
+export const en = {
+  app,
+  common,
+  pwa,
+  toast,
+} as const;
+
+export type Catalog = Widen<typeof en>;

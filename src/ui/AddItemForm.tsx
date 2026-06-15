@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useT } from "../i18n";
 import { ClearableInput } from "./form/index.ts";
 
 // The composer pinned under the list. Submitting (Enter) adds the item
@@ -8,6 +9,7 @@ import { ClearableInput } from "./form/index.ts";
 
 export function AddItemForm({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useState("");
+  const t = useT();
 
   return (
     <form
@@ -25,8 +27,8 @@ export function AddItemForm({ onAdd }: { onAdd: (title: string) => void }) {
       <ClearableInput
         value={value}
         onValueChange={setValue}
-        placeholder="Add item…"
-        aria-label="Add item"
+        placeholder={t("app.addItemPlaceholder")}
+        aria-label={t("app.addItem")}
         wrapperClassName="flex-1"
       />
     </form>
