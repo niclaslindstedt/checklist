@@ -6,6 +6,8 @@ import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import { useTheme } from "../theme/useTheme.ts";
 import { ChecklistView } from "../ui/ChecklistView.tsx";
+import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
+import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
 import { SettingsModal } from "../ui/settings/SettingsModal.tsx";
 import { useChecklist } from "./use-checklist.ts";
@@ -37,8 +39,19 @@ export function App() {
   );
   const checklist = useChecklist(seedAdapter ?? localAdapter);
 
+  // Pull-to-refresh: a downward drag from the top of the list re-reads the
+  // active backend (see `useChecklist.reload`). Gated off while the
+  // settings modal owns the screen — the hook also bails on its own when
+  // an `[aria-modal="true"]` element is mounted, but disabling here keeps
+  // the document listeners off entirely while the dialog is up.
+  const ptr = usePullToRefresh(checklist.reload, { enabled: !settingsOpen });
+
   return (
     <>
+      <PullToRefreshIndicator
+        state={ptr.state}
+        pullDistance={ptr.pullDistance}
+      />
       <ChecklistView
         items={checklist.items}
         checkedCount={checklist.checkedCount}

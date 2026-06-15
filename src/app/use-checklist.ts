@@ -41,6 +41,13 @@ export interface UseChecklist {
   archive: (itemId: string) => void;
   /** Move a visible item to a new position among the active items. */
   reorder: (itemId: string, toIndex: number) => void;
+  /**
+   * Re-read the document from the active backend, replacing what's on
+   * screen — the pull-to-refresh action. A no-op-ish round trip for
+   * localStorage, but the honest "pick up another device's edits" pull
+   * for the cloud backends (Google Drive / Dropbox).
+   */
+  reload: () => Promise<void>;
 }
 
 // Guarantee the document always has one checklist to render. A freshly
@@ -138,11 +145,26 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     [commit, list],
   );
 
+  const reload = useCallback(async () => {
+    const stored = await adapterRef.current.load();
+    revisionRef.current = stored?.revision;
+    setDoc(withActiveList(parse(stored?.text)));
+  }, []);
+
   const items = useMemo(() => activeItems(list), [list]);
   const checkedCount = useMemo(
     () => items.filter((it) => it.checked).length,
     [items],
   );
 
-  return { items, checkedCount, addItem, toggle, remove, archive, reorder };
+  return {
+    items,
+    checkedCount,
+    addItem,
+    toggle,
+    remove,
+    archive,
+    reorder,
+    reload,
+  };
 }
