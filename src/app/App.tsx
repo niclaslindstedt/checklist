@@ -41,6 +41,7 @@ export function App() {
         onToggle={checklist.toggle}
         onRemove={checklist.remove}
         onArchive={checklist.archive}
+        onReorder={checklist.reorder}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <SettingsModal

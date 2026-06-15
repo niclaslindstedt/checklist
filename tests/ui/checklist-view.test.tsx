@@ -20,6 +20,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
         onOpenSettings={noop}
       />,
     );
@@ -36,6 +37,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
         onOpenSettings={noop}
       />,
     );
@@ -52,6 +54,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
         onOpenSettings={noop}
       />,
     );
@@ -71,11 +74,28 @@ describe("ChecklistView", () => {
         onToggle={onToggle}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
         onOpenSettings={noop}
       />,
     );
     fireEvent.click(screen.getByLabelText("Check item"));
     expect(onToggle).toHaveBeenCalledWith("i1");
+  });
+
+  it("renders a drag handle for reordering each item", () => {
+    render(
+      <ChecklistView
+        items={items}
+        checkedCount={0}
+        onAdd={noop}
+        onToggle={noop}
+        onRemove={noop}
+        onArchive={noop}
+        onReorder={noop}
+        onOpenSettings={noop}
+      />,
+    );
+    expect(screen.getByLabelText("Drag to reorder")).toBeTruthy();
   });
 
   it("opens settings when the cogwheel is clicked", () => {
@@ -88,6 +108,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
         onOpenSettings={onOpenSettings}
       />,
     );

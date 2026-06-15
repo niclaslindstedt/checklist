@@ -17,6 +17,7 @@ import {
   addItem as addItemOp,
   createChecklist,
   deleteItem as deleteItemOp,
+  moveItem as moveItemOp,
   setArchived,
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
@@ -38,6 +39,8 @@ export interface UseChecklist {
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
   archive: (itemId: string) => void;
+  /** Move a visible item to a new position among the active items. */
+  reorder: (itemId: string, toIndex: number) => void;
 }
 
 // Guarantee the document always has one checklist to render. A freshly
@@ -129,11 +132,17 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     [commit, list],
   );
 
+  const reorder = useCallback(
+    (itemId: string, toIndex: number) =>
+      commit(moveItemOp(list, itemId, toIndex, now())),
+    [commit, list],
+  );
+
   const items = useMemo(() => activeItems(list), [list]);
   const checkedCount = useMemo(
     () => items.filter((it) => it.checked).length,
     [items],
   );
 
-  return { items, checkedCount, addItem, toggle, remove, archive };
+  return { items, checkedCount, addItem, toggle, remove, archive, reorder };
 }
