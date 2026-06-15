@@ -26,3 +26,6 @@ dev-dist/
 # Service worker output
 public/sw.js
 public/workbox-*.js
+
+# Transient release artifacts (written by the Release workflow)
+.release-notes.md
