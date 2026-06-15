@@ -24,9 +24,19 @@ export interface Template {
 /** A checked item within a checklist instance. */
 export interface ChecklistItem extends Item {
   checked: boolean;
+  /**
+   * Archived items stay in the document but drop out of the active view.
+   * There is no archive surface yet — swiping an item right marks it
+   * archived so it disappears without being destroyed. Absent means active.
+   */
+  archived?: boolean;
 }
 
-/** An instance stamped out from a template at a point in time. */
+/**
+ * An instance stamped out from a template at a point in time. Ad-hoc lists
+ * created straight from the checklist view (not from any template) carry an
+ * empty `templateId`.
+ */
 export interface Checklist {
   version: 1;
   id: string;

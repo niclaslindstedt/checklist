@@ -1,0 +1,14 @@
+/* App-wide stylesheet entry, imported once from `src/app/main.tsx`. The
+   substantive rules live in `./styles/` siblings, imported in cascade
+   order — Tailwind first so its `@theme` / `@layer` infrastructure is in
+   scope when downstream files extend it. Mirrors the budget project's
+   styles.css layout.
+
+     1. tailwindcss        — Tailwind v4 base + utilities
+     2. styles/theme.css   — `@theme inline` token mapping, :root
+                             defaults, html/body reset
+     3. styles/palettes.css — colour palettes per `data-theme` */
+@import "tailwindcss";
+
+@import "./styles/theme.css";
+@import "./styles/palettes.css";

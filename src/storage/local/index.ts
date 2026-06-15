@@ -1,74 +1,41 @@
-// Default storage backend: a single JSON document in localStorage under the
-// key `checklist:v1`. Larger blobs may move to IndexedDB later; the public
-// surface is the StorageBackend interface in ../types.ts.
+// Default storage backend: a single JSON document in localStorage under
+// the key `checklist:v1`. Speaks bytes through the `StorageAdapter`
+// contract (see ../adapter.ts) — the serialize / parse pipeline lives in
+// ../serialize.ts, so this adapter only moves text in and out of a
+// `Storage`. The Storage object is injectable so tests run against an
+// in-memory stub instead of the real `localStorage`.
 
-import {
-  emptySnapshot,
-  type Checklist,
-  type Snapshot,
-  type Template,
-} from "../../domain/types.ts";
-import type { StorageBackend, Unsubscribe } from "../types.ts";
+import type { StorageAdapter, StoredSnapshot } from "../adapter.ts";
 
 const STORAGE_KEY = "checklist:v1";
 
-export class LocalStorageBackend implements StorageBackend {
-  private readonly subscribers = new Set<(snapshot: Snapshot) => void>();
+export class BrowserLocalStorageAdapter implements StorageAdapter {
+  readonly id = "browser" as const;
+  readonly label = "This device";
+  readonly capabilities: ReadonlySet<"loadSync"> = new Set(["loadSync"]);
 
   constructor(private readonly storage: Storage = globalThis.localStorage) {}
 
-  async loadAll(): Promise<Snapshot> {
-    return this.read();
+  loadSync(): StoredSnapshot | null {
+    const text = this.read();
+    return text === null ? null : { text };
   }
 
-  async saveTemplate(template: Template): Promise<void> {
-    const snapshot = this.read();
-    snapshot.templates = upsert(snapshot.templates, template);
-    this.write(snapshot);
+  async load(): Promise<StoredSnapshot | null> {
+    return this.loadSync();
   }
 
-  async saveChecklist(checklist: Checklist): Promise<void> {
-    const snapshot = this.read();
-    snapshot.checklists = upsert(snapshot.checklists, checklist);
-    this.write(snapshot);
+  async save(text: string): Promise<StoredSnapshot> {
+    this.storage.setItem(STORAGE_KEY, text);
+    return { text };
   }
 
-  async delete(id: string): Promise<void> {
-    const snapshot = this.read();
-    snapshot.templates = snapshot.templates.filter((t) => t.id !== id);
-    snapshot.checklists = snapshot.checklists.filter((c) => c.id !== id);
-    this.write(snapshot);
-  }
-
-  subscribe(fn: (snapshot: Snapshot) => void): Unsubscribe {
-    this.subscribers.add(fn);
-    return () => this.subscribers.delete(fn);
-  }
-
-  private read(): Snapshot {
-    const raw = this.storage.getItem(STORAGE_KEY);
-    if (!raw) return emptySnapshot();
+  private read(): string | null {
     try {
-      const parsed = JSON.parse(raw) as Partial<Snapshot>;
-      return {
-        templates: parsed.templates ?? [],
-        checklists: parsed.checklists ?? [],
-      };
+      return this.storage.getItem(STORAGE_KEY);
     } catch {
-      return emptySnapshot();
+      // disabled / blocked storage — treat as "no data"
+      return null;
     }
   }
-
-  private write(snapshot: Snapshot): void {
-    this.storage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-    for (const fn of this.subscribers) fn(snapshot);
-  }
-}
-
-function upsert<T extends { id: string }>(list: T[], next: T): T[] {
-  const idx = list.findIndex((item) => item.id === next.id);
-  if (idx === -1) return [...list, next];
-  const copy = [...list];
-  copy[idx] = next;
-  return copy;
 }
