@@ -4,7 +4,6 @@ const settings: SettingsCatalog = {
   title: "Inställningar",
   close: "Stäng inställningar",
   sections: "Inställningssektioner",
-  reset: "Återställ utseende",
   done: "Klar",
 
   tab: {

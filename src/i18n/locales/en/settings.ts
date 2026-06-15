@@ -9,7 +9,6 @@ const settings = {
   title: "Settings",
   close: "Close settings",
   sections: "Settings sections",
-  reset: "Reset appearance",
   done: "Done",
 
   tab: {

@@ -2,11 +2,11 @@
 // Apply-immediately model: every `update` writes through to storage and
 // re-renders, so the theme engine (which reads the live settings)
 // previews the change at once — there's no separate draft / save / cancel
-// channel to keep in sync. `reset` drops back to the defaults.
+// channel to keep in sync.
 
 import { useCallback, useState } from "react";
 
-import { defaultSettings, loadSettings, saveSettings } from "./store.ts";
+import { loadSettings, saveSettings } from "./store.ts";
 import type { Settings } from "./types.ts";
 
 export type UpdateSetting = <K extends keyof Settings>(
@@ -17,7 +17,6 @@ export type UpdateSetting = <K extends keyof Settings>(
 export interface UseSettings {
   settings: Settings;
   update: UpdateSetting;
-  reset: () => void;
 }
 
 export function useSettings(): UseSettings {
@@ -31,11 +30,5 @@ export function useSettings(): UseSettings {
     });
   }, []);
 
-  const reset = useCallback(() => {
-    const next = defaultSettings();
-    saveSettings(next);
-    setSettings(next);
-  }, []);
-
-  return { settings, update, reset };
+  return { settings, update };
 }

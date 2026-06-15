@@ -18,7 +18,6 @@ function renderModal(
     onClose: vi.fn(),
     settings: defaultSettings(),
     onUpdate: vi.fn(),
-    onReset: vi.fn(),
     ...overrides,
   };
   render(<SettingsModal {...props} />);

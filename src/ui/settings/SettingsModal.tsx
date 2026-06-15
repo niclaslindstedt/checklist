@@ -17,7 +17,7 @@ import { LogsTab } from "./tabs/logs.tsx";
 // the budget project's tabbed SettingsModal — a left rail on desktop,
 // a horizontal strip on mobile — pared to the checklist's four tabs.
 // Settings apply immediately (the theme engine previews the live values),
-// so the footer offers Reset + Close rather than Save / Cancel.
+// so the footer offers a single Done button rather than Save / Cancel.
 
 type TabId = "general" | "theme" | "developer" | "logs";
 
@@ -33,16 +33,9 @@ type Props = {
   onClose: () => void;
   settings: Settings;
   onUpdate: UpdateSetting;
-  onReset: () => void;
 };
 
-export function SettingsModal({
-  open,
-  onClose,
-  settings,
-  onUpdate,
-  onReset,
-}: Props) {
+export function SettingsModal({ open, onClose, settings, onUpdate }: Props) {
   const t = useT();
   const { devMode } = useDevMode();
   const [activeTab, setActiveTab] = useState<TabId>("general");
@@ -125,10 +118,7 @@ export function SettingsModal({
         </div>
       </div>
 
-      <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
-        <Button variant="secondary" onClick={onReset}>
-          {t("settings.reset")}
-        </Button>
+      <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3">
         <Button variant="primary" onClick={onClose}>
           {t("settings.done")}
         </Button>
