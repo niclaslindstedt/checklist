@@ -49,10 +49,14 @@ body,
   padding: 0;
   background: var(--page-bg);
   color: var(--fg);
-  min-height: 100svh;
-  /* Suppress the browser's own pull-to-refresh so vertical scroll plays
-     nicely alongside the horizontal row-swipe gesture. */
-  overscroll-behavior-y: contain;
+  /* Pin the shell to the viewport and let the item list scroll internally
+     instead of the document. On iOS Safari a body that's even a hair taller
+     than the viewport rubber-bands with only a few items on screen; a fixed,
+     non-scrolling shell removes that bounce while a long list still scrolls
+     inside its own region (see ChecklistView). */
+  height: 100svh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {

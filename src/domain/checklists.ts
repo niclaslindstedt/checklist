@@ -89,6 +89,40 @@ export function activeItems(checklist: Checklist): ChecklistItem[] {
   return checklist.items.filter((it) => !it.archived);
 }
 
+/**
+ * Move the active item `itemId` so it sits at `toIndex` among the active
+ * (non-archived) items. Archived items are hidden from the view, so they
+ * stay pinned to their original absolute slots while the visible items
+ * shuffle around them. `toIndex` is clamped; a no-op move returns the same
+ * checklist untouched (no `updatedAt` bump, so it never writes).
+ */
+export function moveItem(
+  checklist: Checklist,
+  itemId: string,
+  toIndex: number,
+  now: string,
+): Checklist {
+  const active = checklist.items.filter((it) => !it.archived);
+  const from = active.findIndex((it) => it.id === itemId);
+  if (from === -1) return checklist;
+
+  const to = Math.max(0, Math.min(toIndex, active.length - 1));
+  if (from === to) return checklist;
+
+  const reordered = [...active];
+  const [moved] = reordered.splice(from, 1);
+  reordered.splice(to, 0, moved!);
+
+  // Walk the full list, emitting archived items where they sat and filling
+  // each active slot with the next item from the reordered sequence.
+  let a = 0;
+  const items = checklist.items.map((it) =>
+    it.archived ? it : reordered[a++]!,
+  );
+
+  return { ...checklist, items, updatedAt: now };
+}
+
 export function toggleItem(
   checklist: Checklist,
   itemId: string,
