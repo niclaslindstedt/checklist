@@ -40,7 +40,7 @@ export function ChecklistView({
   const t = useT();
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-6 pb-[env(safe-area-inset-bottom)]">
+    <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <header className="mb-2 flex items-center justify-between border-b border-line px-1 pb-3">
         <h1 className="flex items-baseline gap-2 text-lg font-semibold tracking-wide text-fg-bright">
           {t("app.title")}
