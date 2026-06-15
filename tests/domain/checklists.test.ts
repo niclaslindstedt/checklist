@@ -6,6 +6,7 @@ import {
   deleteItem,
   instantiate,
   isComplete,
+  moveItem,
   progress,
   setArchived,
   toggleItem,
@@ -79,5 +80,61 @@ describe("free-standing checklist item operations", () => {
     c = toggleItem(c, "i1", NOW);
     c = setArchived(c, "i2", true, NOW);
     expect(progress(c)).toEqual({ checked: 1, total: 1 });
+  });
+});
+
+describe("moveItem", () => {
+  const LATER = "2026-02-02T00:00:00.000Z";
+
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+
+  const ids = (c: ReturnType<typeof listOf>) => c.items.map((it) => it.id);
+
+  it("moves an item down to a new index without mutating the source", () => {
+    const c = listOf("A", "B", "C");
+    const moved = moveItem(c, "i1", 2, LATER);
+    expect(ids(moved)).toEqual(["i2", "i3", "i1"]);
+    expect(ids(c)).toEqual(["i1", "i2", "i3"]);
+    expect(moved.updatedAt).toBe(LATER);
+  });
+
+  it("moves an item up to an earlier index", () => {
+    const c = listOf("A", "B", "C");
+    expect(ids(moveItem(c, "i3", 0, LATER))).toEqual(["i3", "i1", "i2"]);
+  });
+
+  it("clamps an out-of-range target index to the ends", () => {
+    const c = listOf("A", "B", "C");
+    expect(ids(moveItem(c, "i1", 99, LATER))).toEqual(["i2", "i3", "i1"]);
+    expect(ids(moveItem(c, "i3", -5, LATER))).toEqual(["i3", "i1", "i2"]);
+  });
+
+  it("treats a no-op move as untouched, leaving updatedAt alone", () => {
+    const c = listOf("A", "B", "C");
+    const same = moveItem(c, "i2", 1, LATER);
+    expect(same).toBe(c);
+    expect(same.updatedAt).toBe(NOW);
+  });
+
+  it("returns the checklist unchanged for an unknown item", () => {
+    const c = listOf("A", "B");
+    expect(moveItem(c, "nope", 0, LATER)).toBe(c);
+  });
+
+  it("reorders by the active view while pinning archived items in place", () => {
+    // Full order: A(i1), B(i2, archived), C(i3). Active view is [A, C];
+    // moving C above A must keep the archived B anchored to its slot.
+    let c = listOf("A", "B", "C");
+    c = setArchived(c, "i2", true, NOW);
+    const moved = moveItem(c, "i3", 0, LATER);
+    expect(ids(moved)).toEqual(["i3", "i2", "i1"]);
+    expect(activeItems(moved).map((it) => it.id)).toEqual(["i3", "i1"]);
+    expect(moved.items[1]?.archived).toBe(true);
   });
 });

@@ -20,6 +20,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
       />,
     );
     expect(screen.getByText("Buy milk")).toBeTruthy();
@@ -35,6 +36,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
       />,
     );
     expect(screen.getByText(/nothing here yet/i)).toBeTruthy();
@@ -50,6 +52,7 @@ describe("ChecklistView", () => {
         onToggle={noop}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
       />,
     );
     const input = screen.getByLabelText("Add item");
@@ -68,9 +71,25 @@ describe("ChecklistView", () => {
         onToggle={onToggle}
         onRemove={noop}
         onArchive={noop}
+        onReorder={noop}
       />,
     );
     fireEvent.click(screen.getByLabelText("Check item"));
     expect(onToggle).toHaveBeenCalledWith("i1");
+  });
+
+  it("renders a drag handle for reordering each item", () => {
+    render(
+      <ChecklistView
+        items={items}
+        checkedCount={0}
+        onAdd={noop}
+        onToggle={noop}
+        onRemove={noop}
+        onArchive={noop}
+        onReorder={noop}
+      />,
+    );
+    expect(screen.getByLabelText("Drag to reorder")).toBeTruthy();
   });
 });
