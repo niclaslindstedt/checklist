@@ -1,17 +1,19 @@
 // Top-level app state, as a hook. The one place that wires the pure
 // domain operations to a concrete StorageAdapter and supplies the
 // side-effects (id generation, clock) the domain functions deliberately
-// avoid — the React counterpart of the budget project's storage hooks,
-// kept deliberately small because checklist has no auth, accounts, or
-// cloud sync yet.
+// avoid — the React counterpart of the budget project's storage hooks.
 //
 // The view works against a single active checklist (the simple list the
 // user sees). Each mutation applies the matching pure domain function,
 // updates React state for an immediate re-render, then persists the whole
-// document through the adapter.
+// document through the adapter. Saves are debounced by the adapter's
+// `saveDebounceMs` so a cloud backend coalesces a burst of edits into one
+// network write; a save that loses a race with another device surfaces a
+// `ConflictError`, which this hook turns into a resolvable `conflict`.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { createLogger } from "../dev/logger.ts";
 import {
   activeItems,
   addItem as addItemOp,
@@ -22,15 +24,27 @@ import {
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
 import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
-import type { StorageAdapter } from "../storage/adapter.ts";
+import { ConflictError, type StorageAdapter } from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { parse, serialize } from "../storage/serialize.ts";
+
+const log = createLogger("checklist");
 
 const newId = (): string => crypto.randomUUID();
 const now = (): string => new Date().toISOString();
 const DEFAULT_LIST_NAME = "Checklist";
 
+/** A divergence between the on-screen document and the backend's. */
+export type ConflictState = {
+  /** The bytes currently on the backend (typically another device's edit). */
+  remote: Snapshot;
+  /** The remote revision to base a "keep mine" overwrite on. */
+  remoteRevision?: string;
+};
+
 export interface UseChecklist {
+  /** The full in-memory document (used by the conflict summary). */
+  snapshot: Snapshot;
   /** The active checklist's visible (non-archived) items. */
   items: ChecklistItem[];
   /** How many visible items are checked. */
@@ -48,6 +62,10 @@ export interface UseChecklist {
    * for the cloud backends (Google Drive / Dropbox).
    */
   reload: () => Promise<void>;
+  /** Set when a save collided with a newer remote revision; else null. */
+  conflict: ConflictState | null;
+  /** Resolve an open conflict by keeping this device's copy or the remote's. */
+  resolveConflict: (keep: "local" | "remote") => void;
 }
 
 // Guarantee the document always has one checklist to render. A freshly
@@ -64,7 +82,7 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   // App always passes a memoized one, so the swap effect below only fires
   // on a real backend change (e.g. the developer fake-data toggle).
   const [fallback] = useState(() => new BrowserLocalStorageAdapter());
-  const active = adapter ?? fallback;
+  const active: StorageAdapter = adapter ?? fallback;
 
   // Adapter and concurrency token survive re-renders.
   const adapterRef = useRef(active);
@@ -75,15 +93,77 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   const [doc, setDoc] = useState<Snapshot>(() =>
     withActiveList(parse(active.loadSync?.()?.text)),
   );
+  // Latest doc, readable from async callbacks (debounced save, conflict
+  // resolution) without re-subscribing them to every render.
+  const docRef = useRef(doc);
+  useEffect(() => {
+    docRef.current = doc;
+  }, [doc]);
+
+  const [conflict, setConflict] = useState<ConflictState | null>(null);
+
+  // Debounced-save plumbing. `pendingDoc` holds the latest unsaved
+  // document; the timer coalesces a burst of edits into one write per
+  // `saveDebounceMs` window (0 ⇒ save immediately, right for localStorage).
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingDoc = useRef<Snapshot | null>(null);
+
+  const performSave = useCallback((next: Snapshot, baseRevision?: string) => {
+    void adapterRef.current
+      .save(serialize(next), baseRevision)
+      .then((stored) => {
+        revisionRef.current = stored.revision;
+      })
+      .catch((err: unknown) => {
+        if (err instanceof ConflictError) {
+          log.warn("save: remote moved — surfacing conflict");
+          setConflict({
+            remote: withActiveList(parse(err.remote.text)),
+            remoteRevision: err.remote.revision,
+          });
+        } else {
+          log.error("save failed", err);
+        }
+      });
+  }, []);
+
+  const flushSave = useCallback(() => {
+    if (saveTimer.current !== null) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const next = pendingDoc.current;
+    if (next === null) return;
+    pendingDoc.current = null;
+    performSave(next, revisionRef.current);
+  }, [performSave]);
+
+  const scheduleSave = useCallback(
+    (next: Snapshot) => {
+      pendingDoc.current = next;
+      const ms = adapterRef.current.saveDebounceMs ?? 0;
+      if (ms <= 0) {
+        flushSave();
+        return;
+      }
+      if (saveTimer.current !== null) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(flushSave, ms);
+    },
+    [flushSave],
+  );
 
   // Reload whenever the active adapter instance changes. On first mount
   // this re-confirms the loadSync seed (same bytes, no flicker); on a
-  // mid-session swap (fake-data on/off) it loads the new backend's
-  // document and replaces what's on screen. The concurrency token resets
-  // so the first save against the new backend isn't rejected.
+  // mid-session swap (fake-data on/off, backend change, encryption
+  // unlock) it loads the new backend's document and replaces what's on
+  // screen. Any pending save against the old backend is flushed first so
+  // an in-flight edit isn't dropped, and the concurrency token resets so
+  // the first save against the new backend isn't rejected.
   useEffect(() => {
+    flushSave();
     adapterRef.current = active;
     revisionRef.current = undefined;
+    setConflict(null);
     let cancelled = false;
     void active.load().then((stored) => {
       if (cancelled) return;
@@ -93,27 +173,33 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     return () => {
       cancelled = true;
     };
-  }, [active]);
+  }, [active, flushSave]);
+
+  // Flush any pending save on unmount so a debounced edit isn't lost.
+  useEffect(() => {
+    return () => {
+      flushSave();
+    };
+  }, [flushSave]);
 
   const list: Checklist =
     doc.checklists[0] ?? withActiveList(doc).checklists[0]!;
 
-  const commit = useCallback((nextList: Checklist) => {
-    setDoc((prev) => {
-      const next: Snapshot = {
-        ...prev,
-        checklists: prev.checklists.map((c) =>
-          c.id === nextList.id ? nextList : c,
-        ),
-      };
-      void adapterRef.current
-        .save(serialize(next), revisionRef.current)
-        .then((stored) => {
-          revisionRef.current = stored.revision;
-        });
-      return next;
-    });
-  }, []);
+  const commit = useCallback(
+    (nextList: Checklist) => {
+      setDoc((prev) => {
+        const next: Snapshot = {
+          ...prev,
+          checklists: prev.checklists.map((c) =>
+            c.id === nextList.id ? nextList : c,
+          ),
+        };
+        scheduleSave(next);
+        return next;
+      });
+    },
+    [scheduleSave],
+  );
 
   const addItem = useCallback(
     (title: string) => {
@@ -146,10 +232,34 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   );
 
   const reload = useCallback(async () => {
+    flushSave();
     const stored = await adapterRef.current.load();
     revisionRef.current = stored?.revision;
+    setConflict(null);
     setDoc(withActiveList(parse(stored?.text)));
-  }, []);
+  }, [flushSave]);
+
+  const resolveConflict = useCallback(
+    (keep: "local" | "remote") => {
+      setConflict((current) => {
+        if (!current) return null;
+        if (keep === "local") {
+          // Overwrite the remote: re-save this device's bytes basing the
+          // write on the remote revision so the backend accepts it.
+          revisionRef.current = current.remoteRevision;
+          performSave(docRef.current, current.remoteRevision);
+        } else {
+          // Adopt the remote bytes as the new in-memory state and stamp
+          // its revision so the next edit bases on it — no immediate
+          // write-back, so we don't bounce the conflict.
+          revisionRef.current = current.remoteRevision;
+          setDoc(current.remote);
+        }
+        return null;
+      });
+    },
+    [performSave],
+  );
 
   const items = useMemo(() => activeItems(list), [list]);
   const checkedCount = useMemo(
@@ -158,6 +268,7 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   );
 
   return {
+    snapshot: doc,
     items,
     checkedCount,
     addItem,
@@ -166,5 +277,7 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     archive,
     reorder,
     reload,
+    conflict,
+    resolveConflict,
   };
 }

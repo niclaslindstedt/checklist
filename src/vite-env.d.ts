@@ -16,4 +16,11 @@ declare const __BUILD_LABEL__: string;
 // time, e.g. in `.env` or the CI environment.
 interface ImportMetaEnv {
   readonly VITE_DONATE_URL?: string;
+  // Dropbox app key (PKCE public client). Unset disables the Dropbox
+  // storage backend in the settings picker. See
+  // `src/storage/dropbox/index.ts`.
+  readonly VITE_DROPBOX_APP_KEY?: string;
+  // Google OAuth client id (GIS token client). Unset disables the
+  // Google Drive storage backend. See `src/storage/gdrive/index.ts`.
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
 }

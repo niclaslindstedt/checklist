@@ -4,6 +4,7 @@ import { useDevMode } from "../../dev/useDevMode.ts";
 import { useT, type MessageKey } from "../../i18n";
 import type { Settings } from "../../settings/types.ts";
 import type { UpdateSetting } from "../../settings/useSettings.ts";
+import type { UseStorageBackend } from "../../storage/useStorageBackend.ts";
 import { Button } from "../form/index.ts";
 import { CloseIcon } from "../icons.tsx";
 import { Modal } from "../Modal.tsx";
@@ -11,6 +12,7 @@ import { AppearanceTab } from "./tabs/appearance.tsx";
 import { DeveloperTab } from "./tabs/developer.tsx";
 import { GeneralTab } from "./tabs/general.tsx";
 import { LogsTab } from "./tabs/logs.tsx";
+import { StorageTab } from "./tabs/storage.tsx";
 
 // Settings dialog. Lands on the General tab; Theme is always present;
 // Developer and Logs appear only when developer mode is on. Modelled on
@@ -19,11 +21,12 @@ import { LogsTab } from "./tabs/logs.tsx";
 // Settings apply immediately (the theme engine previews the live values),
 // so the footer offers a single Done button rather than Save / Cancel.
 
-type TabId = "general" | "theme" | "developer" | "logs";
+type TabId = "general" | "theme" | "storage" | "developer" | "logs";
 
 const TAB_LABEL_KEYS: Record<TabId, MessageKey> = {
   general: "settings.tab.general",
   theme: "settings.tab.theme",
+  storage: "settings.tab.storage",
   developer: "settings.tab.developer",
   logs: "settings.tab.logs",
 };
@@ -33,9 +36,16 @@ type Props = {
   onClose: () => void;
   settings: Settings;
   onUpdate: UpdateSetting;
+  storage: UseStorageBackend;
 };
 
-export function SettingsModal({ open, onClose, settings, onUpdate }: Props) {
+export function SettingsModal({
+  open,
+  onClose,
+  settings,
+  onUpdate,
+  storage,
+}: Props) {
   const t = useT();
   const { devMode } = useDevMode();
   const [activeTab, setActiveTab] = useState<TabId>("general");
@@ -43,8 +53,8 @@ export function SettingsModal({ open, onClose, settings, onUpdate }: Props) {
   const tabs: TabId[] = useMemo(
     () =>
       devMode
-        ? ["general", "theme", "developer", "logs"]
-        : ["general", "theme"],
+        ? ["general", "theme", "storage", "developer", "logs"]
+        : ["general", "theme", "storage"],
     [devMode],
   );
 
@@ -113,6 +123,7 @@ export function SettingsModal({ open, onClose, settings, onUpdate }: Props) {
           {activeTab === "theme" && (
             <AppearanceTab settings={settings} onUpdate={onUpdate} />
           )}
+          {activeTab === "storage" && <StorageTab storage={storage} />}
           {activeTab === "developer" && <DeveloperTab />}
           {activeTab === "logs" && <LogsTab />}
         </div>

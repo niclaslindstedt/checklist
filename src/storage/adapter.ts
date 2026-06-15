@@ -70,6 +70,15 @@ export type StorageAdapter = {
   // newer snapshot. Local adapters can ignore the argument.
   save(text: string, baseRevision?: string): Promise<StoredSnapshot>;
 
+  // Optional cheap "what's the current remote revision?" probe. Returns
+  // the same opaque token `load()` / `save()` put on
+  // `StoredSnapshot.revision` (Dropbox `rev`, Drive ETag, …), or null
+  // when nothing is stored yet. Implemented by cloud adapters whose
+  // backend exposes a metadata call that returns the revision without
+  // transferring the file body. Present iff `capabilities` carries
+  // `"getRevision"`.
+  getRevision?(): Promise<string | null>;
+
   // Optional subscription to out-of-band remote changes. Cloud adapters
   // that support long-poll or push wake the app when another device
   // pushes; returns an unsubscribe function. Present iff `capabilities`
@@ -87,5 +96,30 @@ export class ConflictError extends Error {
   constructor(readonly remote: StoredSnapshot) {
     super("Remote revision moved");
     this.name = "ConflictError";
+  }
+}
+
+// Thrown by cloud adapters when an HTTP 401 surfaces after any silent
+// refresh has already been attempted (Dropbox) or when the access token
+// has expired with no refresh path (Google Drive — GIS popup tokens are
+// short-lived and don't ship a refresh token). The UI turns this into a
+// "Reconnect" affordance instead of a generic "Try again" that would
+// fail the same way.
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
+// Thrown by cloud adapters when the backend rate-limits a write (HTTP
+// 429). Carries the cooldown the backend asked for (or a sensible floor)
+// so the caller can back off and retry rather than surfacing a hard
+// error. Saves coalesce for free during the cooldown because every save
+// serialises the full document.
+export class RateLimitError extends Error {
+  constructor(readonly retryAfterMs: number) {
+    super(`Rate limited; retry after ${retryAfterMs}ms`);
+    this.name = "RateLimitError";
   }
 }

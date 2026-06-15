@@ -12,6 +12,7 @@ import common from "./common";
 import menu from "./menu";
 import pwa from "./pwa";
 import settings from "./settings";
+import sync from "./sync";
 import toast from "./toast";
 
 export const en = {
@@ -21,6 +22,7 @@ export const en = {
   menu,
   pwa,
   settings,
+  sync,
   toast,
 } as const;
 

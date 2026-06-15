@@ -20,9 +20,11 @@ src/
   i18n/       # typed t() runtime + per-language catalogs (locales/)
   domain/     # pure functions over the data model (no I/O, no DOM)
   storage/    # pluggable persistence adapters
-    local/      # localStorage adapter (default)
-    drive/      # Google Drive app-folder adapter (planned)
-    dropbox/    # Dropbox app-folder adapter (planned)
+    local/        # localStorage adapter (default)
+    gdrive/       # Google Drive app-folder adapter
+    dropbox/      # Dropbox app-folder adapter
+    encrypting/   # AES-GCM wrapper layered over any adapter
+    migrations.ts # forward-only version chain for stored bytes
   theme/      # theme engine (useTheme) + preset/font data
   styles/     # Tailwind theme tokens + per-theme palettes
   share/      # encode/decode URL-fragment payloads
@@ -64,8 +66,14 @@ Three types live in `src/domain/types.ts`:
 Archived items stay in the document but are filtered out of the active
 view (`activeItems`) — swiping a row right marks it archived rather
 than deleting it. Templates and checklists are stored as plain JSON.
-There is no migration story yet; a `version` field is reserved on each
-top-level object.
+
+The persisted document carries a top-level numeric `version`. A
+forward-only migration chain (`src/storage/migrations.ts`, adapted from
+the budget project's `data/migrations`) upgrades older bytes to
+`LATEST_VERSION` on every load — a document with no `version` reads as
+version 0 (the pre-versioning shape) and is normalised on the way in.
+The migration seam lives in `src/storage/serialize.ts`, not in
+`domain/`, so the in-memory `Snapshot` stays version-free.
 
 ## Storage
 
@@ -74,17 +82,19 @@ budget project's pattern, defined in `src/storage/adapter.ts`:
 
 ```ts
 interface StorageAdapter {
-  readonly id: "browser" | "dropbox" | "gdrive";
+  readonly id: "browser" | "dropbox" | "gdrive" | "dev";
   readonly label: string;
   readonly capabilities: ReadonlySet<AdapterCapability>;
   loadSync?(): StoredSnapshot | null;
   load(): Promise<StoredSnapshot | null>;
   save(text: string, baseRevision?: string): Promise<StoredSnapshot>;
+  getRevision?(): Promise<string | null>;
   watch?(onRemoteChange: (s: StoredSnapshot) => void): () => void;
+  readonly saveDebounceMs?: number;
 }
 ```
 
-Adapters speak **bytes**, not domain values: serialize / parse / (future)
+Adapters speak **bytes**, not domain values: serialize / parse /
 migration live in `src/storage/serialize.ts` and run on every load and
 save regardless of backend, so an adapter can never bypass the parse
 pipeline. `StoredSnapshot` carries the text plus an opaque `revision`
@@ -95,10 +105,35 @@ gate on features rather than probing for methods.
 The default adapter is `BrowserLocalStorageAdapter` (`id: "browser"`),
 which reads and writes a single JSON document in `localStorage` under
 the key `checklist:v1` and implements the synchronous `loadSync` fast
-path so the first paint shows stored data. The Drive and Dropbox
-adapters (planned) will keep an analogous document in their app-folder;
-their SDKs are not part of the initial bundle and load on demand the
-first time the user selects that backend.
+path so the first paint shows stored data.
+
+**Cloud backends.** `createDropboxAdapter` and `createGdriveAdapter`
+keep the same single document in a per-app folder in the user's own
+Dropbox or Google Drive, talking to the providers' HTTP APIs directly
+(no SDK in the bundle). Both authenticate through the shared OAuth PKCE
+helpers (`src/storage/oauth-pkce.ts`) — Dropbox via a redirect with
+silent refresh-token rotation, Google Drive via the GIS popup token
+client — and set a one-second `saveDebounceMs` so a burst of edits
+coalesces into one network write. Each is gated on a build-time app
+key / client id (`VITE_DROPBOX_APP_KEY`, `VITE_GOOGLE_CLIENT_ID`); unset
+keys hide the backend in the picker. `useStorageBackend` selects the
+active adapter from a per-device preference, holds the tokens, and
+completes the Dropbox OAuth redirect on boot.
+
+**Encryption.** `withEncryption` (`src/storage/encrypting/`) wraps any
+adapter and applies an AES-GCM + PBKDF2 envelope (`src/storage/crypto.ts`)
+at the byte boundary, so the same wrapper encrypts whether the bytes end
+up in localStorage or a cloud folder. The passphrase is held only in
+memory for the session; after a reload the app is "locked" until the
+user re-enters it (the `UnlockGate`). Receipts of plaintext-at-rest pass
+through untouched so toggling encryption never strands a document.
+
+**Conflict resolution.** When a save loses a race with another device,
+the cloud adapter throws `ConflictError` carrying the remote bytes;
+`useChecklist` surfaces it as a `conflict` and the
+`ConflictResolutionModal` lets the user keep their copy (re-save over the
+remote) or take the remote (adopt its bytes). Adapters also throw
+`AuthError` (re-auth needed) and `RateLimitError` (HTTP 429 cooldown).
 
 ## Theming
 

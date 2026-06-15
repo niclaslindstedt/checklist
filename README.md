@@ -34,8 +34,11 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   with the link can import it in one click. The payload travels in the
   URL fragment, so it is never sent to a server.
 - **Optional cloud sync.** Plug in Google Drive or Dropbox as a storage
-  backend. The app uses each provider's app-folder scope, so it can
-  only see files it created itself.
+  backend from **Settings → Storage**. The app uses each provider's
+  app-folder scope, so it can only see files it created itself, and a
+  conflict prompt resolves edits made on two devices at once.
+- **Optional encryption.** Protect your lists with a passphrase — they're
+  AES-GCM encrypted before they're saved, on this device and in the cloud.
 - **PWA-ready.** Installable on any device, works offline, updates
   silently in the background via a service worker.
 
