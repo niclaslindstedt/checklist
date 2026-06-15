@@ -7,6 +7,7 @@ import {
   type LogEntry,
   type LogLevel,
 } from "../../../dev/logger.ts";
+import { useT } from "../../../i18n";
 import { Field, Section } from "../shared.tsx";
 
 type LogFilter = "all" | LogLevel;
@@ -15,6 +16,7 @@ type LogFilter = "all" | LogLevel;
 // Cloned from the budget project's Logs tab; the native select replaces
 // budget's portalled picker.
 export function LogsTab() {
+  const t = useT();
   // `version` bumps whenever the logger pushes or clears, forcing a
   // re-read of `getLogs()`.
   const [version, setVersion] = useState(0);
@@ -64,19 +66,19 @@ export function LogsTab() {
   }
 
   return (
-    <Section title="Logs">
+    <Section title={t("settings.logs.title")}>
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <Field label="Filter">
+        <Field label={t("settings.logs.filter")}>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as LogFilter)}
-            aria-label="Filter logs by level"
+            aria-label={t("settings.logs.filterAria")}
             className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
           >
-            <option value="all">All</option>
-            <option value="info">Info</option>
-            <option value="warn">Warnings</option>
-            <option value="error">Errors</option>
+            <option value="all">{t("settings.logs.all")}</option>
+            <option value="info">{t("settings.logs.info")}</option>
+            <option value="warn">{t("settings.logs.warnings")}</option>
+            <option value="error">{t("settings.logs.errors")}</option>
           </select>
         </Field>
         <div className="flex items-center gap-2">
@@ -86,7 +88,7 @@ export function LogsTab() {
             disabled={entries.length === 0}
             className="cursor-pointer rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Copy
+            {t("settings.logs.copy")}
           </button>
           <button
             type="button"
@@ -94,24 +96,26 @@ export function LogsTab() {
             disabled={allEntries.length === 0}
             className="cursor-pointer rounded border border-line px-2.5 py-1 text-xs text-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Clear
+            {t("settings.logs.clear")}
           </button>
         </div>
       </div>
       <p className="text-xs text-muted">
         {entries.length === 0
-          ? "No entries."
-          : `${entries.length} ${entries.length === 1 ? "entry" : "entries"}.`}
+          ? t("settings.logs.none")
+          : entries.length === 1
+            ? t("settings.logs.countOne", { n: 1 })
+            : t("settings.logs.countOther", { n: entries.length })}
         {copyStatus === "copied" && (
           <>
             {" — "}
-            <span className="text-success">Copied to clipboard.</span>
+            <span className="text-success">{t("settings.logs.copied")}</span>
           </>
         )}
         {copyStatus === "failed" && (
           <>
             {" — "}
-            <span className="text-danger">Copy failed.</span>
+            <span className="text-danger">{t("settings.logs.copyFailed")}</span>
           </>
         )}
       </p>
@@ -121,7 +125,7 @@ export function LogsTab() {
         className="max-h-[334px] overflow-y-auto rounded border border-line bg-surface font-mono text-xs"
       >
         {entries.length === 0 ? (
-          <p className="px-2 py-3 text-muted">No entries.</p>
+          <p className="px-2 py-3 text-muted">{t("settings.logs.none")}</p>
         ) : (
           <ul className="flex flex-col">
             {entries.map((entry, idx) => (

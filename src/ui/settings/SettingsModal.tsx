@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useDevMode } from "../../dev/useDevMode.ts";
+import { useT, type MessageKey } from "../../i18n";
 import type { Settings } from "../../settings/types.ts";
 import type { UpdateSetting } from "../../settings/useSettings.ts";
 import { Button } from "../form/index.ts";
@@ -20,11 +21,11 @@ import { LogsTab } from "./tabs/logs.tsx";
 
 type TabId = "general" | "theme" | "developer" | "logs";
 
-const TAB_LABELS: Record<TabId, string> = {
-  general: "General",
-  theme: "Theme",
-  developer: "Developer",
-  logs: "Logs",
+const TAB_LABEL_KEYS: Record<TabId, MessageKey> = {
+  general: "settings.tab.general",
+  theme: "settings.tab.theme",
+  developer: "settings.tab.developer",
+  logs: "settings.tab.logs",
 };
 
 type Props = {
@@ -42,6 +43,7 @@ export function SettingsModal({
   onUpdate,
   onReset,
 }: Props) {
+  const t = useT();
   const { devMode } = useDevMode();
   const [activeTab, setActiveTab] = useState<TabId>("general");
 
@@ -66,12 +68,12 @@ export function SettingsModal({
           id="settings-title"
           className="text-sm font-bold tracking-wide text-fg-bright"
         >
-          Settings
+          {t("settings.title")}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close settings"
+          aria-label={t("settings.close")}
           className="-mr-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
         >
           <CloseIcon className="h-5 w-5" />
@@ -81,7 +83,7 @@ export function SettingsModal({
       <div className="flex flex-1 flex-col overflow-hidden sm:flex-row">
         <div
           role="tablist"
-          aria-label="Settings sections"
+          aria-label={t("settings.sections")}
           className="flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-surface-3 p-2 sm:w-40 sm:flex-col sm:gap-0.5 sm:overflow-x-visible sm:overflow-y-auto sm:border-r sm:border-b-0"
         >
           {tabs.map((tab) => {
@@ -101,7 +103,7 @@ export function SettingsModal({
                     : "text-fg hover:bg-surface-2"
                 }`}
               >
-                {TAB_LABELS[tab]}
+                {t(TAB_LABEL_KEYS[tab])}
               </button>
             );
           })}
@@ -125,10 +127,10 @@ export function SettingsModal({
 
       <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
         <Button variant="secondary" onClick={onReset}>
-          Reset appearance
+          {t("settings.reset")}
         </Button>
         <Button variant="primary" onClick={onClose}>
-          Done
+          {t("settings.done")}
         </Button>
       </footer>
     </Modal>

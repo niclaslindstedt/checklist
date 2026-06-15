@@ -9,12 +9,14 @@ import type { Widen } from "./_widen";
 import app from "./app";
 import common from "./common";
 import pwa from "./pwa";
+import settings from "./settings";
 import toast from "./toast";
 
 export const en = {
   app,
   common,
   pwa,
+  settings,
   toast,
 } as const;
 

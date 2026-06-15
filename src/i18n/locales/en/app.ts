@@ -15,6 +15,7 @@ const app = {
   archive: "Archive",
   delete: "Delete",
   dragToReorder: "Drag to reorder",
+  openSettings: "Open settings",
 } as const;
 
 export type AppCatalog = Widen<typeof app>;

@@ -10,6 +10,7 @@ const app: AppCatalog = {
   archive: "Arkivera",
   delete: "Ta bort",
   dragToReorder: "Dra för att ändra ordning",
+  openSettings: "Öppna inställningar",
 };
 
 export default app;

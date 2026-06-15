@@ -7,11 +7,13 @@ import type { Catalog } from "../en/index";
 import app from "./app";
 import common from "./common";
 import pwa from "./pwa";
+import settings from "./settings";
 import toast from "./toast";
 
 export const sv: Catalog = {
   app,
   common,
   pwa,
+  settings,
   toast,
 };
