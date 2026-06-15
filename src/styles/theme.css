@@ -74,8 +74,12 @@ body,
      instead of the document. On iOS Safari a body that's even a hair taller
      than the viewport rubber-bands with only a few items on screen; a fixed,
      non-scrolling shell removes that bounce while a long list still scrolls
-     inside its own region (see ChecklistView). */
-  height: 100svh;
+     inside its own region (see ChecklistView). The height tracks the
+     visual viewport (`--app-height`, set by useViewportHeight) so the
+     on-screen keyboard shrinks the shell instead of scrolling the header
+     and list off the top; it falls back to `100svh` before the script
+     runs and on browsers without the visualViewport API. */
+  height: var(--app-height, 100svh);
   overflow: hidden;
   overscroll-behavior: none;
 }
