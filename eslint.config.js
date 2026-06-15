@@ -5,7 +5,7 @@ import importPlugin from "eslint-plugin-import";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "website/**", "dev-dist/**"],
+    ignores: ["dist/**", "node_modules/**", "dev-dist/**"],
   },
   js.configs.recommended,
   {

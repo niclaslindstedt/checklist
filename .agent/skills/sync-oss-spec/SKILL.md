@@ -148,7 +148,6 @@ fi
 | §10.3 floating or under-pinned toolchain | Edit the workflow to pin at or above the minimums declared in the fetched `OSS_SPEC.md` §10.3 table |
 | §10.5 missing pin file / pin ↔ CI mismatch | Add the language's repo-root pin (`rust-toolchain.toml`, `.python-version`, `.nvmrc`, or `go.mod` `toolchain` directive) and align it with `ci.yml` |
 | §11.1 missing `docs/` content | Create the topic file, then hand off to `update-docs` |
-| §11.2 website drift | Regenerate website sources, hand off to `update-website` |
 | §13.5 `prompts/<name>/` has no versioned file | Add `prompts/<name>/1_0_0.md` with the required YAML front matter (`name`, `description`, `version: 1.0.0`) and `## System` / `## User` sections |
 | §15 missing issue / PR templates | Create the templates under `.github/ISSUE_TEMPLATE/` or `.github/PULL_REQUEST_TEMPLATE.md` |
 | §19.4 missing central output module | Add `src/output.<ext>` (or `lib/output.<ext>`) with semantic helpers (`status`, `info`, `warn`, `error`, `header`) and route existing prints through it |

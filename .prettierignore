@@ -4,9 +4,6 @@ dev-dist
 node_modules
 package-lock.json
 
-# Separately-managed subproject
-website
-
 # Prose and hand-authored docs are managed by humans / the maintenance skills,
 # not reflowed by Prettier.
 **/*.md
