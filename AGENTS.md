@@ -226,3 +226,20 @@ Per §21 of `OSS_SPEC.md`, this repo ships agent skills for keeping drift-prone 
 | `update-prompts` | After any change to an LLM prompt's source of truth. |
 
 Each skill has a `SKILL.md` (the playbook) and a `.last-updated` file (the baseline commit hash). Run a skill by loading its `SKILL.md` and following the discovery process and update checklist. The skill rewrites `.last-updated` at the end of a successful run, and improves itself in place when it discovers new mapping entries. The `maintenance` skill owns a **Registry** table listing every `update-*` skill — add a row whenever you create a new sync skill.
+
+## Task skills
+
+Alongside the drift-sync skills above, the repo ships manual playbooks for recurring engineering tasks. These are **not** part of the `maintenance` umbrella — invoke them directly when the situation calls for it. They live under the same `.agent/skills/<name>/` tree.
+
+| Skill | When to run |
+|---|---|
+| `commit`            | Commit staged changes, push, and open/update a PR with a conventional-commit title. |
+| `release`           | Cut a new semver release: pre-flight checks, dispatch `release.yml`, verify the deploy, roll back. |
+| `write-changeset`   | Before opening a PR, decide whether it needs a `.changes/unreleased/` fragment, a parent-fragment edit, or the `no-changelog` label. |
+| `debug-from-logs`   | When the user pastes diagnostic output (console errors, stack traces, `make test` / `make build` failures) — trace it to a root cause and add regression coverage. |
+| `dependabot`        | Clear the open Dependabot queue by consolidating every bump into one green PR. |
+| `design`            | Iterate on the look or layout of the UI through an edit / reload / screenshot loop against the dev server. |
+| `find-optimizations`| Survey the hot paths for order-of-magnitude performance wins (or report honestly that none remain). |
+| `fix-comments`      | Remove or rewrite changelog-style comments while preserving comments that explain current invariants. |
+| `refactor`          | Work (or extend) the refactor backlog in `docs/refactoring-roadmap.md`, one roadmap row per PR. |
+| `tune-pwa-icons`    | Manage the PWA manifest (`vite.config.ts`) and icon assets in `public/`. |
