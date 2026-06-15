@@ -8,6 +8,7 @@ import { useTheme } from "../theme/useTheme.ts";
 import { ChecklistView } from "../ui/ChecklistView.tsx";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
+import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
 import { SettingsModal } from "../ui/settings/SettingsModal.tsx";
 import { useChecklist } from "./use-checklist.ts";
 
@@ -21,6 +22,7 @@ import { useChecklist } from "./use-checklist.ts";
 export function App() {
   const { settings, update, reset } = useSettings();
   useTheme(settings);
+  useViewportHeight();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
