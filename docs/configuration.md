@@ -50,9 +50,10 @@ deployment origin to each provider's allowed redirect URIs.
 
 ## Build-time configuration
 
-| Env var      | Read by             | Default | Effect |
-|--------------|---------------------|---------|--------|
-| `VITE_BASE`  | `vite.config.ts`    | `/`     | Public path the bundle is served from. The Pages workflow sets it per slot: `/` for the released production build, `/preview/` for `main`, `/branch/` for the optional feature-branch preview. |
+| Env var           | Read by             | Default | Effect |
+|-------------------|---------------------|---------|--------|
+| `VITE_BASE`       | `vite.config.ts`    | `/`     | Public path the bundle is served from. The Pages workflow sets it per slot: `/` for the released production build, `/preview/` for `main`, `/branch/` for the optional feature-branch preview. |
+| `VITE_DONATE_URL` | `src/ui/HeaderMenu.tsx` | _unset_ | When set to a URL, the header menu shows a **Donate** entry linking to it. Unset or blank hides the entry. See [`.env.example`](../.env.example). |
 
 ## Things that are deliberately not configurable
 

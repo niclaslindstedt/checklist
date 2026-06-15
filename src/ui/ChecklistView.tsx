@@ -1,12 +1,11 @@
 import { memo } from "react";
 
-import { BUILD_LABEL } from "../build-env.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
+import { HeaderMenu } from "./HeaderMenu.tsx";
 import { useListReorder } from "./hooks/useListReorder.ts";
-import { CogIcon } from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
 // column reminiscent of a plain-text editor. Purely props-driven — App
@@ -26,6 +25,7 @@ type Props = {
   onArchive: (id: string) => void;
   onReorder: (id: string, toIndex: number) => void;
   onOpenSettings: () => void;
+  onOpenChangelog: () => void;
 };
 
 // Memoised: App holds appearance settings alongside the checklist, so
@@ -42,6 +42,7 @@ function ChecklistViewImpl({
   onArchive,
   onReorder,
   onOpenSettings,
+  onOpenChangelog,
 }: Props) {
   const reorder = useListReorder(onReorder);
   const t = useT();
@@ -49,24 +50,17 @@ function ChecklistViewImpl({
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <header className="mb-2 flex items-center justify-between border-b border-line px-1 pb-3">
-        <h1 className="flex items-baseline gap-2 text-lg font-semibold tracking-wide text-fg-bright">
+        <h1 className="text-lg font-semibold tracking-wide text-fg-bright">
           {t("app.title")}
-          <span className="text-[0.6rem] font-normal tracking-normal text-muted tabular-nums">
-            {BUILD_LABEL}
-          </span>
         </h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted tabular-nums">
             {checkedCount}/{items.length}
           </span>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            aria-label={t("app.openSettings")}
-            className="-mr-1 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
-          >
-            <CogIcon className="h-5 w-5" />
-          </button>
+          <HeaderMenu
+            onOpenSettings={onOpenSettings}
+            onOpenChangelog={onOpenChangelog}
+          />
         </div>
       </header>
 

@@ -5,25 +5,29 @@ import { useSettings } from "../settings/useSettings.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import { useTheme } from "../theme/useTheme.ts";
+import { ChangelogModal } from "../ui/changelog/ChangelogModal.tsx";
 import { ChecklistView } from "../ui/ChecklistView.tsx";
 import { SettingsModal } from "../ui/settings/SettingsModal.tsx";
 import { useChecklist } from "./use-checklist.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
 // hooks and hand state down to the view. Appearance settings apply
-// immediately through `useTheme`; the settings cogwheel opens the modal.
-// When the developer "Fake data" toggle is on, the localStorage backend
-// is swapped for an ephemeral in-memory seed adapter so `useChecklist`
-// reloads a sample document without touching the user's real data.
+// immediately through `useTheme`; the header menu opens the settings and
+// changelog modals. When the developer "Fake data" toggle is on, the
+// localStorage backend is swapped for an ephemeral in-memory seed adapter
+// so `useChecklist` reloads a sample document without touching the user's
+// real data.
 
 export function App() {
   const { settings, update, reset } = useSettings();
   useTheme(settings);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
   // appearance settings (which share this component) change.
   const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const openChangelog = useCallback(() => setChangelogOpen(true), []);
 
   // Stable localStorage backend; a fresh seed adapter whenever fake data
   // is toggled on (so each enable starts from a pristine sample).
@@ -46,6 +50,7 @@ export function App() {
         onArchive={checklist.archive}
         onReorder={checklist.reorder}
         onOpenSettings={openSettings}
+        onOpenChangelog={openChangelog}
       />
       <SettingsModal
         open={settingsOpen}
@@ -53,6 +58,10 @@ export function App() {
         settings={settings}
         onUpdate={update}
         onReset={reset}
+      />
+      <ChangelogModal
+        open={changelogOpen}
+        onClose={() => setChangelogOpen(false)}
       />
     </>
   );

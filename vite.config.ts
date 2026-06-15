@@ -59,6 +59,30 @@ function emitVersionJson(): Plugin {
   };
 }
 
+// Mirror the built `index.html` to `privacy/index.html` so GitHub Pages
+// serves the SPA from the clean URL `/privacy/` (and `/preview/privacy/`,
+// …). The app's `main.tsx` reads `location.pathname` and mounts the
+// privacy page there; the copied HTML loads the same hashed asset URLs
+// (they are origin-absolute), so no rewrite is needed. Runs late so the
+// PWA plugin's manifest-link injection is already baked into the source.
+function emitPrivacyAlias(): Plugin {
+  return {
+    name: "emit-privacy-alias",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle) {
+      const index = bundle["index.html"];
+      if (index && index.type === "asset") {
+        this.emitFile({
+          type: "asset",
+          fileName: "privacy/index.html",
+          source: index.source,
+        });
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base,
   plugins: [
@@ -141,6 +165,7 @@ export default defineConfig({
       },
     }),
     emitVersionJson(),
+    emitPrivacyAlias(),
   ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),

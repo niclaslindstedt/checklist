@@ -10,3 +10,10 @@
 // `<version>` for local builds.
 declare const __APP_VERSION__: string;
 declare const __BUILD_LABEL__: string;
+
+// Optional build-time env: the URL the header menu's "Donate" entry
+// links to. Unset (or blank) hides the entry entirely. Set it at build
+// time, e.g. in `.env` or the CI environment.
+interface ImportMetaEnv {
+  readonly VITE_DONATE_URL?: string;
+}

@@ -107,10 +107,19 @@ User-facing settings live in the app's **Settings** panel and persist
 to `localStorage`. The full list of keys and defaults is documented in
 [`docs/configuration.md`](docs/configuration.md).
 
-The build is configured via `vite.config.ts`. The only build-time
-input is the base path (`VITE_BASE`), which the `pages.yml` workflow
-sets automatically per slot (`/` for production, `/preview/` for `main`,
-`/branch/` for the optional feature-branch preview).
+The build is configured via `vite.config.ts`. Build-time inputs:
+
+- `VITE_BASE` — the base path, set automatically per slot by the
+  `pages.yml` workflow (`/` for production, `/preview/` for `main`,
+  `/branch/` for the optional feature-branch preview).
+- `VITE_DONATE_URL` — optional. When set, the header menu shows a
+  **Donate** link pointing at it; leave it unset to hide the entry. See
+  [`.env.example`](.env.example).
+
+The header menu (top-right) also links to the
+[privacy policy](https://checklist.niclaslindstedt.se/privacy), the
+in-app changelog, and the source on GitHub, and is where the
+**Settings** dialog now opens from.
 
 ## Examples
 

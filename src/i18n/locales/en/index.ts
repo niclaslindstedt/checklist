@@ -7,14 +7,18 @@
 import type { Widen } from "./_widen";
 
 import app from "./app";
+import changelog from "./changelog";
 import common from "./common";
+import menu from "./menu";
 import pwa from "./pwa";
 import settings from "./settings";
 import toast from "./toast";
 
 export const en = {
   app,
+  changelog,
   common,
+  menu,
   pwa,
   settings,
   toast,
