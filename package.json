@@ -2,15 +2,32 @@
   "name": "checklist",
   "version": "0.1.0",
   "description": "A local-first PWA checklist app with template support and optional Google Drive / Dropbox sync.",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
-  "main": "src/index.js",
   "scripts": {
-    "build": "echo build",
-    "test": "node --test",
-    "lint": "echo lint",
-    "fmt": "echo fmt",
-    "fmt:check": "echo fmt-check"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check ."
   },
-  "author": "Niclas Lindstedt <nicl@slindstedt.se>"
+  "author": "Niclas Lindstedt <nicl@slindstedt.se>",
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-plugin-import": "^2.31.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^3.0.0"
+  }
 }

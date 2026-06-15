@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt fmt-check shellcheck actionlint release clean docs website website-dev install bench
+.PHONY: build test lint fmt fmt-check shellcheck actionlint release clean docs install bench
 
 
 build:
@@ -34,9 +34,3 @@ actionlint:
 
 docs:
 	@echo "see docs/"
-
-website:
-	cd website && npm install && npm run build
-
-website-dev:
-	cd website && npm install && npm run dev

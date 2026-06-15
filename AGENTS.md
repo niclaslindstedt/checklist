@@ -117,6 +117,5 @@ Per §21 of `OSS_SPEC.md`, this repo ships agent skills for keeping drift-prone 
 | `update-docs`    | After any change to the `StorageBackend` interface, user-facing settings, or share-URL format. |
 | `update-readme`  | After any change to install/build commands, the user-visible feature set, or the hosted URL. |
 | `update-prompts` | After any change to an LLM prompt's source of truth. |
-| `update-website` | After any change to the README or docs that should be reflected in the marketing page. |
 
 Each skill has a `SKILL.md` (the playbook) and a `.last-updated` file (the baseline commit hash). Run a skill by loading its `SKILL.md` and following the discovery process and update checklist. The skill rewrites `.last-updated` at the end of a successful run, and improves itself in place when it discovers new mapping entries. The `maintenance` skill owns a **Registry** table listing every `update-*` skill — add a row whenever you create a new sync skill.

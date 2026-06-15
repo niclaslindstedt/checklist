@@ -26,11 +26,15 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
-      - run: cd website && npm install && npm run build
+          node-version-file: .nvmrc
+      - run: npm ci
+      # Project Pages serve from /<repo>/, so the app is built with that base.
+      - run: npm run build
+        env:
+          VITE_BASE: /checklist/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: website/dist
+          path: dist
       - id: deploy
         uses: actions/deploy-pages@v4

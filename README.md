@@ -6,7 +6,6 @@ JSON, and — if you want — sync them to **your own** Google Drive or
 Dropbox. Hosted on GitHub Pages; talks to no other servers.
 
 [![CI](https://github.com/niclaslindstedt/checklist/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/ci.yml)
-[![SEO](https://github.com/niclaslindstedt/checklist/actions/workflows/seo.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/seo.yml)
 [![Pages](https://github.com/niclaslindstedt/checklist/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/pages.yml)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm--NC--1.0.0-blue.svg)](LICENSE)
 
