@@ -5,7 +5,11 @@ import importPlugin from "eslint-plugin-import";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "dev-dist/**"],
+    // `.agent/skills/**` holds agent skill playbooks and their helper
+    // scripts (e.g. the Playwright-based design `screenshot.mjs`). They
+    // are optional tooling — not app source — and may import packages the
+    // repo doesn't install, so they're out of scope for the app linter.
+    ignores: ["dist/**", "node_modules/**", "dev-dist/**", ".agent/**"],
   },
   js.configs.recommended,
   {
