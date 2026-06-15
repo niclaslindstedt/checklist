@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench
+.PHONY: build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check
 
 
 build:
@@ -42,6 +42,29 @@ shellcheck:
 
 actionlint:
 	actionlint -color
+
+# Regenerate the PWA icon set in public/ from public/favicon.svg.
+# See pwa-assets.config.ts for the preset overrides.
+icons:
+	npm run icons
+
+# CI drift guard: regenerate the icons and fail if any committed PNG
+# (or favicon.ico) differs from public/favicon.svg. Catches an edited
+# favicon.svg that was committed without rerunning `make icons`.
+icons-check:
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+	  cp public/pwa-64x64.png public/pwa-192x192.png \
+	     public/pwa-512x512.png public/maskable-icon-512x512.png \
+	     public/apple-touch-icon-180x180.png public/favicon.ico \
+	     "$$tmp/" && \
+	  npm run icons >/dev/null && \
+	  for f in pwa-64x64.png pwa-192x192.png pwa-512x512.png \
+	           maskable-icon-512x512.png apple-touch-icon-180x180.png \
+	           favicon.ico; do \
+	    cmp -s "$$tmp/$$f" "public/$$f" || \
+	      { echo "icons drift: $$f differs — run 'make icons' and commit"; \
+	        cp "$$tmp/$$f" "public/$$f"; exit 1; }; \
+	  done
 
 docs:
 	@echo "see docs/"
