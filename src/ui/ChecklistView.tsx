@@ -1,7 +1,8 @@
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
+import { usePwaUpdate } from "../pwa/usePwaUpdate.ts";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { HeaderMenu } from "./HeaderMenu.tsx";
@@ -46,12 +47,30 @@ function ChecklistViewImpl({
 }: Props) {
   const reorder = useListReorder(onReorder);
   const t = useT();
+  // While a new build's service worker downloads, fill the "checklist"
+  // wordmark with the accent colour from the bottom — a vertical power
+  // bar; `progress` is null when no update is in flight (see usePwaUpdate).
+  const { progress: pwaProgress } = usePwaUpdate();
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <header className="mb-2 flex items-center justify-between border-b border-line px-1 pb-3">
         <h1 className="text-lg font-semibold tracking-wide text-fg-bright">
-          {t("app.title")}
+          <span
+            className={pwaProgress === null ? undefined : "pwa-title-fill"}
+            style={
+              pwaProgress === null
+                ? undefined
+                : ({ "--pwa-fill": String(pwaProgress) } as CSSProperties)
+            }
+            title={
+              pwaProgress === null
+                ? undefined
+                : t("pwa.downloading", { percent: String(pwaProgress) })
+            }
+          >
+            {t("app.title")}
+          </span>
         </h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted tabular-nums">

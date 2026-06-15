@@ -74,8 +74,12 @@ body,
      instead of the document. On iOS Safari a body that's even a hair taller
      than the viewport rubber-bands with only a few items on screen; a fixed,
      non-scrolling shell removes that bounce while a long list still scrolls
-     inside its own region (see ChecklistView). */
-  height: 100svh;
+     inside its own region (see ChecklistView). The height tracks the
+     visual viewport (`--app-height`, set by useViewportHeight) so the
+     on-screen keyboard shrinks the shell instead of scrolling the header
+     and list off the top; it falls back to `100svh` before the script
+     runs and on browsers without the visualViewport API. */
+  height: var(--app-height, 100svh);
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -91,6 +95,35 @@ body {
   body {
     font-size: calc(14px * var(--app-font-scale));
   }
+}
+
+/* PWA download progress fill for the header "checklist" wordmark. While
+   a new build's service worker downloads (see `src/pwa/usePwaUpdate.ts`),
+   the title fills with the theme accent from the bottom — a vertical
+   power bar — and the `UpdateToast` surfaces once it is full. `--pwa-fill`
+   is a 0..100 number set inline by `ChecklistView`; this rule reads it.
+
+   Technique: a gradient (top half = the normal `--fg-bright` title
+   colour, bottom half = the accent) painted at 200% box height and
+   clipped to the glyphs. `background-position-y` slides the accent edge
+   up as the fill rises — 0% shows only the top (empty) half, 100% shows
+   only the bottom (full) half — and the position transition animates the
+   rise smoothly. The reduce-motion guard below zeroes the transition when
+   the user opts in, so the fill snaps in steps instead of gliding. */
+.pwa-title-fill {
+  background-image: linear-gradient(
+    to bottom,
+    var(--fg-bright) 0 50%,
+    var(--accent) 50% 100%
+  );
+  background-size: 100% 200%;
+  background-repeat: no-repeat;
+  background-position: center calc(var(--pwa-fill, 0) * 1%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 250ms linear;
 }
 
 /* Reduce-motion: when the Custom theme opts in, short-circuit every

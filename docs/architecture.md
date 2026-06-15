@@ -140,6 +140,23 @@ build-time `version.json` (emitted into each slot root by the
 `emit-version-json` plugin in `vite.config.ts`). Clicking Reload posts
 `SKIP_WAITING` to the waiting worker and reloads once it takes over.
 
+While the new worker is installing, `usePwaUpdate` turns its download
+into a visible **progress fill**: the header "checklist" title fills with
+the theme accent from the bottom — a vertical power bar — driven by the
+`progress` field. It is computed by polling this slot's Workbox precache
+cache and summing the byte sizes of the assets already stored against the
+total in `precache-manifest.json` (emitted alongside `version.json` by
+the `emit-precache-manifest` plugin, read back out of the generated
+`sw.js`). The slot-specific Workbox `cacheId` keeps the three Pages slots
+sharing one origin from measuring each other's bytes. The fill jumps to
+full and the toast appears when the `waiting` event fires.
+
+`src/ui/hooks/usePullToRefresh.ts` adds a touch-only **pull-to-refresh**
+gesture: a damped downward drag from the top of the list, surfaced by
+`src/ui/PullToRefreshIndicator.tsx`, re-reads the active backend via
+`useChecklist`'s `reload` once it crosses the trigger distance. It is
+gated off while a modal owns the screen.
+
 The running build's identifier — `<version>[.<run>][-<slot>][+<commit>]`,
 computed in `vite.config.ts` from `package.json`, `GITHUB_RUN_NUMBER`,
 and `GITHUB_SHA` — is exposed as `BUILD_LABEL` via `src/build-env.ts`

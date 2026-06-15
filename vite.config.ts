@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -31,6 +32,19 @@ const GITHUB_RUN_NUMBER = process.env.GITHUB_RUN_NUMBER;
 const COMMIT_HASH = (process.env.GITHUB_SHA ?? "").slice(0, 7);
 const BUILD_SLOT =
   base === "/preview/" ? "pre" : base === "/branch/" ? "br" : "";
+
+// Per-slot Workbox precache cache id. The three Pages slots share one
+// origin, so a slot-specific id keeps each deploy's precache cache
+// (`<cacheId>-precache-v2-<scope>`) distinct — the download-progress
+// tracker in `usePwaUpdate` opens this slot's cache by name to measure
+// install progress without counting another slot's bytes. Must stay in
+// sync with `cacheIdForBase` in `src/pwa/usePwaUpdate.ts`.
+const CACHE_ID =
+  base === "/preview/"
+    ? "checklist-preview"
+    : base === "/branch/"
+      ? "checklist-branch"
+      : "checklist";
 const BUILD_LABEL =
   pkg.version +
   (GITHUB_RUN_NUMBER ? `.${GITHUB_RUN_NUMBER}` : "") +
@@ -79,6 +93,84 @@ function emitPrivacyAlias(): Plugin {
           source: index.source,
         });
       }
+    },
+  };
+}
+
+// Emit a `precache-manifest.json` listing every asset the service worker
+// precaches and its on-disk byte size, plus the total. The running app
+// fetches it (cache-bypassed, like `version.json`) when a new SW starts
+// installing, so it can turn "files added to the precache cache so far"
+// into a real percentage and fill the header "checklist" wordmark like a
+// power bar while the update downloads. See `src/pwa/usePwaUpdate.ts` for
+// the consumer.
+//
+// The list is read back out of the generated `dist/sw.js`
+// (vite-plugin-pwa inlines the workbox precache manifest there as
+// `precacheAndRoute([{url,revision},...])`) rather than re-globbing
+// `dist/` ourselves, so the denominator matches exactly what workbox
+// actually precaches — globIgnores, the SW files, and on-demand chunks
+// all already filtered out. Keys are the request *pathnames* the browser
+// stores in the precache cache (`<base><url>`); the consumer compares
+// cache entries by pathname, which sidesteps the `?__WB_REVISION__=`
+// query workbox appends to revisioned entries.
+//
+// Runs in `closeBundle` after `VitePWA` (itself `enforce: "post"`) has
+// written `dist/sw.js`, and the emitted JSON lands after the workbox glob
+// ran, so it is itself left out of precache — exactly like `version.json`.
+function emitPrecacheManifest(): Plugin {
+  return {
+    name: "emit-precache-manifest",
+    apply: "build",
+    enforce: "post",
+    closeBundle() {
+      const swPath = fileURLToPath(new URL("./dist/sw.js", import.meta.url));
+      let sw: string;
+      try {
+        sw = readFileSync(swPath, "utf8");
+      } catch {
+        // No generated SW (e.g. PWA disabled) — nothing to measure.
+        return;
+      }
+      const callIdx = sw.indexOf("precacheAndRoute([");
+      if (callIdx === -1) return;
+      const arrStart = sw.indexOf("[", callIdx);
+      const arrEnd = sw.indexOf("}]", arrStart);
+      if (arrStart === -1 || arrEnd === -1) return;
+      const arr = sw.slice(arrStart, arrEnd + 2);
+      const urls = [...arr.matchAll(/url:"([^"]+)"/g)]
+        .map((m) => m[1])
+        .filter((u): u is string => typeof u === "string");
+
+      // Assets in `includeAssets` (favicons / iOS icon) can appear twice
+      // in the precache manifest — once explicitly, once via
+      // `globPatterns` — but resolve to a single cache entry, so key by
+      // pathname and let the map dedupe both the entry and its bytes.
+      const assets: Record<string, number> = {};
+      for (const url of urls) {
+        // Cache keys resolve `url` against the SW scope (`base`), so the
+        // stored pathname is `<base><url>` with no double slash.
+        const path = base + url.replace(/^\//, "");
+        if (path in assets) continue;
+        try {
+          assets[path] = statSync(
+            fileURLToPath(
+              new URL(`./dist/${url.replace(/^\//, "")}`, import.meta.url),
+            ),
+          ).size;
+        } catch {
+          // Listed in the manifest but absent on disk — skip it.
+        }
+      }
+      const totalBytes = Object.values(assets).reduce((a, b) => a + b, 0);
+
+      writeFileSync(
+        fileURLToPath(
+          new URL("./dist/precache-manifest.json", import.meta.url),
+        ),
+        `${JSON.stringify({ totalBytes, assets })}\n`,
+        "utf8",
+      );
     },
   };
 }
@@ -135,6 +227,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Slot-specific precache cache name so the three Pages slots
+        // sharing this origin don't measure each other's bytes; the
+        // download-progress tracker in `usePwaUpdate` opens it by this id.
+        cacheId: CACHE_ID,
         // Precache the app shell: JS, CSS, fonts, icons, and the HTML
         // entry. Source maps stay on the network — they don't need to
         // be available offline.
@@ -166,6 +262,7 @@ export default defineConfig({
     }),
     emitVersionJson(),
     emitPrivacyAlias(),
+    emitPrecacheManifest(),
   ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
