@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useDevSeed } from "../dev/useDevSeed.ts";
 import { useSettings } from "../settings/useSettings.ts";
@@ -21,6 +21,9 @@ export function App() {
   useTheme(settings);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Stable so `memo(ChecklistView)` can skip the whole list when only the
+  // appearance settings (which share this component) change.
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
 
   // Stable localStorage backend; a fresh seed adapter whenever fake data
   // is toggled on (so each enable starts from a pristine sample).
@@ -42,7 +45,7 @@ export function App() {
         onRemove={checklist.remove}
         onArchive={checklist.archive}
         onReorder={checklist.reorder}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={openSettings}
       />
       <SettingsModal
         open={settingsOpen}

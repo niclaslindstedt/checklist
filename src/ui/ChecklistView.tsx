@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { BUILD_LABEL } from "../build-env.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -26,7 +28,12 @@ type Props = {
   onOpenSettings: () => void;
 };
 
-export function ChecklistView({
+// Memoised: App holds appearance settings alongside the checklist, so
+// every settings edit (a color-swatch drag fires `onChange` continuously)
+// re-renders App. Theme is applied as CSS vars on `:root`, not through
+// these props, so when only settings change every prop here is a stable
+// reference and `memo` skips the whole list instead of reconciling N rows.
+function ChecklistViewImpl({
   items,
   checkedCount,
   onAdd,
@@ -90,3 +97,5 @@ export function ChecklistView({
     </div>
   );
 }
+
+export const ChecklistView = memo(ChecklistViewImpl);
