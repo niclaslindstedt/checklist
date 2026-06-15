@@ -1,0 +1,16 @@
+{
+  "name": "checklist",
+  "version": "0.1.0",
+  "description": "A local-first PWA checklist app with template support and optional Google Drive / Dropbox sync.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "echo build",
+    "test": "node --test",
+    "lint": "echo lint",
+    "fmt": "echo fmt",
+    "fmt:check": "echo fmt-check"
+  },
+  "author": "Niclas Lindstedt <nicl@slindstedt.se>"
+}
