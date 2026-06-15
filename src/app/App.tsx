@@ -22,7 +22,7 @@ import { useChecklist } from "./use-checklist.ts";
 // real data.
 
 export function App() {
-  const { settings, update, reset } = useSettings();
+  const { settings, update } = useSettings();
   useTheme(settings);
   useViewportHeight();
 
@@ -74,7 +74,6 @@ export function App() {
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onUpdate={update}
-        onReset={reset}
       />
       <ChangelogModal
         open={changelogOpen}
