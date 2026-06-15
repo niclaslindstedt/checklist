@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
       - name: Resolve tag
         id: tag
-        run: echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
       - name: Generate changelog
         run: ./scripts/generate-changelog.sh ${{ steps.tag.outputs.tag }}
       - name: Update versions
