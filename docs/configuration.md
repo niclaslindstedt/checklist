@@ -8,7 +8,8 @@ through **Settings** inside the app and persist to `localStorage`.
 | Key (in `localStorage`)          | Type                                 | Default       | Effect |
 |----------------------------------|--------------------------------------|---------------|--------|
 | `checklist:settings:backend`     | `"local" \| "drive" \| "dropbox"`    | `"local"`     | Which storage backend is active. Switching backends migrates the current dataset to the new one. |
-| `checklist:settings:theme`       | `"system" \| "light" \| "dark"`      | `"system"`    | Color scheme override. |
+| `checklist:settings:theme`       | `"dark" \| "light" \| "system"`      | `"dark"`      | Color scheme. Applied by the theme engine (`useTheme`) on boot; `system` follows `prefers-color-scheme`. No picker UI yet. |
+| `checklist:settings:font`        | `"mono" \| "sans"`                   | `"mono"`      | UI font family. Monospace by default for the plain-text-editor feel. No picker UI yet. |
 | `checklist:settings:autoArchive` | `boolean`                            | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
 | `checklist:settings:locale`      | BCP-47 string                        | browser value | Override the formatting locale (does not change UI strings; this app is English-only for now). |
 

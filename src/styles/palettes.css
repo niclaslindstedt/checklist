@@ -1,0 +1,38 @@
+/* Colour palettes — one block per `data-theme` the engine can set.
+   Each block remaps the colour subset of the :root tokens. Imported by
+   ../styles.css. Palettes mirror the budget project's One Dark / One
+   Light slots so the two apps feel related. Add a block here and a
+   preset to `src/theme/themes.ts` to introduce a new theme — the engine
+   needs no change. */
+
+/* One Dark — applied when `data-theme="dark"` and as the pre-boot
+   default (no attribute yet) so the first paint is coherent. */
+:root,
+:root[data-theme="dark"] {
+  --page-bg: #1d2027;
+  --surface: #282c34;
+  --surface-2: #2c313a;
+  --surface-3: #21252b;
+  --fg: #abb2bf;
+  --fg-bright: #e6e6e6;
+  --muted: #828897;
+  --line: #3e4451;
+  --accent: #98c379;
+  --link: #61afef;
+  --danger: #e06c75;
+}
+
+/* One Light — applied when `data-theme="light"`. */
+:root[data-theme="light"] {
+  --page-bg: #eef0f2;
+  --surface: #f8f9fa;
+  --surface-2: #f1f3f5;
+  --surface-3: #e4e7eb;
+  --fg: #2f323a;
+  --fg-bright: #15171c;
+  --muted: #6a6f7c;
+  --line: #ccd0d6;
+  --accent: #3f8c3e;
+  --link: #2960c2;
+  --danger: #c9434c;
+}

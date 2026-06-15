@@ -2,6 +2,10 @@ import js from "@eslint/js";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import globals from "globals";
 
 export default [
   {
@@ -26,23 +30,37 @@ export default [
     },
   },
   {
-    files: ["src/**/*.ts", "tests/**/*.ts", "*.ts"],
+    files: ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}", "*.ts"],
     languageOptions: {
       parser: tsparser,
-      parserOptions: { sourceType: "module", ecmaVersion: 2022 },
+      parserOptions: {
+        sourceType: "module",
+        ecmaVersion: 2022,
+        ecmaFeatures: { jsx: true },
+      },
+      globals: { ...globals.browser },
     },
     plugins: {
       "@typescript-eslint": tseslint,
       import: importPlugin,
+      "react-hooks": reactHooks,
+      "react-refresh": reactRefresh,
+      "jsx-a11y": jsxA11y,
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
+      ...jsxA11y.flatConfigs.recommended.rules,
       // TypeScript checks for undefined identifiers itself; the core rule only
       // produces false positives for DOM/Web globals (per typescript-eslint).
       "no-undef": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_" },
+      ],
+      "react-refresh/only-export-components": [
+        "warn",
+        { allowConstantExport: true },
       ],
     },
   },

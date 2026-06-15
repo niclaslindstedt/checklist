@@ -1,9 +1,10 @@
 # checklist
 
-A local-first PWA checklist app written in TypeScript. Define reusable
-templates once, stamp out checklist instances, share them as URLs or
-JSON, and — if you want — sync them to **your own** Google Drive or
-Dropbox. Hosted on GitHub Pages; talks to no other servers.
+A local-first PWA checklist app built with React, TypeScript, and
+Tailwind. Keep a quiet, monospaced checklist — add items, check them
+off, swipe to archive or delete — share lists as URLs or JSON, and — if
+you want — sync them to **your own** Google Drive or Dropbox. Hosted on
+GitHub Pages; talks to no other servers.
 
 [![CI](https://github.com/niclaslindstedt/checklist/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/ci.yml)
 [![Pages](https://github.com/niclaslindstedt/checklist/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/pages.yml)
@@ -19,8 +20,14 @@ Try it: **<https://checklist.niclaslindstedt.se>**
 - **No telemetry, no backend.** The only network calls the app ever
   makes are (a) loading itself from GitHub Pages and (b) — if and only
   if you opt in — talking directly to Google Drive or Dropbox.
+- **Quick capture.** Type an item and hit Enter to add it; tap to check
+  it off. Swipe a row **left** to uncover Delete, **right** to archive
+  (archived items are hidden, not destroyed).
+- **Quiet, monospaced UI.** A plain-text-editor feel, reminiscent of
+  Obsidian. Ships dark by default; a theme engine is wired in for
+  light / system support (no picker UI yet).
 - **Reusable templates.** Define a checklist once and stamp out as
-  many instances as you need.
+  many instances as you need. *(Data model in place; UI on the roadmap.)*
 - **Shareable lists.** Export a checklist as a URL or JSON blob; anyone
   with the link can import it in one click. The payload travels in the
   URL fragment, so it is never sent to a server.
@@ -75,16 +82,22 @@ changelog".
 
 ## Usage
 
-1. **Create a template.** Open the app, choose **New template**, add
-   items. Templates live in `localStorage` under the key
-   `checklist:templates`.
-2. **Instantiate.** From a template, hit **New checklist** to spawn an
-   independent, checkable copy.
-3. **Share.** Click **Share** to copy a URL whose `#` fragment contains
-   the gzipped JSON of the checklist. Opening it imports a fresh copy.
-4. **Sync (optional).** In **Settings → Storage**, choose Google Drive
-   or Dropbox and authorize via OAuth. From then on, changes are
-   mirrored to an app-folder in the provider you picked.
+1. **Add items.** Open the app and type into the composer at the bottom;
+   Enter adds the item. The list persists to `localStorage` under the
+   key `checklist:v1`.
+2. **Check & manage.** Tap a row's checkbox to mark it done. Swipe a row
+   **left** to reveal Delete, or **right** to archive it (archived items
+   are hidden but kept).
+
+The features below are part of the roadmap — the data model and module
+boundaries are in place, the UI is not all wired up yet:
+
+3. **Templates & sharing.** Stamp checklists out of reusable templates,
+   and share a checklist as a URL whose `#` fragment carries the gzipped
+   JSON (never sent to a server).
+4. **Sync (optional).** Choose Google Drive or Dropbox as a storage
+   backend and authorize via OAuth, mirroring changes to a provider
+   app-folder.
 
 ## Configuration
 

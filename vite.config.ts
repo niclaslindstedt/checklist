@@ -1,4 +1,6 @@
 import process from "node:process";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
 
@@ -9,6 +11,8 @@ const base = process.env.VITE_BASE ?? "/";
 export default defineConfig({
   base,
   plugins: [
+    react(),
+    tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
@@ -41,6 +45,6 @@ export default defineConfig({
     // `// @vitest-environment jsdom` docblock at the top of the file.
     environment: "node",
     globals: true,
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.{ts,tsx}"],
   },
 });
