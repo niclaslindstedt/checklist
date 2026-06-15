@@ -1,5 +1,5 @@
 /* Tailwind v4 theme tokens + :root custom-property defaults + base
-   html / body reset. Imported by ../styles.css. Adapted from the budget
+   html / body reset. Imported by ../styles.css. Cloned from the budget
    project's theme.css.
 
    `@theme inline` binds each Tailwind colour utility (`bg-surface`,
@@ -17,8 +17,15 @@
   --color-muted: var(--muted);
   --color-line: var(--line);
   --color-accent: var(--accent);
+  --color-meta: var(--meta);
   --color-link: var(--link);
+  --color-path: var(--path);
+  --color-flag: var(--flag);
+  --color-pipe: var(--pipe);
   --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
 
   --font-mono:
     "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
@@ -36,6 +43,20 @@
   --app-font-family:
     "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
+
+  /* UI text-size multiplier, set inline on <html> from the font-scale
+     preference. The body font-size multiplies by this so every rem
+     dimension downstream scales with it. */
+  --app-font-scale: 1;
+
+  /* Shape tokens the Custom theme overrides inline on <html>. The
+     defaults match the baseline every preset renders at. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --density-row-py: 0.375rem;
+  --density-row-px: 0.5rem;
+  --border-width: 1px;
 }
 
 html {
@@ -61,13 +82,23 @@ body,
 
 body {
   font-family: var(--app-font-family);
-  font-size: 15.5px;
+  font-size: calc(15.5px * var(--app-font-scale));
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
 @media (min-width: 640px) {
   body {
-    font-size: 14px;
+    font-size: calc(14px * var(--app-font-scale));
   }
+}
+
+/* Reduce-motion: when the Custom theme opts in, short-circuit every
+   transition and animation. High specificity (the attribute selector +
+   `!important`) so it wins over utility-class durations. */
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
 }

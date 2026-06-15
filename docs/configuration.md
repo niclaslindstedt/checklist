@@ -8,10 +8,36 @@ through **Settings** inside the app and persist to `localStorage`.
 | Key (in `localStorage`)          | Type                                 | Default       | Effect |
 |----------------------------------|--------------------------------------|---------------|--------|
 | `checklist:settings:backend`     | `"local" \| "drive" \| "dropbox"`    | `"local"`     | Which storage backend is active. Switching backends migrates the current dataset to the new one. |
-| `checklist:settings:theme`       | `"dark" \| "light" \| "system"`      | `"dark"`      | Color scheme. Applied by the theme engine (`useTheme`) on boot; `system` follows `prefers-color-scheme`. No picker UI yet. |
-| `checklist:settings:font`        | `"mono" \| "sans"`                   | `"mono"`      | UI font family. Monospace by default for the plain-text-editor feel. No picker UI yet. |
+| `checklist:settings:v1`          | JSON `Settings` blob                 | (defaults)    | Appearance settings written by the **Settings → Theme** tab: `theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides (18 colours + radius / density / border-width / reduce-motion). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. |
 | `checklist:settings:autoArchive` | `boolean`                            | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
 | `checklist:settings:locale`      | BCP-47 string                        | browser value | Override the formatting locale (does not change UI strings; this app is English-only for now). |
+
+### Appearance
+
+The **Settings → Theme** tab offers eleven presets — One Dark, One Light,
+Dracula, Monokai, GitHub Dark, GitHub Light, Solarized Light, Quiet Light,
+Excel, System (follows the OS), and Custom — plus four bundled fonts
+(monospace, sans-serif, serif, OpenDyslexic) and an adjustable text size.
+Picking **Custom** opens an 18-slot colour editor with corner-radius,
+density, border-width, and reduce-motion controls. Changes apply live and
+persist to `checklist:settings:v1`.
+
+### Developer settings (device-local)
+
+The **Settings → General** tab has a **Developer mode** switch that
+reveals the **Developer** and **Logs** tabs. These flags are device-local
+diagnostics — they live outside the appearance blob so they never travel
+with a shared list.
+
+| Key (in `localStorage`)       | Type       | Default | Effect |
+|-------------------------------|------------|---------|--------|
+| `checklist:dev:mode`          | `boolean`  | `false` | Whether developer mode (the Developer / Logs tabs) is exposed. |
+| `checklist:dev:captureLogs`   | `boolean`  | `false` | When `true`, the in-app logger mirrors its ring buffer to `localStorage` so the **Logs** tab survives a reload. Forced off when developer mode is turned off. |
+| `checklist:dev:logs`          | JSON array | (unset) | The persisted log entries, present only while capture is on. |
+
+The Developer tab's **Fake data** toggle is in-memory only — it swaps in
+an ephemeral seed backend for the session and is **never** persisted, so a
+reload always returns to your real lists.
 
 ## OAuth credentials
 

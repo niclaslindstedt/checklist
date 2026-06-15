@@ -59,7 +59,17 @@ export default defineConfig({
         // entry. Source maps stay on the network — they don't need to
         // be available offline.
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff2}"],
-        globIgnores: ["**/*.map"],
+        // Source maps stay on the network. The non-default webfont
+        // families (Inter / Source Serif 4 / OpenDyslexic) load on demand
+        // when the user picks them in Appearance (see `src/theme/fonts.ts`)
+        // and HTTP-cache afterwards, so keep them out of the precache —
+        // only JetBrains Mono (the default face) ships in the app shell.
+        globIgnores: [
+          "**/*.map",
+          "**/inter-*.woff2",
+          "**/source-serif-4-*.woff2",
+          "**/opendyslexic-*.woff2",
+        ],
         cleanupOutdatedCaches: true,
         // App shell is precached; cloud-storage hosts use networkFirst.
         runtimeCaching: [

@@ -18,13 +18,15 @@
   },
   "author": "Niclas Lindstedt <nicl@slindstedt.se>",
   "dependencies": {
+    "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/opendyslexic": "^5.2.5",
+    "@fontsource/source-serif-4": "^5.2.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "@vite-pwa/assets-generator": "^0.2.6",
     "@tailwindcss/vite": "^4.3.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.1.0",
@@ -33,6 +35,7 @@
     "@types/react-dom": "^19.2.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
+    "@vite-pwa/assets-generator": "^0.2.6",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.17.0",
     "eslint-plugin-import": "^2.31.0",
