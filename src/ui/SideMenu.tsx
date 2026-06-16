@@ -91,7 +91,7 @@ export function SideMenu({
             aria-label={t("nav.label")}
             className="relative flex w-64 max-w-[80%] flex-col border-r border-line bg-surface shadow-xl [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)]"
           >
-            <p className="border-b border-line px-4 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
+            <p className="border-b border-line px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.label")}
             </p>
             <NavItem
@@ -107,7 +107,7 @@ export function SideMenu({
               badge={archivedCount > 0 ? archivedCount : undefined}
               onClick={() => onNavigate("archive")}
             />
-            <p className="border-t border-line px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+            <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.edit")}
             </p>
             {/* Undo / redo keep the drawer open so a burst of reverts can
@@ -155,7 +155,7 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm ${
+      className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm ${
         disabled
           ? "cursor-not-allowed text-muted/50"
           : active
