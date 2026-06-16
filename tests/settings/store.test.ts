@@ -59,4 +59,22 @@ describe("validateSettings", () => {
     expect(out.customTheme.borderWidth).toBe("bold");
     expect(out.customTheme.reduceMotion).toBe(true);
   });
+
+  it("keeps a recognised addItemPosition and defaults the rest", () => {
+    expect(validateSettings({ addItemPosition: "top" }).addItemPosition).toBe(
+      "top",
+    );
+    expect(
+      validateSettings({ addItemPosition: "bottom" }).addItemPosition,
+    ).toBe("bottom");
+  });
+
+  it("falls back to the default addItemPosition on unknown values", () => {
+    const d = defaultSettings();
+    expect(d.addItemPosition).toBe("bottom");
+    expect(
+      validateSettings({ addItemPosition: "middle" }).addItemPosition,
+    ).toBe(d.addItemPosition);
+    expect(validateSettings({}).addItemPosition).toBe(d.addItemPosition);
+  });
 });

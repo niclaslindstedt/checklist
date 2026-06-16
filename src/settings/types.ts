@@ -14,10 +14,16 @@ import type {
   ThemePreset,
 } from "../theme/themes.ts";
 
+// Where a newly added item lands in the list: prepended to the top or
+// appended to the bottom.
+export type AddItemPosition = "top" | "bottom";
+
 export type Settings = {
   theme: ThemePreset;
   fontFamily: FontFamilyId;
   // UI text-size multiplier; one of `FONT_SCALE_PRESETS`.
   fontScale: number;
   customTheme: CustomTheme;
+  // Where `addItem` inserts a new entry into the active list.
+  addItemPosition: AddItemPosition;
 };

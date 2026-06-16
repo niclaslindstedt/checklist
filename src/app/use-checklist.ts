@@ -24,6 +24,7 @@ import {
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
 import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
+import type { AddItemPosition } from "../settings/types.ts";
 import {
   AuthError,
   ConflictError,
@@ -103,12 +104,20 @@ function withActiveList(snapshot: Snapshot): Snapshot {
   return { ...snapshot, checklists: [list] };
 }
 
-export function useChecklist(adapter?: StorageAdapter): UseChecklist {
+export function useChecklist(
+  adapter?: StorageAdapter,
+  addItemPosition: AddItemPosition = "bottom",
+): UseChecklist {
   // A stable fallback for callers (and tests) that don't pass an adapter.
   // App always passes a memoized one, so the swap effect below only fires
   // on a real backend change (e.g. the developer fake-data toggle).
   const [fallback] = useState(() => new BrowserLocalStorageAdapter());
   const active: StorageAdapter = adapter ?? fallback;
+
+  // Read the live preference from a ref so `addItem` stays referentially
+  // stable (App memoizes the view on it) even as the setting changes.
+  const addItemPositionRef = useRef(addItemPosition);
+  addItemPositionRef.current = addItemPosition;
 
   // Adapter and concurrency token survive re-renders.
   const adapterRef = useRef(active);
@@ -248,7 +257,14 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     (title: string) => {
       const trimmed = title.trim();
       if (!trimmed) return;
-      commit(addItemOp(list, { id: newId(), title: trimmed }, now()));
+      commit(
+        addItemOp(
+          list,
+          { id: newId(), title: trimmed },
+          now(),
+          addItemPositionRef.current,
+        ),
+      );
     },
     [commit, list],
   );

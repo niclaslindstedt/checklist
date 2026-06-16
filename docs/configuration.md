@@ -12,7 +12,7 @@ through **Settings** inside the app and persist to `localStorage`.
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:gdrive:token`         | string                                | (unset)       | Google Drive access token from the GIS popup. Short-lived (~1h); the user reconnects when it expires. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
-| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Appearance settings written by the **Settings → Theme** tab: `theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides (18 colours + radius / density / border-width / reduce-motion). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. |
+| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. |
 | `checklist:settings:autoArchive` | `boolean`                             | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
 | `checklist:settings:locale`      | BCP-47 string                         | browser value | Override the formatting locale (does not change UI strings; this app is English-only for now). |
 
@@ -25,6 +25,13 @@ Excel, System (follows the OS), and Custom — plus four bundled fonts
 Picking **Custom** opens an 18-slot colour editor with corner-radius,
 density, border-width, and reduce-motion controls. Changes apply live and
 persist to `checklist:settings:v1`.
+
+### General
+
+The **Settings → General** tab holds list-behaviour preferences. **Add
+new items to** chooses whether a new entry is appended to the **bottom**
+(the default) or prepended to the **top** of the list. The choice persists
+to `checklist:settings:v1`.
 
 ### Storage
 

@@ -54,7 +54,10 @@ export function App() {
     () => (fakeData ? createDevSeedAdapter() : null),
     [fakeData],
   );
-  const checklist = useChecklist(seedAdapter ?? storage.adapter);
+  const checklist = useChecklist(
+    seedAdapter ?? storage.adapter,
+    settings.addItemPosition,
+  );
 
   // The cloud-sync glyph only shows for a real cloud-backed session — not
   // for the local backend (nothing to sync) nor while fake data overrides

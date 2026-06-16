@@ -24,11 +24,15 @@ import {
   type RadiusPreset,
   type ThemePreset,
 } from "../theme/themes.ts";
-import type { Settings } from "./types.ts";
+import type { AddItemPosition, Settings } from "./types.ts";
 
 const SETTINGS_KEY = "checklist:settings:v1";
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+// New items append to the bottom by default — the long-standing behaviour
+// before this preference existed.
+export const DEFAULT_ADD_ITEM_POSITION: AddItemPosition = "bottom";
 
 export function defaultSettings(): Settings {
   return {
@@ -36,6 +40,7 @@ export function defaultSettings(): Settings {
     fontFamily: DEFAULT_FONT_FAMILY,
     fontScale: DEFAULT_FONT_SCALE,
     customTheme: DEFAULT_CUSTOM_THEME,
+    addItemPosition: DEFAULT_ADD_ITEM_POSITION,
   };
 }
 
@@ -107,6 +112,11 @@ export function validateSettings(raw: unknown): Settings {
     ),
     fontScale: validFontScale(raw.fontScale),
     customTheme: validCustomTheme(raw.customTheme),
+    addItemPosition: oneOf<AddItemPosition>(
+      raw.addItemPosition,
+      ["top", "bottom"],
+      DEFAULT_ADD_ITEM_POSITION,
+    ),
   };
 }
 
