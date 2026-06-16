@@ -1,38 +1,24 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { ChecklistView } from "../../src/ui/ChecklistView.tsx";
+import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { renderWithChecklist } from "./context-harness.tsx";
 
 const items: ChecklistItem[] = [
   { id: "i1", title: "Buy milk", checked: false },
 ];
 
-function noop(): void {}
-
-// Defaults for every required ChecklistView prop so each test overrides
-// only the handlers it asserts on.
-function renderView(
-  props: Partial<React.ComponentProps<typeof ChecklistView>>,
-) {
-  return render(
-    <ChecklistView
-      items={items}
-      checkedCount={0}
-      onAdd={noop}
-      onToggle={noop}
-      onRemove={noop}
-      onArchive={noop}
-      onReorder={noop}
-      sync={null}
-      {...props}
-    />,
-  );
+// ChecklistView reads its data from the checklist context, so each test
+// seeds the context and overrides only the fields it asserts on.
+function renderView(value: Partial<ChecklistContextValue> = {}) {
+  return renderWithChecklist(<ChecklistView />, { items, ...value });
 }
 
 describe("ChecklistView", () => {
   it("renders items and the progress count", () => {
-    renderView({});
+    renderView();
     expect(screen.getByText("Buy milk")).toBeTruthy();
     expect(screen.getByText("0/1")).toBeTruthy();
   });
@@ -43,23 +29,23 @@ describe("ChecklistView", () => {
   });
 
   it("adds an item when the composer is submitted", () => {
-    const onAdd = vi.fn();
-    renderView({ items: [], onAdd });
+    const addItem = vi.fn();
+    renderView({ items: [], addItem });
     const input = screen.getByLabelText("Add item");
     fireEvent.change(input, { target: { value: "New thing" } });
     fireEvent.submit(input.closest("form")!);
-    expect(onAdd).toHaveBeenCalledWith("New thing");
+    expect(addItem).toHaveBeenCalledWith("New thing");
   });
 
   it("toggles an item through its checkbox", () => {
-    const onToggle = vi.fn();
-    renderView({ onToggle });
+    const toggle = vi.fn();
+    renderView({ toggle });
     fireEvent.click(screen.getByLabelText("Check item"));
-    expect(onToggle).toHaveBeenCalledWith("i1");
+    expect(toggle).toHaveBeenCalledWith("i1");
   });
 
   it("renders a drag handle for reordering each item", () => {
-    renderView({});
+    renderView();
     expect(screen.getByLabelText("Drag to reorder")).toBeTruthy();
   });
 });

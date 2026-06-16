@@ -394,26 +394,55 @@ export function useChecklist(
     [items],
   );
 
-  return {
-    snapshot: doc,
-    items,
-    archivedItems: archived,
-    checkedCount,
-    addItem,
-    toggle,
-    remove,
-    archive,
-    unarchive,
-    reorder,
-    reload,
-    conflict,
-    resolveConflict,
-    status,
-    dirty,
-    saveNow,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  };
+  // Memoized so the returned object keeps a stable identity across renders
+  // that don't touch the checklist (e.g. an appearance-settings change in
+  // App). App wraps this value straight into `ChecklistContext`, and the
+  // memoized views consuming it only re-render when one of these fields
+  // actually changes — not on every settings drag.
+  return useMemo(
+    () => ({
+      snapshot: doc,
+      items,
+      archivedItems: archived,
+      checkedCount,
+      addItem,
+      toggle,
+      remove,
+      archive,
+      unarchive,
+      reorder,
+      reload,
+      conflict,
+      resolveConflict,
+      status,
+      dirty,
+      saveNow,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+    }),
+    [
+      doc,
+      items,
+      archived,
+      checkedCount,
+      addItem,
+      toggle,
+      remove,
+      archive,
+      unarchive,
+      reorder,
+      reload,
+      conflict,
+      resolveConflict,
+      status,
+      dirty,
+      saveNow,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+    ],
+  );
 }

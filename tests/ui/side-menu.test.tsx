@@ -1,10 +1,18 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 
 import { SideMenu } from "../../src/ui/SideMenu.tsx";
 import { ModalBusProvider } from "../../src/ui/ModalBusProvider.tsx";
 import { useModalState } from "../../src/ui/modal-bus.ts";
+import {
+  ChecklistContext,
+  type ChecklistContextValue,
+} from "../../src/ui/checklist-context.ts";
+import { NavContext, type NavContextValue } from "../../src/ui/nav-context.ts";
+import type { ChecklistItem } from "../../src/domain/types.ts";
+import { makeChecklistValue, makeNavValue } from "./context-harness.tsx";
 
 function noop(): void {}
 
@@ -38,109 +46,130 @@ function pointer(el: Element, type: string, coords: { x: number; y: number }) {
   fireEvent(el, event);
 }
 
-function renderMenu(props: Partial<React.ComponentProps<typeof SideMenu>>) {
-  return render(
+type Options = {
+  nav?: Partial<NavContextValue>;
+  checklist?: Partial<ChecklistContextValue>;
+  props?: Partial<React.ComponentProps<typeof SideMenu>>;
+};
+
+// SideMenu reads open/current/position from nav context and undo/redo/
+// archive counts from the checklist context; only the namespace list stays
+// a prop. Each test seeds the slices it asserts on.
+function tree({ nav = {}, checklist = {}, props = {} }: Options): ReactElement {
+  return (
     <ModalBusProvider>
-      <SideMenu
-        open={false}
-        onToggle={noop}
-        onClose={noop}
-        current="checklist"
-        onNavigate={noop}
-        archivedCount={0}
-        namespaces={[{ slug: "default", name: "Default" }]}
-        activeNamespace="default"
-        onSwitchNamespace={noop}
-        onUndo={noop}
-        onRedo={noop}
-        canUndo={false}
-        canRedo={false}
-        {...props}
-      />
-      <OpenModalProbe />
-    </ModalBusProvider>,
+      <NavContext.Provider value={makeNavValue(nav)}>
+        <ChecklistContext.Provider value={makeChecklistValue(checklist)}>
+          <SideMenu
+            namespaces={[{ slug: "default", name: "Default" }]}
+            activeNamespace="default"
+            onSwitchNamespace={noop}
+            {...props}
+          />
+          <OpenModalProbe />
+        </ChecklistContext.Provider>
+      </NavContext.Provider>
+    </ModalBusProvider>
   );
+}
+
+function renderMenu(options: Options = {}) {
+  const result = render(tree(options));
+  return { ...result, rerenderWith: (next: Options) => result.rerender(tree(next)) };
+}
+
+function archived(count: number): ChecklistItem[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `a${i}`,
+    title: `Archived ${i}`,
+    checked: false,
+    archived: true,
+  }));
 }
 
 describe("SideMenu", () => {
   it("keeps the drawer collapsed until the floating button is pressed", () => {
-    const onToggle = vi.fn();
-    renderMenu({ onToggle });
+    const toggle = vi.fn();
+    renderMenu({ nav: { toggle } });
     // The nav entries aren't in the tree while collapsed.
     expect(screen.queryByRole("menuitem", { name: "Archive" })).toBeNull();
     fireEvent.click(screen.getByLabelText("Open navigation"));
-    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(toggle).toHaveBeenCalledTimes(1);
   });
 
   it("lists both views and navigates when one is chosen", () => {
-    const onNavigate = vi.fn();
-    renderMenu({ open: true, onNavigate });
+    const navigate = vi.fn();
+    renderMenu({ nav: { open: true, navigate } });
     expect(screen.getByRole("menuitem", { name: /Checklist/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("menuitem", { name: /Archive/ }));
-    expect(onNavigate).toHaveBeenCalledWith("archive");
+    expect(navigate).toHaveBeenCalledWith("archive");
   });
 
   it("marks the current view as the active page", () => {
-    renderMenu({ open: true, current: "archive" });
+    renderMenu({ nav: { open: true, current: "archive" } });
     const archive = screen.getByRole("menuitem", { name: /Archive/ });
     expect(archive.getAttribute("aria-current")).toBe("page");
   });
 
   it("shows the archived count as a badge when there are archived items", () => {
-    renderMenu({ open: true, archivedCount: 3 });
+    renderMenu({ nav: { open: true }, checklist: { archivedItems: archived(3) } });
     expect(screen.getByText("3")).toBeTruthy();
   });
 
   it("invokes undo / redo and disables them when there's no history", () => {
-    const onUndo = vi.fn();
-    const onRedo = vi.fn();
-    renderMenu({ open: true, onUndo, onRedo, canUndo: true, canRedo: false });
-    const undo = screen.getByRole("menuitem", { name: "Undo" });
-    const redo = screen.getByRole("menuitem", { name: "Redo" });
-    expect((redo as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(redo);
-    expect(onRedo).not.toHaveBeenCalled();
-    fireEvent.click(undo);
-    expect(onUndo).toHaveBeenCalledTimes(1);
+    const undo = vi.fn();
+    const redo = vi.fn();
+    renderMenu({
+      nav: { open: true },
+      checklist: { undo, redo, canUndo: true, canRedo: false },
+    });
+    const undoItem = screen.getByRole("menuitem", { name: "Undo" });
+    const redoItem = screen.getByRole("menuitem", { name: "Redo" });
+    expect((redoItem as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(redoItem);
+    expect(redo).not.toHaveBeenCalled();
+    fireEvent.click(undoItem);
+    expect(undo).toHaveBeenCalledTimes(1);
   });
 
   it("lists namespaces and switches when one is chosen", () => {
     const onSwitchNamespace = vi.fn();
-    const onClose = vi.fn();
+    const close = vi.fn();
     renderMenu({
-      open: true,
-      onSwitchNamespace,
-      onClose,
-      namespaces: [
-        { slug: "default", name: "Default" },
-        { slug: "family", name: "Family" },
-      ],
-      activeNamespace: "default",
+      nav: { open: true, close },
+      props: {
+        onSwitchNamespace,
+        namespaces: [
+          { slug: "default", name: "Default" },
+          { slug: "family", name: "Family" },
+        ],
+        activeNamespace: "default",
+      },
     });
     fireEvent.click(screen.getByRole("menuitem", { name: /Family/ }));
     expect(onSwitchNamespace).toHaveBeenCalledWith("family");
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("opens namespace management from the New namespace entry", () => {
-    renderMenu({ open: true });
+    renderMenu({ nav: { open: true } });
     fireEvent.click(screen.getByRole("menuitem", { name: "New namespace" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("namespaces");
   });
 
   it("opens settings and changelog from the relocated footer menu", () => {
-    const onClose = vi.fn();
-    renderMenu({ open: true, onClose });
+    const close = vi.fn();
+    renderMenu({ nav: { open: true, close } });
     fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("settings");
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("menuitem", { name: "What's new" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("changelog");
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalledTimes(2);
   });
 
   it("exposes the project links and reads bottom-up (settings last)", () => {
-    renderMenu({ open: true });
+    renderMenu({ nav: { open: true } });
     const labels = screen
       .getAllByRole("menuitem")
       .map((el) => el.textContent?.trim());
@@ -154,7 +183,7 @@ describe("SideMenu", () => {
   });
 
   it("shows the build version as a subtitle under View source", () => {
-    renderMenu({ open: true });
+    renderMenu({ nav: { open: true } });
     const source = screen.getByRole("menuitem", { name: /View source/ });
     // build-env's __BUILD_LABEL__ resolves to the package version in the
     // test build, so the subtitle renders as a second line in the item.
@@ -163,83 +192,63 @@ describe("SideMenu", () => {
   });
 
   it("slides the panel in from the resting edge", () => {
-    const { rerender } = renderMenu({ open: true });
+    const { rerenderWith } = renderMenu({ nav: { open: true } });
     expect(document.querySelector("nav.drawer-panel-left")).not.toBeNull();
 
-    rerender(
-      <ModalBusProvider>
-        <SideMenu
-          open
-          onToggle={noop}
-          onClose={noop}
-          current="checklist"
-          onNavigate={noop}
-          archivedCount={0}
-          namespaces={[{ slug: "default", name: "Default" }]}
-          activeNamespace="default"
-          onSwitchNamespace={noop}
-          onUndo={noop}
-          onRedo={noop}
-          canUndo={false}
-          canRedo={false}
-          position={{ side: "right", y: 0.5 }}
-        />
-        <OpenModalProbe />
-      </ModalBusProvider>,
-    );
+    rerenderWith({ nav: { open: true, position: { side: "right", y: 0.5 } } });
     expect(document.querySelector("nav.drawer-panel-right")).not.toBeNull();
   });
 
   it("closes on a backdrop click", () => {
-    const onClose = vi.fn();
-    renderMenu({ open: true, onClose });
+    const close = vi.fn();
+    renderMenu({ nav: { open: true, close } });
     // Two elements carry the close label (the toggle while open, and the
-    // backdrop); clicking the backdrop fires onClose.
+    // backdrop); clicking the backdrop fires close.
     const closers = screen.getAllByLabelText("Close navigation");
     fireEvent.click(closers[closers.length - 1]!);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("persists a new edge after a drag and swallows the trailing click", () => {
-    const onPositionChange = vi.fn();
-    const onToggle = vi.fn();
-    renderMenu({ onToggle, onPositionChange });
+    const setPosition = vi.fn();
+    const toggle = vi.fn();
+    renderMenu({ nav: { toggle, setPosition } });
     const btn = screen.getByLabelText("Open navigation");
     // Drag the button across the midline to the right edge.
     pointer(btn, "pointerdown", { x: 12, y: 400 });
     pointer(btn, "pointermove", { x: 900, y: 400 });
     pointer(btn, "pointerup", { x: 900, y: 400 });
-    expect(onPositionChange).toHaveBeenCalledTimes(1);
-    expect(onPositionChange.mock.calls[0]![0].side).toBe("right");
+    expect(setPosition).toHaveBeenCalledTimes(1);
+    expect(setPosition.mock.calls[0]![0].side).toBe("right");
     // The click that tails the drag must not toggle the drawer.
     fireEvent.click(btn);
-    expect(onToggle).not.toHaveBeenCalled();
+    expect(toggle).not.toHaveBeenCalled();
   });
 
   it("reports the drag lifecycle so the parent can gate pull-to-refresh", () => {
-    const onDraggingChange = vi.fn();
-    renderMenu({ onDraggingChange });
+    const setDragging = vi.fn();
+    renderMenu({ nav: { setDragging } });
     const btn = screen.getByLabelText("Open navigation");
     // Mounts resting — reports not-dragging.
-    expect(onDraggingChange).toHaveBeenLastCalledWith(false);
+    expect(setDragging).toHaveBeenLastCalledWith(false);
 
     pointer(btn, "pointerdown", { x: 12, y: 400 });
     pointer(btn, "pointermove", { x: 900, y: 400 });
-    expect(onDraggingChange).toHaveBeenLastCalledWith(true);
+    expect(setDragging).toHaveBeenLastCalledWith(true);
 
     pointer(btn, "pointerup", { x: 900, y: 400 });
-    expect(onDraggingChange).toHaveBeenLastCalledWith(false);
+    expect(setDragging).toHaveBeenLastCalledWith(false);
   });
 
   it("treats a press without movement as a tap that toggles", () => {
-    const onPositionChange = vi.fn();
-    const onToggle = vi.fn();
-    renderMenu({ onToggle, onPositionChange });
+    const setPosition = vi.fn();
+    const toggle = vi.fn();
+    renderMenu({ nav: { toggle, setPosition } });
     const btn = screen.getByLabelText("Open navigation");
     pointer(btn, "pointerdown", { x: 12, y: 400 });
     pointer(btn, "pointerup", { x: 12, y: 400 });
     fireEvent.click(btn);
-    expect(onPositionChange).not.toHaveBeenCalled();
-    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(setPosition).not.toHaveBeenCalled();
+    expect(toggle).toHaveBeenCalledTimes(1);
   });
 });

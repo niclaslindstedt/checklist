@@ -1,63 +1,34 @@
 import { memo, type CSSProperties } from "react";
 
-import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { usePwaUpdate } from "../pwa/usePwaUpdate.ts";
-import type { SaveStatus } from "../app/use-checklist.ts";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
+import { useChecklistContext } from "./checklist-context.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
-// column reminiscent of a plain-text editor. Purely props-driven — App
-// owns the state hook and passes data plus callbacks down, so nothing in
-// ui/ reaches back into app/.
+// column reminiscent of a plain-text editor. State-free — it reads the
+// checklist surface from `useChecklistContext`, so App stops threading
+// data and callbacks through a `Props` chain and nothing in ui/ reaches
+// back into app/ at runtime (the context lives in ui/).
 //
 // The shell is pinned to the viewport (the document itself never scrolls);
 // only the item list scrolls internally, which keeps the header and composer
 // in view and stops iOS Safari from rubber-banding a near-empty list.
 
-type Props = {
-  items: ChecklistItem[];
-  checkedCount: number;
-  onAdd: (title: string) => void;
-  onToggle: (id: string) => void;
-  onRemove: (id: string) => void;
-  onArchive: (id: string) => void;
-  onReorder: (id: string, toIndex: number) => void;
-  /**
-   * Cloud-sync status for the header glyph, or null for a local-only
-   * session (the icon only appears when a cloud backend is active).
-   */
-  sync: SyncInfo | null;
-};
-
-/** Props the header's cloud-sync glyph needs (see `SyncStatus`). */
-export type SyncInfo = {
-  providerName: string;
-  status: SaveStatus;
-  dirty: boolean;
-  onSave: () => void;
-  onOpenDetails: () => void;
-};
-
-// Memoised: App holds appearance settings alongside the checklist, so
+// Memoised and prop-free: it re-renders only when the checklist context
+// value changes. App holds appearance settings alongside the checklist, so
 // every settings edit (a color-swatch drag fires `onChange` continuously)
-// re-renders App. Theme is applied as CSS vars on `:root`, not through
-// these props, so when only settings change every prop here is a stable
-// reference and `memo` skips the whole list instead of reconciling N rows.
-function ChecklistViewImpl({
-  items,
-  checkedCount,
-  onAdd,
-  onToggle,
-  onRemove,
-  onArchive,
-  onReorder,
-  sync,
-}: Props) {
-  const reorder = useListReorder(onReorder);
+// re-renders App — but the context value keeps a stable identity across
+// those renders (see `useChecklist`'s memoized return and App's memoized
+// provider value), so `memo` skips the whole list instead of reconciling N
+// rows. Theme is applied as CSS vars on `:root`, not through context.
+function ChecklistViewImpl() {
+  const { items, checkedCount, addItem, toggle, remove, archive, reorder, sync } =
+    useChecklistContext();
+  const reorderCtl = useListReorder(reorder);
   const t = useT();
   // While a new build's service worker downloads, fill the "checklist"
   // wordmark with the accent colour from the bottom — a vertical power
@@ -112,24 +83,24 @@ function ChecklistViewImpl({
             {t("app.empty")}
           </p>
         ) : (
-          <ul ref={reorder.containerRef} className="m-0 list-none p-0">
+          <ul ref={reorderCtl.containerRef} className="m-0 list-none p-0">
             {items.map((item) => (
               <ChecklistRow
                 key={item.id}
                 item={item}
-                onToggle={onToggle}
-                onArchive={onArchive}
-                onDelete={onRemove}
-                dragHandleProps={reorder.dragHandleProps(item.id)}
-                dragging={reorder.draggingId === item.id}
-                style={reorder.rowStyle(item.id)}
+                onToggle={toggle}
+                onArchive={archive}
+                onDelete={remove}
+                dragHandleProps={reorderCtl.dragHandleProps(item.id)}
+                dragging={reorderCtl.draggingId === item.id}
+                style={reorderCtl.rowStyle(item.id)}
               />
             ))}
           </ul>
         )}
       </div>
 
-      <AddItemForm onAdd={onAdd} />
+      <AddItemForm onAdd={addItem} />
     </div>
   );
 }

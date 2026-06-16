@@ -36,11 +36,17 @@ whenever you add a dictionary row.
 `src/app/App.tsx` — the thin root component. Wires the cross-cutting
 hooks (`useSettings`, `useTheme`, `useViewportHeight`,
 `useStorageBackend`, `useChecklist`, `usePullToRefresh`,
-`useUndoRedoShortcuts`) and hands state down to the views. It owns the
-small bits of top-level UI state: which `view` is showing
-(`"checklist"` or `"archive"`), whether the side menu / settings /
-changelog are open, and which settings tab to open. It renders one of
-`ChecklistView` / `ArchiveView` plus the always-mounted overlays
+`useUndoRedoShortcuts`) and publishes their state through two focused
+contexts instead of threading props down: `ChecklistContext`
+(`src/ui/checklist-context.ts`) carries the `useChecklist` surface plus
+the derived `SyncInfo`, and `NavContext` (`src/ui/nav-context.ts`) the
+drawer/view state and the floating-button position. Both context values
+are memoised so a settings-only re-render keeps a stable identity and the
+memoised views don't reconcile. It owns the small bits of top-level UI
+state: which `view` is showing (`"checklist"` or `"archive"`), whether
+the side menu is open and the button's drag flag; the settings /
+changelog / namespaces dialogs are owned by the modal bus. It renders one
+of `ChecklistView` / `ArchiveView` plus the always-mounted overlays
 (`SideMenu`, `SettingsModal`, `ChangelogModal`,
 `ConflictResolutionModal`, `UnlockGate`, `PullToRefreshIndicator`).
 
@@ -50,10 +56,11 @@ changelog are open, and which settings tab to open. It renders one of
 scrolls: a header (app wordmark, the checked/total progress count, the
 sync glyph, the header burger menu), an internally-scrolling list of
 `ChecklistRow`s, and a sticky `AddItemForm` composer at the bottom.
-Drag-to-reorder is wired here via `useListReorder`. The `SyncInfo` type
-(also exported here) carries everything `SyncStatus` needs — provider
-name, save status, dirty flag, `onSave`, `onOpenDetails` — and is null
-for the local backend.
+Drag-to-reorder is wired here via `useListReorder`. The view is prop-free:
+it reads its items and actions from `useChecklistContext`
+(`src/ui/checklist-context.ts`). The `SyncInfo` type defined there carries
+everything `SyncStatus` needs — provider name, save status, dirty flag,
+`onSave`, `onOpenDetails` — and is null for the local backend.
 
 ### Checklist row
 
@@ -96,10 +103,13 @@ badged with the archived-item count) and the Undo / Redo actions, and
 highlights the current view. Pinned to the foot are the relocated
 burger-menu links — settings, "what's new", privacy, the source on GitHub
 (with the app version shown as a subtitle), and an optional donate link.
-The `View` type (`"checklist" | "archive"`) is exported here. Closes on
-Escape or
-backdrop click. The floating button itself is positioned by
-`useDraggableMenuButton` over the geometry in `sideMenuPosition.ts`.
+The drawer's open/current/position state comes from `useNav`
+(`src/ui/nav-context.ts`, which exports the `View` type
+`"checklist" | "archive"`) and the undo/redo/archive counts from
+`useChecklistContext`; only the namespace list is still passed as a prop.
+Closes on Escape or backdrop click. The floating button itself is
+positioned by `useDraggableMenuButton` over the geometry in
+`sideMenuPosition.ts`.
 
 ### Floating menu button
 

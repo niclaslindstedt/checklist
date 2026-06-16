@@ -47,11 +47,11 @@ names. Honour these when naming a new file, key, or string.
 | Term                                                   | Refers to                                                                                                |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | **App shell** / **root**                               | `src/app/App.tsx`. [→](overview.md#app-shell)                                                            |
-| **Checklist view** / **the list** / **main screen**    | `src/ui/ChecklistView.tsx`; `SyncInfo`. [→](overview.md#checklist-view)                                  |
+| **Checklist view** / **the list** / **main screen**    | `src/ui/ChecklistView.tsx`; `SyncInfo`, `useChecklistContext` (`src/ui/checklist-context.ts`). [→](overview.md#checklist-view) |
 | **Checklist row** / **item row** / **row**             | `src/ui/ChecklistRow.tsx`. [→](overview.md#checklist-row)                                                |
 | **Add-item form** / **composer**                       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
-| **Side menu** / **drawer** / **nav**                   | `src/ui/SideMenu.tsx`; `View`. [→](overview.md#side-menu)                                                |
+| **Side menu** / **drawer** / **nav**                   | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`). [→](overview.md#side-menu)            |
 | **Floating menu button** / **drag button**             | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`. [→](overview.md#floating-menu-button) |
 | **Header menu** / **burger menu**                      | `src/ui/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                    |
 | **Sync status** / **cloud glyph** / **sync icon**      | `src/ui/SyncStatus.tsx`. [→](overview.md#sync-status)                                                    |

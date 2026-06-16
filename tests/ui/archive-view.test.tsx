@@ -1,47 +1,47 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 
 import { ArchiveView } from "../../src/ui/ArchiveView.tsx";
+import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { renderWithChecklist } from "./context-harness.tsx";
 
 const items: ChecklistItem[] = [
   { id: "i1", title: "Old milk", checked: true, archived: true },
   { id: "i2", title: "Stale bread", checked: false, archived: true },
 ];
 
-function noop(): void {}
-
-function renderView(props: Partial<React.ComponentProps<typeof ArchiveView>>) {
-  return render(
-    <ArchiveView items={items} onRestore={noop} onRemove={noop} {...props} />,
-  );
+// ArchiveView reads the archived items and their actions from the checklist
+// context, so each test seeds the context and overrides what it asserts on.
+function renderView(value: Partial<ChecklistContextValue> = {}) {
+  return renderWithChecklist(<ArchiveView />, { archivedItems: items, ...value });
 }
 
 describe("ArchiveView", () => {
   it("lists archived items with the count", () => {
-    renderView({});
+    renderView();
     expect(screen.getByText("Old milk")).toBeTruthy();
     expect(screen.getByText("Stale bread")).toBeTruthy();
     expect(screen.getByText("2")).toBeTruthy();
   });
 
   it("shows an empty state when nothing is archived", () => {
-    renderView({ items: [] });
+    renderView({ archivedItems: [] });
     expect(screen.getByText(/nothing archived/i)).toBeTruthy();
   });
 
   it("restores an item through its restore button", () => {
-    const onRestore = vi.fn();
-    renderView({ onRestore });
+    const unarchive = vi.fn();
+    renderView({ unarchive });
     fireEvent.click(screen.getAllByLabelText("Restore item")[0]!);
-    expect(onRestore).toHaveBeenCalledWith("i1");
+    expect(unarchive).toHaveBeenCalledWith("i1");
   });
 
   it("deletes an item through its delete button", () => {
-    const onRemove = vi.fn();
-    renderView({ onRemove });
+    const remove = vi.fn();
+    renderView({ remove });
     fireEvent.click(screen.getAllByLabelText("Delete")[0]!);
-    expect(onRemove).toHaveBeenCalledWith("i1");
+    expect(remove).toHaveBeenCalledWith("i1");
   });
 });
