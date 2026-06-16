@@ -67,7 +67,7 @@ names. Honour these when naming a new file, key, or string.
 | **Snapshot** / **the document**                   | `Snapshot`, `emptySnapshot` (`src/domain/types.ts`). [→](overview.md#snapshot)                     |
 | **Checklist**                                      | `Checklist` (`src/domain/types.ts`); `src/domain/checklists.ts`. [→](overview.md#checklist)        |
 | **Checklist item** / **item**                     | `Item`, `ChecklistItem` (`src/domain/types.ts`). [→](overview.md#checklist-item)                   |
-| **Active checklist** / **active list**            | `doc.checklists[0]`, `withActiveList` (`src/app/use-checklist.ts`). [→](overview.md#active-checklist--active-list) |
+| **Active checklist** / **active list**            | `doc.checklists[0]` (`src/app/use-checklist.ts`); `withActiveList` (`src/app/use-checklist-sync.ts`). [→](overview.md#active-checklist--active-list) |
 | **use-checklist hook** / **app state**            | `useChecklist`, `UseChecklist` (`src/app/use-checklist.ts`). [→](overview.md#use-checklist-hook)   |
 | **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
@@ -116,9 +116,9 @@ names. Honour these when naming a new file, key, or string.
 | **OAuth (PKCE)**                                     | `src/storage/oauth-pkce.ts`. [→](overview.md#oauth-pkce)                          |
 | **Serialize / parse**                                | `serialize`, `parse` (`src/storage/serialize.ts`). [→](overview.md#serialize--parse) |
 | **Migrations**                                       | `migrate`, `LATEST_VERSION` (`src/storage/migrations.ts`). [→](overview.md#migrations) |
-| **Sync status** / **save state**                     | `SaveStatus`, `dirty`, `saveNow` (`src/app/use-checklist.ts`). [→](overview.md#sync-status--save-state) |
+| **Sync status** / **save state**                     | `SaveStatus`, `dirty`, `saveNow` (`src/app/use-checklist-sync.ts`). [→](overview.md#sync-status--save-state) |
 | **Reload** / **pull to refresh**                     | `useChecklist.reload`; `usePullToRefresh` (`src/ui/hooks/usePullToRefresh.ts`). [→](overview.md#reload--pull-to-refresh) |
-| **Conflict resolution** / **keep mine / keep theirs**| `ConflictResolutionModal` (`src/ui/ConflictResolutionModal.tsx`); `ConflictState`, `resolveConflict` (`src/app/use-checklist.ts`). [→](overview.md#conflict-resolution) |
+| **Conflict resolution** / **keep mine / keep theirs**| `ConflictResolutionModal` (`src/ui/ConflictResolutionModal.tsx`); `ConflictState`, `resolveConflict` (`src/app/use-checklist-sync.ts`). [→](overview.md#conflict-resolution) |
 
 ## Undo / redo
 

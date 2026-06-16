@@ -217,8 +217,9 @@ document but drop out of the active view (see Archive view).
 ### Active checklist / active list
 
 The single checklist the UI currently renders — `doc.checklists[0]`,
-resolved in `use-checklist.ts`. `withActiveList` guarantees the
-document always has one to show, minting a default `"Checklist"` list
+resolved in `use-checklist.ts`. `withActiveList` (in
+`use-checklist-sync.ts`) guarantees the document always has one to
+show, minting a default `"Checklist"` list
 (via `createChecklist`) that isn't persisted until the first real edit,
 so a bare reload never writes an empty document.
 
@@ -227,16 +228,28 @@ so a bare reload never writes an empty document.
 `src/app/use-checklist.ts` (`useChecklist`) — the one place that wires
 the pure domain operations to a concrete `StorageAdapter` and supplies
 the side effects the domain deliberately avoids (id generation via
-`crypto.randomUUID`, the clock). Each mutation (`addItem`, `toggle`,
-`remove`, `archive`, `unarchive`, `reorder`) applies the matching
-domain function, updates React state for an immediate re-render, records
-the post-edit document on the undo timeline (`commit` → `record`), and
-schedules a debounced save through the adapter. It owns the save state
-machine (`SaveStatus`, `dirty`), the debounced-save plumbing
-(`scheduleSave` / `flushSave` / `performSave`, coalescing a burst into
-one write per `saveDebounceMs`), conflict detection
-(`ConflictState`), `reload`, `saveNow`, and `resolveConflict`. It
-exposes everything through the `UseChecklist` interface.
+`crypto.randomUUID`, the clock). It is a thin composer of three
+concern-scoped pieces and owns only the selectors over the active list
+and the memoized `UseChecklist` surface the views consume:
+
+- **Edit verbs** (`use-checklist-edits.ts`, `useChecklistEdits`). Each
+  mutation (`addItem`, `toggle`, `remove`, `archive`, `unarchive`,
+  `reorder`) applies the matching domain function, updates React state
+  for an immediate re-render, records the post-edit document on the undo
+  timeline (`commit` → `record`), and schedules a debounced save.
+- **Persistence engine** (`use-checklist-sync.ts`, `useChecklistSync`).
+  Owns the document state, the save state machine (`SaveStatus`,
+  `dirty`), the debounced-save plumbing (`scheduleSave` / `flushSave` /
+  `performSave`, coalescing a burst into one write per `saveDebounceMs`),
+  conflict detection (`ConflictState`), and `reload` / `saveNow` /
+  `resolveConflict`.
+- **Undo timeline** (`use-undo-redo.ts`). The composer breaks the
+  construction cycle between the timeline and the sync engine with a
+  `resetHistory` ref: the engine resets the timeline whenever the
+  document arrives from outside the edit path (load, reload,
+  conflict-adopt), but the timeline is built after the engine because
+  applying an undone snapshot needs the engine's `setDoc` /
+  `scheduleSave`.
 
 ### Add item
 
@@ -490,9 +503,10 @@ upgrades a parsed raw document to `LATEST_VERSION` (currently 1).
 ### Sync status / save state
 
 The `SaveStatus` union (`idle` / `saving` / `saved` / `error` /
-`conflict` / `auth-error` / `throttled`) from `use-checklist.ts` drives
-the `SyncStatus` glyph. `dirty` tracks unsaved edits; `saveNow` flushes
-the debounced save immediately.
+`conflict` / `auth-error` / `throttled`) from `use-checklist-sync.ts`
+(re-exported via `use-checklist.ts`) drives the `SyncStatus` glyph.
+`dirty` tracks unsaved edits; `saveNow` flushes the debounced save
+immediately.
 
 ### Reload / pull-to-refresh
 

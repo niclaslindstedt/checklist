@@ -84,42 +84,6 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-#### R3. use-checklist.ts is a fat state hook (step 2: extract the save engine)
-
-`src/app/use-checklist.ts` (362 lines, was 449) still owns the persistence
-engine — the debounced-save plumbing (`performSave` / `flushSave` /
-`scheduleSave`), the `conflict` / `status` / `dirty` state, `reload` /
-`saveNow` / `resolveConflict`, and the adapter-swap / unmount effects — plus
-the selectors and the composing `return`. A new save/conflict feature still
-edits this hub file.
-
-**Step 1 landed (2026-06):** the six edit verbs moved to
-`src/app/use-checklist-edits.ts` (`ChecklistEdits` interface +
-`useChecklistEdits`), with `newId` / `now` shared via
-`src/app/side-effects.ts`. `UseChecklist extends ChecklistEdits` and the
-composer spreads `...edits` (one memoized dep), so a new action no longer
-touches the central hook's interface or `return` block. This narrowed the
-original plan: items + archive + reorder share one `commit`, so they became
-**one** edits hook rather than the proposed `useChecklistItems` +
-`useChecklistArchive` split — splitting two co-located verbs that share a
-commit path was over-fragmentation.
-
-**Step 2 (remaining).** Extract the save engine into `useChecklistSync`
-(doc state + `performSave` / `flushSave` / `scheduleSave` + `conflict` /
-`status` / `dirty` + `reload` / `saveNow` / `resolveConflict` + the two
-effects). The undo↔sync construction cycle (undo's `setData` needs sync's
-`setDoc` / `scheduleSave`; sync's load/reload/conflict-adopt paths need
-undo's `reset`) must be broken by injecting `reset` into sync via a ref —
-that ref indirection is the one non-mechanical part, so smoke-test the
-LocalStorage save/undo/reload path by hand after.
-
-**Risk.** Pure refactor; the public `useChecklist` shape stays identical so
-App and the views don't change. The save/conflict plumbing has **no
-automated coverage** (only `use-undo-redo` is unit-tested), so step 2's
-cycle-breaking is the medium-risk piece. The file is under the 1000-line
-cap, so this is friction, not a hard size signal — hence 5, not 7.
-**Severity: 5.**
-
 #### R4. Top-level view switching is hardcoded in App and SideMenu
 
 Adding a top-level view (beyond `checklist` / `archive`) means editing the
@@ -166,6 +130,26 @@ nears the cap or conflicts recur.
 **Risk.** Trivial; purely mechanical. **Severity: 3 (easy win, marginal).**
 
 ## Landed
+
+- **R3. use-checklist.ts split into a thin composer + the persistence
+  engine** (2026-06). Step 2 of the fat-hook breakup: the debounced-save
+  plumbing (`performSave` / `flushSave` / `scheduleSave`), the `conflict` /
+  `status` / `dirty` state machine, `reload` / `saveNow` / `resolveConflict`,
+  the adapter-swap / unmount effects, and `withActiveList` moved to
+  `src/app/use-checklist-sync.ts` (`useChecklistSync`, 278 lines).
+  `use-checklist.ts` dropped 362 → 176 lines and is now a pure composer of
+  the sync engine, the undo timeline, and the edit verbs over the selectors
+  and the memoized public surface. The undo↔sync construction cycle (undo's
+  `setData` needs sync's `setDoc` / `scheduleSave`; sync's load / reload /
+  conflict-adopt paths need undo's `reset`) is broken by a `resetHistory`
+  ref the composer owns and points at `reset` once the timeline exists. The
+  public `useChecklist` shape is unchanged (`ConflictState` / `SaveStatus`
+  re-exported from the barrel), so App and the views don't move. Step 1
+  (2026-06) had already moved the six edit verbs to
+  `use-checklist-edits.ts`. The save plumbing had **no automated coverage**,
+  the flagged risk — landed alongside `tests/app/use-checklist-sync.test.ts`
+  covering the save/undo/reload cycle and a conflict-adopt round trip. The
+  fat-hook smell is now fully retired.
 
 - **R2. Prop-drilling replaced by two focused contexts (`ChecklistContext`,
   `NavContext`)** (2026-06). `src/ui/checklist-context.ts` publishes the
