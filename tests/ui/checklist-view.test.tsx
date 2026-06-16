@@ -24,8 +24,6 @@ function renderView(
       onRemove={noop}
       onArchive={noop}
       onReorder={noop}
-      onOpenSettings={noop}
-      onOpenChangelog={noop}
       sync={null}
       {...props}
     />,
@@ -63,21 +61,5 @@ describe("ChecklistView", () => {
   it("renders a drag handle for reordering each item", () => {
     renderView({});
     expect(screen.getByLabelText("Drag to reorder")).toBeTruthy();
-  });
-
-  it("opens settings from the header menu", () => {
-    const onOpenSettings = vi.fn();
-    renderView({ onOpenSettings });
-    fireEvent.click(screen.getByLabelText("Open menu"));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
-  });
-
-  it("opens the changelog from the header menu", () => {
-    const onOpenChangelog = vi.fn();
-    renderView({ onOpenChangelog });
-    fireEvent.click(screen.getByLabelText("Open menu"));
-    fireEvent.click(screen.getByRole("menuitem", { name: "What's new" }));
-    expect(onOpenChangelog).toHaveBeenCalledTimes(1);
   });
 });

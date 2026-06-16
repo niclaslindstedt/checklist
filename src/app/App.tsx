@@ -20,7 +20,7 @@ import { useChecklist } from "./use-checklist.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
 // hooks and hand state down to the view. Appearance settings apply
-// immediately through `useTheme`; the header menu opens the settings and
+// immediately through `useTheme`; the side menu opens the settings and
 // changelog modals. When the developer "Fake data" toggle is on, the
 // active backend is swapped for an ephemeral in-memory seed adapter so
 // `useChecklist` reloads a sample document without touching real data.
@@ -127,8 +127,6 @@ export function App() {
           onRemove={checklist.remove}
           onArchive={checklist.archive}
           onReorder={checklist.reorder}
-          onOpenSettings={openSettings}
-          onOpenChangelog={openChangelog}
           sync={sync}
         />
       )}
@@ -143,6 +141,8 @@ export function App() {
         onRedo={checklist.redo}
         canUndo={checklist.canUndo}
         canRedo={checklist.canRedo}
+        onOpenSettings={openSettings}
+        onOpenChangelog={openChangelog}
         position={settings.menuButtonPosition}
         onPositionChange={(next) => update("menuButtonPosition", next)}
       />

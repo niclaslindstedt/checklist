@@ -35,6 +35,8 @@ function renderMenu(props: Partial<React.ComponentProps<typeof SideMenu>>) {
       onRedo={noop}
       canUndo={false}
       canRedo={false}
+      onOpenSettings={noop}
+      onOpenChangelog={noop}
       {...props}
     />,
   );
@@ -80,6 +82,33 @@ describe("SideMenu", () => {
     expect(onRedo).not.toHaveBeenCalled();
     fireEvent.click(undo);
     expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens settings and changelog from the relocated footer menu", () => {
+    const onOpenSettings = vi.fn();
+    const onOpenChangelog = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({ open: true, onOpenSettings, onOpenChangelog, onClose });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("menuitem", { name: "What's new" }));
+    expect(onOpenChangelog).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("exposes the project links and reads bottom-up (settings last)", () => {
+    renderMenu({ open: true });
+    const labels = screen
+      .getAllByRole("menuitem")
+      .map((el) => el.textContent?.trim());
+    // Settings sits at the very foot of the inverted footer, after the
+    // links and changelog.
+    expect(labels[labels.length - 1]).toContain("Settings");
+    expect(
+      screen.getByRole("menuitem", { name: "Privacy policy" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /View source/ })).toBeTruthy();
   });
 
   it("closes on a backdrop click", () => {
