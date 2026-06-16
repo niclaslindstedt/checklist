@@ -39,6 +39,8 @@ names. Honour these when naming a new file, key, or string.
 | Re-read from the backend         | **reload** (`reload`) / **pull to refresh** (UI)           | "fetch", "refresh" in code                      |
 | A persistence backend            | **backend** / **adapter** (`StorageAdapter`)               | "provider" except for the cloud vendor name     |
 | The local backend (UI label)     | **This device**                                            | "browser", "localStorage" in UI copy            |
+| The file backend (UI label)      | **Local folder** (`folder`)                                | "directory", "disk"                             |
+| On-disk per-list file            | **markdown file** (`storage/markdown/codec.ts`)            | "export" — it's the live store, not an export   |
 | Overlay with backdrop            | `*Modal.tsx`                                               | `*Dialog.tsx`, `*Popover.tsx`                    |
 | Page-less full-screen surface    | `*View.tsx` (`ChecklistView`, `ArchiveView`)               | `*Page.tsx` (only `PrivacyPage`, a real route)  |
 
@@ -112,6 +114,8 @@ names. Honour these when naming a new file, key, or string.
 | **Namespaces dialog** / **manage namespaces** / **new namespace** | `NamespacesModal` (`src/ui/NamespacesModal.tsx`); the namespace section in `src/ui/SideMenu.tsx`. [→](overview.md#namespaces) |
 | **Storage tab**                                       | `src/ui/settings/tabs/storage.tsx`. [→](overview.md#storage-tab)                   |
 | **Local backend** / **This device**                  | `BrowserLocalStorageAdapter` (`src/storage/local/index.ts`); key `checklist:v1`. [→](overview.md#local-backend--this-device) |
+| **Local folder backend** / **folder**                | `createFolderAdapter` (`src/storage/folder/index.ts`), handle persistence in `src/storage/folder/handle-store.ts`. [→](overview.md#local-folder-backend) |
+| **Markdown file store** / **directory adapter**      | `createDirectoryAdapter` (`src/storage/directory-adapter.ts`), `FileStore` (`src/storage/file-store.ts`), codec (`src/storage/markdown/codec.ts`). [→](overview.md#markdown-file-store) |
 | **Dropbox backend**                                  | `src/storage/dropbox/index.ts`. [→](overview.md#dropbox-backend)                  |
 | **Google Drive backend** / **gdrive**                | `src/storage/gdrive/index.ts`. [→](overview.md#google-drive-backend)              |
 | **At-rest encryption** / **passphrase** / **unlock** | `withEncryption` (`src/storage/encrypting/index.ts`), `src/storage/crypto.ts`, `src/ui/UnlockGate.tsx`. [→](overview.md#at-rest-encryption--unlock) |

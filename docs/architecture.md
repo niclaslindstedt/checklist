@@ -20,9 +20,12 @@ src/
   i18n/       # typed t() runtime + per-language catalogs (locales/)
   domain/     # pure functions over the data model (no I/O, no DOM)
   storage/    # pluggable persistence adapters
-    local/        # localStorage adapter (default)
-    gdrive/       # Google Drive app-folder adapter
-    dropbox/      # Dropbox app-folder adapter
+    local/        # localStorage adapter (default, single JSON document)
+    folder/       # File System Access API adapter (markdown files on disk)
+    gdrive/       # Google Drive app-folder adapter (markdown files)
+    dropbox/      # Dropbox app-folder adapter (markdown files)
+    markdown/     # Snapshot <-> per-list markdown codec
+    directory-adapter.ts # shared markdown file store over a FileStore
     encrypting/   # AES-GCM wrapper layered over any adapter
     migrations.ts # forward-only version chain for stored bytes
   theme/      # theme engine (useTheme) + preset/font data
@@ -65,7 +68,9 @@ Three types live in `src/domain/types.ts`:
 
 Archived items stay in the document but are filtered out of the active
 view (`activeItems`) — swiping a row right marks it archived rather
-than deleting it. Templates and checklists are stored as plain JSON.
+than deleting it. The browser backend stores templates and checklists as
+one JSON document; the file-based backends store each as its own markdown
+file (see Storage below).
 
 The persisted document carries a top-level numeric `version`. A
 forward-only migration chain (`src/storage/migrations.ts`, adapted from
@@ -82,7 +87,7 @@ budget project's pattern, defined in `src/storage/adapter.ts`:
 
 ```ts
 interface StorageAdapter {
-  readonly id: "browser" | "dropbox" | "gdrive" | "dev";
+  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev";
   readonly label: string;
   readonly capabilities: ReadonlySet<AdapterCapability>;
   loadSync?(): StoredSnapshot | null;
@@ -114,24 +119,44 @@ and `useStorageBackend` builds the active adapter scoped to the active
 namespace, so switching namespace just swaps the adapter (the same seam
 the fake-data toggle and backend switch use). The local backend keys each
 namespace separately (`checklist:v1` for `default`, `checklist:v1:<slug>`
-otherwise); the cloud backends give each namespace its own folder
-(`/<slug>/checklist.json` on Dropbox, `checklist/<slug>/` on Drive) so a
-whole namespace folder can be shared with another account. The default
-namespace's cloud adapter performs a one-time, self-healing relocation of
-the pre-namespaces document (the file at the app-folder root) into the
-`default/` folder on first load — modelled on the budget project's
-forward-only, do-once migrations.
+otherwise); the file-based backends (local folder, Dropbox, Drive) give
+each namespace its own folder so a whole namespace folder can be shared
+with another account or opened in another tool.
 
-**Cloud backends.** `createDropboxAdapter` and `createGdriveAdapter`
-keep the same single document in a per-app folder in the user's own
-Dropbox or Google Drive, talking to the providers' HTTP APIs directly
-(no SDK in the bundle). Both authenticate through the shared OAuth PKCE
-helpers (`src/storage/oauth-pkce.ts`) — Dropbox via a redirect with
-silent refresh-token rotation, Google Drive via the GIS popup token
-client — and set a one-second `saveDebounceMs` so a burst of edits
-coalesces into one network write. Each is gated on a build-time app
-key / client id (`VITE_DROPBOX_APP_KEY`, `VITE_GOOGLE_CLIENT_ID`); unset
-keys hide the backend in the picker. `useStorageBackend` selects the
+**Markdown file store.** The three file-based backends do *not* store one
+JSON blob; each namespace is a directory of individual markdown files,
+one per checklist and template, using standard `- [ ]` / `- [x]` task
+syntax so the lists open in any editor. This is implemented once in
+`src/storage/directory-adapter.ts` (`createDirectoryAdapter`), which
+wraps a tiny `FileStore` (`src/storage/file-store.ts` —
+`list`/`read`/`write`/`remove`) into a full `StorageAdapter`: the
+`Snapshot` ↔ files conversion lives in the codec
+(`src/storage/markdown/codec.ts`), conflict detection rides an aggregate
+of the directory's per-file revisions, and an **encrypted** store (whose
+bytes can't be markdown) falls back to a single `checklist.json` envelope
+— which is also where the pre-markdown legacy cloud document is read from
+and migrated to markdown on the next plaintext save. Only the browser
+backend keeps the single JSON document.
+
+**Local folder backend.** `createFolderAdapter`
+(`src/storage/folder/index.ts`) implements a `FileStore` over the **File
+System Access API**: the user picks a directory, its handle is persisted
+in IndexedDB (`folder/handle-store.ts`) so the grant survives reloads,
+and namespaces are subfolders of it. It's offered only where
+`showDirectoryPicker` exists (Chromium today); elsewhere the picker
+option is hidden. A revoked grant surfaces a Reconnect cue and falls back
+to the browser store.
+
+**Cloud backends.** `createDropboxAdapter` and `createGdriveAdapter` each
+implement a `FileStore` over a per-app folder in the user's own Dropbox
+or Google Drive, talking to the providers' HTTP APIs directly (no SDK in
+the bundle). Both authenticate through the shared OAuth PKCE helpers
+(`src/storage/oauth-pkce.ts`) — Dropbox via a redirect with silent
+refresh-token rotation, Google Drive via the GIS popup token client — and
+set a one-second `saveDebounceMs` so a burst of edits coalesces into one
+network write. Each is gated on a build-time app key / client id
+(`VITE_DROPBOX_APP_KEY`, `VITE_GOOGLE_CLIENT_ID`); unset keys hide the
+backend in the picker. `useStorageBackend` selects the
 active adapter from a per-device preference, holds the tokens, and
 completes the Dropbox OAuth redirect on boot.
 

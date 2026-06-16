@@ -24,8 +24,14 @@ export function StorageTab({ storage }: Props) {
     gdriveConfigured,
     dropboxConnected,
     gdriveConnected,
+    folderAvailable,
+    folderConnected,
+    folderReconnectNeeded,
     encryption,
     selectBrowser,
+    connectFolder,
+    reconnectFolder,
+    disconnectFolder,
     connectDropbox,
     disconnectDropbox,
     connectGdrive,
@@ -43,6 +49,11 @@ export function StorageTab({ storage }: Props) {
   }[] = [
     { value: "browser", label: t("settings.storage.backendBrowser") },
     {
+      value: "folder",
+      label: t("settings.storage.backendFolder"),
+      disabled: !folderAvailable,
+    },
+    {
       value: "dropbox",
       label: t("settings.storage.backendDropbox"),
       disabled: !dropboxConfigured,
@@ -58,6 +69,7 @@ export function StorageTab({ storage }: Props) {
     setGdriveError(null);
     if (next === backend) return;
     if (next === "browser") selectBrowser();
+    else if (next === "folder") void connectFolder();
     else if (next === "dropbox") connectDropbox();
     else void connectGdriveWithCapture();
   };
@@ -108,6 +120,44 @@ export function StorageTab({ storage }: Props) {
           <p className="text-xs text-muted">
             {t("settings.storage.browserHint")}
           </p>
+        )}
+
+        {backend === "folder" && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted">
+              {folderReconnectNeeded
+                ? t("settings.storage.folderReconnectHint")
+                : folderConnected
+                  ? t("settings.storage.folderConnected")
+                  : t("settings.storage.folderUnconnected")}
+            </p>
+            <div className="flex items-center gap-2">
+              {folderReconnectNeeded ? (
+                <Button
+                  variant="primary"
+                  onClick={() => void reconnectFolder()}
+                >
+                  {t("settings.storage.folderReconnect")}
+                </Button>
+              ) : folderConnected ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void disconnectFolder()}
+                  >
+                    {t("settings.storage.disconnect")}
+                  </Button>
+                  <span className="text-xs text-success">
+                    {t("settings.storage.connected")}
+                  </span>
+                </>
+              ) : (
+                <Button variant="primary" onClick={() => void connectFolder()}>
+                  {t("settings.storage.folderChoose")}
+                </Button>
+              )}
+            </div>
+          </div>
         )}
 
         {backend === "dropbox" && (

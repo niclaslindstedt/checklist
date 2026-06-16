@@ -45,7 +45,7 @@ export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens, last-used
   // adapter) can be keyed per backend. `dev` is the ephemeral in-memory
   // fake-data backend used by the developer settings toggle.
-  readonly id: "browser" | "dropbox" | "gdrive" | "dev";
+  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev";
 
   // Human-readable label for a future settings UI.
   readonly label: string;

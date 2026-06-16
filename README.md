@@ -33,6 +33,13 @@ Try it: **<https://checklist.niclaslindstedt.se>**
 - **Shareable lists.** Export a checklist as a URL or JSON blob; anyone
   with the link can import it in one click. The payload travels in the
   URL fragment, so it is never sent to a server.
+- **Local folder + markdown files.** Point the app at a folder on your
+  device (**Settings → Storage → Local folder**) and every list is saved
+  there as its own markdown file — standard `- [ ]` / `- [x]` task syntax
+  — so you can open, edit, diff, or back them up with any other tool.
+  Dropbox and Google Drive store the same per-list markdown files; only
+  **This device** keeps a single JSON document. (The folder picker needs
+  a Chromium-based browser.)
 - **Optional cloud sync.** Plug in Google Drive or Dropbox as a storage
   backend from **Settings → Storage**. The app uses each provider's
   app-folder scope, so it can only see files it created itself, and a

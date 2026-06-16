@@ -51,7 +51,9 @@ describe("useChecklist save / undo / reload cycle", () => {
     act(() => result.current.addItem("first"));
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(adapter.stored()).not.toBeNull();
-    expect(parse(adapter.stored()).checklists[0]!.items[0]!.title).toBe("first");
+    expect(parse(adapter.stored()).checklists[0]!.items[0]!.title).toBe(
+      "first",
+    );
 
     act(() => result.current.addItem("second"));
     await waitFor(() => expect(result.current.items).toHaveLength(2));
@@ -77,8 +79,17 @@ describe("useChecklist save / undo / reload cycle", () => {
   it("surfaces a conflict and resolves it by adopting the remote", async () => {
     // The remote document another device will have pushed by the time the
     // local edit tries to save.
-    let remote = createChecklist("remote-list", "Remote", "2026-01-01T00:00:00.000Z");
-    remote = addItem(remote, { id: "x", title: "remote item" }, "2026-01-01T00:00:00.000Z", "bottom");
+    let remote = createChecklist(
+      "remote-list",
+      "Remote",
+      "2026-01-01T00:00:00.000Z",
+    );
+    remote = addItem(
+      remote,
+      { id: "x", title: "remote item" },
+      "2026-01-01T00:00:00.000Z",
+      "bottom",
+    );
     const remoteText = serialize({ ...emptySnapshot(), checklists: [remote] });
 
     // A cloud-style adapter that rejects a save based on a stale revision,

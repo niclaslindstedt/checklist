@@ -10,7 +10,7 @@ import { createLogger } from "../dev/logger.ts";
 
 const log = createLogger("backend-pref");
 
-export type BackendId = "browser" | "dropbox" | "gdrive";
+export type BackendId = "browser" | "folder" | "dropbox" | "gdrive";
 
 // Whether stored bytes are wrapped in the AES-GCM envelope before being
 // handed to the adapter. Defaults to "plaintext" — encryption is an
@@ -57,6 +57,7 @@ export function getBackend(): BackendId {
   const raw = read(BACKEND_KEY);
   if (raw === "dropbox") return "dropbox";
   if (raw === "gdrive") return "gdrive";
+  if (raw === "folder") return "folder";
   // Legacy value "local" predates the rename to "browser" — silently
   // migrate. Any unknown / missing value also falls through to browser.
   return "browser";

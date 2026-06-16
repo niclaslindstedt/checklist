@@ -94,12 +94,16 @@ function AppShell() {
     settings.addItemPosition,
   );
 
-  // The cloud-sync glyph only shows for a real cloud-backed session — not
-  // for the local backend (nothing to sync) nor while fake data overrides
-  // the adapter (the status wouldn't reflect the user's actual backend).
+  // The sync glyph shows for any async file-backed session (local folder,
+  // Dropbox, Google Drive) so the user gets save status, a "save now"
+  // affordance, and the conflict surface — not for the browser backend
+  // (nothing to sync) nor while fake data overrides the adapter (the
+  // status wouldn't reflect the user's actual backend).
   const cloudBacked =
     !fakeData &&
-    (storage.backend === "dropbox" || storage.backend === "gdrive");
+    (storage.backend === "folder" ||
+      storage.backend === "dropbox" ||
+      storage.backend === "gdrive");
   // Memoised so the published `ChecklistContext` value stays stable across
   // renders that don't touch the sync state (it is the stable `null` for a
   // local session, and only changes with the save status for a cloud one).
@@ -108,7 +112,11 @@ function AppShell() {
       cloudBacked
         ? {
             providerName:
-              storage.backend === "dropbox" ? "Dropbox" : "Google Drive",
+              storage.backend === "dropbox"
+                ? "Dropbox"
+                : storage.backend === "gdrive"
+                  ? "Google Drive"
+                  : "Local folder",
             status: checklist.status,
             dirty: checklist.dirty,
             onSave: checklist.saveNow,
@@ -131,10 +139,7 @@ function AppShell() {
   // dragging it downward would otherwise arm a refresh at the same time.
   const ptr = usePullToRefresh(checklist.reload, {
     enabled:
-      !anyModalOpen &&
-      !menuOpen &&
-      !menuButtonDragging &&
-      view === "checklist",
+      !anyModalOpen && !menuOpen && !menuButtonDragging && view === "checklist",
   });
 
   // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z mirror the burger-menu undo & redo.

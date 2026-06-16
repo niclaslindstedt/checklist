@@ -15,7 +15,10 @@ const items: ChecklistItem[] = [
 // ArchiveView reads the archived items and their actions from the checklist
 // context, so each test seeds the context and overrides what it asserts on.
 function renderView(value: Partial<ChecklistContextValue> = {}) {
-  return renderWithChecklist(<ArchiveView />, { archivedItems: items, ...value });
+  return renderWithChecklist(<ArchiveView />, {
+    archivedItems: items,
+    ...value,
+  });
 }
 
 describe("ArchiveView", () => {

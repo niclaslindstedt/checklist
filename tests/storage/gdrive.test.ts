@@ -1,31 +1,139 @@
 import { describe, expect, it } from "vitest";
 
+import type { Snapshot } from "../../src/domain/types.ts";
 import { ConflictError } from "../../src/storage/adapter.ts";
+import { encryptText } from "../../src/storage/crypto.ts";
+import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
 import {
   createGdriveAdapter,
   deleteGdriveNamespace,
 } from "../../src/storage/gdrive/index.ts";
+import { parse, serialize } from "../../src/storage/serialize.ts";
 
-function qOf(url: string): string {
-  const m = url.match(/[?&]q=([^&]+)/);
-  return m ? decodeURIComponent(m[1]!) : "";
-}
-function isReparent(url: string): boolean {
-  return url.includes("addParents=");
+const FOLDER = "application/vnd.google-apps.folder";
+
+type Node = {
+  id: string;
+  name: string;
+  mimeType: string;
+  parent: string;
+  content: string;
+  version: number;
+};
+
+// Minimal Google Drive simulator: a flat node list with parent pointers,
+// covering only the endpoints the file store and namespace-delete use.
+class DriveSim {
+  nodes: Node[] = [];
+  private seq = 0;
+
+  private add(partial: Omit<Node, "id" | "version">): string {
+    const id = `id${++this.seq}`;
+    this.nodes.push({ ...partial, id, version: ++this.seq });
+    return id;
+  }
+
+  fetch: typeof fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+    const u = new URL(String(url));
+    const method = init?.method ?? "GET";
+    const path = u.pathname;
+    const idInPath = /\/files\/([^/?]+)/.exec(path)?.[1];
+
+    // Download
+    if (method === "GET" && idInPath && u.searchParams.get("alt") === "media") {
+      const node = this.nodes.find((n) => n.id === idInPath);
+      return node ? json(200, node.content) : json(404, "not found");
+    }
+    // Search / list
+    if (method === "GET" && u.searchParams.get("q")) {
+      return json(
+        200,
+        JSON.stringify({ files: this.search(u.searchParams.get("q")!) }),
+      );
+    }
+    // Create file (multipart upload) — checked before folder-create since
+    // the upload path also ends with `/drive/v3/files`.
+    if (method === "POST" && path.includes("/upload/drive/v3/files")) {
+      const raw = String(init?.body ?? "");
+      const segments = raw.split("\r\n\r\n");
+      const meta = JSON.parse(segments[1]!.split("\r\n--")[0]!);
+      const content = segments
+        .slice(2)
+        .join("\r\n\r\n")
+        .replace(/\r\n--[\s\S]*$/, "");
+      const id = this.add({
+        name: meta.name,
+        mimeType: "text/markdown",
+        parent: meta.parents?.[0] ?? "root",
+        content,
+      });
+      return json(200, JSON.stringify({ id }));
+    }
+    // Create folder (POST to /drive/v3/files, JSON body)
+    if (method === "POST" && path.endsWith("/drive/v3/files")) {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      const id = this.add({
+        name: body.name,
+        mimeType: body.mimeType,
+        parent: body.parents?.[0] ?? "root",
+        content: "",
+      });
+      return json(200, JSON.stringify({ id }));
+    }
+    // Update file (media PATCH)
+    if (method === "PATCH" && idInPath) {
+      const node = this.nodes.find((n) => n.id === idInPath);
+      if (node) {
+        node.content = String(init?.body ?? "");
+        node.version = ++this.seq;
+      }
+      return json(200, "{}");
+    }
+    // Delete (recursive)
+    if (method === "DELETE" && idInPath) {
+      this.removeTree(idInPath);
+      return json(204, "");
+    }
+    throw new Error(`unexpected drive call ${method} ${u.toString()}`);
+  }) as typeof fetch;
+
+  private search(q: string): Node[] {
+    const name = /name='([^']*)'/.exec(q)?.[1];
+    const parent = /'([^']*)' in parents/.exec(q)?.[1];
+    const wantsFolder = q.includes(`mimeType='${FOLDER}'`);
+    return this.nodes.filter((n) => {
+      if (parent && n.parent !== parent) return false;
+      if (name !== undefined && n.name !== name) return false;
+      if (name !== undefined) {
+        return wantsFolder ? n.mimeType === FOLDER : n.mimeType !== FOLDER;
+      }
+      return true; // listDir: every child
+    });
+  }
+
+  private removeTree(id: string): void {
+    const children = this.nodes.filter((n) => n.parent === id).map((n) => n.id);
+    this.nodes = this.nodes.filter((n) => n.id !== id);
+    children.forEach((c) => this.removeTree(c));
+  }
+
+  fileNames(): string[] {
+    return this.nodes
+      .filter((n) => n.mimeType !== FOLDER)
+      .map((n) => n.name)
+      .sort();
+  }
+
+  folderNames(): string[] {
+    return this.nodes.filter((n) => n.mimeType === FOLDER).map((n) => n.name);
+  }
 }
 
-function makeResponse(opts: {
-  status: number;
-  body?: string;
-  headers?: Record<string, string>;
-}): Response {
-  const status = opts.status;
-  const body = opts.body ?? "";
-  const headers = new Headers(opts.headers ?? {});
+function json(status: number, body: string): Response {
   return {
     status,
     ok: status >= 200 && status < 300,
-    headers,
+    headers: new Headers(),
     async text() {
       return body;
     },
@@ -35,394 +143,71 @@ function makeResponse(opts: {
   } as unknown as Response;
 }
 
-type Call = { url: string; init?: RequestInit };
+const snapshot: Snapshot = {
+  templates: [],
+  checklists: [
+    {
+      version: 1,
+      id: "cl1",
+      templateId: "",
+      name: "Groceries",
+      items: [{ id: "1", title: "Milk", checked: false }],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
+};
 
-function fakeFetch(handler: (call: Call) => Response): {
-  fn: typeof fetch;
-  calls: Call[];
-} {
-  const calls: Call[] = [];
-  const fn: typeof fetch = (async (
-    url: RequestInfo | URL,
-    init?: RequestInit,
-  ) => {
-    const call = { url: String(url), init };
-    calls.push(call);
-    return handler(call);
-  }) as typeof fetch;
-  return { fn, calls };
-}
+describe("gdrive adapter (markdown file store)", () => {
+  it("writes a markdown file under checklist/<ns>/checklists/", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch);
+    await adapter.save(serialize(snapshot));
+    expect(sim.fileNames()).toEqual(["groceries-cl1.md"]);
+    expect(sim.folderNames()).toEqual(["checklist", "default", "checklists"]);
+  });
 
-function isSearch(url: string): boolean {
-  return (
-    url.startsWith("https://www.googleapis.com/drive/v3/files?") &&
-    url.includes("q=") &&
-    !url.includes("alt=media")
-  );
-}
-function isDownload(url: string): boolean {
-  return (
-    url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
-    url.includes("alt=media")
-  );
-}
-function isMetadata(url: string): boolean {
-  return (
-    url.startsWith("https://www.googleapis.com/drive/v3/files/") &&
-    !url.includes("alt=media") &&
-    !url.includes("q=")
-  );
-}
-function isFolderCreate(url: string): boolean {
-  return url === "https://www.googleapis.com/drive/v3/files?fields=id";
-}
-function isCreate(url: string): boolean {
-  return url.startsWith(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-  );
-}
-function isUpdate(url: string): boolean {
-  return (
-    url.startsWith("https://www.googleapis.com/upload/drive/v3/files/") &&
-    url.includes("uploadType=media")
-  );
-}
+  it("round-trips a snapshot through markdown files", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch, "work");
+    await adapter.save(serialize(snapshot));
+    const loaded = await adapter.load();
+    expect(parse(loaded!.text).checklists[0]!.name).toBe("Groceries");
+  });
 
-describe("gdrive adapter", () => {
-  it("returns null on first load when no file matches the search", async () => {
-    const { fn } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [] }),
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
+  it("returns null for an empty namespace", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch);
     expect(await adapter.load()).toBeNull();
   });
 
-  it("getRevision returns the ETag from a metadata GET without downloading", async () => {
-    let downloaded = false;
-    const { fn } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "file-abc" }] }),
-        });
-      }
-      if (isMetadata(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "file-abc" }),
-          headers: { ETag: "etag-meta-1" },
-        });
-      }
-      if (isDownload(call.url)) {
-        downloaded = true;
-        return makeResponse({ status: 200, body: "{}" });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
-    expect(await adapter.getRevision!()).toBe("etag-meta-1");
-    expect(downloaded).toBe(false);
-    expect(adapter.capabilities.has("getRevision")).toBe(true);
+  it("stores an encrypted envelope as a single blob file", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch);
+    const envelope = await encryptText(serialize(snapshot), "pw");
+    await adapter.save(envelope);
+    expect(sim.fileNames()).toEqual([BLOB_FILE_NAME]);
+    expect((await adapter.load())!.text).toBe(envelope);
   });
 
-  it("loads the snapshot when a matching file exists", async () => {
-    const { fn } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "file-abc" }] }),
-        });
-      }
-      if (isDownload(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: '{"version":1}',
-          headers: { ETag: '"etag-v1"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
-    expect(await adapter.load()).toEqual({
-      text: '{"version":1}',
-      revision: '"etag-v1"',
-    });
-  });
-
-  it("creates a new file via multipart upload on the first save", async () => {
-    const { fn, calls } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [] }),
-        });
-      }
-      if (isFolderCreate(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "app-folder-id" }),
-        });
-      }
-      if (isCreate(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "new-file-id" }),
-        });
-      }
-      if (isMetadata(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "new-file-id" }),
-          headers: { ETag: '"etag-new"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
-    const saved = await adapter.save("payload-1");
-    expect(saved).toEqual({ text: "payload-1", revision: '"etag-new"' });
-
-    const folderCreate = calls.find((c) => isFolderCreate(c.url));
-    const folderBody = JSON.parse((folderCreate?.init?.body as string) ?? "{}");
-    expect(folderBody.name).toBe("checklist");
-
-    const createCall = calls.find((c) => isCreate(c.url));
-    const body = createCall?.init?.body as string;
-    expect(body).toContain('"name":"checklist.json"');
-    expect(body).toContain('"parents":["app-folder-id"]');
-    expect(body).toContain("payload-1");
-  });
-
-  it("updates an existing file via PATCH with If-Match on subsequent saves", async () => {
-    const { fn, calls } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "file-abc" }] }),
-        });
-      }
-      if (isUpdate(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "file-abc" }),
-          headers: { ETag: '"etag-v2"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
-    const saved = await adapter.save("payload-2", '"etag-v1"');
-    expect(saved.revision).toBe('"etag-v2"');
-    const updateCall = calls.find((c) => isUpdate(c.url));
-    const headers = updateCall?.init?.headers as Record<string, string>;
-    expect(headers["If-Match"]).toBe('"etag-v1"');
-  });
-
-  it("throws ConflictError on 412 with the remote snapshot", async () => {
-    const { fn } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "file-abc" }] }),
-        });
-      }
-      if (isUpdate(call.url)) {
-        return makeResponse({ status: 412, body: "" });
-      }
-      if (isDownload(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: '{"remote":true}',
-          headers: { ETag: '"etag-remote"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
+  it("raises a ConflictError when a file moved past baseRevision", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch);
+    const first = await adapter.save(serialize(snapshot));
+    const file = sim.nodes.find((n) => n.name === "groceries-cl1.md")!;
+    file.content = "tampered";
+    file.version = 9999;
     await expect(
-      adapter.save("our-payload", '"etag-stale"'),
-    ).rejects.toMatchObject({
-      name: "ConflictError",
-      remote: { text: '{"remote":true}', revision: '"etag-remote"' },
-    });
+      adapter.save(serialize(snapshot), first.revision),
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it("recovers when the cached fileId points at a deleted file (404)", async () => {
-    const { fn } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "stale-id" }] }),
-        });
-      }
-      if (isUpdate(call.url)) {
-        return makeResponse({ status: 404, body: "" });
-      }
-      if (isCreate(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "fresh-id" }),
-        });
-      }
-      if (isMetadata(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "fresh-id" }),
-          headers: { ETag: '"etag-fresh"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-123", fn);
-    expect(await adapter.save("payload")).toEqual({
-      text: "payload",
-      revision: '"etag-fresh"',
-    });
-  });
-
-  it("sets a 1-second debounce so edits coalesce", () => {
-    const { fn } = fakeFetch(() => makeResponse({ status: 200, body: "{}" }));
-    const adapter = createGdriveAdapter("token-123", fn);
-    expect(adapter.saveDebounceMs).toBe(1000);
-  });
-
-  it("forwards the bearer token on every request", async () => {
-    const { fn, calls } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "f1" }] }),
-        });
-      }
-      if (isDownload(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: "{}",
-          headers: { ETag: '"e1"' },
-        });
-      }
-      if (isUpdate(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "f1" }),
-          headers: { ETag: '"e2"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token-abc", fn);
-    await adapter.load();
-    await adapter.save("payload");
-    for (const call of calls) {
-      const auth = (call.init?.headers as Record<string, string>).Authorization;
-      expect(auth).toBe("Bearer token-abc");
-    }
-  });
-});
-
-describe("gdrive namespaces", () => {
-  const files = (ids: string[]) =>
-    makeResponse({
-      status: 200,
-      body: JSON.stringify({ files: ids.map((id) => ({ id })) }),
-    });
-
-  it("re-parents the legacy app-folder document into the default folder", async () => {
-    const legacyText = '{"version":1,"legacy":true}';
-    let reparented = false;
-    const { fn, calls } = fakeFetch((call) => {
-      if (isReparent(call.url)) {
-        reparented = true;
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "doc" }),
-        });
-      }
-      if (isSearch(call.url)) {
-        const q = qOf(call.url);
-        if (q.includes("mimeType='application/vnd.google-apps.folder'")) {
-          if (q.includes("name='checklist'")) return files(["app"]);
-          if (q.includes("name='default'"))
-            return reparented ? files(["ns"]) : files([]);
-        }
-        if (q.includes("name='checklist.json'")) {
-          if (q.includes("'ns' in parents"))
-            return reparented ? files(["doc"]) : files([]);
-          if (q.includes("'app' in parents")) return files(["doc"]);
-        }
-        return files([]);
-      }
-      if (isFolderCreate(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ id: "ns" }),
-        });
-      }
-      if (isDownload(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: legacyText,
-          headers: { ETag: '"e-moved"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-
-    const adapter = createGdriveAdapter("token", fn); // default namespace
-    const loaded = await adapter.load();
-    expect(loaded?.text).toBe(legacyText);
-    expect(calls.some((c) => isReparent(c.url))).toBe(true);
-  });
-
-  it("deletes a namespace's folder", async () => {
-    const { fn, calls } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        const q = qOf(call.url);
-        if (q.includes("name='checklist'")) return files(["app"]);
-        if (q.includes("name='family'")) return files(["nsid"]);
-        return files([]);
-      }
-      if (call.init?.method === "DELETE") {
-        return makeResponse({ status: 204 });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    await deleteGdriveNamespace("token", "family", fn);
-    const del = calls.find((c) => c.init?.method === "DELETE")!;
-    expect(del.url).toBe("https://www.googleapis.com/drive/v3/files/nsid");
-  });
-});
-
-describe("ConflictError integration with gdrive", () => {
-  it("the thrown error is detected by instanceof ConflictError", async () => {
-    const { fn } = fakeFetch((call) => {
-      if (isSearch(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: JSON.stringify({ files: [{ id: "f1" }] }),
-        });
-      }
-      if (isUpdate(call.url)) {
-        return makeResponse({ status: 412, body: "" });
-      }
-      if (isDownload(call.url)) {
-        return makeResponse({
-          status: 200,
-          body: '{"x":1}',
-          headers: { ETag: '"e-remote"' },
-        });
-      }
-      throw new Error(`Unexpected URL: ${call.url}`);
-    });
-    const adapter = createGdriveAdapter("token", fn);
-    await expect(adapter.save("text", '"e-old"')).rejects.toBeInstanceOf(
-      ConflictError,
-    );
+  it("deleteGdriveNamespace removes the namespace folder tree", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch, "work");
+    await adapter.save(serialize(snapshot));
+    expect(sim.fileNames().length).toBe(1);
+    await deleteGdriveNamespace("token", "work", sim.fetch);
+    expect(sim.fileNames()).toEqual([]);
   });
 });
