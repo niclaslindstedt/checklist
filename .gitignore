@@ -27,5 +27,12 @@ dev-dist/
 public/sw.js
 public/workbox-*.js
 
+# React Native / Expo (native/) build + tooling artifacts
+.expo/
+native/.expo/
+native/android/
+native/ios/
+native/.metro-health-check*
+
 # Transient release artifacts (written by the Release workflow)
 .release-notes.md

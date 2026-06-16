@@ -96,6 +96,17 @@ in [`public/CNAME`](public/CNAME). Releases are cut by dispatching the
 `Release` workflow; see [`AGENTS.md`](AGENTS.md) → "Releases and
 changelog".
 
+## React Native app
+
+A React Native (Expo) front-end lives under [`native/`](native/). It reuses
+the entire platform-agnostic core — the domain model, the `useChecklist`
+app-state/undo/persistence hooks, serialize/migrations, and i18n — verbatim
+from `src/`, and adds only a native presentation layer plus an AsyncStorage
+backend. Building it for the app stores is a later problem; today it runs in
+Expo Go and the simulators (`cd native && npm install && npx expo start`).
+See [`native/README.md`](native/README.md) for what's implemented and how the
+code is shared.
+
 ## Usage
 
 1. **Add items.** Open the app and type into the composer at the bottom;

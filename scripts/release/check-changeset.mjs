@@ -47,6 +47,11 @@ const SKIP_PATTERNS = [
   /^prompts\//,
   /^man\//,
   /^examples\//,
+  // The React Native app is a separate, not-yet-deployed Expo project
+  // (see native/README.md). It ships no change to the hosted web PWA, so
+  // it is invisible to the changelog's audience until it has its own
+  // release channel.
+  /^native\//,
   /^Makefile$/,
   /\.md$/,
   /^\.nvmrc$/,

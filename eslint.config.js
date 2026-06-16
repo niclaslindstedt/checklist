@@ -13,7 +13,19 @@ export default [
     // scripts (e.g. the Playwright-based design `screenshot.mjs`). They
     // are optional tooling — not app source — and may import packages the
     // repo doesn't install, so they're out of scope for the app linter.
-    ignores: ["dist/**", "node_modules/**", "dev-dist/**", ".agent/**"],
+    //
+    // `native/**` is the React Native app: a separate Expo project with its
+    // own toolchain (Metro, babel-preset-expo) and its own dependency tree
+    // that this repo's root install doesn't provide. It shares the platform-
+    // agnostic core under `src/` but is linted by its own setup, so it is out
+    // of scope for the web app's linter here.
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "dev-dist/**",
+      ".agent/**",
+      "native/**",
+    ],
   },
   js.configs.recommended,
   {
