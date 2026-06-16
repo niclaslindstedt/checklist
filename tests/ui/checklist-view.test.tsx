@@ -74,7 +74,7 @@ describe("ChecklistView", () => {
 
   it("shows the active checklist's name as the header title", () => {
     renderView({
-      checklists: [{ id: "list-0", name: "Groceries" }],
+      checklists: [{ id: "list-0", name: "Groceries", remaining: 0 }],
       activeChecklistId: "list-0",
     });
     expect(screen.getByRole("button", { name: "Groceries" })).toBeTruthy();
@@ -83,7 +83,7 @@ describe("ChecklistView", () => {
   it("renames the active checklist from the clickable header title", () => {
     const renameChecklist = vi.fn();
     renderView({
-      checklists: [{ id: "list-0", name: "Groceries" }],
+      checklists: [{ id: "list-0", name: "Groceries", remaining: 0 }],
       activeChecklistId: "list-0",
       renameChecklist,
     });
