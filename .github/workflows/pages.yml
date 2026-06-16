@@ -112,6 +112,9 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: /
+          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
 
       - name: Stash production dist
         if: steps.tag.outputs.has_release == 'true'
@@ -134,6 +137,9 @@ jobs:
           # Once the first release lands, this becomes the /preview/
           # build instead.
           VITE_BASE: ${{ steps.tag.outputs.has_release == 'true' && '/preview/' || '/' }}
+          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
 
       # ---- Optional /branch/ build + persist to orphan branch ----
       - name: Stash preview dist
@@ -155,6 +161,9 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: /branch/
+          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_DONATE_URL: ${{ secrets.VITE_DONATE_URL }}
 
       - name: Persist /branch/ build to orphan branch
         if: steps.dispatch.outputs.has_dispatch == 'true'
