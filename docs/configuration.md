@@ -122,6 +122,12 @@ to each provider's allowed JavaScript origins / redirect URIs.
 | `VITE_DROPBOX_APP_KEY` | `src/storage/dropbox/` | _unset_ | Dropbox app key (PKCE public client). Unset hides the Dropbox backend in the picker. |
 | `VITE_GOOGLE_CLIENT_ID` | `src/storage/gdrive/` | _unset_ | Google OAuth client id (GIS token client). Unset hides the Google Drive backend in the picker. |
 
+For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
+`VITE_GOOGLE_CLIENT_ID` are stored as GitHub Actions **repository
+secrets** and threaded into every build slot (production, `/preview/`,
+and `/branch/`) by `.github/workflows/pages.yml`. A fork enables the
+cloud backends by adding the same-named secrets to its own repository.
+
 ## Things that are deliberately not configurable
 
 - **Telemetry.** There is none, and there is no flag to enable any.
