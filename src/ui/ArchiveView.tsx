@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
+import { useChecklistContext } from "./checklist-context.ts";
 import { CloseIcon, RestoreIcon } from "./icons.tsx";
 
 // The archive view, reached from the left navigation drawer. Same pinned
@@ -9,15 +10,11 @@ import { CloseIcon, RestoreIcon } from "./icons.tsx";
 // scrolling list) but read-mostly: each archived row carries a Restore
 // button that returns it to the active list and a Delete button that
 // removes it for good. No composer — items only enter the archive by
-// being archived from the checklist.
+// being archived from the checklist. State-free: reads the archived items
+// and their actions from `useChecklistContext`.
 
-type Props = {
-  items: ChecklistItem[];
-  onRestore: (id: string) => void;
-  onRemove: (id: string) => void;
-};
-
-function ArchiveViewImpl({ items, onRestore, onRemove }: Props) {
+function ArchiveViewImpl() {
+  const { archivedItems: items, unarchive, remove } = useChecklistContext();
   const t = useT();
 
   return (
@@ -40,8 +37,8 @@ function ArchiveViewImpl({ items, onRestore, onRemove }: Props) {
               <ArchiveRow
                 key={item.id}
                 item={item}
-                onRestore={() => onRestore(item.id)}
-                onDelete={() => onRemove(item.id)}
+                onRestore={() => unarchive(item.id)}
+                onDelete={() => remove(item.id)}
               />
             ))}
           </ul>

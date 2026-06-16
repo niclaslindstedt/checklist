@@ -80,25 +80,7 @@ and update this file in the same PR.
 
 ### Severity 7–8 — multipliers
 
-#### R2. Prop-drilling through fat Props types on SideMenu / ChecklistView
-
-`src/ui/SideMenu.tsx` (333 lines) and `src/ui/ChecklistView.tsx` (137 lines)
-take wide `Props` objects that re-export `useChecklist`'s surface (undo/redo,
-counts, archive, sync, …). Adding one capability edits three regions in a
-shared file — the `Props` type, the destructure, and the JSX call site in
-App. This is precisely what collided when the draggable-button PR (#30) and
-the menu-in-drawer PR (#29) both landed in `SideMenu`'s function body.
-
-**Plan.** Expose the checklist actions/state and the nav/view state via two
-focused React contexts (`ChecklistProvider`, `NavProvider`) instead of prop
-chains, following budget's "consume state where you need it" approach. Leaf
-components read context; App stops being the prop conduit. Migrate
-incrementally — one consumer at a time keeps each PR small.
-
-**Risk.** Pure refactor. Medium. Watch the `memo(ChecklistView)` optimisation
-(App comment at the `openSettings`/`openStorageSettings` callbacks) — context
-value identity must stay stable or the memo defeats. Split context by update
-frequency if needed. **Severity: 7.**
+_None pending._
 
 ### Severity 5–6 — friction
 
@@ -168,6 +150,24 @@ nears the cap or conflicts recur.
 **Risk.** Trivial; purely mechanical. **Severity: 3 (easy win, marginal).**
 
 ## Landed
+
+- **R2. Prop-drilling replaced by two focused contexts (`ChecklistContext`,
+  `NavContext`)** (2026-06). `src/ui/checklist-context.ts` publishes the
+  whole `useChecklist` surface plus the derived `SyncInfo`;
+  `src/ui/nav-context.ts` publishes the drawer/view state and the
+  floating-button position. `ChecklistView` and `ArchiveView` became
+  prop-free, and `SideMenu` shed eleven props (open/toggle/close/current/
+  navigate/dragging from nav, archivedCount/undo/redo/canUndo/canRedo from
+  checklist) — only the storage-owned namespace trio stays a prop (a future
+  `StorageContext` could absorb it, but storage isn't a churn hub today).
+  App stops being the prop conduit: it memoises both context values, and
+  `useChecklist`'s return is now memoised too, so the `memo(ChecklistView)`
+  optimisation holds (and now also covers cloud sessions, where the fresh
+  `sync` object previously defeated it — `sync` is memoised). Both contexts
+  live in `ui/` (mirroring the modal bus) so the `ui` consumers stay
+  `ui → ui` at runtime; only the `UseChecklist` *type* is imported from
+  `app/` (erased). Landed in one PR per the "do high-risk refactors"
+  instruction, ~under the 500-line cap.
 
 - **R1. Modal open/close state moved off App.tsx onto a modal command-bus**
   (2026-06). `src/ui/modal-bus.ts` (context + consumer hooks) and
