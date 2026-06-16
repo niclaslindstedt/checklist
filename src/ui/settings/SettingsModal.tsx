@@ -11,15 +11,16 @@ import { Modal } from "../Modal.tsx";
 import { AppearanceTab } from "./tabs/appearance.tsx";
 import { DeveloperTab } from "./tabs/developer.tsx";
 import { GeneralTab } from "./tabs/general.tsx";
+import { ListsTab } from "./tabs/lists.tsx";
 import { LogsTab } from "./tabs/logs.tsx";
 import { StorageTab } from "./tabs/storage.tsx";
 
-// Settings dialog. Lands on the General tab; Theme is always present;
-// Developer and Logs appear only when developer mode is on. Modelled on
-// the budget project's tabbed SettingsModal — a left rail on desktop,
-// a horizontal strip on mobile — pared to the checklist's four tabs.
-// Settings apply immediately (the theme engine previews the live values),
-// so the footer offers a single Done button rather than Save / Cancel.
+// Settings dialog. Lands on the General tab; Lists, Theme, and Storage are
+// always present; Developer and Logs appear only when developer mode is on.
+// Modelled on the budget project's tabbed SettingsModal — a left rail on
+// desktop, a horizontal strip on mobile. Settings apply immediately (the
+// theme engine previews the live values), so the footer offers a single
+// Done button rather than Save / Cancel.
 //
 // Switching tabs is a hot interaction, so the parts that don't depend on
 // the active tab are kept off its re-render path: the header and footer
@@ -28,10 +29,11 @@ import { StorageTab } from "./tabs/storage.tsx";
 // whose selected state flips — not the whole dialog chrome (header,
 // close-icon SVG, footer, and every rail button) on every click.
 
-type TabId = "general" | "theme" | "storage" | "developer" | "logs";
+type TabId = "general" | "lists" | "theme" | "storage" | "developer" | "logs";
 
 const TAB_LABEL_KEYS: Record<TabId, MessageKey> = {
   general: "settings.tab.general",
+  lists: "settings.tab.lists",
   theme: "settings.tab.theme",
   storage: "settings.tab.storage",
   developer: "settings.tab.developer",
@@ -64,8 +66,8 @@ export function SettingsModal({
   const tabs: TabId[] = useMemo(
     () =>
       devMode
-        ? ["general", "theme", "storage", "developer", "logs"]
-        : ["general", "theme", "storage"],
+        ? ["general", "lists", "theme", "storage", "developer", "logs"]
+        : ["general", "lists", "theme", "storage"],
     [devMode],
   );
 
@@ -121,8 +123,9 @@ export function SettingsModal({
           tabIndex={0}
           className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4"
         >
-          {activeTab === "general" && (
-            <GeneralTab settings={settings} onUpdate={onUpdate} />
+          {activeTab === "general" && <GeneralTab />}
+          {activeTab === "lists" && (
+            <ListsTab settings={settings} onUpdate={onUpdate} />
           )}
           {activeTab === "theme" && (
             <AppearanceTab settings={settings} onUpdate={onUpdate} />

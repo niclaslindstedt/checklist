@@ -13,6 +13,7 @@ const settings = {
 
   tab: {
     general: "General",
+    lists: "Lists",
     theme: "Theme",
     storage: "Storage",
     developer: "Developer",
@@ -26,7 +27,10 @@ const settings = {
     devMode: "Developer mode",
     devModeHint:
       "Reveal the Developer and Logs tabs for capturing diagnostics and loading sample data.",
-    listTitle: "Lists",
+  },
+
+  lists: {
+    title: "Lists",
     addItemPosition: "Add new items to",
     addItemPositionHint: "Where a new item lands when you add it to a list.",
     addItemTop: "Top",

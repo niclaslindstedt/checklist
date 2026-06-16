@@ -8,6 +8,7 @@ const settings: SettingsCatalog = {
 
   tab: {
     general: "Allmänt",
+    lists: "Listor",
     theme: "Tema",
     storage: "Lagring",
     developer: "Utvecklare",
@@ -21,7 +22,10 @@ const settings: SettingsCatalog = {
     devMode: "Utvecklarläge",
     devModeHint:
       "Visa flikarna Utvecklare och Loggar för att fånga diagnostik och läsa in exempeldata.",
-    listTitle: "Listor",
+  },
+
+  lists: {
+    title: "Listor",
     addItemPosition: "Lägg till nya poster",
     addItemPositionHint:
       "Var en ny post hamnar när du lägger till den i en lista.",

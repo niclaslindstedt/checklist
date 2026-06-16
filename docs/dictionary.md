@@ -101,6 +101,7 @@ names. Honour these when naming a new file, key, or string.
 | **Settings dialog**                        | `src/ui/settings/SettingsModal.tsx`; `TabId`. [→](overview.md#settings-dialog)     |
 | **Settings store** / **preferences**       | `src/settings/store.ts`, `src/settings/useSettings.ts`; `Settings`. [→](overview.md#settings-store) |
 | **General tab**                            | `src/ui/settings/tabs/general.tsx`. [→](overview.md#general-tab)                   |
+| **Lists tab** / **list settings**          | `src/ui/settings/tabs/lists.tsx`. [→](overview.md#lists-tab)                       |
 | **Appearance tab** / **theme tab**         | `src/ui/settings/tabs/appearance.tsx`. [→](overview.md#appearance--theme-tab)      |
 | **Theme** / **font** / **text size** / **custom theme** | `src/theme/themes.ts`, `src/theme/useTheme.ts`, `src/theme/fonts.ts`. [→](overview.md#theme-engine) |
 

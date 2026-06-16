@@ -97,12 +97,16 @@ button slides the drawer in from that edge over a dimmed backdrop (a CSS
 `animation` that plays off the mount — the `drawer-*` keyframes in
 `styles/theme.css` — so there is no first-frame snap). The drawer opens
 with the **namespace** section — the known namespaces (the active one
-checked, click to switch) and a "New namespace" entry that opens
+checked, click to switch), its heading carrying a trailing "+" that opens
 `NamespacesModal` — then the **Checklists** switcher (every list by name,
-the active one marked, click to switch + navigate; a "New checklist"
-action appends a default-named list), the Archive view (badged with the
-archived-item count), and the Undo / Redo actions, and highlights the
-active list and current view. Pinned to the foot are the relocated
+the active one marked, click to switch + navigate; the heading's trailing
+"+" appends a default-named list), with the Archive view sitting at the
+foot of that same list (badged with the archived-item count) rather than
+in a section of its own, then the Undo / Redo actions; it highlights the
+active list and current view. The "+" affordances replace the full-width
+"New namespace" / "New checklist" rows the drawer used to carry, and a
+shared `SectionHeader` renders each heading with its optional action.
+Pinned to the foot are the relocated
 burger-menu links — settings, "what's new", privacy, the source on GitHub
 (with the app version shown as a subtitle), and an optional donate link.
 The drawer's open/current/position state comes from `useNav`
@@ -264,8 +268,9 @@ it, and records it on the undo timeline:
 The side menu (`src/ui/SideMenu.tsx`) renders the switcher: a
 "Checklists" section listing every list by name (the active one marked,
 a check glyph standing in for its icon), each row switching the active
-list and navigating to the checklist view, plus a "New checklist" action.
-The header **Checklist title** is the rename surface for the active list.
+list and navigating to the checklist view, with the section heading's
+trailing "+" creating a new list. The header **Checklist title** is the
+rename surface for the active list.
 
 ### use-checklist hook
 
@@ -377,7 +382,7 @@ roadmap.
 
 `src/ui/settings/SettingsModal.tsx` — the tabbed settings dialog opened
 from the header menu (or the sync glyph, which deep-links to the Storage
-tab via `initialTab`). Tabs (`TabId`): General, Theme (appearance),
+tab via `initialTab`). Tabs (`TabId`): General, Lists, Theme (appearance),
 Storage, and — only when dev mode is on — Developer and Logs. Tab
 labels come from i18n. Built on `Modal`.
 
@@ -395,15 +400,26 @@ excludes the device-local dev flags (those live under `src/dev/`).
 
 ### General tab
 
-`src/ui/settings/tabs/general.tsx` — the dev-mode toggle plus the
-"add new items at top / bottom" choice that drives `addItemPosition`.
+`src/ui/settings/tabs/general.tsx` — the dev-mode toggle (which reveals
+the Developer and Logs tabs). List-behaviour preferences moved out to the
+Lists tab.
+
+### Lists tab
+
+`src/ui/settings/tabs/lists.tsx` — list-behaviour preferences, currently
+the "add new items at top / bottom" choice that drives `addItemPosition`
+(moved here from the General tab).
 
 ### Appearance / theme tab
 
 `src/ui/settings/tabs/appearance.tsx` — the theme picker (light/dark
 mode + variant), font family, text size, and — when the Custom theme is
 selected — the per-colour overrides and the shape/motion controls
-(corner radius, density, border width, reduce-motion).
+(corner radius, density, border width, reduce-motion). The **density**
+control writes the `--density-row-px` / `--density-row-py` CSS variables
+(see Theme engine) that the checklist rows and the side-menu items read
+for their padding, so it now actually changes row spacing when a Custom
+theme is active.
 
 ### Theme engine
 
