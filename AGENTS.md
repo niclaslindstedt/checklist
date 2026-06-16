@@ -61,6 +61,39 @@ Dependency direction: `ui → domain`, `ui → storage`, `storage →
 domain`. Nothing in `domain/` may import from `ui/`, `storage/`, or
 the DOM.
 
+## Resolving user vocabulary
+
+The user (and team) refer to parts of the app in plain English — "the
+list", "the sync glyph", "swipe to archive", "the drag button", "keep
+mine". These words rarely match filenames one-to-one. **Before
+searching for code, look the term up in
+[`docs/dictionary.md`](docs/dictionary.md)** — it maps every term the
+codebase has accreted to the concrete component, type, or file it
+points at. The dictionary is the **index**: a term resolves to the most
+specific file and the symbols to grep for, and stops there. Once you
+have the file, **[`docs/overview.md`](docs/overview.md) is where to read
+how that subsystem behaves and what else it touches** — it carries a
+full description for every dictionary term, under the same headings,
+one-to-one. Look the word up in the dictionary to find the code; read
+the same word in the overview to understand it. (Deep module /
+persisted-shape mechanics live in `docs/architecture.md`.)
+
+**Keep both in lockstep with the code, in the same PR.** When you:
+
+- ship a feature that introduces a user-facing concept,
+- rename a file or symbol the dictionary mentions,
+- change how a feature behaves, or
+- **hear the user use a word the dictionary doesn't already cover** —
+  the "ah, when they said _that_ they meant _this_" moment —
+
+add or update the entry in the same pull request as the code change:
+the `overview.md` description (the bulk of the work) and the matching
+`dictionary.md` row (often just a pointer to the file). Every
+dictionary term has an overview entry and vice versa; letting either
+rot defeats the purpose. If the user uses a term you can't find in
+`docs/dictionary.md` and can't infer from filenames, ask before
+guessing — then record the answer so the next agent doesn't have to.
+
 ## Where new code goes
 
 | Change type | Goes in |
@@ -94,6 +127,7 @@ the `StorageBackend` interface | `docs/architecture.md`, `docs/configuration.md`
 the share URL format            | `docs/architecture.md`, `README.md` Usage
 user-facing settings            | `docs/configuration.md`, `README.md` Configuration
 the build / deploy pipeline     | `README.md` Install/Quick start, `.github/workflows/pages.yml`
+a user-facing concept, component, or term (added, renamed, or a new word the user uses) | `docs/dictionary.md` (the term → file row) **and** `docs/overview.md` (the term's description) — both in the same PR. See "Resolving user vocabulary".
 
 ## Parity / cross-cutting rules
 
