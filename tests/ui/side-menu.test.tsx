@@ -319,6 +319,34 @@ describe("SideMenu", () => {
     expect(document.querySelector("nav.drawer-panel-right")).not.toBeNull();
   });
 
+  it("docks as a permanent sidebar when pinned, with no button or backdrop", () => {
+    renderMenu({ nav: { pinned: true } });
+    // The panel is always present — no press needed.
+    expect(screen.getByRole("menuitem", { name: /Archive/ })).toBeTruthy();
+    // No floating toggle and no dismissable backdrop in the pinned layout.
+    expect(screen.queryByLabelText("Open navigation")).toBeNull();
+    expect(screen.queryByLabelText("Close navigation")).toBeNull();
+    // The pinned panel is in normal flow, not a fixed sliding drawer.
+    expect(document.querySelector("nav.drawer-panel-left")).toBeNull();
+    expect(document.querySelector("nav.drawer-panel-right")).toBeNull();
+  });
+
+  it("docks the pinned sidebar on the resting edge", () => {
+    const { rerenderWith } = renderMenu({
+      nav: { pinned: true, position: { side: "left", y: 0.5 } },
+    });
+    // Left edge: border faces the content on the right, no order shuffle.
+    expect(document.querySelector("nav.border-r")).not.toBeNull();
+    expect(document.querySelector("nav.order-last")).toBeNull();
+
+    rerenderWith({
+      nav: { pinned: true, position: { side: "right", y: 0.5 } },
+    });
+    // Right edge: border on the left and ordered after the content.
+    expect(document.querySelector("nav.border-l")).not.toBeNull();
+    expect(document.querySelector("nav.order-last")).not.toBeNull();
+  });
+
   it("closes on a backdrop click", () => {
     const close = vi.fn();
     renderMenu({ nav: { open: true, close } });

@@ -37,6 +37,13 @@ export type NavContextValue = {
    * drawer instead (see `useEdgeSwipeOpen`).
    */
   showButton: boolean;
+  /**
+   * Whether the side menu is pinned open as a persistent docked sidebar
+   * (true on viewports at least as wide as the smallest iPad). When pinned
+   * the floating button, backdrop, and open/close gestures fall away — the
+   * panel is simply always there beside the content.
+   */
+  pinned: boolean;
 };
 
 export const NavContext = createContext<NavContextValue | null>(null);

@@ -54,7 +54,7 @@ names. Honour these when naming a new file, key, or string.
 | **Add-item button** / **floating add button** / **the + button** | `src/ui/AddItemButton.tsx`. [→](overview.md#add-item-button)                                   |
 | **Add-item form** / **composer** / **draft row**       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
-| **Side menu** / **drawer** / **nav**                   | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`). [→](overview.md#side-menu)            |
+| **Side menu** / **drawer** / **nav** / **sidebar**     | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`); pinned-from-iPad layout via `pinned` + `useMediaQuery` (`src/ui/hooks/useMediaQuery.ts`). [→](overview.md#side-menu)            |
 | **Swipe to remove** (sidebar) / **swipe a list/namespace away** | `useSwipeReveal` (`src/ui/hooks/useSwipeReveal.ts`); the `SwipeToRemove` wrapper in `src/ui/SideMenu.tsx`. [→](overview.md#swipe-to-remove-sidebar) |
 | **Floating menu button** / **drag button** / **sidebar button** | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`; `showButton` in `nav-context.ts`. [→](overview.md#floating-menu-button) |
 | **Edge swipe to open** / **swipe in from the edge**     | `useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`). [→](overview.md#edge-swipe-to-open) |

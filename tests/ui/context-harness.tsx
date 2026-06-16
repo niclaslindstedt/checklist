@@ -70,6 +70,7 @@ export function makeNavValue(
     position: { side: "left", y: 0.5 },
     setPosition: noop,
     showButton: true,
+    pinned: false,
     ...over,
   };
 }
