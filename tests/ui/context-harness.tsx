@@ -41,6 +41,7 @@ export function makeChecklistValue(
     archive: noop,
     unarchive: noop,
     reorder: noop,
+    addItemPosition: "bottom",
     reload: async () => {},
     conflict: null,
     resolveConflict: noop,

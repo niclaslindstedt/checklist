@@ -55,8 +55,11 @@ of `ChecklistView` / `ArchiveView` plus the always-mounted overlays
 `src/ui/ChecklistView.tsx` — the main screen. A pinned shell that never
 scrolls: a header (app wordmark, the checked/total progress count, the
 sync glyph, the header burger menu), an internally-scrolling list of
-`ChecklistRow`s, and a sticky `AddItemForm` composer at the bottom.
-Drag-to-reorder is wired here via `useListReorder`. The view is prop-free:
+`ChecklistRow`s, and the floating `AddItemButton` that opens the inline
+`AddItemForm` composer. Drag-to-reorder is wired here via `useListReorder`.
+The view owns the `drafting` flag that mounts the composer at the
+landing position (`addItemPosition`) and hides the button while it's
+open. The view is prop-free:
 it reads its items and actions from `useChecklistContext`
 (`src/ui/checklist-context.ts`). The `SyncInfo` type defined there carries
 everything `SyncStatus` needs — provider name, save status, dirty flag,
@@ -71,14 +74,27 @@ handle for vertical reordering. Swiping **left** latches open a Delete
 button (two-step, so a delete is never a single flick); swiping
 **right** archives the row (hidden, not destroyed).
 
+### Add-item button
+
+`src/ui/AddItemButton.tsx` — the "add item" affordance. On small
+viewports it's a circular floating action button centred at the bottom
+of the screen; from the `sm` breakpoint up it relaxes into a normal,
+clearly-styled accent button pinned under the list. Tapping it opens the
+inline composer (`AddItemForm`) rather than adding an item directly.
+`ChecklistView` hides the button while the composer is open.
+
 ### Add-item form
 
-`src/ui/AddItemForm.tsx` — the pinned composer at the bottom of the
-checklist view: a plus glyph, a `ClearableInput`, and a submit button.
-Enter adds the item, clears the field, and keeps focus so the user can
-type item after item without re-tapping — a plain-text-editor feel.
-Where the new item lands (top or bottom) follows the `addItemPosition`
-setting.
+`src/ui/AddItemForm.tsx` — the inline composer row opened by
+`AddItemButton`. It renders where the new item will land — styled like a
+real `ChecklistRow` so the spot reads as the item being created — and
+grabs focus so the soft keyboard comes straight up. Enter adds the item,
+clears the field, and keeps focus so the user can type item after item
+without re-tapping — a plain-text-editor feel. Blurring commits whatever
+was typed and closes; blurring an empty field just closes, so a blank
+item is never created or persisted. Where the new item lands (top or
+bottom) follows the `addItemPosition` setting, surfaced on the checklist
+surface for the view to place the draft row.
 
 ### Archive view
 
@@ -745,8 +761,9 @@ page, not chrome).
 
 ### Add an item
 
-Type into the `AddItemForm` composer and press Enter. Lands at the top
-or bottom per `addItemPosition`.
+Tap the floating `AddItemButton`, type into the inline `AddItemForm`
+composer that opens, and press Enter (or tap away to commit). Lands at
+the top or bottom per `addItemPosition`; an empty draft is discarded.
 
 ### Check / uncheck an item
 

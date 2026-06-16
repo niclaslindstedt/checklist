@@ -1,6 +1,7 @@
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { useT } from "../i18n";
+import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
@@ -38,11 +39,22 @@ function ChecklistViewImpl() {
     checklists,
     activeChecklistId,
     renameChecklist,
+    addItemPosition,
   } = useChecklistContext();
   const reorderCtl = useListReorder(reorder);
   const t = useT();
   const activeName =
     checklists.find((c) => c.id === activeChecklistId)?.name ?? t("app.title");
+
+  // The inline composer is only mounted while drafting: the add button opens
+  // it, Enter / blur-with-text commits through `addItem`, and an empty blur
+  // just unmounts it again — so a blank item is never created.
+  const [drafting, setDrafting] = useState(false);
+  const startDraft = useCallback(() => setDrafting(true), []);
+  const closeDraft = useCallback(() => setDrafting(false), []);
+  const draftRow = drafting ? (
+    <AddItemForm onAdd={addItem} onClose={closeDraft} />
+  ) : null;
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
@@ -75,11 +87,14 @@ function ChecklistViewImpl() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 [overscroll-behavior:contain] overflow-y-auto">
+      <div className="min-h-0 flex-1 [overscroll-behavior:contain] overflow-y-auto pb-24 sm:pb-0">
+        {addItemPosition === "top" && draftRow}
         {items.length === 0 ? (
-          <p className="px-2 py-8 text-center text-sm text-muted">
-            {t("app.empty")}
-          </p>
+          !drafting && (
+            <p className="px-2 py-8 text-center text-sm text-muted">
+              {t("app.empty")}
+            </p>
+          )
         ) : (
           <ul ref={reorderCtl.containerRef} className="m-0 list-none p-0">
             {items.map((item) => (
@@ -96,9 +111,10 @@ function ChecklistViewImpl() {
             ))}
           </ul>
         )}
+        {addItemPosition === "bottom" && draftRow}
       </div>
 
-      <AddItemForm onAdd={addItem} />
+      {!drafting && <AddItemButton onActivate={startDraft} />}
     </div>
   );
 }
