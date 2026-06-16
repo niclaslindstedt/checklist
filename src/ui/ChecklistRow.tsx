@@ -46,13 +46,27 @@ function ChecklistRowImpl({
       style={style}
       className="relative overflow-hidden border-b border-line"
     >
-      {/* Archive — uncovered by swiping the row right. */}
-      <div className="absolute inset-0 flex items-center justify-start bg-surface-2 pl-4 text-xs font-semibold tracking-wide text-muted uppercase">
+      {/* Archive — uncovered by swiping the row right. Hidden unless the
+          foreground is sliding right so the archive slide-off never bares
+          the trailing edge. */}
+      <div
+        aria-hidden={swipe.offset <= 0}
+        className={`absolute inset-0 flex items-center justify-start bg-surface-2 pl-4 text-xs font-semibold tracking-wide text-muted uppercase ${
+          swipe.offset > 0 ? "" : "invisible"
+        }`}
+      >
         {t("app.archive")}
       </div>
 
-      {/* Delete — uncovered by swiping the row left. */}
-      <div className="absolute inset-0 flex items-center justify-end">
+      {/* Delete — uncovered by swiping the row left. Kept hidden while the
+          row slides right to archive so the right-aligned button is never
+          exposed as the foreground clears the row. */}
+      <div
+        aria-hidden={swipe.offset >= 0}
+        className={`absolute inset-0 flex items-center justify-end ${
+          swipe.offset < 0 ? "" : "invisible"
+        }`}
+      >
         <button
           type="button"
           onClick={() => onDelete(item.id)}

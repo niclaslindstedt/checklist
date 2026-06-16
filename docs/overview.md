@@ -72,7 +72,13 @@ swipe-to-reveal interaction driven by `useRowSwipe`. The foreground
 holds a `Checkbox`, the title (struck through when checked), and a grip
 handle for vertical reordering. Swiping **left** latches open a Delete
 button (two-step, so a delete is never a single flick); swiping
-**right** archives the row (hidden, not destroyed).
+**right** archives the row (hidden, not destroyed). The two action
+layers are gated on the swipe direction (`swipe.offset`'s sign): the
+left-aligned Archive strip is visible only while sliding right, the
+right-aligned Delete button only while sliding left. That gating matters
+for the archive slide-off — the foreground travels the full row width to
+the right, so without it the trailing-edge Delete button would be bared
+as the row clears the screen on its way to the archive.
 
 ### Add-item button
 
