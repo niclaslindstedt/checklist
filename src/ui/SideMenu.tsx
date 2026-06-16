@@ -29,10 +29,15 @@ import {
 } from "./icons.tsx";
 import { useModalDispatch } from "./modal-bus.ts";
 
-// The navigation drawer. Collapsed to a single floating button the user
-// can drag to either side edge (its resting spot persists in settings);
-// pressing it slides the drawer in from that same side over a dimmed
-// backdrop. The drawer lists every checklist by name (the switcher — click
+// The navigation drawer. On viewports narrower than the smallest iPad it
+// collapses to a single floating button the user can drag to either side
+// edge (its resting spot persists in settings); pressing it slides the
+// drawer in from that same side over a dimmed backdrop. From the smallest
+// iPad up (`nav.pinned`) the same panel is instead docked open as a
+// permanent sidebar beside the content — no button, no backdrop, no
+// open/close — so wider screens always see the navigation. Both variants
+// render the identical section list (`sections` below); only the framing
+// differs. The drawer lists every checklist by name (the switcher — click
 // to make one active; a "+" on the Checklists heading adds a new one) with
 // the archive view at the foot of that same list, highlighting the active
 // list and current view. Selecting one navigates and closes the drawer.
@@ -87,6 +92,7 @@ export function SideMenu({
     position,
     setPosition,
     showButton,
+    pinned,
   } = useNav();
   const {
     undo,
@@ -133,6 +139,175 @@ export function SideMenu({
   }, [open, close]);
 
   const onRight = position.side === "right";
+
+  // The drawer's body — identical whether it slides in over a backdrop
+  // (narrow viewports) or sits docked as a permanent sidebar (pinned). Only
+  // the framing `<nav>` differs between the two, so the rows live here once.
+  const sections = (
+    <>
+      <SectionHeader
+        label={t("namespace.section")}
+        onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
+        addLabel={t("namespace.newAction")}
+      />
+      {namespaces.map((ns) => {
+        const row = (
+          <NavItem
+            icon={
+              ns.slug === activeNamespace ? (
+                <CheckIcon className="h-5 w-5" />
+              ) : (
+                <FolderIcon className="h-5 w-5" />
+              )
+            }
+            label={ns.name}
+            active={ns.slug === activeNamespace}
+            onClick={() => {
+              onSwitchNamespace(ns.slug);
+              close();
+            }}
+          />
+        );
+        // The default namespace can't be removed — render it plain.
+        if (ns.slug === DEFAULT_NAMESPACE_SLUG) {
+          return <div key={ns.slug}>{row}</div>;
+        }
+        return (
+          <SwipeToRemove
+            key={ns.slug}
+            actionLabel={t("namespace.deleteAction")}
+            confirmLabel={t("namespace.confirmDelete")}
+            onRemove={() => onRemoveNamespace(ns.slug)}
+          >
+            {row}
+          </SwipeToRemove>
+        );
+      })}
+      <SectionHeader
+        label={t("nav.checklists")}
+        border
+        onAdd={() => {
+          addChecklist();
+          navigate("checklist");
+        }}
+        addLabel={t("nav.newChecklist")}
+      />
+      {checklists.map((c) => {
+        const row = (
+          <NavItem
+            icon={
+              c.id === activeChecklistId ? (
+                <CheckIcon className="h-5 w-5" />
+              ) : (
+                <ChecklistIcon className="h-5 w-5" />
+              )
+            }
+            label={c.name}
+            active={c.id === activeChecklistId && current === "checklist"}
+            onClick={() => {
+              selectChecklist(c.id);
+              navigate("checklist");
+            }}
+          />
+        );
+        // The last remaining list can't be removed — the views always
+        // need one to show — so it renders without the swipe action.
+        if (checklists.length <= 1) {
+          return <div key={c.id}>{row}</div>;
+        }
+        return (
+          <SwipeToRemove
+            key={c.id}
+            actionLabel={t("nav.removeChecklist")}
+            onRemove={() => removeChecklist(c.id)}
+          >
+            {row}
+          </SwipeToRemove>
+        );
+      })}
+      {/* Archive lives at the foot of the checklists list — it's a
+                view onto the active list, not a section of its own. */}
+      <NavItem
+        icon={<ArchiveIcon className="h-5 w-5" />}
+        label={t("nav.archive")}
+        active={current === "archive"}
+        badge={archivedCount > 0 ? archivedCount : undefined}
+        onClick={() => navigate("archive")}
+      />
+      <SectionHeader label={t("nav.edit")} border />
+      {/* Undo / redo keep the drawer open so a burst of reverts can
+                be applied without reopening it each time. */}
+      <NavItem
+        icon={<UndoIcon className="h-5 w-5" />}
+        label={t("nav.undo")}
+        active={false}
+        disabled={!canUndo}
+        onClick={undo}
+      />
+      <NavItem
+        icon={<RedoIcon className="h-5 w-5" />}
+        label={t("nav.redo")}
+        active={false}
+        disabled={!canRedo}
+        onClick={redo}
+      />
+      {/* The old top-right burger menu, pinned to the foot of the
+                drawer with its order inverted so it reads bottom-up. */}
+      <div className="mt-auto flex flex-col border-t border-line">
+        {donateUrl && (
+          <MenuLink
+            icon={<HeartIcon className="h-5 w-5 text-danger" />}
+            label={t("menu.donate")}
+            href={donateUrl}
+            external
+            onClick={close}
+          />
+        )}
+        <MenuLink
+          icon={<CodeIcon className="h-5 w-5" />}
+          label={t("menu.source")}
+          href={SOURCE_URL}
+          external
+          sublabel={BUILD_LABEL}
+          onClick={close}
+        />
+        <MenuLink
+          icon={<ShieldIcon className="h-5 w-5" />}
+          label={t("menu.privacy")}
+          href={privacyUrl}
+          onClick={close}
+        />
+        <MenuButton
+          icon={<SparklesIcon className="h-5 w-5" />}
+          label={t("menu.changelog")}
+          onClick={() => pick(() => dispatch({ kind: "changelog" }))}
+        />
+        <MenuButton
+          icon={<CogIcon className="h-5 w-5" />}
+          label={t("menu.settings")}
+          onClick={() => pick(() => dispatch({ kind: "settings" }))}
+        />
+      </div>
+    </>
+  );
+
+  // Pinned: a permanent docked sidebar beside the content. No floating
+  // button, no backdrop, no open/close — it's simply always there. App lays
+  // it out as a flex sibling of the main view, so a fixed width and a single
+  // inner border (on whichever edge faces the content) is all the framing it
+  // needs. It docks on the same side the floating button rests on.
+  if (pinned) {
+    return (
+      <nav
+        aria-label={t("nav.label")}
+        className={`relative flex h-full w-64 shrink-0 flex-col overflow-y-auto bg-surface [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)] ${
+          onRight ? "order-last border-l border-line" : "border-r border-line"
+        }`}
+      >
+        {sections}
+      </nav>
+    );
+  }
 
   return (
     <>
@@ -185,149 +360,7 @@ export function SideMenu({
                 : "drawer-panel-left border-r border-line"
             }`}
           >
-            <SectionHeader
-              label={t("namespace.section")}
-              onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
-              addLabel={t("namespace.newAction")}
-            />
-            {namespaces.map((ns) => {
-              const row = (
-                <NavItem
-                  icon={
-                    ns.slug === activeNamespace ? (
-                      <CheckIcon className="h-5 w-5" />
-                    ) : (
-                      <FolderIcon className="h-5 w-5" />
-                    )
-                  }
-                  label={ns.name}
-                  active={ns.slug === activeNamespace}
-                  onClick={() => {
-                    onSwitchNamespace(ns.slug);
-                    close();
-                  }}
-                />
-              );
-              // The default namespace can't be removed — render it plain.
-              if (ns.slug === DEFAULT_NAMESPACE_SLUG) {
-                return <div key={ns.slug}>{row}</div>;
-              }
-              return (
-                <SwipeToRemove
-                  key={ns.slug}
-                  actionLabel={t("namespace.deleteAction")}
-                  confirmLabel={t("namespace.confirmDelete")}
-                  onRemove={() => onRemoveNamespace(ns.slug)}
-                >
-                  {row}
-                </SwipeToRemove>
-              );
-            })}
-            <SectionHeader
-              label={t("nav.checklists")}
-              border
-              onAdd={() => {
-                addChecklist();
-                navigate("checklist");
-              }}
-              addLabel={t("nav.newChecklist")}
-            />
-            {checklists.map((c) => {
-              const row = (
-                <NavItem
-                  icon={
-                    c.id === activeChecklistId ? (
-                      <CheckIcon className="h-5 w-5" />
-                    ) : (
-                      <ChecklistIcon className="h-5 w-5" />
-                    )
-                  }
-                  label={c.name}
-                  active={c.id === activeChecklistId && current === "checklist"}
-                  onClick={() => {
-                    selectChecklist(c.id);
-                    navigate("checklist");
-                  }}
-                />
-              );
-              // The last remaining list can't be removed — the views always
-              // need one to show — so it renders without the swipe action.
-              if (checklists.length <= 1) {
-                return <div key={c.id}>{row}</div>;
-              }
-              return (
-                <SwipeToRemove
-                  key={c.id}
-                  actionLabel={t("nav.removeChecklist")}
-                  onRemove={() => removeChecklist(c.id)}
-                >
-                  {row}
-                </SwipeToRemove>
-              );
-            })}
-            {/* Archive lives at the foot of the checklists list — it's a
-                view onto the active list, not a section of its own. */}
-            <NavItem
-              icon={<ArchiveIcon className="h-5 w-5" />}
-              label={t("nav.archive")}
-              active={current === "archive"}
-              badge={archivedCount > 0 ? archivedCount : undefined}
-              onClick={() => navigate("archive")}
-            />
-            <SectionHeader label={t("nav.edit")} border />
-            {/* Undo / redo keep the drawer open so a burst of reverts can
-                be applied without reopening it each time. */}
-            <NavItem
-              icon={<UndoIcon className="h-5 w-5" />}
-              label={t("nav.undo")}
-              active={false}
-              disabled={!canUndo}
-              onClick={undo}
-            />
-            <NavItem
-              icon={<RedoIcon className="h-5 w-5" />}
-              label={t("nav.redo")}
-              active={false}
-              disabled={!canRedo}
-              onClick={redo}
-            />
-            {/* The old top-right burger menu, pinned to the foot of the
-                drawer with its order inverted so it reads bottom-up. */}
-            <div className="mt-auto flex flex-col border-t border-line">
-              {donateUrl && (
-                <MenuLink
-                  icon={<HeartIcon className="h-5 w-5 text-danger" />}
-                  label={t("menu.donate")}
-                  href={donateUrl}
-                  external
-                  onClick={close}
-                />
-              )}
-              <MenuLink
-                icon={<CodeIcon className="h-5 w-5" />}
-                label={t("menu.source")}
-                href={SOURCE_URL}
-                external
-                sublabel={BUILD_LABEL}
-                onClick={close}
-              />
-              <MenuLink
-                icon={<ShieldIcon className="h-5 w-5" />}
-                label={t("menu.privacy")}
-                href={privacyUrl}
-                onClick={close}
-              />
-              <MenuButton
-                icon={<SparklesIcon className="h-5 w-5" />}
-                label={t("menu.changelog")}
-                onClick={() => pick(() => dispatch({ kind: "changelog" }))}
-              />
-              <MenuButton
-                icon={<CogIcon className="h-5 w-5" />}
-                label={t("menu.settings")}
-                onClick={() => pick(() => dispatch({ kind: "settings" }))}
-              />
-            </div>
+            {sections}
           </nav>
         </div>
       )}

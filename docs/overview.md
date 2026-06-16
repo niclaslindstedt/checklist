@@ -106,9 +106,17 @@ swiped-right in the checklist view. Reached from the side menu.
 
 ### Side menu
 
-`src/ui/SideMenu.tsx` — the navigation drawer, which collapses into a
-single floating menu button the user can drag to either vertical edge
-(its resting spot persists in `menuButtonPosition`). Pressing the
+`src/ui/SideMenu.tsx` — the navigation drawer. It has two layouts driven
+by viewport width (`nav.pinned`, fed by `useMediaQuery("(min-width:
+768px)")` in App — 768px is the smallest iPad, an iPad Mini in portrait).
+**From the smallest iPad up it is pinned open as a permanent docked
+sidebar** beside the content: no floating button, no backdrop, no
+open/close — App lays it out as a flex sibling of the main view (a fixed
+`w-64` panel with a single inner border, docked on whichever edge the
+floating button rests on via `order-last` for the right side). **Below
+that width it collapses** into a single floating menu button the user can
+drag to either vertical edge (its resting spot persists in
+`menuButtonPosition`). Pressing the
 button slides the drawer in from that edge over a dimmed backdrop (a CSS
 `animation` that plays off the mount — the `drawer-*` keyframes in
 `styles/theme.css` — so there is no first-frame snap). The drawer opens

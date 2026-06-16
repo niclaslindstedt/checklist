@@ -24,6 +24,7 @@ import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
+import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
@@ -92,6 +93,11 @@ function AppShell() {
   // persisted flag says (it's shared per-origin with the PWA).
   const standaloneMobile = useStandaloneMobile();
   const showMenuButton = !standaloneMobile || settings.showMenuButton;
+
+  // From the smallest iPad up (768px — iPad Mini portrait), the side menu is
+  // pinned open as a permanent docked sidebar rather than a drawer. Below
+  // that the floating-button drawer carries the navigation as before.
+  const pinned = useMediaQuery("(min-width: 768px)");
   const navigate = useCallback((next: View) => {
     setView(next);
     setMenuOpen(false);
@@ -198,7 +204,7 @@ function AppShell() {
   // owns the screen.
   useEdgeSwipeOpen({
     side: settings.menuButtonPosition.side,
-    enabled: !showMenuButton && !anyModalOpen && !menuOpen,
+    enabled: !showMenuButton && !anyModalOpen && !menuOpen && !pinned,
     onOpen: openMenu,
   });
 
@@ -230,6 +236,7 @@ function AppShell() {
       position: settings.menuButtonPosition,
       setPosition: (next) => update("menuButtonPosition", next),
       showButton: showMenuButton,
+      pinned,
     }),
     [
       menuOpen,
@@ -240,6 +247,7 @@ function AppShell() {
       settings.menuButtonPosition,
       update,
       showMenuButton,
+      pinned,
     ],
   );
 
@@ -250,13 +258,21 @@ function AppShell() {
           state={ptr.state}
           pullDistance={ptr.pullDistance}
         />
-        {view === "archive" ? <ArchiveView /> : <ChecklistView />}
-        <SideMenu
-          namespaces={storage.namespaces}
-          activeNamespace={storage.activeNamespace}
-          onSwitchNamespace={storage.switchNamespace}
-          onRemoveNamespace={removeNamespace}
-        />
+        {/* A flex row so the pinned sidebar docks beside the content. When
+            the menu isn't pinned, SideMenu renders only `position: fixed`
+            layers (the floating button and the overlay drawer), which sit
+            outside the flex flow — so the view keeps the full width. */}
+        <div className="flex h-full">
+          <SideMenu
+            namespaces={storage.namespaces}
+            activeNamespace={storage.activeNamespace}
+            onSwitchNamespace={storage.switchNamespace}
+            onRemoveNamespace={removeNamespace}
+          />
+          <main className="relative h-full min-w-0 flex-1">
+            {view === "archive" ? <ArchiveView /> : <ChecklistView />}
+          </main>
+        </div>
         <SettingsModalHost
           settings={settings}
           onUpdate={update}
