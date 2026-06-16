@@ -75,7 +75,10 @@ function tree({ nav = {}, checklist = {}, props = {} }: Options): ReactElement {
 
 function renderMenu(options: Options = {}) {
   const result = render(tree(options));
-  return { ...result, rerenderWith: (next: Options) => result.rerender(tree(next)) };
+  return {
+    ...result,
+    rerenderWith: (next: Options) => result.rerender(tree(next)),
+  };
 }
 
 function archived(count: number): ChecklistItem[] {
@@ -112,7 +115,10 @@ describe("SideMenu", () => {
   });
 
   it("shows the archived count as a badge when there are archived items", () => {
-    renderMenu({ nav: { open: true }, checklist: { archivedItems: archived(3) } });
+    renderMenu({
+      nav: { open: true },
+      checklist: { archivedItems: archived(3) },
+    });
     expect(screen.getByText("3")).toBeTruthy();
   });
 
@@ -250,5 +256,47 @@ describe("SideMenu", () => {
     fireEvent.click(btn);
     expect(setPosition).not.toHaveBeenCalled();
     expect(toggle).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression: with a visual-viewport offset present (the iOS keyboard
+  // case), the button must follow the finger 1:1 from where it rests, not
+  // jump by the offset the instant the drag starts. The drag is a delta
+  // from the press point added to the rendered top, so a 50px finger move
+  // is a 50px button move regardless of the offset.
+  it("tracks the finger 1:1 when the visual viewport is offset", () => {
+    const vv = {
+      width: 1024,
+      height: 500,
+      offsetLeft: 0,
+      offsetTop: 100,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const original = Object.getOwnPropertyDescriptor(window, "visualViewport");
+    Object.defineProperty(window, "visualViewport", {
+      value: vv,
+      configurable: true,
+    });
+    try {
+      renderMenu({ nav: { position: { side: "left", y: 0.5 } } });
+      const btn = screen.getByLabelText("Open navigation");
+      // Resting top within the 500px-tall visible box, shifted by offsetTop:
+      // 100 + 12 + 0.5 * (500 - 2*12 - 44) = 328.
+      const restTop = Number.parseFloat(btn.style.top);
+      expect(restTop).toBe(328);
+
+      pointer(btn, "pointerdown", { x: 12, y: restTop });
+      pointer(btn, "pointermove", { x: 12, y: restTop + 50 });
+      // 50px down from rest, not snapped to the top of the box.
+      expect(Number.parseFloat(btn.style.top)).toBe(restTop + 50);
+    } finally {
+      if (original) {
+        Object.defineProperty(window, "visualViewport", original);
+      } else {
+        // jsdom has no visualViewport by default — remove the stub.
+        delete (window as unknown as { visualViewport?: unknown })
+          .visualViewport;
+      }
+    }
   });
 });

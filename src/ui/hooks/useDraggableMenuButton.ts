@@ -98,10 +98,20 @@ export function useDraggableMenuButton(
 
   // The live top-left while dragging; null when resting at `position`.
   const [dragRect, setDragRect] = useState<Rect | null>(null);
+  // We track the drag as a pixel delta from the pointer-down point applied
+  // to the button's known style top-left (`baseLeft` / `baseTop`), rather
+  // than mapping the raw pointer coordinates into a position. `clientX` /
+  // `getBoundingClientRect` are visual-viewport relative while a fixed
+  // element's `style.top/left` are layout-viewport relative; on iOS those
+  // differ by the visual viewport's offset, so reading an absolute position
+  // would make the button jump by that offset the instant a drag began. A
+  // delta only relies on the pointer moving 1:1, which holds in either space.
   const drag = useRef<{
     pointerId: number;
-    offX: number;
-    offY: number;
+    startX: number;
+    startY: number;
+    baseLeft: number;
+    baseTop: number;
     moved: boolean;
   } | null>(null);
   // Set when a drag ends so the synthetic click can be ignored once.
@@ -121,18 +131,21 @@ export function useDraggableMenuButton(
     (e: React.PointerEvent<HTMLButtonElement>) => {
       if (e.button !== 0 && e.pointerType === "mouse") return;
       draggedRef.current = false;
-      const rect = e.currentTarget.getBoundingClientRect();
       drag.current = {
         pointerId: e.pointerId,
-        offX: e.clientX - rect.left,
-        offY: e.clientY - rect.top,
+        startX: e.clientX,
+        startY: e.clientY,
+        // Anchor to the position we're actually rendering, so the first
+        // move continues from there with no jump.
+        baseLeft: resting.left,
+        baseTop: resting.top,
         moved: false,
       };
       // Capture so the drag keeps tracking even if the pointer outruns the
       // button (guarded — jsdom and very old engines lack the API).
       e.currentTarget.setPointerCapture?.(e.pointerId);
     },
-    [],
+    [resting.left, resting.top],
   );
 
   const onPointerMove = useCallback(
@@ -140,20 +153,19 @@ export function useDraggableMenuButton(
       const d = drag.current;
       if (!d || e.pointerId !== d.pointerId) return;
       const { vw, vh, offsetLeft, offsetTop } = readViewport();
-      const left = e.clientX - d.offX;
-      const top = e.clientY - d.offY;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
       if (!d.moved) {
-        const far =
-          Math.abs(left - resting.left) > DRAG_THRESHOLD ||
-          Math.abs(top - resting.top) > DRAG_THRESHOLD;
-        if (!far) return;
+        if (Math.abs(dx) <= DRAG_THRESHOLD && Math.abs(dy) <= DRAG_THRESHOLD) {
+          return;
+        }
         d.moved = true;
         draggedRef.current = true;
       }
       setDragRect(
         clampRect(
-          left,
-          top,
+          d.baseLeft + dx,
+          d.baseTop + dy,
           vw,
           vh,
           MENU_BUTTON_SIZE,
@@ -163,7 +175,7 @@ export function useDraggableMenuButton(
         ),
       );
     },
-    [resting.left, resting.top],
+    [],
   );
 
   const endDrag = useCallback(
