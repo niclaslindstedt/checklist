@@ -2,9 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- `maximum-scale=1` + `user-scalable=no` disable pinch / double-tap
+         zoom. iOS Safari ignores this in a browser tab (by design, for
+         accessibility) but honours it in the installed standalone PWA, where
+         a stray pinch otherwise zooms the fixed shell larger than the screen
+         — the page then pans sideways with a horizontal scrollbar and the
+         text reflows mid-gesture. The app exposes its own text-size control
+         (Settings → Appearance, the `--app-font-scale` token) so zoom isn't
+         the only way to enlarge the UI. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#1f2933" />
