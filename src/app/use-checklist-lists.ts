@@ -18,6 +18,7 @@ import type { MutableRefObject } from "react";
 import {
   createChecklist,
   nextChecklistName,
+  progress,
   renameChecklist as renameChecklistOp,
 } from "../domain/checklists.ts";
 import type { Checklist, Snapshot } from "../domain/types.ts";
@@ -30,6 +31,8 @@ import { newId, now } from "./side-effects.ts";
 export interface ChecklistSummary {
   id: string;
   name: string;
+  /** Active (non-archived) items still unchecked — the switcher's badge. */
+  remaining: number;
 }
 
 export interface ChecklistLists {
@@ -147,7 +150,11 @@ export function useChecklistLists(deps: {
   );
 
   const checklists = useMemo(
-    () => doc.checklists.map((c) => ({ id: c.id, name: c.name })),
+    () =>
+      doc.checklists.map((c) => {
+        const { checked, total } = progress(c);
+        return { id: c.id, name: c.name, remaining: total - checked };
+      }),
     [doc.checklists],
   );
 

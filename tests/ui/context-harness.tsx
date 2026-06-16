@@ -30,7 +30,7 @@ export function makeChecklistValue(
     checkedCount: 0,
     activeList: fallbackList,
     activeChecklistId: fallbackList.id,
-    checklists: [{ id: fallbackList.id, name: fallbackList.name }],
+    checklists: [{ id: fallbackList.id, name: fallbackList.name, remaining: 0 }],
     selectChecklist: noop,
     addChecklist: noop,
     renameChecklist: noop,

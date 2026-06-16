@@ -133,9 +133,11 @@ with the **namespace** section — the known namespaces (the active one
 checked, click to switch), its heading carrying a trailing "+" that opens
 `NamespacesModal` — then the **Checklists** switcher (every list by name,
 the active one marked, click to switch + navigate; the heading's trailing
-"+" appends a default-named list), with the Archive view sitting at the
-foot of that same list (badged with the archived-item count) rather than
-in a section of its own, then the Undo / Redo actions; it highlights the
+"+" appends a default-named list; each row badged with that list's count
+of not-yet-completed items — active, non-archived, still unchecked —
+hidden when the list is empty or fully checked off), with the Archive view
+sitting at the foot of that same list (badged with the archived-item
+count) rather than in a section of its own, then the Undo / Redo actions; it highlights the
 active list and current view. The "+" affordances replace the full-width
 "New namespace" / "New checklist" rows the drawer used to carry, and a
 shared `SectionHeader` renders each heading with its optional action.

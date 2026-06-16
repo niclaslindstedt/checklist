@@ -178,6 +178,35 @@ describe("useChecklist multi-list verbs", () => {
     expect(result.current.items[0]!.title).toBe("milk");
   });
 
+  it("counts each list's not-yet-completed items in the summary", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    // A fresh list has nothing outstanding.
+    expect(result.current.checklists[0]!.remaining).toBe(0);
+
+    act(() => result.current.addItem("milk"));
+    act(() => result.current.addItem("eggs"));
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+    expect(result.current.checklists[0]!.remaining).toBe(2);
+
+    // Checking an item drops it from the count.
+    const milkId = result.current.items.find((it) => it.title === "milk")!.id;
+    act(() => result.current.toggle(milkId));
+    await waitFor(() =>
+      expect(result.current.checklists[0]!.remaining).toBe(1),
+    );
+
+    // Archiving the other (still-unchecked) item drops it too — archived
+    // items are not part of the active count.
+    const eggsId = result.current.items.find((it) => it.title === "eggs")!.id;
+    act(() => result.current.archive(eggsId));
+    await waitFor(() =>
+      expect(result.current.checklists[0]!.remaining).toBe(0),
+    );
+  });
+
   it("ignores a blank rename", async () => {
     const adapter = memoryAdapter();
     const { result } = renderHook(() => useChecklist(adapter));

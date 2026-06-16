@@ -127,8 +127,8 @@ describe("SideMenu", () => {
       nav: { open: true, navigate },
       checklist: {
         checklists: [
-          { id: "c1", name: "Groceries" },
-          { id: "c2", name: "Packing" },
+          { id: "c1", name: "Groceries", remaining: 0 },
+          { id: "c2", name: "Packing", remaining: 0 },
         ],
         activeChecklistId: "c1",
         selectChecklist,
@@ -138,6 +138,27 @@ describe("SideMenu", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: /Packing/ }));
     expect(selectChecklist).toHaveBeenCalledWith("c2");
     expect(navigate).toHaveBeenCalledWith("checklist");
+  });
+
+  it("badges a checklist with its not-yet-completed item count", () => {
+    renderMenu({
+      nav: { open: true },
+      checklist: {
+        checklists: [
+          { id: "c1", name: "Groceries", remaining: 3 },
+          { id: "c2", name: "Packing", remaining: 0 },
+        ],
+        activeChecklistId: "c1",
+      },
+    });
+    // The list with outstanding items reads its name and the count.
+    expect(
+      screen.getByRole("menuitem", { name: /Groceries/ }).textContent,
+    ).toContain("3");
+    // A fully-completed (or empty) list shows no badge.
+    expect(
+      screen.getByRole("menuitem", { name: /Packing/ }).textContent,
+    ).not.toContain("0");
   });
 
   it("adds a checklist from the Checklists heading's add button", () => {
@@ -209,8 +230,8 @@ describe("SideMenu", () => {
       nav: { open: true },
       checklist: {
         checklists: [
-          { id: "c1", name: "Groceries" },
-          { id: "c2", name: "Packing" },
+          { id: "c1", name: "Groceries", remaining: 0 },
+          { id: "c2", name: "Packing", remaining: 0 },
         ],
         activeChecklistId: "c1",
         removeChecklist,
@@ -227,7 +248,7 @@ describe("SideMenu", () => {
     renderMenu({
       nav: { open: true },
       checklist: {
-        checklists: [{ id: "c1", name: "Groceries" }],
+        checklists: [{ id: "c1", name: "Groceries", remaining: 0 }],
         activeChecklistId: "c1",
       },
     });

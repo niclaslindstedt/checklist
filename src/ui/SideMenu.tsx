@@ -215,6 +215,7 @@ export function SideMenu({
             }
             label={c.name}
             active={c.id === activeChecklistId && current === "checklist"}
+            badge={c.remaining > 0 ? c.remaining : undefined}
             onClick={() => {
               selectChecklist(c.id);
               navigate("checklist");
