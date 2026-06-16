@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "checklist",
+    "slug": "checklist",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "checklist",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f1115"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "se.niclaslindstedt.checklist"
+    },
+    "android": {
+      "package": "se.niclaslindstedt.checklist"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
