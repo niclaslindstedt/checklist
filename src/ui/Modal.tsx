@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { useT } from "../i18n";
+import { APP_VIEWPORT_RECT } from "./appViewportRect.ts";
 
 // Minimal accessible modal: a dimmed backdrop with a centered card.
 // Closes on Escape and backdrop click, locks body scroll while open,
@@ -52,7 +53,10 @@ export function Modal({ open, onClose, labelledBy, children }: Props) {
   // a non-interactive element; the dialog itself is a plain focusable
   // container layered above it.
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center sm:items-center sm:p-4">
+    <div
+      className="fixed z-50 flex items-stretch justify-center sm:items-center sm:p-4"
+      style={APP_VIEWPORT_RECT}
+    >
       <button
         type="button"
         aria-label={t("common.close")}
