@@ -117,9 +117,9 @@ function ChecklistViewImpl({
               <ChecklistRow
                 key={item.id}
                 item={item}
-                onToggle={() => onToggle(item.id)}
-                onArchive={() => onArchive(item.id)}
-                onDelete={() => onRemove(item.id)}
+                onToggle={onToggle}
+                onArchive={onArchive}
+                onDelete={onRemove}
                 dragHandleProps={reorder.dragHandleProps(item.id)}
                 dragging={reorder.draggingId === item.id}
                 style={reorder.rowStyle(item.id)}

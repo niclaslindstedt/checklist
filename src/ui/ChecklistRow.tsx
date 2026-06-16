@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { memo, useCallback, type CSSProperties } from "react";
 
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -11,18 +11,23 @@ import { GripIcon } from "./icons.tsx";
 // swiping the foreground right uncovers Archive (and triggers it past the
 // threshold), swiping left latches open to reveal the Delete button. A grip
 // handle on the trailing edge starts a vertical drag-to-reorder instead.
+//
+// The callbacks take the item id (rather than being pre-bound by the
+// parent) so the parent can pass referentially stable handlers; paired
+// with the `memo` wrapper below, that means an edit re-renders only the
+// row whose `item` actually changed instead of every row in the list.
 
 type Props = {
   item: ChecklistItem;
-  onToggle: () => void;
-  onArchive: () => void;
-  onDelete: () => void;
+  onToggle: (id: string) => void;
+  onArchive: (id: string) => void;
+  onDelete: (id: string) => void;
   dragHandleProps: DragHandleProps;
   dragging: boolean;
   style?: CSSProperties;
 };
 
-export function ChecklistRow({
+function ChecklistRowImpl({
   item,
   onToggle,
   onArchive,
@@ -31,7 +36,8 @@ export function ChecklistRow({
   dragging,
   style,
 }: Props) {
-  const swipe = useRowSwipe(onArchive);
+  const archive = useCallback(() => onArchive(item.id), [onArchive, item.id]);
+  const swipe = useRowSwipe(archive);
   const t = useT();
 
   return (
@@ -49,7 +55,7 @@ export function ChecklistRow({
       <div className="absolute inset-0 flex items-center justify-end">
         <button
           type="button"
-          onClick={onDelete}
+          onClick={() => onDelete(item.id)}
           className="h-full w-24 bg-danger text-xs font-semibold tracking-wide text-white uppercase"
         >
           {t("app.delete")}
@@ -66,7 +72,7 @@ export function ChecklistRow({
       >
         <Checkbox
           checked={item.checked}
-          onChange={() => onToggle()}
+          onChange={() => onToggle(item.id)}
           ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
         />
         <span
@@ -88,3 +94,5 @@ export function ChecklistRow({
     </li>
   );
 }
+
+export const ChecklistRow = memo(ChecklistRowImpl);
