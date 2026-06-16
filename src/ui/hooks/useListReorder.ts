@@ -50,6 +50,11 @@ export function useListReorder(
   const [targetIndex, setTargetIndex] = useState(-1);
 
   const rects = useRef<Rect[]>([]);
+  // `id → index` into `rects.current`, rebuilt each pointer-down. Lets
+  // `rowStyle` resolve a row's slot in O(1) instead of an O(N) `findIndex`
+  // per row, which during a drag (one render per pointermove) is the
+  // difference between an O(N) and an O(N²) re-render.
+  const rectIndex = useRef<Map<string, number>>(new Map());
   const dragIndex = useRef(-1);
   const startY = useRef(0);
   const pointerId = useRef<number | null>(null);
@@ -84,9 +89,12 @@ export function useListReorder(
       // Keep the row's swipe gesture from arming on the same press.
       e.stopPropagation();
       const measured = measure();
-      const index = measured.findIndex((r) => r.id === id);
+      const byId = new Map<string, number>();
+      measured.forEach((r, i) => byId.set(r.id, i));
+      const index = byId.get(id) ?? -1;
       if (index === -1) return;
       rects.current = measured;
+      rectIndex.current = byId;
       dragIndex.current = index;
       startY.current = e.clientY;
       pointerId.current = e.pointerId;
@@ -159,7 +167,7 @@ export function useListReorder(
       }
       const list = rects.current;
       const from = dragIndex.current;
-      const j = list.findIndex((r) => r.id === id);
+      const j = rectIndex.current.get(id) ?? -1;
       if (j === -1 || from === -1) return {};
       const h = list[from]?.height ?? 0;
       let shift = 0;
