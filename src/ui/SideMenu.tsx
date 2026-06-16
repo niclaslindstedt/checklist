@@ -1,7 +1,13 @@
 import { useEffect, useId, type ReactNode } from "react";
 
 import { useT } from "../i18n";
-import { ArchiveIcon, ChecklistIcon, MenuIcon } from "./icons.tsx";
+import {
+  ArchiveIcon,
+  ChecklistIcon,
+  MenuIcon,
+  RedoIcon,
+  UndoIcon,
+} from "./icons.tsx";
 
 // The left navigation drawer. Collapsed to a single floating button on
 // the left edge; pressing it slides the drawer in over a dimmed backdrop.
@@ -21,6 +27,14 @@ type Props = {
   onNavigate: (view: View) => void;
   /** Archived-item count, shown as a badge beside the Archive entry. */
   archivedCount: number;
+  /** Revert the last edit. */
+  onUndo: () => void;
+  /** Re-apply the most recently undone edit. */
+  onRedo: () => void;
+  /** Whether there is a prior edit to revert. */
+  canUndo: boolean;
+  /** Whether there is an undone edit to re-apply. */
+  canRedo: boolean;
 };
 
 export function SideMenu({
@@ -30,6 +44,10 @@ export function SideMenu({
   current,
   onNavigate,
   archivedCount,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: Props) {
   const t = useT();
   const drawerId = useId();
@@ -89,6 +107,25 @@ export function SideMenu({
               badge={archivedCount > 0 ? archivedCount : undefined}
               onClick={() => onNavigate("archive")}
             />
+            <p className="border-t border-line px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+              {t("nav.edit")}
+            </p>
+            {/* Undo / redo keep the drawer open so a burst of reverts can
+                be applied without reopening it each time. */}
+            <NavItem
+              icon={<UndoIcon className="h-5 w-5" />}
+              label={t("nav.undo")}
+              active={false}
+              disabled={!canUndo}
+              onClick={onUndo}
+            />
+            <NavItem
+              icon={<RedoIcon className="h-5 w-5" />}
+              label={t("nav.redo")}
+              active={false}
+              disabled={!canRedo}
+              onClick={onRedo}
+            />
           </nav>
         </div>
       )}
@@ -101,12 +138,14 @@ function NavItem({
   label,
   active,
   badge,
+  disabled = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   active: boolean;
   badge?: number;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -114,14 +153,23 @@ function NavItem({
       type="button"
       role="menuitem"
       aria-current={active ? "page" : undefined}
+      disabled={disabled}
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm ${
-        active
-          ? "bg-surface-2 font-semibold text-fg-bright"
-          : "text-fg hover:bg-surface-2 hover:text-fg-bright"
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm ${
+        disabled
+          ? "cursor-not-allowed text-muted/50"
+          : active
+            ? "cursor-pointer bg-surface-2 font-semibold text-fg-bright"
+            : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
       }`}
     >
-      <span className={active ? "text-accent" : "text-muted"}>{icon}</span>
+      <span
+        className={
+          disabled ? "text-muted/50" : active ? "text-accent" : "text-muted"
+        }
+      >
+        {icon}
+      </span>
       <span className="flex-1">{label}</span>
       {badge !== undefined && (
         <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted tabular-nums">

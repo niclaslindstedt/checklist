@@ -15,6 +15,10 @@ function renderMenu(props: Partial<React.ComponentProps<typeof SideMenu>>) {
       current="checklist"
       onNavigate={noop}
       archivedCount={0}
+      onUndo={noop}
+      onRedo={noop}
+      canUndo={false}
+      canRedo={false}
       {...props}
     />,
   );
@@ -47,6 +51,19 @@ describe("SideMenu", () => {
   it("shows the archived count as a badge when there are archived items", () => {
     renderMenu({ open: true, archivedCount: 3 });
     expect(screen.getByText("3")).toBeTruthy();
+  });
+
+  it("invokes undo / redo and disables them when there's no history", () => {
+    const onUndo = vi.fn();
+    const onRedo = vi.fn();
+    renderMenu({ open: true, onUndo, onRedo, canUndo: true, canRedo: false });
+    const undo = screen.getByRole("menuitem", { name: "Undo" });
+    const redo = screen.getByRole("menuitem", { name: "Redo" });
+    expect((redo as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(redo);
+    expect(onRedo).not.toHaveBeenCalled();
+    fireEvent.click(undo);
+    expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
   it("closes on a backdrop click", () => {

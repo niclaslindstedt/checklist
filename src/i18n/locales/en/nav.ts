@@ -12,6 +12,9 @@ const nav = {
   archive: "Archive",
   archiveEmpty: "Nothing archived — swipe an item right to archive it.",
   restore: "Restore item",
+  edit: "Edit",
+  undo: "Undo",
+  redo: "Redo",
 } as const;
 
 export type NavCatalog = Widen<typeof nav>;
