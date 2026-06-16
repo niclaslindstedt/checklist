@@ -29,8 +29,10 @@ import {
 // archive) and highlights the current one. Selecting a view navigates and
 // closes the drawer. Pinned to the bottom is what used to be the top-right
 // burger menu — settings, "what's new", and the project links (privacy,
-// source with the build label, optional donate), in inverted order so the
-// whole of it sits flush at the foot of the drawer. Kept presentational —
+// source with the app version as a subtitle, optional donate), in inverted
+// order so the whole of it sits flush at the foot of the drawer. The drawer
+// itself slides in from its resting edge on open (see the `drawer-*`
+// keyframes in styles/theme.css). Kept presentational —
 // App owns the open/current state and the persisted position, mirroring
 // how ChecklistView is wired.
 
@@ -170,13 +172,15 @@ export function SideMenu({
             aria-label={t("nav.close")}
             tabIndex={-1}
             onClick={onClose}
-            className="absolute inset-0 cursor-default bg-black/50"
+            className="drawer-backdrop absolute inset-0 cursor-default bg-black/50"
           />
           <nav
             id={drawerId}
             aria-label={t("nav.label")}
             className={`relative flex w-64 max-w-[80%] flex-col overflow-y-auto bg-surface shadow-xl [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)] ${
-              onRight ? "border-l border-line" : "border-r border-line"
+              onRight
+                ? "drawer-panel-right border-l border-line"
+                : "drawer-panel-left border-r border-line"
             }`}
           >
             <p className="border-b border-line px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
@@ -258,7 +262,7 @@ export function SideMenu({
                 label={t("menu.source")}
                 href={SOURCE_URL}
                 external
-                meta={BUILD_LABEL}
+                sublabel={BUILD_LABEL}
                 onClick={onClose}
               />
               <MenuLink
@@ -362,14 +366,15 @@ function MenuLink({
   label,
   href,
   external,
-  meta,
+  sublabel,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   href: string;
   external?: boolean;
-  meta?: string;
+  /** Secondary line beneath the label (e.g. the app version). */
+  sublabel?: string;
   onClick?: () => void;
 }) {
   return (
@@ -382,8 +387,12 @@ function MenuLink({
       className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
     >
       <span className="text-muted">{icon}</span>
-      <span className="flex-1">{label}</span>
-      {meta && <span className="text-xs text-muted tabular-nums">{meta}</span>}
+      <span className="flex flex-1 flex-col">
+        <span>{label}</span>
+        {sublabel && (
+          <span className="text-xs text-muted tabular-nums">{sublabel}</span>
+        )}
+      </span>
     </a>
   );
 }

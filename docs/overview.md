@@ -86,13 +86,18 @@ swiped-right in the checklist view. Reached from the side menu.
 `src/ui/SideMenu.tsx` — the navigation drawer, which collapses into a
 single floating menu button the user can drag to either vertical edge
 (its resting spot persists in `menuButtonPosition`). Pressing the
-button slides the drawer in from that edge over a dimmed backdrop. The
-drawer opens with the **namespace** section — the known namespaces (the
-active one checked, click to switch) and a "New namespace" entry that
-opens `NamespacesModal` — then lists the views (Checklist, Archive — the
-latter badged with the archived-item count) and the Undo / Redo actions,
-and highlights the current view. The `View` type
-(`"checklist" | "archive"`) is exported here. Closes on Escape or
+button slides the drawer in from that edge over a dimmed backdrop (a CSS
+`animation` that plays off the mount — the `drawer-*` keyframes in
+`styles/theme.css` — so there is no first-frame snap). The drawer opens
+with the **namespace** section — the known namespaces (the active one
+checked, click to switch) and a "New namespace" entry that opens
+`NamespacesModal` — then lists the views (Checklist, Archive — the latter
+badged with the archived-item count) and the Undo / Redo actions, and
+highlights the current view. Pinned to the foot are the relocated
+burger-menu links — settings, "what's new", privacy, the source on GitHub
+(with the app version shown as a subtitle), and an optional donate link.
+The `View` type (`"checklist" | "archive"`) is exported here. Closes on
+Escape or
 backdrop click. The floating button itself is positioned by
 `useDraggableMenuButton` over the geometry in `sideMenuPosition.ts`.
 

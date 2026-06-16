@@ -140,6 +140,43 @@ describe("SideMenu", () => {
     expect(screen.getByRole("menuitem", { name: /View source/ })).toBeTruthy();
   });
 
+  it("shows the build version as a subtitle under View source", () => {
+    renderMenu({ open: true });
+    const source = screen.getByRole("menuitem", { name: /View source/ });
+    // build-env's __BUILD_LABEL__ resolves to the package version in the
+    // test build, so the subtitle renders as a second line in the item.
+    expect(source.textContent).toContain("View source");
+    expect(source.textContent).not.toBe("View source");
+  });
+
+  it("slides the panel in from the resting edge", () => {
+    const { rerender } = renderMenu({ open: true });
+    expect(document.querySelector("nav.drawer-panel-left")).not.toBeNull();
+
+    rerender(
+      <SideMenu
+        open
+        onToggle={noop}
+        onClose={noop}
+        current="checklist"
+        onNavigate={noop}
+        archivedCount={0}
+        namespaces={[{ slug: "default", name: "Default" }]}
+        activeNamespace="default"
+        onSwitchNamespace={noop}
+        onManageNamespaces={noop}
+        onUndo={noop}
+        onRedo={noop}
+        canUndo={false}
+        canRedo={false}
+        onOpenSettings={noop}
+        onOpenChangelog={noop}
+        position={{ side: "right", y: 0.5 }}
+      />,
+    );
+    expect(document.querySelector("nav.drawer-panel-right")).not.toBeNull();
+  });
+
   it("closes on a backdrop click", () => {
     const onClose = vi.fn();
     renderMenu({ open: true, onClose });
