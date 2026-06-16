@@ -24,7 +24,7 @@ import {
   type RadiusPreset,
   type ThemePreset,
 } from "../theme/themes.ts";
-import type { AddItemPosition, Settings } from "./types.ts";
+import type { AddItemPosition, MenuButtonPosition, Settings } from "./types.ts";
 
 const SETTINGS_KEY = "checklist:settings:v1";
 
@@ -34,6 +34,13 @@ const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 // before this preference existed.
 export const DEFAULT_ADD_ITEM_POSITION: AddItemPosition = "bottom";
 
+// The floating navigation button starts pinned to the left edge, halfway
+// down — where it lived before it became draggable.
+export const DEFAULT_MENU_BUTTON_POSITION: MenuButtonPosition = {
+  side: "left",
+  y: 0.5,
+};
+
 export function defaultSettings(): Settings {
   return {
     theme: DEFAULT_THEME,
@@ -41,7 +48,22 @@ export function defaultSettings(): Settings {
     fontScale: DEFAULT_FONT_SCALE,
     customTheme: DEFAULT_CUSTOM_THEME,
     addItemPosition: DEFAULT_ADD_ITEM_POSITION,
+    menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
   };
+}
+
+function validMenuButtonPosition(v: unknown): MenuButtonPosition {
+  if (!isRecord(v)) return DEFAULT_MENU_BUTTON_POSITION;
+  const side = oneOf<MenuButtonPosition["side"]>(
+    v.side,
+    ["left", "right"],
+    DEFAULT_MENU_BUTTON_POSITION.side,
+  );
+  const y =
+    typeof v.y === "number" && Number.isFinite(v.y)
+      ? Math.min(1, Math.max(0, v.y))
+      : DEFAULT_MENU_BUTTON_POSITION.y;
+  return { side, y };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -117,6 +139,7 @@ export function validateSettings(raw: unknown): Settings {
       ["top", "bottom"],
       DEFAULT_ADD_ITEM_POSITION,
     ),
+    menuButtonPosition: validMenuButtonPosition(raw.menuButtonPosition),
   };
 }
 
