@@ -38,6 +38,8 @@ export function App() {
 
   // The left navigation drawer and which top-level view it has selected.
   const [menuOpen, setMenuOpen] = useState(false);
+  // True while the floating menu button is being dragged to a new edge.
+  const [menuButtonDragging, setMenuButtonDragging] = useState(false);
   const [view, setView] = useState<View>("checklist");
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -92,10 +94,15 @@ export function App() {
 
   // Pull-to-refresh: a downward drag from the top of the list re-reads the
   // active backend (see `useChecklist.reload`). Gated off while a modal
-  // owns the screen.
+  // owns the screen, and while the floating menu button is being dragged —
+  // dragging it downward would otherwise arm a refresh at the same time.
   const ptr = usePullToRefresh(checklist.reload, {
     enabled:
-      !settingsOpen && !changelogOpen && !menuOpen && view === "checklist",
+      !settingsOpen &&
+      !changelogOpen &&
+      !menuOpen &&
+      !menuButtonDragging &&
+      view === "checklist",
   });
 
   // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z mirror the burger-menu undo & redo.
@@ -145,6 +152,7 @@ export function App() {
         onOpenChangelog={openChangelog}
         position={settings.menuButtonPosition}
         onPositionChange={(next) => update("menuButtonPosition", next)}
+        onDraggingChange={setMenuButtonDragging}
       />
       <SettingsModal
         open={settingsOpen}

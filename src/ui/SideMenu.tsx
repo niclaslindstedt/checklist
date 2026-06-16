@@ -59,6 +59,12 @@ type Props = {
   position?: MenuButtonPosition;
   /** Persist a new resting spot after the user drags the button. */
   onPositionChange?: (next: MenuButtonPosition) => void;
+  /**
+   * Reports whether the floating button is mid-drag, so the parent can
+   * suppress competing global gestures (pull-to-refresh) while the user is
+   * dragging the button around.
+   */
+  onDraggingChange?: (dragging: boolean) => void;
 };
 
 export function SideMenu({
@@ -76,10 +82,17 @@ export function SideMenu({
   onOpenChangelog,
   position = DEFAULT_MENU_BUTTON_POSITION,
   onPositionChange,
+  onDraggingChange,
 }: Props) {
   const t = useT();
   const drawerId = useId();
   const drag = useDraggableMenuButton(position, onPositionChange ?? (() => {}));
+
+  // Mirror the live drag state up so the parent can gate pull-to-refresh
+  // off while the button is being dragged.
+  useEffect(() => {
+    onDraggingChange?.(drag.dragging);
+  }, [drag.dragging, onDraggingChange]);
 
   // Build-time env (string | undefined). A blank value disables the donate
   // entry entirely rather than linking nowhere.
