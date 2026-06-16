@@ -27,9 +27,11 @@ import { useModalDispatch } from "./modal-bus.ts";
 // can drag to either side edge (its resting spot persists in settings);
 // pressing it slides the drawer in from that same side over a dimmed
 // backdrop. The drawer lists every checklist by name (the switcher — click
-// to make one active, plus a "new checklist" action) and the archive view,
-// highlighting the active list and current view. Selecting one navigates and
-// closes the drawer. Pinned to the bottom is what used to be the top-right
+// to make one active; a "+" on the Checklists heading adds a new one) with
+// the archive view at the foot of that same list, highlighting the active
+// list and current view. Selecting one navigates and closes the drawer.
+// The Namespace heading carries its own "+" to add a namespace. Pinned to
+// the bottom is what used to be the top-right
 // burger menu — settings, "what's new", and the project links (privacy,
 // source with the app version as a subtitle, optional donate), in inverted
 // order so the whole of it sits flush at the foot of the drawer. The drawer
@@ -160,9 +162,11 @@ export function SideMenu({
                 : "drawer-panel-left border-r border-line"
             }`}
           >
-            <p className="border-b border-line px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
-              {t("namespace.section")}
-            </p>
+            <SectionHeader
+              label={t("namespace.section")}
+              onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
+              addLabel={t("namespace.newAction")}
+            />
             {namespaces.map((ns) => (
               <NavItem
                 key={ns.slug}
@@ -181,15 +185,15 @@ export function SideMenu({
                 }}
               />
             ))}
-            <NavItem
-              icon={<PlusIcon className="h-5 w-5" />}
-              label={t("namespace.newAction")}
-              active={false}
-              onClick={() => pick(() => dispatch({ kind: "namespaces" }))}
+            <SectionHeader
+              label={t("nav.checklists")}
+              border
+              onAdd={() => {
+                addChecklist();
+                navigate("checklist");
+              }}
+              addLabel={t("nav.newChecklist")}
             />
-            <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
-              {t("nav.checklists")}
-            </p>
             {checklists.map((c) => (
               <NavItem
                 key={c.id}
@@ -208,18 +212,8 @@ export function SideMenu({
                 }}
               />
             ))}
-            <NavItem
-              icon={<PlusIcon className="h-5 w-5" />}
-              label={t("nav.newChecklist")}
-              active={false}
-              onClick={() => {
-                addChecklist();
-                navigate("checklist");
-              }}
-            />
-            <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
-              {t("nav.label")}
-            </p>
+            {/* Archive lives at the foot of the checklists list — it's a
+                view onto the active list, not a section of its own. */}
             <NavItem
               icon={<ArchiveIcon className="h-5 w-5" />}
               label={t("nav.archive")}
@@ -227,9 +221,7 @@ export function SideMenu({
               badge={archivedCount > 0 ? archivedCount : undefined}
               onClick={() => navigate("archive")}
             />
-            <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
-              {t("nav.edit")}
-            </p>
+            <SectionHeader label={t("nav.edit")} border />
             {/* Undo / redo keep the drawer open so a burst of reverts can
                 be applied without reopening it each time. */}
             <NavItem
@@ -290,6 +282,46 @@ export function SideMenu({
   );
 }
 
+// A section label with an optional "+" action pinned to its trailing
+// edge (used for the Namespace and Checklists headings, where the plus
+// adds a new namespace / checklist — replacing what used to be a full-
+// width "New …" row beneath the list). The first section omits the top
+// border; every later one draws one to separate it from the rows above.
+function SectionHeader({
+  label,
+  border = false,
+  onAdd,
+  addLabel,
+}: {
+  label: string;
+  border?: boolean;
+  onAdd?: () => void;
+  addLabel?: string;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-2 px-5 pt-3 pb-1 ${
+        border ? "border-t border-line" : ""
+      }`}
+    >
+      <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+        {label}
+      </span>
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label={addLabel}
+          title={addLabel}
+          className="-mr-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function NavItem({
   icon,
   label,
@@ -312,7 +344,7 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm ${
+      className={`flex w-full items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm ${
         disabled
           ? "cursor-not-allowed text-muted/50"
           : active
@@ -337,9 +369,10 @@ function NavItem({
   );
 }
 
-// Footer rows reuse the NavItem geometry (px-5 py-3, gap-3, h-5 icons) so
-// the relocated burger menu reads as one continuous list with the views
-// above it. A plain button for in-app actions, an anchor for the links.
+// Footer rows reuse the NavItem geometry (px-5, the density vertical
+// padding, gap-3, h-5 icons) so the relocated burger menu reads as one
+// continuous list with the rows above it. A plain button for in-app
+// actions, an anchor for the links.
 function MenuButton({
   icon,
   label,
@@ -354,7 +387,7 @@ function MenuButton({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
+      className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
     >
       <span className="text-muted">{icon}</span>
       <span className="flex-1">{label}</span>
@@ -385,7 +418,7 @@ function MenuLink({
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer noopener" : undefined}
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
+      className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
     >
       <span className="text-muted">{icon}</span>
       <span className="flex flex-1 flex-col">

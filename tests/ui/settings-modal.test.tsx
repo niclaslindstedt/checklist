@@ -70,9 +70,10 @@ function renderModal(
 }
 
 describe("SettingsModal", () => {
-  it("lands on General with only General and Theme tabs", () => {
+  it("lands on General with the General, Lists, Theme, and Storage tabs", () => {
     renderModal();
     expect(screen.getByRole("tab", { name: "General" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Lists" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Theme" })).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Logs" })).toBeNull();
@@ -86,8 +87,9 @@ describe("SettingsModal", () => {
     expect(onUpdate).toHaveBeenCalledWith("theme", "dracula");
   });
 
-  it("updates addItemPosition from the General tab", () => {
+  it("updates addItemPosition from the Lists tab", () => {
     const { onUpdate } = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "Lists" }));
     fireEvent.click(screen.getByRole("radio", { name: "Top" }));
     expect(onUpdate).toHaveBeenCalledWith("addItemPosition", "top");
   });

@@ -66,7 +66,7 @@ function ChecklistRowImpl({
       <div
         {...swipe.handlers}
         style={{ transform: `translateX(${swipe.offset}px)` }}
-        className={`relative flex min-h-11 items-center gap-3 px-3 py-2 [touch-action:pan-y] ${
+        className={`relative flex min-h-11 items-center gap-3 px-[var(--density-row-px)] py-[var(--density-row-py)] [touch-action:pan-y] ${
           dragging ? "bg-surface-2" : "bg-page-bg"
         } ${swipe.animating ? "transition-transform duration-200" : ""}`}
       >

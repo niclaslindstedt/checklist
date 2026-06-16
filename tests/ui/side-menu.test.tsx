@@ -128,14 +128,14 @@ describe("SideMenu", () => {
     expect(navigate).toHaveBeenCalledWith("checklist");
   });
 
-  it("adds a checklist from the New checklist entry", () => {
+  it("adds a checklist from the Checklists heading's add button", () => {
     const addChecklist = vi.fn();
     const navigate = vi.fn();
     renderMenu({
       nav: { open: true, navigate },
       checklist: { addChecklist },
     });
-    fireEvent.click(screen.getByRole("menuitem", { name: "New checklist" }));
+    fireEvent.click(screen.getByRole("button", { name: "New checklist" }));
     expect(addChecklist).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith("checklist");
   });
@@ -189,9 +189,9 @@ describe("SideMenu", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it("opens namespace management from the New namespace entry", () => {
+  it("opens namespace management from the Namespace heading's add button", () => {
     renderMenu({ nav: { open: true } });
-    fireEvent.click(screen.getByRole("menuitem", { name: "New namespace" }));
+    fireEvent.click(screen.getByRole("button", { name: "New namespace" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("namespaces");
   });
 
