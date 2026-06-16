@@ -80,27 +80,6 @@ and update this file in the same PR.
 
 ### Severity 7–8 — multipliers
 
-#### R1. App.tsx owns every modal's open/close state and threads it as props
-
-`src/app/App.tsx` (170 lines) holds a `useState` per modal (`settingsOpen`,
-`changelogOpen`, the settings-tab, …) and threads the openers down as props
-(`onOpenSettings`, `onOpenChangelog`) into `SideMenu`. Each new modal adds a
-state pair in App **and** a prop on the child's `Props` type, destructure,
-and JSX call site — the exact regions every other feature also edits. This
-is a large part of App.tsx's 53% churn.
-
-**Plan.** Adopt budget's modal command-bus, sized down: a `ModalCommand`
-discriminated union + a context-provided `dispatch` + `useRegisterModalHandlers`.
-A button calls `dispatch({ kind: "open-settings" })`; the modal host
-registers its handler at mount. Adding a modal becomes a new host file + one
-union arm — no App state, no new prop. Ship in steps: (1) introduce the
-dispatch context + migrate the two existing modals; (2) drop the now-unused
-`onOpenSettings`/`onOpenChangelog` props from `SideMenu`.
-
-**Risk.** Pure refactor, no UX change. Medium blast radius (touches App +
-SideMenu + the two modal call sites). Multi-PR. Verify both modals still
-open/close and Escape-dismiss. **Severity: 7.**
-
 #### R2. Prop-drilling through fat Props types on SideMenu / ChecklistView
 
 `src/ui/SideMenu.tsx` (333 lines) and `src/ui/ChecklistView.tsx` (137 lines)
@@ -190,7 +169,19 @@ nears the cap or conflicts recur.
 
 ## Landed
 
-_None yet._
+- **R1. Modal open/close state moved off App.tsx onto a modal command-bus**
+  (2026-06). `src/ui/modal-bus.ts` (context + consumer hooks) and
+  `src/ui/ModalBusProvider.tsx` (the single-`active`-command provider)
+  decouple *who opens a modal* from *who owns its state*. App's three
+  `useState`-driven modals (settings + tab, changelog, namespaces — the
+  smell had grown past the two the original entry noted) became per-modal
+  host files under `src/app/modals/` that read `useModalState(kind)`;
+  `SideMenu` shed its `onOpenSettings` / `onOpenChangelog` /
+  `onManageNamespaces` props and now `dispatch`es commands directly. Both
+  plan steps landed in one PR (~under the 500-line cap). Pull-to-refresh's
+  modal gate reads `useAnyModalOpen()` instead of per-modal booleans. The
+  bus lives in `src/ui/` (not `src/app/`) so `SideMenu` consuming it stays
+  `ui → ui`, not a `ui → app` layering reversal.
 
 ## Investigated and skipped
 

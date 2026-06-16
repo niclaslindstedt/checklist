@@ -6,37 +6,45 @@ import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import { useStorageBackend } from "../storage/useStorageBackend.ts";
 import { useTheme } from "../theme/useTheme.ts";
 import { ArchiveView } from "../ui/ArchiveView.tsx";
-import { ChangelogModal } from "../ui/changelog/ChangelogModal.tsx";
 import { ChecklistView, type SyncInfo } from "../ui/ChecklistView.tsx";
 import { ConflictResolutionModal } from "../ui/ConflictResolutionModal.tsx";
-import { NamespacesModal } from "../ui/NamespacesModal.tsx";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu, type View } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
-import { SettingsModal } from "../ui/settings/SettingsModal.tsx";
+import { ModalBusProvider } from "../ui/ModalBusProvider.tsx";
+import { useAnyModalOpen, useModalDispatch } from "../ui/modal-bus.ts";
+import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
+import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
+import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
-// hooks and hand state down to the view. Appearance settings apply
-// immediately through `useTheme`; the side menu opens the settings and
-// changelog modals. When the developer "Fake data" toggle is on, the
-// active backend is swapped for an ephemeral in-memory seed adapter so
-// `useChecklist` reloads a sample document without touching real data.
+// hooks and hand state down to the view. The modal bus owns each dialog's
+// open/close state (see `modal-bus.tsx`); buttons `dispatch` a command and
+// a host opens the matching modal, so the shell carries no per-modal state.
+// Appearance settings apply immediately through `useTheme`. When the
+// developer "Fake data" toggle is on, the active backend is swapped for an
+// ephemeral in-memory seed adapter so `useChecklist` reloads a sample
+// document without touching real data.
 
 export function App() {
+  return (
+    <ModalBusProvider>
+      <AppShell />
+    </ModalBusProvider>
+  );
+}
+
+function AppShell() {
   const { settings, update } = useSettings();
   useTheme(settings);
   useViewportHeight();
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"storage" | undefined>(
-    undefined,
-  );
-  const [changelogOpen, setChangelogOpen] = useState(false);
-  const [namespacesOpen, setNamespacesOpen] = useState(false);
+  const dispatch = useModalDispatch();
+  const anyModalOpen = useAnyModalOpen();
 
   // The left navigation drawer and which top-level view it has selected.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,16 +60,10 @@ export function App() {
 
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
   // appearance settings (which share this component) change.
-  const openSettings = useCallback(() => {
-    setSettingsTab(undefined);
-    setSettingsOpen(true);
-  }, []);
-  const openStorageSettings = useCallback(() => {
-    setSettingsTab("storage");
-    setSettingsOpen(true);
-  }, []);
-  const openChangelog = useCallback(() => setChangelogOpen(true), []);
-  const openNamespaces = useCallback(() => setNamespacesOpen(true), []);
+  const openStorageSettings = useCallback(
+    () => dispatch({ kind: "settings", tab: "storage" }),
+    [dispatch],
+  );
 
   // The active backend (this device / Dropbox / Google Drive), optionally
   // wrapped with at-rest encryption. A fresh seed adapter whenever fake
@@ -101,8 +103,7 @@ export function App() {
   // dragging it downward would otherwise arm a refresh at the same time.
   const ptr = usePullToRefresh(checklist.reload, {
     enabled:
-      !settingsOpen &&
-      !changelogOpen &&
+      !anyModalOpen &&
       !menuOpen &&
       !menuButtonDragging &&
       view === "checklist",
@@ -150,39 +151,21 @@ export function App() {
         namespaces={storage.namespaces}
         activeNamespace={storage.activeNamespace}
         onSwitchNamespace={storage.switchNamespace}
-        onManageNamespaces={openNamespaces}
         onUndo={checklist.undo}
         onRedo={checklist.redo}
         canUndo={checklist.canUndo}
         canRedo={checklist.canRedo}
-        onOpenSettings={openSettings}
-        onOpenChangelog={openChangelog}
         position={settings.menuButtonPosition}
         onPositionChange={(next) => update("menuButtonPosition", next)}
         onDraggingChange={setMenuButtonDragging}
       />
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+      <SettingsModalHost
         settings={settings}
         onUpdate={update}
         storage={storage}
-        initialTab={settingsTab}
       />
-      <ChangelogModal
-        open={changelogOpen}
-        onClose={() => setChangelogOpen(false)}
-      />
-      <NamespacesModal
-        open={namespacesOpen}
-        onClose={() => setNamespacesOpen(false)}
-        namespaces={storage.namespaces}
-        activeNamespace={storage.activeNamespace}
-        onSwitch={storage.switchNamespace}
-        onCreate={storage.createNamespace}
-        onRename={storage.renameNamespace}
-        onRemove={storage.removeNamespace}
-      />
+      <ChangelogModalHost />
+      <NamespacesModalHost storage={storage} />
       <ConflictResolutionModal
         open={checklist.conflict !== null}
         local={checklist.snapshot}
