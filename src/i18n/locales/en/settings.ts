@@ -30,6 +30,9 @@ const settings = {
     menuButton: "Show menu button",
     menuButtonHint:
       "When off, swipe in from the edge of the screen to open the menu.",
+    disableToasts: "Disable toasts",
+    disableToastsHint:
+      "Stop showing pop-up notifications. The “new build ready” upgrade hint still appears.",
   },
 
   lists: {

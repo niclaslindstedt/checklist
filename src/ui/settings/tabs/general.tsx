@@ -6,9 +6,10 @@ import type { UpdateSetting } from "../../../settings/useSettings.ts";
 import { Section, ToggleRow } from "../shared.tsx";
 
 // The landing tab. Holds the developer-mode switch (which reveals the
-// Developer and Logs tabs when on) and — only in the installed PWA on a
-// phone / tablet — the toggle that hides the floating menu button in favour
-// of an inward edge swipe. List-behaviour preferences live on the Lists tab.
+// Developer and Logs tabs when on), the toggle that suppresses the general
+// toast stack, and — only in the installed PWA on a phone / tablet — the
+// toggle that hides the floating menu button in favour of an inward edge
+// swipe. List-behaviour preferences live on the Lists tab.
 export function GeneralTab({
   settings,
   onUpdate,
@@ -30,6 +31,12 @@ export function GeneralTab({
           onChange={(next) => onUpdate("showMenuButton", next)}
         />
       )}
+      <ToggleRow
+        label={t("settings.general.disableToasts")}
+        hint={t("settings.general.disableToastsHint")}
+        checked={settings.disableToasts}
+        onChange={(next) => onUpdate("disableToasts", next)}
+      />
       <ToggleRow
         label={t("settings.general.devMode")}
         hint={t("settings.general.devModeHint")}

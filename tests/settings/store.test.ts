@@ -128,4 +128,16 @@ describe("validateSettings", () => {
       true,
     );
   });
+
+  it("enables toasts by default and honours an explicit boolean", () => {
+    expect(defaultSettings().disableToasts).toBe(false);
+    expect(validateSettings({}).disableToasts).toBe(false);
+    expect(validateSettings({ disableToasts: true }).disableToasts).toBe(true);
+  });
+
+  it("falls back to enabled toasts on a non-boolean value", () => {
+    expect(validateSettings({ disableToasts: "yes" }).disableToasts).toBe(
+      false,
+    );
+  });
 });

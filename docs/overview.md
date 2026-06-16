@@ -286,7 +286,11 @@ general-purpose notification stack pinned bottom-right. Variants
 (`info` / `success` / `warning` / `error`) carry a coloured left
 stripe keyed to the theme tokens; the visible stack is capped at three.
 `useToast().push()` adds one, `dismiss()` removes it. Mounted globally
-by `LanguageRoot` so any component can raise a toast.
+by `LanguageRoot` so any component can raise a toast. The General-tab
+**Disable toasts** setting (`disableToasts`) gates the whole stack:
+`push` reads the live setting and drops the toast (returning the
+sentinel id `0`) when it's on. The "new build ready" upgrade hint is a
+separate surface (`UpdateToast`) and is never suppressed by it.
 
 ### Action confirmation toast
 
@@ -497,7 +501,7 @@ labels come from i18n. Built on `Modal`.
 `src/settings/store.ts` + `src/settings/useSettings.ts` — the persisted
 appearance `Settings` (theme preset, font family, font scale, the
 custom-theme overrides, `addItemPosition`, `menuButtonPosition`,
-`showMenuButton`), kept in `localStorage` under `checklist:settings:v1`. `useSettings` is
+`showMenuButton`, `disableToasts`), kept in `localStorage` under `checklist:settings:v1`. `useSettings` is
 apply-immediately: every `update(key, value)` writes through and
 re-renders so the theme engine previews the change at once. `store.ts`
 is defensive on read — a missing or corrupt field falls back to its
@@ -507,10 +511,11 @@ excludes the device-local dev flags (those live under `src/dev/`).
 ### General tab
 
 `src/ui/settings/tabs/general.tsx` — the dev-mode toggle (which reveals
-the Developer and Logs tabs) and, **only in the installed PWA on a phone
-/ tablet** (`useStandaloneMobile`), the "Show menu button" toggle that
-drives `showMenuButton`. List-behaviour preferences moved out to the
-Lists tab.
+the Developer and Logs tabs), the "Disable toasts" toggle that drives
+`disableToasts` (suppressing the general toast stack but not the upgrade
+hint), and, **only in the installed PWA on a phone / tablet**
+(`useStandaloneMobile`), the "Show menu button" toggle that drives
+`showMenuButton`. List-behaviour preferences moved out to the Lists tab.
 
 ### Lists tab
 

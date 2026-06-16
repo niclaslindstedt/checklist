@@ -43,4 +43,10 @@ export type Settings = {
   // inward edge swipe — doesn't collide with the browser's back-swipe);
   // everywhere else the button always shows regardless of this flag.
   showMenuButton: boolean;
+  // Whether the general-purpose toast stack is suppressed. When on, every
+  // toast raised through `useToast().push` is silently dropped (action
+  // confirmations, errors, namespace notices). The "new build ready"
+  // upgrade hint is a separate surface (`UpdateToast`) and is never
+  // suppressed by this flag.
+  disableToasts: boolean;
 };

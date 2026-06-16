@@ -64,7 +64,7 @@ names. Honour these when naming a new file, key, or string.
 | **Modal**                                              | `src/ui/Modal.tsx`. [→](overview.md#modal)                                                               |
 | **Pull-to-refresh indicator**                          | `src/ui/PullToRefreshIndicator.tsx`. [→](overview.md#pull-to-refresh-indicator)                          |
 | **Update toast** / **"new build ready"**               | `src/ui/UpdateToast.tsx`. [→](overview.md#update-toast)                                                  |
-| **Toast** / **notification**                           | `src/ui/toast/Toast.tsx` (`ToastProvider`), `src/ui/toast/useToast.ts` (`useToast`). [→](overview.md#toast) |
+| **Toast** / **notification** / **disable toasts**       | `src/ui/toast/Toast.tsx` (`ToastProvider`; `disableToasts` gate), `src/ui/toast/useToast.ts` (`useToast`). [→](overview.md#toast) |
 
 ## Checklist model and operations
 
