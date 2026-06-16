@@ -45,7 +45,7 @@ describe("useUndoRedo", () => {
 
   it("undoes a recorded edit back to the prior snapshot", () => {
     const { view, applied } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b")));
+    act(() => view.result.current.record(snap("b"), "edit b"));
     expect(view.result.current.canUndo).toBe(true);
     act(() => view.result.current.undo());
     expect(applied.map(tagOf)).toEqual(["a"]);
@@ -53,9 +53,38 @@ describe("useUndoRedo", () => {
     expect(view.result.current.canRedo).toBe(true);
   });
 
+  it("returns the label of the action it reverted / re-applied", () => {
+    const { view } = mount(snap("a"));
+    act(() => view.result.current.record(snap("b"), "Deleted “milk”"));
+    let undone: string | null = null;
+    act(() => {
+      undone = view.result.current.undo();
+    });
+    expect(undone).toBe("Deleted “milk”");
+    let redone: string | null = null;
+    act(() => {
+      redone = view.result.current.redo();
+    });
+    expect(redone).toBe("Deleted “milk”");
+  });
+
+  it("returns null at the timeline edges (the no-op case)", () => {
+    const { view } = mount(snap("a"));
+    let undone: string | null = "x";
+    let redone: string | null = "x";
+    act(() => {
+      undone = view.result.current.undo();
+    });
+    act(() => {
+      redone = view.result.current.redo();
+    });
+    expect(undone).toBeNull();
+    expect(redone).toBeNull();
+  });
+
   it("redoes back to the undone snapshot", () => {
     const { view, applied } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b")));
+    act(() => view.result.current.record(snap("b"), "edit b"));
     act(() => view.result.current.undo());
     act(() => view.result.current.redo());
     expect(applied.map(tagOf)).toEqual(["a", "b"]);
@@ -69,23 +98,23 @@ describe("useUndoRedo", () => {
     ];
     const { view, applied } = mount(withItem);
     // User deletes the only item — the post-edit snapshot has none.
-    act(() => view.result.current.record(snap("a")));
+    act(() => view.result.current.record(snap("a"), "Deleted “milk”"));
     act(() => view.result.current.undo());
     expect(applied[0]!.checklists[0]!.items).toHaveLength(1);
   });
 
   it("drops the redo branch when a new edit is recorded after an undo", () => {
     const { view } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b")));
+    act(() => view.result.current.record(snap("b"), "edit b"));
     act(() => view.result.current.undo());
     expect(view.result.current.canRedo).toBe(true);
-    act(() => view.result.current.record(snap("c")));
+    act(() => view.result.current.record(snap("c"), "edit c"));
     expect(view.result.current.canRedo).toBe(false);
   });
 
   it("reset re-seeds the timeline and clears history", () => {
     const { view } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b")));
+    act(() => view.result.current.record(snap("b"), "edit b"));
     act(() => view.result.current.reset(snap("z")));
     expect(view.result.current.canUndo).toBe(false);
     expect(view.result.current.canRedo).toBe(false);

@@ -21,7 +21,9 @@ import {
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
 import type { Checklist, Snapshot } from "../domain/types.ts";
+import type { TFunction } from "../i18n";
 import type { AddItemPosition } from "../settings/types.ts";
+import type { Notify } from "./notify.ts";
 import { newId, now } from "./side-effects.ts";
 
 export interface ChecklistEdits {
@@ -49,12 +51,17 @@ export function useChecklistEdits(deps: {
   setDoc: (next: Snapshot) => void;
   /** Persist the edited document (debounced by the active backend). */
   scheduleSave: (next: Snapshot) => void;
-  /** Record the post-edit document on the undo timeline. */
-  record: (next: Snapshot) => void;
+  /** Record the post-edit document — tagged with its action label — on the undo timeline. */
+  record: (next: Snapshot, label: string) => void;
+  /** Raise a toast for an action whose result the user can't immediately see. */
+  notify: Notify;
+  /** Translator for the action labels (also reused as the toast text). */
+  t: TFunction;
   /** Where `addItem` inserts a new item ("top" or "bottom"). */
   addItemPosition: AddItemPosition;
 }): ChecklistEdits {
-  const { list, docRef, setDoc, scheduleSave, record, addItemPosition } = deps;
+  const { list, docRef, setDoc, scheduleSave, record, notify, t } = deps;
+  const { addItemPosition } = deps;
 
   // Read the live preference from a ref so `addItem` stays referentially
   // stable (App memoizes the view on it) even as the setting changes.
@@ -69,8 +76,13 @@ export function useChecklistEdits(deps: {
   const listRef = useRef(list);
   listRef.current = list;
 
+  // Fold the edited list back into the document, persist it, and record
+  // the result — tagged with `label` — on the undo timeline. Recording the
+  // whole document (not just the diff) is what lets a later undo resurrect
+  // a deleted item from the prior entry; the label is what lets undo / redo
+  // announce *which* edit they walked past.
   const commit = useCallback(
-    (nextList: Checklist) => {
+    (nextList: Checklist, label: string) => {
       const prev = docRef.current;
       const next: Snapshot = {
         ...prev,
@@ -80,18 +92,24 @@ export function useChecklistEdits(deps: {
       };
       setDoc(next);
       scheduleSave(next);
-      // Snapshot the post-edit document onto the undo timeline. Recording
-      // the whole document (not just the diff) is what lets a later undo
-      // resurrect a deleted item from the prior entry.
-      record(next);
+      record(next, label);
     },
     [docRef, setDoc, scheduleSave, record],
+  );
+
+  // The title of an item in the active list, for an action label. Falls
+  // back to empty so a label is still well-formed if the id has gone.
+  const titleOf = useCallback(
+    (itemId: string) =>
+      listRef.current.items.find((it) => it.id === itemId)?.title ?? "",
+    [],
   );
 
   const addItem = useCallback(
     (title: string) => {
       const trimmed = title.trim();
       if (!trimmed) return;
+      // No toast: the new row appears in place, so the result is visible.
       commit(
         addItemOp(
           listRef.current,
@@ -99,37 +117,61 @@ export function useChecklistEdits(deps: {
           now(),
           addItemPositionRef.current,
         ),
+        t("toast.itemAdded", { title: trimmed }),
       );
     },
-    [commit],
+    [commit, t],
   );
 
   const toggle = useCallback(
-    (itemId: string) => commit(toggleItemOp(listRef.current, itemId, now())),
-    [commit],
+    (itemId: string) => {
+      const title = titleOf(itemId);
+      const willCheck = !listRef.current.items.find((it) => it.id === itemId)
+        ?.checked;
+      // No toast: the checkbox flips in place. The label still feeds undo.
+      commit(
+        toggleItemOp(listRef.current, itemId, now()),
+        t(willCheck ? "toast.itemChecked" : "toast.itemUnchecked", { title }),
+      );
+    },
+    [commit, titleOf, t],
   );
 
   const remove = useCallback(
-    (itemId: string) => commit(deleteItemOp(listRef.current, itemId, now())),
-    [commit],
+    (itemId: string) => {
+      const label = t("toast.itemDeleted", { title: titleOf(itemId) });
+      commit(deleteItemOp(listRef.current, itemId, now()), label);
+      notify(label);
+    },
+    [commit, notify, titleOf, t],
   );
 
   const archive = useCallback(
-    (itemId: string) =>
-      commit(setArchived(listRef.current, itemId, true, now())),
-    [commit],
+    (itemId: string) => {
+      const label = t("toast.itemArchived", { title: titleOf(itemId) });
+      commit(setArchived(listRef.current, itemId, true, now()), label);
+      notify(label);
+    },
+    [commit, notify, titleOf, t],
   );
 
   const unarchive = useCallback(
-    (itemId: string) =>
-      commit(setArchived(listRef.current, itemId, false, now())),
-    [commit],
+    (itemId: string) => {
+      const label = t("toast.itemRestored", { title: titleOf(itemId) });
+      commit(setArchived(listRef.current, itemId, false, now()), label);
+      notify(label, "success");
+    },
+    [commit, notify, titleOf, t],
   );
 
   const reorder = useCallback(
     (itemId: string, toIndex: number) =>
-      commit(moveItemOp(listRef.current, itemId, toIndex, now())),
-    [commit],
+      // No toast: the row visibly lands at its new spot. Label feeds undo.
+      commit(
+        moveItemOp(listRef.current, itemId, toIndex, now()),
+        t("toast.itemMoved", { title: titleOf(itemId) }),
+      ),
+    [commit, titleOf, t],
   );
 
   return useMemo(

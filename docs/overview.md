@@ -269,6 +269,22 @@ stripe keyed to the theme tokens; the visible stack is capped at three.
 `useToast().push()` adds one, `dismiss()` removes it. Mounted globally
 by `LanguageRoot` so any component can raise a toast.
 
+### Action confirmation toast
+
+The toast stack doubles as the "what just happened" channel for actions
+whose result the user can't immediately see — a delete, an archive, a
+restore, an undo, a namespace coming or going. The checklist hooks don't
+reach for `useToast` directly: App builds a `notify` sink (`Notify`,
+`src/app/notify.ts`) over `push()` and threads it through `useChecklist`
+into `useChecklistEdits` / `useChecklistLists`; namespace create / delete
+(which live in the storage layer, off-limits to the UI) are wrapped with
+their toast in App. The message text is a `toast.*` i18n key, and the
+same string is recorded as the undo-timeline label so `undo` / `redo` can
+announce the action they stepped past (`Undone: Deleted "milk"`).
+Immediately-visible edits (add, toggle, reorder, rename) record a label
+for the timeline but raise no toast. The default `notify` is a no-op, so
+the hooks stay testable without a `ToastProvider`.
+
 ## Checklist model and operations
 
 ### Snapshot
@@ -696,14 +712,20 @@ the conflict). Resolved via `useChecklist.resolveConflict`.
 ### Undo / redo
 
 `src/app/use-undo-redo.ts` (`useUndoRedo`) — an in-memory timeline of
-**whole-document snapshots** (capped at 50 past entries). `use-checklist`
-calls `record` after every edit; `undo` / `redo` walk the cursor and
-apply the target snapshot via `setData`, which both swaps the visible
-document and persists it (so a revert survives a reload). `reset` clears
-the history whenever a document arrives from outside the edit path
-(initial load, backend swap, conflict resolution) so undo can't jump to
-a vanished state. Recording the whole document (not a diff) is what lets
-undo resurrect a deleted item. Reachable from the side menu and via
+**whole-document snapshots** (capped at 50 past entries). Each entry
+(`HistoryEntry`) pairs the post-edit snapshot with a short **action
+label** — the "actions history" — so the timeline knows not just what
+the document looked like but what the edit *was*. `use-checklist` calls
+`record(snapshot, label)` after every edit; `undo` / `redo` walk the
+cursor, apply the target snapshot via `setData` (which both swaps the
+visible document and persists it, so a revert survives a reload), and
+**return the label** of the action they stepped past. `use-checklist`
+turns that into an action-confirmation toast (`Undone: Deleted "milk"`)
+since the document otherwise swaps silently. `reset` clears the history
+whenever a document arrives from outside the edit path (initial load,
+backend swap, conflict resolution) so undo can't jump to a vanished
+state. Recording the whole document (not a diff) is what lets undo
+resurrect a deleted item. Reachable from the side menu and via
 `useUndoRedoShortcuts` (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z / Ctrl+Y), which
 bails out when focus is in an editable field so native field-level undo
 still works.

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useDevSeed } from "../dev/useDevSeed.ts";
+import { useT } from "../i18n";
 import { useStandaloneMobile } from "../pwa/standalone.ts";
 import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
@@ -28,6 +29,8 @@ import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
 import { ModalBusProvider } from "../ui/ModalBusProvider.tsx";
 import { useAnyModalOpen, useModalDispatch } from "../ui/modal-bus.ts";
+import { useToast } from "../ui/toast/useToast.ts";
+import type { Notify } from "./notify.ts";
 import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
 import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
@@ -58,6 +61,18 @@ function AppShell() {
   const { settings, update } = useSettings();
   useTheme(settings);
   useViewportHeight();
+
+  const t = useT();
+  const { push } = useToast();
+  // The toast sink the checklist hooks raise their action confirmations
+  // through. Stable so the edit verbs that depend on it keep their
+  // identity across renders (memoised rows only re-render on a real edit).
+  const notify = useCallback<Notify>(
+    (message, kind = "info") => {
+      push({ message, kind });
+    },
+    [push],
+  );
 
   const dispatch = useModalDispatch();
   const anyModalOpen = useAnyModalOpen();
@@ -102,6 +117,32 @@ function AppShell() {
   const checklist = useChecklist(
     seedAdapter ?? storage.adapter,
     settings.addItemPosition,
+    notify,
+  );
+
+  // Namespace create / delete live in the storage layer (which must not
+  // reach into the UI), so the toast is raised here where both the
+  // storage verbs and the toast stack are in scope. The wrapped verbs are
+  // what the side menu and the namespaces dialog call.
+  const { createNamespace: createNs, removeNamespace: removeNs } = storage;
+  const namespaces = storage.namespaces;
+  const createNamespace = useCallback(
+    (name: string) => {
+      createNs(name);
+      push({
+        message: t("toast.namespaceCreated", { name: name.trim() }),
+        kind: "success",
+      });
+    },
+    [createNs, push, t],
+  );
+  const removeNamespace = useCallback(
+    async (slug: string) => {
+      const name = namespaces.find((n) => n.slug === slug)?.name ?? slug;
+      await removeNs(slug);
+      push({ message: t("toast.namespaceDeleted", { name }), kind: "info" });
+    },
+    [removeNs, namespaces, push, t],
   );
 
   // The sync glyph shows for any async file-backed session (local folder,
@@ -214,7 +255,7 @@ function AppShell() {
           namespaces={storage.namespaces}
           activeNamespace={storage.activeNamespace}
           onSwitchNamespace={storage.switchNamespace}
-          onRemoveNamespace={storage.removeNamespace}
+          onRemoveNamespace={removeNamespace}
         />
         <SettingsModalHost
           settings={settings}
@@ -222,7 +263,11 @@ function AppShell() {
           storage={storage}
         />
         <ChangelogModalHost />
-        <NamespacesModalHost storage={storage} />
+        <NamespacesModalHost
+          storage={storage}
+          onCreate={createNamespace}
+          onRemove={removeNamespace}
+        />
         <ConflictResolutionModal
           open={checklist.conflict !== null}
           local={checklist.snapshot}
