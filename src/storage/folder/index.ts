@@ -20,6 +20,7 @@ import type { StorageAdapter } from "../adapter.ts";
 import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG } from "../namespaces.ts";
+import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
 
 const log = createLogger("folder");
 
@@ -60,7 +61,12 @@ class FolderFileStore implements FileStore {
     create: boolean,
   ): Promise<FileSystemDirectoryHandle | null> {
     let dir = this.root;
-    for (const segment of [this.namespace, ...segments]) {
+    // An empty namespace resolves at the picked-directory root (the root
+    // settings store), so drop blank segments rather than asking for a
+    // directory handle named "".
+    for (const segment of [this.namespace, ...segments].filter(
+      (s) => s.length > 0,
+    )) {
       try {
         dir = await dir.getDirectoryHandle(segment, { create });
       } catch (err) {
@@ -178,4 +184,16 @@ export function createFolderAdapter(
     label: "Local folder",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
   });
+}
+
+// Root settings store for the folder backend: `settings.json` at the
+// picked directory root, beside the namespace folders. Built with an empty
+// namespace so the file store resolves at the root.
+export function createFolderSettingsStore(
+  directoryHandle: FileSystemDirectoryHandle,
+  onPermissionLost?: () => void,
+): SettingsStore {
+  return fileSettingsStore(
+    new FolderFileStore(directoryHandle, "", onPermissionLost),
+  );
 }

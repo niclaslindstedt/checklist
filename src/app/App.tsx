@@ -60,7 +60,11 @@ export function App() {
 }
 
 function AppShell() {
-  const { settings, update } = useSettings();
+  // The active backend (this device / Dropbox / Google Drive). Wired before
+  // settings because it provides the root settings store the appearance
+  // settings reconcile against (`settings.json` at the app-folder root).
+  const storage = useStorageBackend();
+  const { settings, update } = useSettings(storage.settingsStore);
   useTheme(settings);
   useViewportHeight();
 
@@ -111,11 +115,9 @@ function AppShell() {
     [dispatch],
   );
 
-  // The active backend (this device / Dropbox / Google Drive), optionally
-  // wrapped with at-rest encryption. A fresh seed adapter whenever fake
-  // data is toggled on (so each enable starts from a pristine sample)
-  // overrides it for the session.
-  const storage = useStorageBackend();
+  // A fresh seed adapter whenever fake data is toggled on (so each enable
+  // starts from a pristine sample) overrides the real backend for the
+  // session.
   const { active: fakeData } = useDevSeed();
   const seedAdapter = useMemo(
     () => (fakeData ? createDevSeedAdapter() : null),

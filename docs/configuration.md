@@ -1,7 +1,11 @@
 # Configuration
 
 `checklist` has no config files. All user-facing settings are reached
-through **Settings** inside the app and persist to `localStorage`.
+through **Settings** inside the app. They always persist to `localStorage`
+(the synchronous first-paint cache); on a file-based backend (Local folder,
+Dropbox, Google Drive) they are **also** written to a `settings.json` file
+at the app-folder root so they travel with the synced/shared folder — see
+[App settings on a file-based backend](#app-settings-on-a-file-based-backend).
 
 ## User settings
 
@@ -12,7 +16,7 @@ through **Settings** inside the app and persist to `localStorage`.
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:gdrive:token`         | string                                | (unset)       | Google Drive access token from the GIS popup. Short-lived (~1h); the user reconnects when it expires. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
-| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) and `disableToasts` (default `false`). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. |
+| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) and `disableToasts` (default `false`). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. On a file-based backend this same blob is mirrored to `settings.json` at the app-folder root (below). |
 | `checklist:settings:autoArchive` | `boolean`                             | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
 | `checklist:settings:locale`      | BCP-47 string                         | browser value | Override the formatting locale (does not change UI strings; this app is English-only for now). |
 
@@ -86,6 +90,33 @@ backend; copies in another backend or on another device are left
 untouched. The Default namespace can't be deleted, and your existing
 single checklist is migrated into it automatically the first time a
 cloud backend loads.
+
+### App settings on a file-based backend
+
+Your app settings (the **Theme**, **General**, and **Lists** preferences)
+are device preferences, not list data — they aren't part of any one
+checklist. On a file-based backend they live in a single **`settings.json`
+file at the app-folder root**, *beside* the namespace folders rather than
+inside one:
+
+```
+checklist.niclaslindstedt.se/   ← the app folder (Dropbox "Apps/" folder, Drive "checklist/", your picked folder)
+├── settings.json               ← your app settings, shared by every namespace
+├── default/                    ← the Default namespace's checklists
+│   └── checklists/…
+└── family/                     ← another namespace's checklists
+    └── checklists/…
+```
+
+So one settings file is shared by every namespace and travels with the
+folder you sync or share. On first connect the file is **seeded** from this
+device's current settings; if the folder already has one (another device
+wrote it), the app **adopts** it. `localStorage` still holds a copy so the
+theme applies instantly on load with no flash. `settings.json` stays
+**plaintext JSON even when the checklist document is encrypted** — theme and
+font choices aren't secret, and keeping them readable lets the unlock screen
+render in your theme. On **This device** there are no folders, so settings
+stay in `localStorage` only.
 
 ### Developer settings (device-local)
 

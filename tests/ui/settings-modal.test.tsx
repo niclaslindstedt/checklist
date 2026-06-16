@@ -24,6 +24,7 @@ function makeStorageStub(): UseStorageBackend {
         return { text };
       },
     },
+    settingsStore: null,
     backend: "browser",
     dropboxConfigured: false,
     gdriveConfigured: false,

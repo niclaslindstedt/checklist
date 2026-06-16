@@ -507,6 +507,32 @@ re-renders so the theme engine previews the change at once. `store.ts`
 is defensive on read — a missing or corrupt field falls back to its
 default rather than throwing. Note the `Settings` type deliberately
 excludes the device-local dev flags (those live under `src/dev/`).
+`useSettings` takes an optional **root settings store** (below): when one
+is supplied (a file-based backend is active) it reconciles against the
+backend's `settings.json` on mount — adopting it when present, else seeding
+it from this device — and writes through on every `update`. `localStorage`
+remains the synchronous first-paint cache so the theme never flashes.
+
+### Root settings file
+
+`src/storage/settings-store.ts` — the `SettingsStore` seam that persists
+the app `Settings` as a single `settings.json` (`SETTINGS_FILE_NAME`) at the
+**app-folder root**, the scoped folder a backend owns (Dropbox's `Apps/`
+folder, Drive's `checklist/`, the picked local directory) — *above* the
+per-namespace folders, so one settings file is shared by every namespace and
+travels with the synced/shared folder. `fileSettingsStore` builds one over
+any root-scoped `FileStore` (a backend's file store constructed with an empty
+namespace, so its paths resolve at the app-folder root instead of inside a
+namespace folder — the folder / Dropbox / Drive stores drop the blank
+namespace segment). Each file-based backend exports a `create*SettingsStore`
+(`createFolderSettingsStore`, `createDropboxSettingsStore`,
+`createGdriveSettingsStore`); `useStorageBackend` builds the active backend's
+store and exposes it as `settingsStore` (null for the browser backend, whose
+canonical settings home is `localStorage`, and while a folder grant is
+unresolved). It is independent of the namespace-scoped document adapter and
+of encryption: settings are app-wide and stay **plaintext JSON even when the
+document is encrypted**. `App` wires `useStorageBackend` before `useSettings`
+and threads `storage.settingsStore` into it.
 
 ### General tab
 

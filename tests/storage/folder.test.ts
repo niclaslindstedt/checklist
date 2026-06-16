@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
-import { createFolderAdapter } from "../../src/storage/folder/index.ts";
+import {
+  createFolderAdapter,
+  createFolderSettingsStore,
+} from "../../src/storage/folder/index.ts";
 import { encryptText } from "../../src/storage/crypto.ts";
 import { parse, serialize } from "../../src/storage/serialize.ts";
 
@@ -165,5 +168,24 @@ describe("folder adapter", () => {
     await adapter.save(envelope);
     expect(fileNames(root)).toEqual([`default/${BLOB_FILE_NAME}`]);
     expect((await adapter.load())!.text).toBe(envelope);
+  });
+
+  it("stores settings.json at the picked-directory root, beside namespaces", async () => {
+    const root = handle();
+    const adapter = createFolderAdapter({
+      directoryHandle: root as unknown as FileSystemDirectoryHandle,
+    });
+    const settings = createFolderSettingsStore(
+      root as unknown as FileSystemDirectoryHandle,
+    );
+    await adapter.save(serialize(snapshot));
+    expect(await settings.load()).toBeNull();
+    await settings.save('{"theme":"dark"}');
+    expect(fileNames(root)).toEqual([
+      "default/checklists/groceries-cl1.md",
+      "default/templates/trip-tpl1.md",
+      "settings.json",
+    ]);
+    expect(await settings.load()).toBe('{"theme":"dark"}');
   });
 });

@@ -5,6 +5,7 @@ import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
 import {
   createDropboxAdapter,
+  createDropboxSettingsStore,
   deleteDropboxNamespace,
   dropboxApiArg,
 } from "../../src/storage/dropbox/index.ts";
@@ -166,6 +167,21 @@ describe("dropbox adapter (markdown file store)", () => {
     expect(sim.paths().length).toBe(1);
     await deleteDropboxNamespace("token", "work", sim.fetch);
     expect(sim.paths()).toEqual([]);
+  });
+
+  it("settings store reads/writes /settings.json at the app-folder root", async () => {
+    const sim = new DropboxSim();
+    const adapter = createDropboxAdapter("token", sim.fetch, "work");
+    const settings = createDropboxSettingsStore("token", sim.fetch);
+    await adapter.save(serialize(snapshot));
+    expect(await settings.load()).toBeNull();
+    await settings.save('{"theme":"dark"}');
+    // settings.json sits beside the namespace folder, not inside it.
+    expect(sim.paths()).toEqual([
+      "/settings.json",
+      "/work/checklists/groceries-cl1.md",
+    ]);
+    expect(await settings.load()).toBe('{"theme":"dark"}');
   });
 });
 
