@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { useDevMode } from "../../dev/useDevMode.ts";
-import { useT, type MessageKey } from "../../i18n";
+import { useT, type MessageKey, type TFunction } from "../../i18n";
 import type { Settings } from "../../settings/types.ts";
 import type { UpdateSetting } from "../../settings/useSettings.ts";
 import type { UseStorageBackend } from "../../storage/useStorageBackend.ts";
@@ -20,6 +20,13 @@ import { StorageTab } from "./tabs/storage.tsx";
 // a horizontal strip on mobile — pared to the checklist's four tabs.
 // Settings apply immediately (the theme engine previews the live values),
 // so the footer offers a single Done button rather than Save / Cancel.
+//
+// Switching tabs is a hot interaction, so the parts that don't depend on
+// the active tab are kept off its re-render path: the header and footer
+// are memoised elements (skipped when only `activeTab` changes), and each
+// rail button is a `memo`'d component so a switch only re-renders the two
+// whose selected state flips — not the whole dialog chrome (header,
+// close-icon SVG, footer, and every rail button) on every click.
 
 type TabId = "general" | "theme" | "storage" | "developer" | "logs";
 
@@ -73,24 +80,22 @@ export function SettingsModal({
     if (!tabs.includes(activeTab)) setActiveTab("general");
   }, [tabs, activeTab]);
 
+  // Header and footer carry no per-tab state, so memoise them on the
+  // values they actually read (`t`, `onClose`). A tab switch then reuses
+  // the same elements and React skips re-rendering them — including the
+  // close-icon SVG.
+  const header = useMemo(
+    () => <SettingsHeader t={t} onClose={onClose} />,
+    [t, onClose],
+  );
+  const footer = useMemo(
+    () => <SettingsFooter t={t} onClose={onClose} />,
+    [t, onClose],
+  );
+
   return (
     <Modal open={open} onClose={onClose} labelledBy="settings-title">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3">
-        <h2
-          id="settings-title"
-          className="text-sm font-bold tracking-wide text-fg-bright"
-        >
-          {t("settings.title")}
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("settings.close")}
-          className="-mr-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
-        >
-          <CloseIcon className="h-5 w-5" />
-        </button>
-      </header>
+      {header}
 
       <div className="flex flex-1 flex-col overflow-hidden sm:flex-row">
         <div
@@ -98,27 +103,15 @@ export function SettingsModal({
           aria-label={t("settings.sections")}
           className="flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-surface-3 p-2 sm:w-40 sm:flex-col sm:gap-0.5 sm:overflow-x-visible sm:overflow-y-auto sm:border-r sm:border-b-0"
         >
-          {tabs.map((tab) => {
-            const active = tab === activeTab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                id={`settings-tab-${tab}`}
-                aria-controls={`settings-tabpanel-${tab}`}
-                aria-selected={active}
-                onClick={() => setActiveTab(tab)}
-                className={`shrink-0 cursor-pointer rounded px-3 py-1.5 text-left text-sm whitespace-nowrap sm:w-full ${
-                  active
-                    ? "bg-accent/15 font-bold text-accent"
-                    : "text-fg hover:bg-surface-2"
-                }`}
-              >
-                {t(TAB_LABEL_KEYS[tab])}
-              </button>
-            );
-          })}
+          {tabs.map((tab) => (
+            <TabButton
+              key={tab}
+              tab={tab}
+              label={t(TAB_LABEL_KEYS[tab])}
+              active={tab === activeTab}
+              onSelect={setActiveTab}
+            />
+          ))}
         </div>
 
         <div
@@ -140,11 +133,70 @@ export function SettingsModal({
         </div>
       </div>
 
-      <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3">
-        <Button variant="primary" onClick={onClose}>
-          {t("settings.done")}
-        </Button>
-      </footer>
+      {footer}
     </Modal>
   );
 }
+
+function SettingsHeader({ t, onClose }: { t: TFunction; onClose: () => void }) {
+  return (
+    <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3">
+      <h2
+        id="settings-title"
+        className="text-sm font-bold tracking-wide text-fg-bright"
+      >
+        {t("settings.title")}
+      </h2>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={t("settings.close")}
+        className="-mr-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+      >
+        <CloseIcon className="h-5 w-5" />
+      </button>
+    </header>
+  );
+}
+
+function SettingsFooter({ t, onClose }: { t: TFunction; onClose: () => void }) {
+  return (
+    <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3">
+      <Button variant="primary" onClick={onClose}>
+        {t("settings.done")}
+      </Button>
+    </footer>
+  );
+}
+
+// One rail entry. Memoised so a tab switch only re-renders the two
+// buttons whose `active` flag flips, not the whole rail.
+const TabButton = memo(function TabButton({
+  tab,
+  label,
+  active,
+  onSelect,
+}: {
+  tab: TabId;
+  label: string;
+  active: boolean;
+  onSelect: (tab: TabId) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={`settings-tab-${tab}`}
+      aria-controls={`settings-tabpanel-${tab}`}
+      aria-selected={active}
+      onClick={() => onSelect(tab)}
+      className={`shrink-0 cursor-pointer rounded px-3 py-1.5 text-left text-sm whitespace-nowrap sm:w-full ${
+        active
+          ? "bg-accent/15 font-bold text-accent"
+          : "text-fg hover:bg-surface-2"
+      }`}
+    >
+      {label}
+    </button>
+  );
+});

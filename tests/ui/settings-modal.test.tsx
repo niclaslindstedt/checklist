@@ -65,8 +65,8 @@ function renderModal(
     storage: makeStorageStub(),
     ...overrides,
   };
-  render(<SettingsModal {...props} />);
-  return props;
+  const view = render(<SettingsModal {...props} />);
+  return { ...props, ...view };
 }
 
 describe("SettingsModal", () => {
@@ -101,5 +101,25 @@ describe("SettingsModal", () => {
     // Turn it back off so module-scoped dev state doesn't leak.
     fireEvent.click(screen.getByLabelText("Developer mode"));
     expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();
+  });
+
+  it("keeps the last-used tab when reopened without an initialTab", () => {
+    const props = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "Storage" }));
+    expect(
+      screen
+        .getByRole("tab", { name: "Storage" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    // Close and reopen the same dialog instance with no initialTab: the
+    // chrome-skipping refactor keeps `activeTab` on the always-mounted
+    // SettingsModal, so the last-used tab survives the round trip.
+    props.rerender(<SettingsModal {...props} open={false} />);
+    props.rerender(<SettingsModal {...props} open={true} />);
+    expect(
+      screen
+        .getByRole("tab", { name: "Storage" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
   });
 });
