@@ -8,6 +8,9 @@ const nav: NavCatalog = {
   archive: "Arkiv",
   archiveEmpty: "Inget arkiverat — svep en rad åt höger för att arkivera den.",
   restore: "Återställ rad",
+  edit: "Redigera",
+  undo: "Ångra",
+  redo: "Gör om",
 };
 
 export default nav;

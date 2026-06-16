@@ -34,6 +34,7 @@ import {
 } from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { parse, serialize } from "../storage/serialize.ts";
+import { useUndoRedo } from "./use-undo-redo.ts";
 
 const log = createLogger("checklist");
 
@@ -98,6 +99,14 @@ export interface UseChecklist {
   dirty: boolean;
   /** Flush any debounced save immediately (the "save now" affordance). */
   saveNow: () => void;
+  /** Revert the last edit, restoring the prior document (incl. deletions). */
+  undo: () => void;
+  /** Re-apply the most recently undone edit. */
+  redo: () => void;
+  /** Whether there is a prior edit to revert. */
+  canUndo: boolean;
+  /** Whether there is an undone edit to re-apply. */
+  canRedo: boolean;
 }
 
 // Guarantee the document always has one checklist to render. A freshly
@@ -207,6 +216,22 @@ export function useChecklist(
     [flushSave],
   );
 
+  // Apply a snapshot picked off the undo / redo timeline: swap the
+  // visible document and persist it so the reverted state survives a
+  // reload, exactly as a normal edit would.
+  const applyHistorySnapshot = useCallback(
+    (next: Snapshot) => {
+      setDoc(next);
+      scheduleSave(next);
+    },
+    [scheduleSave],
+  );
+
+  const { record, reset, undo, redo, canUndo, canRedo } = useUndoRedo({
+    initialSeed: doc,
+    setData: applyHistorySnapshot,
+  });
+
   // Reload whenever the active adapter instance changes. On first mount
   // this re-confirms the loadSync seed (same bytes, no flicker); on a
   // mid-session swap (fake-data on/off, backend change, encryption
@@ -225,12 +250,16 @@ export function useChecklist(
     void active.load().then((stored) => {
       if (cancelled) return;
       revisionRef.current = stored?.revision;
-      setDoc(withActiveList(parse(stored?.text)));
+      const loaded = withActiveList(parse(stored?.text));
+      setDoc(loaded);
+      // The freshly-loaded document is a new baseline — drop the old
+      // backend's undo history so "undo" can't jump to a vanished state.
+      reset(loaded);
     });
     return () => {
       cancelled = true;
     };
-  }, [active, flushSave]);
+  }, [active, flushSave, reset]);
 
   // Flush any pending save on unmount so a debounced edit isn't lost.
   useEffect(() => {
@@ -244,18 +273,21 @@ export function useChecklist(
 
   const commit = useCallback(
     (nextList: Checklist) => {
-      setDoc((prev) => {
-        const next: Snapshot = {
-          ...prev,
-          checklists: prev.checklists.map((c) =>
-            c.id === nextList.id ? nextList : c,
-          ),
-        };
-        scheduleSave(next);
-        return next;
-      });
+      const prev = docRef.current;
+      const next: Snapshot = {
+        ...prev,
+        checklists: prev.checklists.map((c) =>
+          c.id === nextList.id ? nextList : c,
+        ),
+      };
+      setDoc(next);
+      scheduleSave(next);
+      // Snapshot the post-edit document onto the undo timeline. Recording
+      // the whole document (not just the diff) is what lets a later undo
+      // resurrect a deleted item from the prior entry.
+      record(next);
     },
-    [scheduleSave],
+    [scheduleSave, record],
   );
 
   const addItem = useCallback(
@@ -307,8 +339,10 @@ export function useChecklist(
     setConflict(null);
     setStatus("idle");
     setDirty(false);
-    setDoc(withActiveList(parse(stored?.text)));
-  }, [flushSave]);
+    const reloaded = withActiveList(parse(stored?.text));
+    setDoc(reloaded);
+    reset(reloaded);
+  }, [flushSave, reset]);
 
   // Push any debounced edit to the backend immediately — the "save now"
   // action on the cloud-sync glyph when there are unsaved changes.
@@ -331,13 +365,16 @@ export function useChecklist(
           // write-back, so we don't bounce the conflict.
           revisionRef.current = current.remoteRevision;
           setDoc(current.remote);
+          // Adopting the remote document makes it the new baseline, so
+          // the local edit history no longer applies.
+          reset(current.remote);
           setDirty(false);
           setStatus("saved");
         }
         return null;
       });
     },
-    [performSave],
+    [performSave, reset],
   );
 
   const items = useMemo(() => activeItems(list), [list]);
@@ -364,5 +401,9 @@ export function useChecklist(
     status,
     dirty,
     saveNow,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }

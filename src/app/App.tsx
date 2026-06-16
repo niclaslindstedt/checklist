@@ -13,6 +13,7 @@ import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu, type View } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
+import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
 import { SettingsModal } from "../ui/settings/SettingsModal.tsx";
 import { useChecklist } from "./use-checklist.ts";
@@ -97,6 +98,14 @@ export function App() {
       !settingsOpen && !changelogOpen && !menuOpen && view === "checklist",
   });
 
+  // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z mirror the burger-menu undo & redo.
+  useUndoRedoShortcuts({
+    canUndo: checklist.canUndo,
+    canRedo: checklist.canRedo,
+    onUndo: checklist.undo,
+    onRedo: checklist.redo,
+  });
+
   return (
     <>
       <PullToRefreshIndicator
@@ -130,6 +139,10 @@ export function App() {
         current={view}
         onNavigate={navigate}
         archivedCount={checklist.archivedItems.length}
+        onUndo={checklist.undo}
+        onRedo={checklist.redo}
+        canUndo={checklist.canUndo}
+        canRedo={checklist.canRedo}
       />
       <SettingsModal
         open={settingsOpen}
