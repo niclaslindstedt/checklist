@@ -6,6 +6,22 @@ import { SideMenu } from "../../src/ui/SideMenu.tsx";
 
 function noop(): void {}
 
+// jsdom has no PointerEvent constructor, so `fireEvent.pointer*` drops the
+// coordinates the drag hook reads. Dispatch a plain Event with the few
+// fields the hook touches assigned onto it (mirrors how the
+// pull-to-refresh test fakes a TouchEvent).
+function pointer(el: Element, type: string, coords: { x: number; y: number }) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.assign(event, {
+    pointerId: 1,
+    button: 0,
+    pointerType: "touch",
+    clientX: coords.x,
+    clientY: coords.y,
+  });
+  fireEvent(el, event);
+}
+
 function renderMenu(props: Partial<React.ComponentProps<typeof SideMenu>>) {
   return render(
     <SideMenu
@@ -103,5 +119,33 @@ describe("SideMenu", () => {
     const closers = screen.getAllByLabelText("Close navigation");
     fireEvent.click(closers[closers.length - 1]!);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists a new edge after a drag and swallows the trailing click", () => {
+    const onPositionChange = vi.fn();
+    const onToggle = vi.fn();
+    renderMenu({ onToggle, onPositionChange });
+    const btn = screen.getByLabelText("Open navigation");
+    // Drag the button across the midline to the right edge.
+    pointer(btn, "pointerdown", { x: 12, y: 400 });
+    pointer(btn, "pointermove", { x: 900, y: 400 });
+    pointer(btn, "pointerup", { x: 900, y: 400 });
+    expect(onPositionChange).toHaveBeenCalledTimes(1);
+    expect(onPositionChange.mock.calls[0]![0].side).toBe("right");
+    // The click that tails the drag must not toggle the drawer.
+    fireEvent.click(btn);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("treats a press without movement as a tap that toggles", () => {
+    const onPositionChange = vi.fn();
+    const onToggle = vi.fn();
+    renderMenu({ onToggle, onPositionChange });
+    const btn = screen.getByLabelText("Open navigation");
+    pointer(btn, "pointerdown", { x: 12, y: 400 });
+    pointer(btn, "pointerup", { x: 12, y: 400 });
+    fireEvent.click(btn);
+    expect(onPositionChange).not.toHaveBeenCalled();
+    expect(onToggle).toHaveBeenCalledTimes(1);
   });
 });

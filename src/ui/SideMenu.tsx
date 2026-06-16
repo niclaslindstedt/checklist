@@ -2,6 +2,9 @@ import { useEffect, useId, type ReactNode } from "react";
 
 import { BUILD_LABEL } from "../build-env.ts";
 import { useT } from "../i18n";
+import { DEFAULT_MENU_BUTTON_POSITION } from "../settings/store.ts";
+import type { MenuButtonPosition } from "../settings/types.ts";
+import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
 import {
   ArchiveIcon,
   ChecklistIcon,
@@ -15,15 +18,17 @@ import {
   UndoIcon,
 } from "./icons.tsx";
 
-// The left navigation drawer. Collapsed to a single floating button on
-// the left edge; pressing it slides the drawer in over a dimmed backdrop.
-// The drawer lists the app's views (the active checklist and the archive)
-// and highlights the current one. Selecting a view navigates and closes
-// the drawer. Pinned to the bottom is what used to be the top-right burger
-// menu — settings, "what's new", and the project links (privacy, source
-// with the build label, optional donate), in inverted order so the whole
-// of it sits flush at the foot of the drawer. Kept presentational — App
-// owns the open/current state and passes it down, mirroring ChecklistView.
+// The navigation drawer. Collapsed to a single floating button the user
+// can drag to either side edge (its resting spot persists in settings);
+// pressing it slides the drawer in from that same side over a dimmed
+// backdrop. The drawer lists the app's views (the active checklist and the
+// archive) and highlights the current one. Selecting a view navigates and
+// closes the drawer. Pinned to the bottom is what used to be the top-right
+// burger menu — settings, "what's new", and the project links (privacy,
+// source with the build label, optional donate), in inverted order so the
+// whole of it sits flush at the foot of the drawer. Kept presentational —
+// App owns the open/current state and the persisted position, mirroring
+// how ChecklistView is wired.
 
 const SOURCE_URL = "https://github.com/niclaslindstedt/checklist";
 
@@ -50,6 +55,10 @@ type Props = {
   onOpenSettings: () => void;
   /** Open the changelog ("what's new") modal. */
   onOpenChangelog: () => void;
+  /** Where the floating button rests; defaults to the left edge. */
+  position?: MenuButtonPosition;
+  /** Persist a new resting spot after the user drags the button. */
+  onPositionChange?: (next: MenuButtonPosition) => void;
 };
 
 export function SideMenu({
@@ -65,9 +74,12 @@ export function SideMenu({
   canRedo,
   onOpenSettings,
   onOpenChangelog,
+  position = DEFAULT_MENU_BUTTON_POSITION,
+  onPositionChange,
 }: Props) {
   const t = useT();
   const drawerId = useId();
+  const drag = useDraggableMenuButton(position, onPositionChange ?? (() => {}));
 
   // Build-time env (string | undefined). A blank value disables the donate
   // entry entirely rather than linking nowhere.
@@ -92,23 +104,38 @@ export function SideMenu({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const onRight = position.side === "right";
+
   return (
     <>
-      {/* Floating toggle, pinned to the left edge and vertically centred. */}
+      {/* Floating toggle the user can drag to either edge; a plain press
+          still toggles the drawer (the drag hook swallows the click that
+          tails a real drag, and leaves keyboard activation untouched). */}
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => {
+          if (drag.consumeDragClick()) return;
+          onToggle();
+        }}
+        {...drag.handlers}
+        style={drag.style}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? drawerId : undefined}
         aria-label={open ? t("nav.close") : t("nav.open")}
-        className="fixed top-1/2 left-3 z-40 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-muted shadow-lg hover:text-fg-bright"
+        className={`fixed z-40 flex h-11 w-11 touch-none items-center justify-center rounded-full border border-line bg-surface text-muted shadow-lg select-none hover:text-fg-bright ${
+          drag.dragging
+            ? "cursor-grabbing transition-none"
+            : "cursor-grab transition-[left,top] duration-300 ease-out"
+        }`}
       >
         <MenuIcon className="h-5 w-5" />
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex">
+        <div
+          className={`fixed inset-0 z-50 flex ${onRight ? "justify-end" : ""}`}
+        >
           <button
             type="button"
             aria-label={t("nav.close")}
@@ -119,7 +146,9 @@ export function SideMenu({
           <nav
             id={drawerId}
             aria-label={t("nav.label")}
-            className="relative flex w-64 max-w-[80%] flex-col overflow-y-auto border-r border-line bg-surface shadow-xl [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)]"
+            className={`relative flex w-64 max-w-[80%] flex-col overflow-y-auto bg-surface shadow-xl [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)] ${
+              onRight ? "border-l border-line" : "border-r border-line"
+            }`}
           >
             <p className="border-b border-line px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.label")}

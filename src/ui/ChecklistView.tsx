@@ -67,7 +67,13 @@ function ChecklistViewImpl({
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <header className="mb-2 flex items-center justify-between border-b border-line px-1 pb-3">
-        <h1 className="text-lg font-semibold tracking-wide text-fg-bright">
+        <h1 className="flex items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
+          <img
+            src={`${import.meta.env.BASE_URL}favicon.svg`}
+            alt=""
+            aria-hidden
+            className="h-6 w-6 rounded"
+          />
           <span
             className={pwaProgress === null ? undefined : "pwa-title-fill"}
             style={

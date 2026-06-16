@@ -143,6 +143,8 @@ export function App() {
         canRedo={checklist.canRedo}
         onOpenSettings={openSettings}
         onOpenChangelog={openChangelog}
+        position={settings.menuButtonPosition}
+        onPositionChange={(next) => update("menuButtonPosition", next)}
       />
       <SettingsModal
         open={settingsOpen}

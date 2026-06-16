@@ -18,6 +18,16 @@ import type {
 // appended to the bottom.
 export type AddItemPosition = "top" | "bottom";
 
+// Which vertical edge the floating navigation button rests against once
+// the user lets go of a drag.
+export type MenuButtonSide = "left" | "right";
+
+// The user's chosen resting spot for the floating navigation button.
+// `side` picks the edge it snaps to; `y` is its vertical position as a
+// fraction (0 = top, 1 = bottom) of the available travel, so it survives
+// viewport resizes without storing raw pixels.
+export type MenuButtonPosition = { side: MenuButtonSide; y: number };
+
 export type Settings = {
   theme: ThemePreset;
   fontFamily: FontFamilyId;
@@ -26,4 +36,6 @@ export type Settings = {
   customTheme: CustomTheme;
   // Where `addItem` inserts a new entry into the active list.
   addItemPosition: AddItemPosition;
+  // Where the floating navigation button sits after the user drags it.
+  menuButtonPosition: MenuButtonPosition;
 };
