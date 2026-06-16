@@ -50,6 +50,7 @@ function makeStorageStub(): UseStorageBackend {
     switchNamespace: vi.fn(),
     createNamespace: vi.fn(),
     renameNamespace: vi.fn(),
+    setNamespaceAppearance: vi.fn(),
     removeNamespace: vi.fn(async () => {}),
   };
 }

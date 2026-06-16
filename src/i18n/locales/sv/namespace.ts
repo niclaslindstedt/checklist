@@ -23,6 +23,10 @@ const namespace: NamespaceCatalog = {
     "Ta bort ”{name}” och dess checklista? Detta tar bort dess data från den aktuella lagringen.",
   defaultBadge: "standard",
   nameRequired: "Ett namn på namnrymden krävs.",
+  appearance: "Utseende",
+  colorLabel: "Färg",
+  glyphLabel: "Ikon",
+  glyphNone: "Ingen ikon",
 };
 
 export default namespace;

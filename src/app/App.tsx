@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useDevSeed } from "../dev/useDevSeed.ts";
 import { useT } from "../i18n";
@@ -23,6 +23,7 @@ import {
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
+import { applyFaviconHref, namespaceLogoSrc } from "../ui/namespace-favicon.ts";
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
 import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
@@ -151,6 +152,21 @@ function AppShell() {
     [removeNs, namespaces, push, t],
   );
 
+  // The active namespace's chosen glyph (if any) re-badges the app: it
+  // stands in for the header wordmark logo and the browser-tab favicon.
+  // Without a glyph, both fall back to the bundled checklist mark.
+  const activeNamespaceEntry = useMemo(
+    () => namespaces.find((n) => n.slug === storage.activeNamespace),
+    [namespaces, storage.activeNamespace],
+  );
+  const logoSrc = useMemo(
+    () => namespaceLogoSrc(activeNamespaceEntry),
+    [activeNamespaceEntry],
+  );
+  useEffect(() => {
+    applyFaviconHref(logoSrc);
+  }, [logoSrc]);
+
   // The sync glyph shows for any async file-backed session (local folder,
   // Dropbox, Google Drive) so the user gets save status, a "save now"
   // affordance, and the conflict surface — not for the browser backend
@@ -222,8 +238,8 @@ function AppShell() {
   // and `sync` is the stable `null` for a local session — so the memoised
   // `ChecklistView` / `ArchiveView` skip re-rendering on those.
   const checklistValue = useMemo<ChecklistContextValue>(
-    () => ({ ...checklist, sync }),
-    [checklist, sync],
+    () => ({ ...checklist, sync, logoSrc }),
+    [checklist, sync, logoSrc],
   );
   const navValue = useMemo<NavContextValue>(
     () => ({

@@ -40,6 +40,7 @@ function ChecklistViewImpl() {
     activeChecklistId,
     renameChecklist,
     addItemPosition,
+    logoSrc,
   } = useChecklistContext();
   const reorderCtl = useListReorder(reorder);
   const t = useT();
@@ -61,7 +62,7 @@ function ChecklistViewImpl() {
       <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
         <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
           <img
-            src={`${import.meta.env.BASE_URL}favicon.svg`}
+            src={logoSrc}
             alt=""
             aria-hidden
             className="h-6 w-6 shrink-0 rounded"

@@ -28,6 +28,7 @@ import {
   UndoIcon,
 } from "./icons.tsx";
 import { useModalDispatch } from "./modal-bus.ts";
+import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 
 // The navigation drawer. On viewports narrower than the smallest iPad it
 // collapses to a single floating button the user can drag to either side
@@ -151,15 +152,25 @@ export function SideMenu({
         addLabel={t("namespace.newAction")}
       />
       {namespaces.map((ns) => {
+        // A namespace that has picked an icon or a colour shows its own
+        // glyph, tinted to its accent — only the glyph is coloured, never
+        // the row's text. One left untouched keeps the plain check (active)
+        // / folder (inactive) treatment.
+        const customised = Boolean(ns.glyph || ns.color);
+        const icon = customised ? (
+          <NamespaceGlyph
+            name={ns.glyph}
+            className="h-5 w-5"
+            style={ns.color ? { color: ns.color } : undefined}
+          />
+        ) : ns.slug === activeNamespace ? (
+          <CheckIcon className="h-5 w-5" />
+        ) : (
+          <FolderIcon className="h-5 w-5" />
+        );
         const row = (
           <NavItem
-            icon={
-              ns.slug === activeNamespace ? (
-                <CheckIcon className="h-5 w-5" />
-              ) : (
-                <FolderIcon className="h-5 w-5" />
-              )
-            }
+            icon={icon}
             label={ns.name}
             active={ns.slug === activeNamespace}
             onClick={() => {

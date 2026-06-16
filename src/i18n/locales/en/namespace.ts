@@ -28,6 +28,10 @@ const namespace = {
     "Delete “{name}” and its checklist? This removes its data from the current storage backend.",
   defaultBadge: "default",
   nameRequired: "A namespace name is required.",
+  appearance: "Appearance",
+  colorLabel: "Colour",
+  glyphLabel: "Icon",
+  glyphNone: "No icon",
 } as const;
 
 export type NamespaceCatalog = Widen<typeof namespace>;
