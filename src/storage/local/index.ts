@@ -1,20 +1,32 @@
-// Default storage backend: a single JSON document in localStorage under
-// the key `checklist:v1`. Speaks bytes through the `StorageAdapter`
-// contract (see ../adapter.ts) — the serialize / parse pipeline lives in
-// ../serialize.ts, so this adapter only moves text in and out of a
-// `Storage`. The Storage object is injectable so tests run against an
-// in-memory stub instead of the real `localStorage`.
+// Default storage backend: a single JSON document in localStorage. Speaks
+// bytes through the `StorageAdapter` contract (see ../adapter.ts) — the
+// serialize / parse pipeline lives in ../serialize.ts, so this adapter
+// only moves text in and out of a `Storage`. The Storage object is
+// injectable so tests run against an in-memory stub instead of the real
+// `localStorage`.
+//
+// Each namespace gets its own key (see `namespaceLocalKey`). The default
+// namespace keeps the historical `checklist:v1` key so data written before
+// namespaces existed is read back unchanged; other namespaces are keyed
+// `checklist:v1:<slug>`. The local backend has no folders, so namespacing
+// here is purely a key change — there is nothing to relocate.
 
 import type { StorageAdapter, StoredSnapshot } from "../adapter.ts";
-
-const STORAGE_KEY = "checklist:v1";
+import { DEFAULT_NAMESPACE_SLUG, namespaceLocalKey } from "../namespaces.ts";
 
 export class BrowserLocalStorageAdapter implements StorageAdapter {
   readonly id = "browser" as const;
   readonly label = "This device";
   readonly capabilities: ReadonlySet<"loadSync"> = new Set(["loadSync"]);
 
-  constructor(private readonly storage: Storage = globalThis.localStorage) {}
+  private readonly key: string;
+
+  constructor(
+    private readonly storage: Storage = globalThis.localStorage,
+    namespace: string = DEFAULT_NAMESPACE_SLUG,
+  ) {
+    this.key = namespaceLocalKey(namespace);
+  }
 
   loadSync(): StoredSnapshot | null {
     const text = this.read();
@@ -26,16 +38,32 @@ export class BrowserLocalStorageAdapter implements StorageAdapter {
   }
 
   async save(text: string): Promise<StoredSnapshot> {
-    this.storage.setItem(STORAGE_KEY, text);
+    this.storage.setItem(this.key, text);
     return { text };
   }
 
   private read(): string | null {
     try {
-      return this.storage.getItem(STORAGE_KEY);
+      return this.storage.getItem(this.key);
     } catch {
       // disabled / blocked storage — treat as "no data"
       return null;
     }
+  }
+}
+
+/**
+ * Delete a namespace's local document. Best-effort: a blocked / disabled
+ * `Storage` is treated as "nothing to remove". Used when a namespace is
+ * deleted while the local backend is active.
+ */
+export function deleteLocalNamespace(
+  namespace: string,
+  storage: Storage = globalThis.localStorage,
+): void {
+  try {
+    storage.removeItem(namespaceLocalKey(namespace));
+  } catch {
+    // best-effort
   }
 }

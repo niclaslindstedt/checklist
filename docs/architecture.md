@@ -107,6 +107,21 @@ which reads and writes a single JSON document in `localStorage` under
 the key `checklist:v1` and implements the synchronous `loadSync` fast
 path so the first paint shows stored data.
 
+**Namespaces.** Each adapter is scoped to a *namespace* — a named bucket
+holding its own document. The per-device registry of namespaces and the
+active selection live in `localStorage` (`src/storage/namespaces.ts`),
+and `useStorageBackend` builds the active adapter scoped to the active
+namespace, so switching namespace just swaps the adapter (the same seam
+the fake-data toggle and backend switch use). The local backend keys each
+namespace separately (`checklist:v1` for `default`, `checklist:v1:<slug>`
+otherwise); the cloud backends give each namespace its own folder
+(`/<slug>/checklist.json` on Dropbox, `checklist/<slug>/` on Drive) so a
+whole namespace folder can be shared with another account. The default
+namespace's cloud adapter performs a one-time, self-healing relocation of
+the pre-namespaces document (the file at the app-folder root) into the
+`default/` folder on first load — modelled on the budget project's
+forward-only, do-once migrations.
+
 **Cloud backends.** `createDropboxAdapter` and `createGdriveAdapter`
 keep the same single document in a per-app folder in the user's own
 Dropbox or Google Drive, talking to the providers' HTTP APIs directly

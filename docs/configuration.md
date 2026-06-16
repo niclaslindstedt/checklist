@@ -55,6 +55,26 @@ whether they're encrypted:
 When two devices edit the same cloud document and a save collides, a
 **conflict** dialog asks which copy to keep — there is no automatic merge.
 
+### Namespaces
+
+A **namespace** is a named bucket holding its own checklist. You start in
+the **Default** namespace; the section at the top of the side menu lets
+you switch namespaces, and the **New namespace** entry opens a dialog to
+create, rename, or delete them. The set of namespaces is per device — it
+isn't stored inside any document — so each device (or family member)
+manages its own list.
+
+Each namespace lives in its own folder on the cloud backends
+(`/<name>/checklist.json` on Dropbox, `checklist/<name>/` on Google
+Drive), so you can share one namespace's folder from your Dropbox / Drive
+account — a grocery list with the household — without sharing the rest. On
+**This device** each namespace is simply a separate localStorage entry.
+Deleting a namespace also deletes its data in the **currently active**
+backend; copies in another backend or on another device are left
+untouched. The Default namespace can't be deleted, and your existing
+single checklist is migrated into it automatically the first time a
+cloud backend loads.
+
 ### Developer settings (device-local)
 
 The **Settings → General** tab has a **Developer mode** switch that

@@ -39,6 +39,12 @@ function makeStorageStub(): UseStorageBackend {
     enableEncryption: vi.fn(async () => {}),
     disableEncryption: vi.fn(async () => {}),
     unlock: vi.fn(async () => {}),
+    namespaces: [{ slug: "default", name: "Default" }],
+    activeNamespace: "default",
+    switchNamespace: vi.fn(),
+    createNamespace: vi.fn(),
+    renameNamespace: vi.fn(),
+    removeNamespace: vi.fn(async () => {}),
   };
 }
 

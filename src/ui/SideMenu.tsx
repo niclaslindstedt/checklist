@@ -4,14 +4,18 @@ import { BUILD_LABEL } from "../build-env.ts";
 import { useT } from "../i18n";
 import { DEFAULT_MENU_BUTTON_POSITION } from "../settings/store.ts";
 import type { MenuButtonPosition } from "../settings/types.ts";
+import type { Namespace } from "../storage/namespaces.ts";
 import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
 import {
   ArchiveIcon,
+  CheckIcon,
   ChecklistIcon,
   CodeIcon,
   CogIcon,
+  FolderIcon,
   HeartIcon,
   MenuIcon,
+  PlusIcon,
   RedoIcon,
   ShieldIcon,
   SparklesIcon,
@@ -53,6 +57,14 @@ type Props = {
   canUndo: boolean;
   /** Whether there is an undone edit to re-apply. */
   canRedo: boolean;
+  /** Namespaces known on this device (default first). */
+  namespaces: Namespace[];
+  /** The active namespace's slug. */
+  activeNamespace: string;
+  /** Make a namespace active. */
+  onSwitchNamespace: (slug: string) => void;
+  /** Open the namespace management dialog (add / rename / delete). */
+  onManageNamespaces: () => void;
   /** Open the settings modal. */
   onOpenSettings: () => void;
   /** Open the changelog ("what's new") modal. */
@@ -76,6 +88,10 @@ export function SideMenu({
   current,
   onNavigate,
   archivedCount,
+  namespaces,
+  activeNamespace,
+  onSwitchNamespace,
+  onManageNamespaces,
   onUndo,
   onRedo,
   canUndo,
@@ -168,6 +184,33 @@ export function SideMenu({
             }`}
           >
             <p className="border-b border-line px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
+              {t("namespace.section")}
+            </p>
+            {namespaces.map((ns) => (
+              <NavItem
+                key={ns.slug}
+                icon={
+                  ns.slug === activeNamespace ? (
+                    <CheckIcon className="h-5 w-5" />
+                  ) : (
+                    <FolderIcon className="h-5 w-5" />
+                  )
+                }
+                label={ns.name}
+                active={ns.slug === activeNamespace}
+                onClick={() => {
+                  onSwitchNamespace(ns.slug);
+                  onClose();
+                }}
+              />
+            ))}
+            <NavItem
+              icon={<PlusIcon className="h-5 w-5" />}
+              label={t("namespace.newAction")}
+              active={false}
+              onClick={() => pick(onManageNamespaces)}
+            />
+            <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.label")}
             </p>
             <NavItem

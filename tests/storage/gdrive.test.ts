@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import { ConflictError } from "../../src/storage/adapter.ts";
-import { createGdriveAdapter } from "../../src/storage/gdrive/index.ts";
+import {
+  createGdriveAdapter,
+  deleteGdriveNamespace,
+} from "../../src/storage/gdrive/index.ts";
+
+function qOf(url: string): string {
+  const m = url.match(/[?&]q=([^&]+)/);
+  return m ? decodeURIComponent(m[1]!) : "";
+}
+function isReparent(url: string): boolean {
+  return url.includes("addParents=");
+}
 
 function makeResponse(opts: {
   status: number;
@@ -312,6 +323,79 @@ describe("gdrive adapter", () => {
       const auth = (call.init?.headers as Record<string, string>).Authorization;
       expect(auth).toBe("Bearer token-abc");
     }
+  });
+});
+
+describe("gdrive namespaces", () => {
+  const files = (ids: string[]) =>
+    makeResponse({
+      status: 200,
+      body: JSON.stringify({ files: ids.map((id) => ({ id })) }),
+    });
+
+  it("re-parents the legacy app-folder document into the default folder", async () => {
+    const legacyText = '{"version":1,"legacy":true}';
+    let reparented = false;
+    const { fn, calls } = fakeFetch((call) => {
+      if (isReparent(call.url)) {
+        reparented = true;
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id: "doc" }),
+        });
+      }
+      if (isSearch(call.url)) {
+        const q = qOf(call.url);
+        if (q.includes("mimeType='application/vnd.google-apps.folder'")) {
+          if (q.includes("name='checklist'")) return files(["app"]);
+          if (q.includes("name='default'"))
+            return reparented ? files(["ns"]) : files([]);
+        }
+        if (q.includes("name='checklist.json'")) {
+          if (q.includes("'ns' in parents"))
+            return reparented ? files(["doc"]) : files([]);
+          if (q.includes("'app' in parents")) return files(["doc"]);
+        }
+        return files([]);
+      }
+      if (isFolderCreate(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ id: "ns" }),
+        });
+      }
+      if (isDownload(call.url)) {
+        return makeResponse({
+          status: 200,
+          body: legacyText,
+          headers: { ETag: '"e-moved"' },
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+
+    const adapter = createGdriveAdapter("token", fn); // default namespace
+    const loaded = await adapter.load();
+    expect(loaded?.text).toBe(legacyText);
+    expect(calls.some((c) => isReparent(c.url))).toBe(true);
+  });
+
+  it("deletes a namespace's folder", async () => {
+    const { fn, calls } = fakeFetch((call) => {
+      if (isSearch(call.url)) {
+        const q = qOf(call.url);
+        if (q.includes("name='checklist'")) return files(["app"]);
+        if (q.includes("name='family'")) return files(["nsid"]);
+        return files([]);
+      }
+      if (call.init?.method === "DELETE") {
+        return makeResponse({ status: 204 });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    await deleteGdriveNamespace("token", "family", fn);
+    const del = calls.find((c) => c.init?.method === "DELETE")!;
+    expect(del.url).toBe("https://www.googleapis.com/drive/v3/files/nsid");
   });
 });
 

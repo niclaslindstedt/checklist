@@ -1,11 +1,21 @@
 // Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly
 // (no SDK — a handful of endpoints don't justify ~100kB of bundle) and
-// stores the document as a single file at `/checklist.json` inside the
-// app's scoped folder. Encryption happens one level up in
-// `withEncryption`, so the bytes that land in Dropbox are the same
-// AES-GCM envelope localStorage would have held. Ported and pared from
-// the budget project's `dropbox-adapter.ts` — the checklist has no
-// backups, receipts, or payslips, so this keeps load / save / getRevision.
+// stores each namespace's document as `/<namespace>/checklist.json`
+// inside the app's scoped folder, so a whole namespace folder can be
+// shared with another Dropbox account (the `family/` folder shared with
+// relatives). Encryption happens one level up in `withEncryption`, so the
+// bytes that land in Dropbox are the same AES-GCM envelope localStorage
+// would have held. Ported and pared from the budget project's
+// `dropbox-adapter.ts` — the checklist has no backups, receipts, or
+// payslips, so this keeps load / save / getRevision.
+//
+// Migration: builds before namespaces wrote the default document to
+// `/checklist.json` at the app-folder root. The default namespace adapter
+// moves that legacy file into `/default/checklist.json` the first time it
+// loads and finds the folder empty (Dropbox `move_v2`). The move is
+// do-once and self-healing — once relocated the folder file exists, so the
+// legacy probe never fires again — in the spirit of the budget project's
+// forward-only migrations.
 //
 // Concurrency mirrors Dropbox's own `rev`: `StoredSnapshot.revision`
 // round-trips through the caller, and `save` uses the `update`
@@ -21,6 +31,7 @@ import {
   type StorageAdapter,
   type StoredSnapshot,
 } from "../adapter.ts";
+import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import {
   type OAuthConfig,
   type TokenResult,
@@ -57,13 +68,26 @@ export function isDropboxConfigured(): boolean {
 // the user sees when browsing Dropbox in their file manager.
 export const DROPBOX_APP_FOLDER = "checklist.niclaslindstedt.se";
 
-export const DROPBOX_FILE_PATH = "/checklist.json";
+// Legacy single-file location, written before namespaces existed. The
+// default namespace adapter migrates this into `/default/checklist.json`
+// on first load (see the header note).
+export const DROPBOX_LEGACY_FILE_PATH = "/checklist.json";
 
-// Web URL that opens the document's parent folder in Dropbox's web UI
-// with the file pre-selected for preview.
-export function dropboxWebUrl(): string {
-  const fileName = DROPBOX_FILE_PATH.replace(/^\//, "");
-  return `https://www.dropbox.com/home/Apps/${DROPBOX_APP_FOLDER}?preview=${encodeURIComponent(fileName)}`;
+// Document file name inside each namespace folder.
+const DROPBOX_FILE_NAME = "checklist.json";
+
+/** `/<namespace>/checklist.json` — where a namespace's document lives. */
+export function dropboxFilePath(namespace: string): string {
+  return `/${namespaceCloudFolder(namespace)}/${DROPBOX_FILE_NAME}`;
+}
+
+// Web URL that opens a namespace's folder in Dropbox's web UI with the
+// document pre-selected for preview.
+export function dropboxWebUrl(
+  namespace: string = DEFAULT_NAMESPACE_SLUG,
+): string {
+  const folder = namespaceCloudFolder(namespace);
+  return `https://www.dropbox.com/home/Apps/${DROPBOX_APP_FOLDER}/${encodeURIComponent(folder)}?preview=${encodeURIComponent(DROPBOX_FILE_NAME)}`;
 }
 
 const AUTH_BASE = "https://www.dropbox.com/oauth2/authorize";
@@ -71,6 +95,8 @@ const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
 const UPLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/upload";
 const DOWNLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/download";
 const METADATA_ENDPOINT = "https://api.dropboxapi.com/2/files/get_metadata";
+const MOVE_ENDPOINT = "https://api.dropboxapi.com/2/files/move_v2";
+const DELETE_ENDPOINT = "https://api.dropboxapi.com/2/files/delete_v2";
 
 // 1-second coalescing window so cloud sync matches local-storage "save
 // on every change" in feel — rapid edits within a single gesture
@@ -133,7 +159,11 @@ type WriteMode = "add" | { ".tag": "update"; update: string };
 export function createDropboxAdapter(
   auth: string | DropboxAuth,
   fetchImpl: FetchImpl = fetch,
+  namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): StorageAdapter {
+  const filePath = dropboxFilePath(namespace);
+  const isDefaultNamespace = namespace === DEFAULT_NAMESPACE_SLUG;
+
   // Mutable so a silent refresh swap doesn't require rebuilding the
   // adapter. Plain string `auth` is still accepted for tests and any
   // caller that doesn't need refresh.
@@ -229,20 +259,19 @@ export function createDropboxAdapter(
     return res;
   }
 
-  async function loadFromDropbox(): Promise<StoredSnapshot | null> {
-    log.info(`load: download path=${DROPBOX_FILE_PATH}`);
+  // Download a single path. Returns null on path/not_found (409) so
+  // callers can decide whether to fall back / seed an empty document.
+  async function downloadPath(path: string): Promise<StoredSnapshot | null> {
+    log.info(`load: download path=${path}`);
     const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Dropbox-API-Arg": dropboxApiArg({ path: DROPBOX_FILE_PATH }),
+        "Dropbox-API-Arg": dropboxApiArg({ path }),
       },
     }));
     if (res.status === 409) {
-      // path/not_found — the app folder is empty (first run on a
-      // freshly-connected account). Hand back null so the caller seeds
-      // an empty document.
-      log.info("load: 409 path/not_found — empty app folder");
+      log.info(`load: 409 path/not_found path=${path}`);
       return null;
     }
     if (!res.ok) {
@@ -266,22 +295,66 @@ export function createDropboxAdapter(
     return { text, revision: meta?.rev };
   }
 
+  // One-time relocation of the pre-namespaces document. When the default
+  // namespace folder is empty but the legacy `/checklist.json` exists at
+  // the app-folder root, move it into `/default/checklist.json` (Dropbox
+  // auto-creates the folder). Returns the relocated snapshot, or null when
+  // there is nothing to migrate. Only the default namespace ever carries
+  // legacy data, so this runs for no other namespace.
+  async function migrateLegacyDefault(): Promise<StoredSnapshot | null> {
+    log.info("migrate: probing legacy root document");
+    const legacy = await downloadPath(DROPBOX_LEGACY_FILE_PATH);
+    if (!legacy) return null;
+    log.info(`migrate: moving ${DROPBOX_LEGACY_FILE_PATH} → ${filePath}`);
+    const res = await authedFetch(MOVE_ENDPOINT, (token) => ({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from_path: DROPBOX_LEGACY_FILE_PATH,
+        to_path: filePath,
+        autorename: false,
+      }),
+    }));
+    if (!res.ok) {
+      // A racing device may have moved it already; fall back to reading
+      // the (now-populated) folder path rather than failing the load.
+      const body = await res.text().catch(() => "<unreadable>");
+      log.warn(`migrate: move failed ${res.status} — re-reading folder`, body);
+      return downloadPath(filePath);
+    }
+    const moved = (await res.json()) as { metadata?: FileMetadata };
+    log.info(`migrate: moved rev=${moved.metadata?.rev ?? "<none>"}`);
+    return { text: legacy.text, revision: moved.metadata?.rev };
+  }
+
+  async function loadFromDropbox(): Promise<StoredSnapshot | null> {
+    const stored = await downloadPath(filePath);
+    if (stored) return stored;
+    // Folder empty: migrate the legacy root document into it (default
+    // namespace only), otherwise this is a genuinely empty namespace.
+    if (isDefaultNamespace) return migrateLegacyDefault();
+    return null;
+  }
+
   // Cheap revision probe. `get_metadata` returns the file's `rev` in a
   // small JSON body — the same token `loadFromDropbox` reads off the
   // download response — so a caller can compare it against a last-known
   // revision and skip the body fetch when nothing changed.
   async function getRevision(): Promise<string | null> {
-    log.info(`getRevision: metadata path=${DROPBOX_FILE_PATH}`);
+    log.info(`getRevision: metadata path=${filePath}`);
     const res = await authedFetch(METADATA_ENDPOINT, (token) => ({
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ path: DROPBOX_FILE_PATH }),
+      body: JSON.stringify({ path: filePath }),
     }));
     if (res.status === 409) {
-      log.info("getRevision: 409 path/not_found — empty app folder");
+      log.info("getRevision: 409 path/not_found — empty namespace folder");
       return null;
     }
     if (!res.ok) {
@@ -304,7 +377,7 @@ export function createDropboxAdapter(
 
     async save(text: string, baseRevision?: string): Promise<StoredSnapshot> {
       const args: { path: string; mute: boolean; mode: WriteMode } = {
-        path: DROPBOX_FILE_PATH,
+        path: filePath,
         mute: true,
         mode: baseRevision ? { ".tag": "update", update: baseRevision } : "add",
       };
@@ -352,6 +425,38 @@ export function createDropboxAdapter(
       return { text, revision: meta.rev };
     },
   };
+}
+
+// Delete a namespace's entire folder (`/<namespace>`) from Dropbox. Used
+// when a namespace is removed while Dropbox is the active backend. A 409
+// (path/not_found) is treated as "already gone". Best-effort: a hard
+// failure is logged and surfaced so the caller can decide whether to keep
+// the registry entry.
+export async function deleteDropboxNamespace(
+  accessToken: string,
+  namespace: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<void> {
+  const path = `/${namespaceCloudFolder(namespace)}`;
+  log.info(`delete: removing folder ${path}`);
+  const res = await fetchImpl(DELETE_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ path }),
+  });
+  if (res.status === 409) {
+    log.info("delete: 409 path/not_found — already gone");
+    return;
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "<unreadable>");
+    log.error(`delete: failed ${res.status}`, body);
+    throw new Error(`Dropbox delete failed: ${res.status} ${body}`);
+  }
+  log.info("delete: ok");
 }
 
 // ---- OAuth (PKCE) ---------------------------------------------------

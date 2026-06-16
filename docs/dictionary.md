@@ -106,6 +106,8 @@ names. Honour these when naming a new file, key, or string.
 | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Storage adapter** / **backend contract**           | `StorageAdapter`, `AdapterCapability`, `ConflictError`, `AuthError`, `RateLimitError` (`src/storage/adapter.ts`). [→](overview.md#storage-adapter) |
 | **useStorageBackend** / **active backend**           | `src/storage/useStorageBackend.ts`. [→](overview.md#usestoragebackend-hook)        |
+| **Namespace** / **namespaces** / **default namespace** | `Namespace`, `getNamespaces`, `addNamespace`, `namespaceLocalKey`, `namespaceCloudFolder`, `DEFAULT_NAMESPACE_SLUG` (`src/storage/namespaces.ts`). [→](overview.md#namespaces) |
+| **Namespaces dialog** / **manage namespaces** / **new namespace** | `NamespacesModal` (`src/ui/NamespacesModal.tsx`); the namespace section in `src/ui/SideMenu.tsx`. [→](overview.md#namespaces) |
 | **Storage tab**                                       | `src/ui/settings/tabs/storage.tsx`. [→](overview.md#storage-tab)                   |
 | **Local backend** / **This device**                  | `BrowserLocalStorageAdapter` (`src/storage/local/index.ts`); key `checklist:v1`. [→](overview.md#local-backend--this-device) |
 | **Dropbox backend**                                  | `src/storage/dropbox/index.ts`. [→](overview.md#dropbox-backend)                  |

@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BrowserLocalStorageAdapter } from "../../src/storage/local/index.ts";
+import {
+  BrowserLocalStorageAdapter,
+  deleteLocalNamespace,
+} from "../../src/storage/local/index.ts";
 
 // An in-memory Storage stub injected into the adapter. Tests never touch
 // the real `localStorage` (see AGENTS.md test conventions).
@@ -48,5 +51,30 @@ describe("BrowserLocalStorageAdapter", () => {
   it("identifies itself and advertises the loadSync capability", () => {
     expect(adapter.id).toBe("browser");
     expect(adapter.capabilities.has("loadSync")).toBe(true);
+  });
+
+  it("keeps the legacy key for default but a separate key per namespace", async () => {
+    const storage = new MemoryStorage();
+    const def = new BrowserLocalStorageAdapter(storage, "default");
+    const family = new BrowserLocalStorageAdapter(storage, "family");
+    await def.save("default-doc\n");
+    await family.save("family-doc\n");
+
+    expect(storage.getItem("checklist:v1")).toBe("default-doc\n");
+    expect(storage.getItem("checklist:v1:family")).toBe("family-doc\n");
+    // The two namespaces never read each other's bytes.
+    expect((await def.load())?.text).toBe("default-doc\n");
+    expect((await family.load())?.text).toBe("family-doc\n");
+  });
+
+  it("deletes only the targeted namespace's bytes", async () => {
+    const storage = new MemoryStorage();
+    await new BrowserLocalStorageAdapter(storage, "default").save("keep\n");
+    await new BrowserLocalStorageAdapter(storage, "family").save("drop\n");
+
+    deleteLocalNamespace("family", storage);
+
+    expect(storage.getItem("checklist:v1:family")).toBeNull();
+    expect(storage.getItem("checklist:v1")).toBe("keep\n");
   });
 });

@@ -37,6 +37,10 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   backend from **Settings → Storage**. The app uses each provider's
   app-folder scope, so it can only see files it created itself, and a
   conflict prompt resolves edits made on two devices at once.
+- **Namespaces.** Keep separate checklists in named namespaces, each in
+  its own folder, so you can share one namespace's cloud folder (say, a
+  grocery list with the household) without sharing the rest. Switch and
+  manage them from the top of the side menu.
 - **Optional encryption.** Protect your lists with a passphrase — they're
   AES-GCM encrypted before they're saved, on this device and in the cloud.
 - **PWA-ready.** Installable on any device, works offline, updates
