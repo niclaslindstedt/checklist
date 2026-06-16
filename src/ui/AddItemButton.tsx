@@ -7,12 +7,11 @@ import { useT } from "../i18n";
 // it opens the inline draft row (see `AddItemForm`) rather than adding an
 // item directly, so the user types straight into the spot the item lands.
 //
-// The horizontal centre is anchored to the *visual* viewport
-// (`--app-left` + half `--app-width`, the rect `useViewportHeight` tracks)
-// rather than `left: 50%`: a bare 50% centres on the layout viewport, which
-// iOS lets drift from what's on screen, leaving the button off to one side.
-// The vars fall back to `calc(0px + 100% / 2)` — i.e. plain 50% — wherever
-// the two viewports coincide (every non-iOS browser, pre-script render).
+// The horizontal centre is `left: 50%` on the *layout* viewport, matching
+// the shell, which is also pinned full-width to the layout viewport (see
+// `useViewportHeight`). The visual-viewport width isn't tracked anymore:
+// mirroring its fractional width pushed the fixed shell a sub-pixel past the
+// edge and let iOS pan sideways, so every layer now stays on the layout box.
 
 export function AddItemButton({ onActivate }: { onActivate: () => void }) {
   const t = useT();
@@ -23,7 +22,7 @@ export function AddItemButton({ onActivate }: { onActivate: () => void }) {
       aria-label={t("app.addItem")}
       className="
         fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-20
-        left-[calc(var(--app-left,0px)+var(--app-width,100%)/2)]
+        left-1/2
         flex h-14 w-14 -translate-x-1/2 items-center justify-center gap-0
         rounded-full bg-accent text-3xl leading-none font-bold text-page-bg
         shadow-lg transition-transform active:scale-95
