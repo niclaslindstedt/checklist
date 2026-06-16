@@ -28,13 +28,36 @@ describe("ChecklistView", () => {
     expect(screen.getByText(/nothing here yet/i)).toBeTruthy();
   });
 
-  it("adds an item when the composer is submitted", () => {
+  it("opens the composer from the add button and adds an item on submit", () => {
     const addItem = vi.fn();
     renderView({ items: [], addItem });
+    // The composer is closed until the add button is tapped.
+    expect(screen.queryByPlaceholderText("Add item…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     const input = screen.getByLabelText("Add item");
     fireEvent.change(input, { target: { value: "New thing" } });
     fireEvent.submit(input.closest("form")!);
     expect(addItem).toHaveBeenCalledWith("New thing");
+  });
+
+  it("commits the typed text when the composer loses focus", () => {
+    const addItem = vi.fn();
+    renderView({ items: [], addItem });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "On blur" } });
+    fireEvent.blur(input);
+    expect(addItem).toHaveBeenCalledWith("On blur");
+  });
+
+  it("discards an empty draft on blur without adding anything", () => {
+    const addItem = vi.fn();
+    renderView({ items: [], addItem });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    fireEvent.blur(screen.getByLabelText("Add item"));
+    expect(addItem).not.toHaveBeenCalled();
+    // Composer is gone again and the empty state is back.
+    expect(screen.getByText(/nothing here yet/i)).toBeTruthy();
   });
 
   it("toggles an item through its checkbox", () => {

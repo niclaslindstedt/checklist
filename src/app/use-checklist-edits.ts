@@ -33,6 +33,11 @@ export interface ChecklistEdits {
   unarchive: (itemId: string) => void;
   /** Move a visible item to a new position among the active items. */
   reorder: (itemId: string, toIndex: number) => void;
+  /**
+   * Where a new item lands ("top" or "bottom"), surfaced so the view can
+   * render the add-item draft row in the same spot the item will appear.
+   */
+  addItemPosition: AddItemPosition;
 }
 
 export function useChecklistEdits(deps: {
@@ -128,7 +133,15 @@ export function useChecklistEdits(deps: {
   );
 
   return useMemo(
-    () => ({ addItem, toggle, remove, archive, unarchive, reorder }),
-    [addItem, toggle, remove, archive, unarchive, reorder],
+    () => ({
+      addItem,
+      toggle,
+      remove,
+      archive,
+      unarchive,
+      reorder,
+      addItemPosition,
+    }),
+    [addItem, toggle, remove, archive, unarchive, reorder, addItemPosition],
   );
 }

@@ -51,7 +51,8 @@ names. Honour these when naming a new file, key, or string.
 | **App shell** / **root**                               | `src/app/App.tsx`. [→](overview.md#app-shell)                                                            |
 | **Checklist view** / **the list** / **main screen**    | `src/ui/ChecklistView.tsx`; `SyncInfo`, `useChecklistContext` (`src/ui/checklist-context.ts`). [→](overview.md#checklist-view) |
 | **Checklist row** / **item row** / **row**             | `src/ui/ChecklistRow.tsx`. [→](overview.md#checklist-row)                                                |
-| **Add-item form** / **composer**                       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
+| **Add-item button** / **floating add button** / **the + button** | `src/ui/AddItemButton.tsx`. [→](overview.md#add-item-button)                                   |
+| **Add-item form** / **composer** / **draft row**       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
 | **Side menu** / **drawer** / **nav**                   | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`). [→](overview.md#side-menu)            |
 | **Swipe to remove** (sidebar) / **swipe a list/namespace away** | `useSwipeReveal` (`src/ui/hooks/useSwipeReveal.ts`); the `SwipeToRemove` wrapper in `src/ui/SideMenu.tsx`. [→](overview.md#swipe-to-remove-sidebar) |
@@ -161,7 +162,7 @@ names. Honour these when naming a new file, key, or string.
 
 | Term                              | Refers to                                                                          |
 | --------------------------------- | --------------------------------------------------------------------------------- |
-| **Add an item**                   | `AddItemForm` → `addItem`. [→](overview.md#add-an-item)                            |
+| **Add an item**                   | `AddItemButton` → inline `AddItemForm` → `addItem`. [→](overview.md#add-an-item)   |
 | **Check / uncheck an item**       | row checkbox → `toggleItem`. [→](overview.md#check--uncheck-an-item)               |
 | **Delete an item**                | swipe-left → `deleteItem`. [→](overview.md#delete-an-item)                         |
 | **Archive an item**               | swipe-right → `setArchived(…, true)`. [→](overview.md#archive-an-item)             |
