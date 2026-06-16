@@ -1,11 +1,17 @@
 import { useEffect, useId, type ReactNode } from "react";
 
+import { BUILD_LABEL } from "../build-env.ts";
 import { useT } from "../i18n";
 import {
   ArchiveIcon,
   ChecklistIcon,
+  CodeIcon,
+  CogIcon,
+  HeartIcon,
   MenuIcon,
   RedoIcon,
+  ShieldIcon,
+  SparklesIcon,
   UndoIcon,
 } from "./icons.tsx";
 
@@ -13,8 +19,13 @@ import {
 // the left edge; pressing it slides the drawer in over a dimmed backdrop.
 // The drawer lists the app's views (the active checklist and the archive)
 // and highlights the current one. Selecting a view navigates and closes
-// the drawer. Kept presentational — App owns the open/current state and
-// passes it down, mirroring how ChecklistView is wired.
+// the drawer. Pinned to the bottom is what used to be the top-right burger
+// menu — settings, "what's new", and the project links (privacy, source
+// with the build label, optional donate), in inverted order so the whole
+// of it sits flush at the foot of the drawer. Kept presentational — App
+// owns the open/current state and passes it down, mirroring ChecklistView.
+
+const SOURCE_URL = "https://github.com/niclaslindstedt/checklist";
 
 /** The top-level views the drawer switches between. */
 export type View = "checklist" | "archive";
@@ -35,6 +46,10 @@ type Props = {
   canUndo: boolean;
   /** Whether there is an undone edit to re-apply. */
   canRedo: boolean;
+  /** Open the settings modal. */
+  onOpenSettings: () => void;
+  /** Open the changelog ("what's new") modal. */
+  onOpenChangelog: () => void;
 };
 
 export function SideMenu({
@@ -48,9 +63,24 @@ export function SideMenu({
   onRedo,
   canUndo,
   canRedo,
+  onOpenSettings,
+  onOpenChangelog,
 }: Props) {
   const t = useT();
   const drawerId = useId();
+
+  // Build-time env (string | undefined). A blank value disables the donate
+  // entry entirely rather than linking nowhere.
+  const donateUrl = import.meta.env.VITE_DONATE_URL?.trim();
+  // BASE_URL carries the trailing slash, so this is `/privacy`,
+  // `/preview/privacy`, … depending on the deploy slot.
+  const privacyUrl = `${import.meta.env.BASE_URL}privacy`;
+
+  // Footer actions open a modal, so close the drawer behind them.
+  function pick(handler: () => void) {
+    onClose();
+    handler();
+  }
 
   // Dismiss on Escape while open (the backdrop handles pointer dismissal).
   useEffect(() => {
@@ -89,7 +119,7 @@ export function SideMenu({
           <nav
             id={drawerId}
             aria-label={t("nav.label")}
-            className="relative flex w-64 max-w-[80%] flex-col border-r border-line bg-surface shadow-xl [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)]"
+            className="relative flex w-64 max-w-[80%] flex-col overflow-y-auto border-r border-line bg-surface shadow-xl [padding-bottom:env(safe-area-inset-bottom)] [padding-top:env(safe-area-inset-top)]"
           >
             <p className="border-b border-line px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.label")}
@@ -126,6 +156,43 @@ export function SideMenu({
               disabled={!canRedo}
               onClick={onRedo}
             />
+            {/* The old top-right burger menu, pinned to the foot of the
+                drawer with its order inverted so it reads bottom-up. */}
+            <div className="mt-auto flex flex-col border-t border-line">
+              {donateUrl && (
+                <MenuLink
+                  icon={<HeartIcon className="h-5 w-5 text-danger" />}
+                  label={t("menu.donate")}
+                  href={donateUrl}
+                  external
+                  onClick={onClose}
+                />
+              )}
+              <MenuLink
+                icon={<CodeIcon className="h-5 w-5" />}
+                label={t("menu.source")}
+                href={SOURCE_URL}
+                external
+                meta={BUILD_LABEL}
+                onClick={onClose}
+              />
+              <MenuLink
+                icon={<ShieldIcon className="h-5 w-5" />}
+                label={t("menu.privacy")}
+                href={privacyUrl}
+                onClick={onClose}
+              />
+              <MenuButton
+                icon={<SparklesIcon className="h-5 w-5" />}
+                label={t("menu.changelog")}
+                onClick={() => pick(onOpenChangelog)}
+              />
+              <MenuButton
+                icon={<CogIcon className="h-5 w-5" />}
+                label={t("menu.settings")}
+                onClick={() => pick(onOpenSettings)}
+              />
+            </div>
           </nav>
         </div>
       )}
@@ -177,5 +244,61 @@ function NavItem({
         </span>
       )}
     </button>
+  );
+}
+
+// Footer rows reuse the NavItem geometry (px-5 py-3, gap-3, h-5 icons) so
+// the relocated burger menu reads as one continuous list with the views
+// above it. A plain button for in-app actions, an anchor for the links.
+function MenuButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
+    >
+      <span className="text-muted">{icon}</span>
+      <span className="flex-1">{label}</span>
+    </button>
+  );
+}
+
+function MenuLink({
+  icon,
+  label,
+  href,
+  external,
+  meta,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  href: string;
+  external?: boolean;
+  meta?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <a
+      role="menuitem"
+      href={href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noreferrer noopener" : undefined}
+      onClick={onClick}
+      className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
+    >
+      <span className="text-muted">{icon}</span>
+      <span className="flex-1">{label}</span>
+      {meta && <span className="text-xs text-muted tabular-nums">{meta}</span>}
+    </a>
   );
 }

@@ -6,7 +6,6 @@ import { usePwaUpdate } from "../pwa/usePwaUpdate.ts";
 import type { SaveStatus } from "../app/use-checklist.ts";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
-import { HeaderMenu } from "./HeaderMenu.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { useListReorder } from "./hooks/useListReorder.ts";
 
@@ -27,8 +26,6 @@ type Props = {
   onRemove: (id: string) => void;
   onArchive: (id: string) => void;
   onReorder: (id: string, toIndex: number) => void;
-  onOpenSettings: () => void;
-  onOpenChangelog: () => void;
   /**
    * Cloud-sync status for the header glyph, or null for a local-only
    * session (the icon only appears when a cloud backend is active).
@@ -58,8 +55,6 @@ function ChecklistViewImpl({
   onRemove,
   onArchive,
   onReorder,
-  onOpenSettings,
-  onOpenChangelog,
   sync,
 }: Props) {
   const reorder = useListReorder(onReorder);
@@ -102,10 +97,6 @@ function ChecklistViewImpl({
               onOpenDetails={sync.onOpenDetails}
             />
           )}
-          <HeaderMenu
-            onOpenSettings={onOpenSettings}
-            onOpenChangelog={onOpenChangelog}
-          />
         </div>
       </header>
 

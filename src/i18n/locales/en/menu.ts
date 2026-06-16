@@ -1,10 +1,9 @@
 import type { Widen } from "./_widen";
 
-// Strings for the header burger menu — the trigger label and each entry
-// inside it (settings, changelog, and the project links).
+// Strings for the burger menu, now pinned to the foot of the side
+// drawer — settings, changelog, and the project links.
 
 const menu = {
-  open: "Open menu",
   settings: "Settings",
   changelog: "What's new",
   privacy: "Privacy policy",
