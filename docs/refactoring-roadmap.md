@@ -84,6 +84,52 @@ _None pending._
 
 ### Severity 5–6 — friction
 
+#### R7. Google Drive adapter never maps HTTP 429 to `RateLimitError`
+
+The `StorageBackend` error taxonomy includes `RateLimitError`
+(`src/storage/adapter.ts:120`), and the sync engine routes it to a
+user-visible `"throttled"` status (`src/app/use-checklist-sync.ts:149`).
+Dropbox honours the contract — it catches 429 and throws `RateLimitError`
+with a clamped `Retry-After` (`src/storage/dropbox/index.ts:409`). Google
+Drive (`src/storage/gdrive/index.ts`, 660 lines) has **zero** 429 handling:
+its `gdriveError` helper only special-cases 401 → `AuthError`
+(`gdrive/index.ts:88`), so a Drive 429 surfaces as a raw
+`Error("…save failed: 429")` the UI can't recognise. The `"throttled"`
+affordance exists but Drive can never reach it — a contract divergence
+between two interchangeable backends.
+
+**Plan.** Teach `gdriveError` (or the shared mapper R9 proposes) to
+translate 429 → `RateLimitError(retryAfterMs)`, reading the `Retry-After`
+header with the same 5s floor Dropbox uses. ~10 lines plus a unit test
+asserting a 429 response throws `RateLimitError`.
+
+**Risk.** Low code risk, but Drive's OAuth/save path has **no automated
+coverage** — exercise a real save against Google Drive after the change.
+Low probability in single-device use (Drive write quotas are high), which
+caps the severity below the 7–8 band. **Severity: 6.**
+
+#### R8. `gdrive/index.ts` is the largest file in the tree and inlines its OAuth setup
+
+`src/storage/gdrive/index.ts` is **660 lines** — the largest source file
+in the repo, ~95 longer than the next (`themes.ts`, 565). Dropbox (509)
+stays smaller precisely because it delegates its OAuth primitives to the
+shared `src/storage/oauth-pkce.ts` (245); gdrive inlines its GIS (Google
+Identity Services) script-loading and token-client setup
+(~`gdrive/index.ts:511–660`) directly. The asymmetry makes it cheaper to
+bolt Drive-specific logic onto the already-large file than to push it back
+as a shared capability.
+
+**Plan.** Extract the GIS OAuth setup into `src/storage/gdrive/oauth.ts`
+(mirroring how Dropbox leans on `oauth-pkce.ts`), leaving `index.ts` as the
+adapter factory. ~150 lines move; pure relocation, no behaviour change.
+Optionally lift the folder-hierarchy cache helpers into `gdrive/hierarchy.ts`
+as a second PR.
+
+**Risk.** Pure module relocation, but `tests/storage/gdrive.test.ts` is
+coupled to the current structure — keep the public factory signature stable.
+Smoke-test a real Drive connect/save after the move (no automated OAuth
+coverage). **Severity: 5.**
+
 #### R4. Top-level view switching is hardcoded in App and SideMenu
 
 Adding a top-level view (beyond `checklist` / `archive`) means editing the
@@ -116,10 +162,11 @@ working (derive from the glob map). Mechanical, zero behaviour change.
 **Risk.** Low; the type derivation needs care so `Widen<typeof en>` stays
 correct and `sv` is checked against it. **Severity: 4 (easy win).**
 
-#### R6. icons.tsx is a 401-line append-only barrel
+#### R6. icons.tsx is a 475-line append-only barrel
 
-`src/ui/icons.tsx` (401 lines) is touched in 8/30 commits — every feature that
-needs a glyph appends an export here. It is approaching half the 1000-line cap.
+`src/ui/icons.tsx` (475 lines, up from 401 at the last sweep) is touched in
+8/30 commits — every feature that needs a glyph appends an export here. It is
+approaching half the 1000-line cap.
 
 **Plan.** Lower priority: these are additive re-exports/inline SVGs that
 *usually* merge cleanly (distinct lines), so the conflict cost is real but
@@ -128,6 +175,45 @@ into sibling files re-exported from `icons.tsx`. Re-rate upward if the file
 nears the cap or conflicts recur.
 
 **Risk.** Trivial; purely mechanical. **Severity: 3 (easy win, marginal).**
+
+#### R9. HTTP-error mapping is hand-rolled at every cloud request site
+
+The "read the body, log it, throw a typed error" sequence repeats ~13 times
+across the two cloud adapters: gdrive funnels through a local
+`gdriveError(op, status, body)` helper (10 call sites,
+`src/storage/gdrive/index.ts:88`) while Dropbox throws inline
+(`res.text().catch(…)` ×8). The two paths diverge — gdrive maps
+401 → `AuthError`, Dropbox additionally maps 429 → `RateLimitError` — which
+is exactly the seam R7 patches.
+
+**Plan.** Lift one shared `mapHttpError(res, { provider, op })` into
+`src/storage/adapter.ts` (or a sibling `http-error.ts`) that owns the full
+taxonomy (401 → `AuthError`, 429 → `RateLimitError`, else generic `Error`)
+plus the safe body read. Both adapters call it; R7 falls out for free.
+N = 13 call sites — a genuine helper extraction.
+
+**Risk.** Low; consolidation only. Land R7 and R9 together since they touch
+the same mapping. **Severity: 4 (easy win).**
+
+#### R10. `migrateLegacyDefault` is duplicated across the two cloud adapters
+
+Both cloud adapters carry a one-time legacy-document relocation with the same
+control flow — probe the pre-namespaces document, move it into the namespace
+folder, recover by re-reading the destination if a concurrent device won the
+race: `src/storage/gdrive/index.ts:217–247` and
+`src/storage/dropbox/index.ts:304–330`. The *shape* is identical; the API
+calls (Drive `addParents`/`removeParents` PATCH vs. Dropbox `move_v2`) differ.
+
+**Plan.** Extract a `migrateNamespaceLegacy(ops)` helper parameterised over a
+small `{ probe, move, retryRead }` interface each adapter satisfies, so the
+subtle race-recovery branch lives and is tested once.
+
+**Risk.** **Not a mechanical move** — designing the `ops` seam across two
+divergent APIs is real work, and there are only 2 call sites, so the
+abstraction may cost more than the duplication saves. Re-rate **upward** when
+a 3rd cloud backend (OneDrive/S3) makes it a 3-way copy; until then it's
+marginal. No automated cloud coverage — smoke-test both migrations.
+**Severity: 4.**
 
 ## Landed
 
@@ -198,3 +284,14 @@ nears the cap or conflicts recur.
   that is over-engineering — the proportionate slice (R1 modal bus, R2
   contexts) captures the conflict-resistance benefit without the machinery.
   Revisit only if checklist grows several more top-level surfaces.
+- **Extracting Dropbox's `authedFetch` 401 → refresh → retry wrapper into
+  `oauth-pkce.ts`.** `oauth-pkce.ts` exports the token primitives (`startAuth`
+  / `completeAuth` / `refreshAccessToken`) but not the "on 401, refresh once,
+  retry" wrapper, which lives inline in Dropbox
+  (`src/storage/dropbox/index.ts:223–258`). Tempting to "complete" the shared
+  module — but Google Drive uses GIS tokens that **can't** be refreshed, so it
+  will never use the wrapper, and Dropbox is the only refresh-token backend
+  today. Extracting now is the speculative-abstraction anti-pattern the skill
+  warns against (a single caller). Land it **with** the PR that adds a second
+  refresh-token backend (Azure/OneDrive), not before — it would rate ~5 once a
+  second consumer exists, 1–2 today.
