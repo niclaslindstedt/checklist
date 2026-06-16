@@ -14,6 +14,8 @@ type Props = Omit<
   value: string;
   onValueChange: (value: string) => void;
   wrapperClassName?: string;
+  /** Text-colour utility for the typed value; defaults to `text-fg-bright`. */
+  textClassName?: string;
   clearLabel?: string;
 };
 
@@ -24,6 +26,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, Props>(
       onValueChange,
       className,
       wrapperClassName,
+      textClassName = "text-fg-bright",
       clearLabel = "Clear",
       type = "text",
       ...rest
@@ -40,7 +43,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, Props>(
           type={type}
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
-          className={`w-full min-w-0 border-0 bg-transparent text-fg-bright outline-none placeholder:text-muted ${canClear ? "pr-7" : ""} ${className ?? ""}`.trim()}
+          className={`w-full min-w-0 border-0 bg-transparent ${textClassName} outline-none placeholder:text-muted ${canClear ? "pr-7" : ""} ${className ?? ""}`.trim()}
           {...rest}
         />
         {canClear && (

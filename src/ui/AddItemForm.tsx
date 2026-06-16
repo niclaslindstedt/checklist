@@ -40,7 +40,13 @@ export function AddItemForm({
         inputRef.current?.focus();
       }}
     >
-      <span aria-hidden className="text-lg leading-none text-muted">
+      {/* Sized to match the checkbox in `ChecklistRow` (h-5 w-5) so the
+          glyph sits centred above the checkbox column and the input text
+          lines up with the item titles below. */}
+      <span
+        aria-hidden
+        className="flex h-5 w-5 shrink-0 items-center justify-center text-lg leading-none text-muted"
+      >
         +
       </span>
       <ClearableInput
@@ -55,6 +61,9 @@ export function AddItemForm({
         placeholder={t("app.addItemPlaceholder")}
         aria-label={t("app.addItem")}
         wrapperClassName="flex-1"
+        // Match the checklist item title's colour exactly — only the bright
+        // input default set it apart.
+        textClassName="text-fg"
       />
     </form>
   );
