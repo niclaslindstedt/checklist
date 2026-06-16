@@ -88,10 +88,13 @@ export async function openShareDialog(page) {
 }
 
 // Open the settings / storage panel (the LocalStorage / Google Drive /
-// Dropbox backend picker). Same stub note as `openShareDialog`: adjust
-// the selector to match `src/ui/` once the control lands.
+// Dropbox backend picker). Settings live behind the side navigation
+// drawer: open the drawer ("Open navigation"), then pick "Settings"
+// from the burger menu pinned at its foot.
 export async function openSettings(page) {
-  await page.getByRole("button", { name: /settings/i }).click();
+  await page.getByRole("button", { name: /open navigation/i }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole("menuitem", { name: /^settings$/i }).click();
   await page.getByRole("dialog").waitFor();
 }
 

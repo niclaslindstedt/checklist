@@ -126,7 +126,7 @@ export function SettingsModal({
           id={`settings-tabpanel-${activeTab}`}
           aria-labelledby={`settings-tab-${activeTab}`}
           tabIndex={0}
-          className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
+          className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4"
         >
           {activeTab === "general" && (
             <GeneralTab settings={settings} onUpdate={onUpdate} />
