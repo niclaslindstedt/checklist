@@ -61,6 +61,14 @@
 
 html {
   color-scheme: light dark;
+  /* Belt-and-braces with the no-zoom viewport meta: stop iOS from
+     auto-inflating text on rotate/zoom, and disable the double-tap-to-zoom
+     gesture (which can still fire even with `user-scalable=no`). Together
+     they keep the fixed shell exactly one screen wide so it never pans
+     sideways. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 html,
