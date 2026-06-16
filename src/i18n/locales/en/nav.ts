@@ -12,6 +12,7 @@ const nav = {
   checklist: "Checklist",
   checklists: "Checklists",
   newChecklist: "New checklist",
+  removeChecklist: "Delete checklist",
   archive: "Archive",
   archiveEmpty: "Nothing archived — swipe an item right to archive it.",
   restore: "Restore item",

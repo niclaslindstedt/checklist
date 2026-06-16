@@ -20,6 +20,7 @@ const namespace = {
   rename: "Rename",
   renameAction: "Rename namespace",
   deleteAction: "Delete namespace",
+  confirmDelete: "Confirm",
   delete: "Delete",
   cancel: "Cancel",
   save: "Save",
