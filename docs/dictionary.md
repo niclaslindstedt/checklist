@@ -134,7 +134,8 @@ names. Honour these when naming a new file, key, or string.
 
 | Term                          | Refers to                                                                          |
 | ----------------------------- | --------------------------------------------------------------------------------- |
-| **Undo / redo**               | `useUndoRedo` (`src/app/use-undo-redo.ts`); `useUndoRedoShortcuts` (`src/ui/hooks/useUndoRedoShortcuts.ts`). [→](overview.md#undo--redo) |
+| **Undo / redo** / **actions history** | `useUndoRedo` (`src/app/use-undo-redo.ts`), `HistoryEntry` (snapshot + action label); `useUndoRedoShortcuts` (`src/ui/hooks/useUndoRedoShortcuts.ts`). [→](overview.md#undo--redo) |
+| **Action confirmation toast** / **"what just happened"** | `Notify` (`src/app/notify.ts`); `notify` threaded through `useChecklist` → `useChecklistEdits` / `useChecklistLists`; `toast.*` keys (`src/i18n/locales/en/toast.ts`). [→](overview.md#action-confirmation-toast) |
 
 ## Dev mode
 

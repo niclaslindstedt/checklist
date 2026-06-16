@@ -17,9 +17,11 @@ import {
   archivedItems as archivedItemsOp,
 } from "../domain/checklists.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
+import { useT } from "../i18n";
 import type { AddItemPosition } from "../settings/types.ts";
 import { type StorageAdapter } from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
+import { type Notify, noopNotify } from "./notify.ts";
 import {
   type ChecklistEdits,
   useChecklistEdits,
@@ -80,7 +82,10 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
 export function useChecklist(
   adapter?: StorageAdapter,
   addItemPosition: AddItemPosition = "bottom",
+  notify: Notify = noopNotify,
 ): UseChecklist {
+  const t = useT();
+
   // A stable fallback for callers (and tests) that don't pass an adapter.
   // App always passes a memoized one, so the swap effect inside the sync
   // engine only fires on a real backend change (e.g. the developer
@@ -111,11 +116,31 @@ export function useChecklist(
     [setDoc, scheduleSave],
   );
 
-  const { record, reset, undo, redo, canUndo, canRedo } = useUndoRedo({
+  const {
+    record,
+    reset,
+    undo: undoTimeline,
+    redo: redoTimeline,
+    canUndo,
+    canRedo,
+  } = useUndoRedo({
     initialSeed: doc,
     setData: applyHistorySnapshot,
   });
   resetHistory.current = reset;
+
+  // Undo / redo walk the timeline and announce the action they stepped
+  // past — the document swaps under the user, so the toast is what tells
+  // them *what* just came back (or went away again).
+  const undo = useCallback(() => {
+    const label = undoTimeline();
+    if (label) notify(t("toast.undone", { action: label }));
+  }, [undoTimeline, notify, t]);
+
+  const redo = useCallback(() => {
+    const label = redoTimeline();
+    if (label) notify(t("toast.redone", { action: label }));
+  }, [redoTimeline, notify, t]);
 
   // The checklist-collection verbs (select / add / rename) and the active
   // selection. The active list it resolves is what the edit verbs below
@@ -126,6 +151,8 @@ export function useChecklist(
     setDoc,
     scheduleSave,
     record,
+    notify,
+    t,
   });
   const list = lists.activeList;
 
@@ -139,6 +166,8 @@ export function useChecklist(
     setDoc,
     scheduleSave,
     record,
+    notify,
+    t,
     addItemPosition,
   });
 

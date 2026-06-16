@@ -21,6 +21,8 @@ import {
   renameChecklist as renameChecklistOp,
 } from "../domain/checklists.ts";
 import type { Checklist, Snapshot } from "../domain/types.ts";
+import type { TFunction } from "../i18n";
+import type { Notify } from "./notify.ts";
 import { DEFAULT_LIST_NAME } from "./use-checklist-sync.ts";
 import { newId, now } from "./side-effects.ts";
 
@@ -60,10 +62,14 @@ export function useChecklistLists(deps: {
   setDoc: (next: Snapshot) => void;
   /** Persist the edited document (debounced by the active backend). */
   scheduleSave: (next: Snapshot) => void;
-  /** Record the post-edit document on the undo timeline. */
-  record: (next: Snapshot) => void;
+  /** Record the post-edit document — tagged with its action label — on the undo timeline. */
+  record: (next: Snapshot, label: string) => void;
+  /** Raise a toast for an action whose result the user can't immediately see. */
+  notify: Notify;
+  /** Translator for the action labels (also reused as the toast text). */
+  t: TFunction;
 }): ChecklistLists {
-  const { doc, docRef, setDoc, scheduleSave, record } = deps;
+  const { doc, docRef, setDoc, scheduleSave, record, notify, t } = deps;
 
   // Which list the user is looking at. Device-local and in-memory: a
   // selection that points at no surviving list (after a reload or a backend
@@ -76,10 +82,10 @@ export function useChecklistLists(deps: {
     doc.checklists.find((c) => c.id === activeId) ?? doc.checklists[0]!;
 
   const commit = useCallback(
-    (next: Snapshot) => {
+    (next: Snapshot, label: string) => {
       setDoc(next);
       scheduleSave(next);
-      record(next);
+      record(next, label);
     },
     [setDoc, scheduleSave, record],
   );
@@ -93,23 +99,31 @@ export function useChecklistLists(deps: {
       nextChecklistName(prev.checklists, DEFAULT_LIST_NAME),
       now(),
     );
-    commit({ ...prev, checklists: [...prev.checklists, created] });
+    // No toast: the switcher jumps to the fresh, visibly-empty list.
+    commit(
+      { ...prev, checklists: [...prev.checklists, created] },
+      t("toast.listCreated", { name: created.name }),
+    );
     setActiveId(created.id);
-  }, [docRef, commit]);
+  }, [docRef, commit, t]);
 
   const renameChecklist = useCallback(
     (id: string, name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;
       const prev = docRef.current;
-      commit({
-        ...prev,
-        checklists: prev.checklists.map((c) =>
-          c.id === id ? renameChecklistOp(c, trimmed, now()) : c,
-        ),
-      });
+      // No toast: the header title updates in place.
+      commit(
+        {
+          ...prev,
+          checklists: prev.checklists.map((c) =>
+            c.id === id ? renameChecklistOp(c, trimmed, now()) : c,
+          ),
+        },
+        t("toast.listRenamed", { name: trimmed }),
+      );
     },
-    [docRef, commit],
+    [docRef, commit, t],
   );
 
   const removeChecklist = useCallback(
@@ -121,12 +135,15 @@ export function useChecklistLists(deps: {
       if (prev.checklists.length <= 1) return;
       const remaining = prev.checklists.filter((c) => c.id !== id);
       if (remaining.length === prev.checklists.length) return;
-      commit({ ...prev, checklists: remaining });
+      const name = prev.checklists.find((c) => c.id === id)?.name ?? "";
+      const label = t("toast.listDeleted", { name });
+      commit({ ...prev, checklists: remaining }, label);
+      notify(label);
       // Removing the explicitly-selected list re-points the selection at the
       // first survivor; an unset selection already falls back to `[0]`.
       if (id === activeId) setActiveId(remaining[0]!.id);
     },
-    [docRef, commit, activeId],
+    [docRef, commit, notify, t, activeId],
   );
 
   const checklists = useMemo(
