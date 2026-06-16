@@ -68,6 +68,16 @@ export function Modal({ open, onClose, labelledBy, children }: Props) {
         tabIndex={-1}
         className="relative flex h-full w-full flex-col overflow-hidden bg-surface text-fg shadow-xl outline-none sm:h-[min(90svh,42rem)] sm:max-w-3xl sm:rounded-lg sm:border sm:border-line"
       >
+        {/* iOS PWA safe-area: the full-screen mobile layout reaches the top
+            of the viewport, so reserve room for the status bar / Dynamic
+            Island above the header. Coloured to match the modal headers
+            (bg-surface-3) so it reads as an extension of the header bar.
+            Centered desktop cards clear the inset already, so it's hidden
+            from sm: up. */}
+        <div
+          aria-hidden="true"
+          className="h-[env(safe-area-inset-top)] shrink-0 bg-surface-3 sm:hidden"
+        />
         {children}
       </div>
     </div>
