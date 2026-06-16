@@ -80,21 +80,23 @@ body,
   overscroll-behavior: none;
 }
 
-/* The app shell is pinned as a fixed overlay tracking the *visual*
-   viewport rect (`--app-*`, set by useViewportHeight). The on-screen
-   keyboard shrinks and shifts the visual viewport; following both its size
-   and offset keeps the composer just above the keyboard with the header and
-   list still in view, instead of iOS scrolling the whole shell off the top.
-   The width tracks the visual viewport too: anchoring `left` to a non-zero
-   `--app-left` while leaving `width: 100%` (of the *layout* viewport) spills
-   the shell past the right edge on iOS, which surfaces as a horizontal
-   scrollbar and a shell that pans sideways. Falls back to a full-size shell
-   before the script runs and on browsers without the visualViewport API. */
+/* The app shell is pinned as a fixed overlay. Vertically it tracks the
+   *visual* viewport band (`--app-top` / `--app-height`, set by
+   useViewportHeight): the on-screen keyboard shrinks and shifts the visual
+   viewport, and following its size and top keeps the composer just above the
+   keyboard with the header and list still in view, instead of iOS scrolling
+   the whole shell off the top. Horizontally it stays pinned to the *layout*
+   viewport (`left: 0; width: 100%`) — mirroring the visual viewport's
+   fractional width/offset there instead lets the fixed shell exceed the
+   viewport by a sub-pixel, which iOS turns into a sideways pan and a
+   horizontal scrollbar; `overflow: hidden` keeps the layout viewport
+   scroll-free. Falls back to a full-height shell before the script runs and
+   on browsers without the visualViewport API. */
 #app {
   position: fixed;
   top: var(--app-top, 0);
-  left: var(--app-left, 0);
-  width: var(--app-width, 100%);
+  left: 0;
+  width: 100%;
   height: var(--app-height, 100svh);
 }
 
