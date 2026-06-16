@@ -70,6 +70,7 @@ export function SideMenu({
     setDragging,
     position,
     setPosition,
+    showButton,
   } = useNav();
   const {
     undo,
@@ -120,27 +121,31 @@ export function SideMenu({
     <>
       {/* Floating toggle the user can drag to either edge; a plain press
           still toggles the drawer (the drag hook swallows the click that
-          tails a real drag, and leaves keyboard activation untouched). */}
-      <button
-        type="button"
-        onClick={() => {
-          if (drag.consumeDragClick()) return;
-          toggle();
-        }}
-        {...drag.handlers}
-        style={drag.style}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? drawerId : undefined}
-        aria-label={open ? t("nav.close") : t("nav.open")}
-        className={`fixed z-40 flex h-11 w-11 touch-none items-center justify-center rounded-full border border-line bg-surface text-muted shadow-lg select-none hover:text-fg-bright ${
-          drag.dragging
-            ? "cursor-grabbing transition-none"
-            : "cursor-grab transition-[left,top] duration-300 ease-out"
-        }`}
-      >
-        <MenuIcon className="h-5 w-5" />
-      </button>
+          tails a real drag, and leaves keyboard activation untouched). The
+          user can hide it in the installed PWA, where an inward edge swipe
+          (see `useEdgeSwipeOpen`) opens the drawer in its place. */}
+      {showButton && (
+        <button
+          type="button"
+          onClick={() => {
+            if (drag.consumeDragClick()) return;
+            toggle();
+          }}
+          {...drag.handlers}
+          style={drag.style}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? drawerId : undefined}
+          aria-label={open ? t("nav.close") : t("nav.open")}
+          className={`fixed z-40 flex h-11 w-11 touch-none items-center justify-center rounded-full border border-line bg-surface text-muted shadow-lg select-none hover:text-fg-bright ${
+            drag.dragging
+              ? "cursor-grabbing transition-none"
+              : "cursor-grab transition-[left,top] duration-300 ease-out"
+          }`}
+        >
+          <MenuIcon className="h-5 w-5" />
+        </button>
+      )}
 
       {open && (
         <div

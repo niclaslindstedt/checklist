@@ -27,6 +27,9 @@ const settings = {
     devMode: "Developer mode",
     devModeHint:
       "Reveal the Developer and Logs tabs for capturing diagnostics and loading sample data.",
+    menuButton: "Show menu button",
+    menuButtonHint:
+      "When off, swipe in from the edge of the screen to open the menu.",
   },
 
   lists: {

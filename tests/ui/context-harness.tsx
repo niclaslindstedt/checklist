@@ -67,6 +67,7 @@ export function makeNavValue(
     setDragging: noop,
     position: { side: "left", y: 0.5 },
     setPosition: noop,
+    showButton: true,
     ...over,
   };
 }

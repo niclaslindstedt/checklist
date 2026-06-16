@@ -114,4 +114,18 @@ describe("validateSettings", () => {
         .menuButtonPosition,
     ).toEqual(d);
   });
+
+  it("shows the menu button by default and honours an explicit boolean", () => {
+    expect(defaultSettings().showMenuButton).toBe(true);
+    expect(validateSettings({}).showMenuButton).toBe(true);
+    expect(validateSettings({ showMenuButton: false }).showMenuButton).toBe(
+      false,
+    );
+  });
+
+  it("falls back to showing the menu button on a non-boolean value", () => {
+    expect(validateSettings({ showMenuButton: "no" }).showMenuButton).toBe(
+      true,
+    );
+  });
 });

@@ -100,6 +100,17 @@ describe("SideMenu", () => {
     expect(toggle).toHaveBeenCalledTimes(1);
   });
 
+  it("hides the floating button when showButton is off", () => {
+    renderMenu({ nav: { showButton: false } });
+    // No toggle to press — the edge swipe opens the drawer instead.
+    expect(screen.queryByLabelText("Open navigation")).toBeNull();
+  });
+
+  it("still renders the open drawer with the button hidden", () => {
+    renderMenu({ nav: { open: true, showButton: false } });
+    expect(screen.getByRole("menuitem", { name: /Archive/ })).toBeTruthy();
+  });
+
   it("lists both views and navigates when one is chosen", () => {
     const navigate = vi.fn();
     renderMenu({ nav: { open: true, navigate } });
