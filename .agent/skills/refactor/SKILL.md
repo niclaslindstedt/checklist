@@ -1,6 +1,6 @@
 ---
 name: refactor
-description: "Use to work through the refactor backlog in docs/refactoring-roadmap.md or to extend it with newly-discovered code smells. Picks the highest-leverage pending item, re-verifies its severity against the current tree (line counts and the smell shape drift over time), and either lands the fix, skips it with a written reason, or extends the roadmap when exploration mode finds something new. Grounded in the roadmap — bootstraps it on first run, and stops when the queue is empty rather than refactoring for its own sake."
+description: "Use to work through the refactor backlog in docs/refactoring-roadmap.md, to extend it with newly-discovered code smells, or to clear it back to a blank slate. Picks the highest-leverage pending item, re-verifies its severity against the current tree (line counts and the smell shape drift over time), and either lands the fix, skips it with a written reason, or extends the roadmap when exploration mode finds something new. Clear mode wipes the Pending / Landed / Investigated lists back to the bootstrap shape and optionally chains a fresh Explore to repopulate them. Grounded in the roadmap — bootstraps it on first run, and stops when the queue is empty rather than refactoring for its own sake."
 ---
 
 # Working the refactor roadmap
@@ -21,13 +21,16 @@ this codebase considers a code smell worth fixing. It carries:
 - an **Investigated and skipped** list of candidates rejected on
   prior sweeps, with the reasoning.
 
-This skill is the operating procedure for that file. There are two
+This skill is the operating procedure for that file. There are three
 modes:
 
 - **Work mode** — pick the highest-leverage pending item, verify,
   land it (or skip it with a reason).
 - **Explore mode** — survey the codebase for smells the roadmap
   hasn't catalogued yet, rate them, and append them to **Pending**.
+- **Clear mode** — wipe the roadmap's findings back to its
+  bootstrap shape (empty Pending / Landed / Investigated lists),
+  then optionally chain into a fresh Explore to repopulate it.
 
 The skill is **grounded**: every action references a specific row in
 the roadmap. Don't refactor code that isn't on the list — file a
@@ -63,8 +66,9 @@ is present.
 
 ## Modes — pick one per invocation
 
-Pick at session start; don't blend the two within one PR. Each PR
-carries a single item from one mode.
+Pick at session start; don't blend modes within one PR. Each PR
+carries a single item from one mode (Clear mode may chain a fresh
+Explore into the same PR — see its loop).
 
 - **Work mode** (default): user asked you to "work the refactor
   backlog", "do the next refactor", "land another item". Run the
@@ -72,6 +76,9 @@ carries a single item from one mode.
 - **Explore mode**: user asked you to "find more refactor
   candidates", "do another sweep", "extend the roadmap". Run the
   **Explore-mode loop** below. (Bootstrap, above, ends here.)
+- **Clear mode**: user asked you to "clear the refactor roadmap",
+  "wipe the backlog", "reset the roadmap", "start the roadmap
+  fresh". Run the **Clear-mode loop** below.
 
 If the user is ambiguous ("can you clean up the codebase?"), ask
 which mode they want before doing anything. The cost of guessing
@@ -355,6 +362,80 @@ session pick the next angle. If the angle yielded zero
 findings (the layer is clean), say so in the PR body and pick a
 different angle next time.
 
+## Clear-mode loop
+
+Clear mode resets the roadmap's **findings** back to the empty,
+freshly-bootstrapped shape so a fresh sweep can start from a clean
+slate. The user reaches for it when the backlog has gone stale
+wholesale — the tree moved out from under it, a big refactor
+invalidated the lot, or they just want to re-derive the queue from
+scratch rather than re-verify rows one at a time.
+
+### 1. Confirm before wiping — clearing is destructive
+
+The roadmap is more than a TODO list. Clearing it discards:
+
+- the **Pending** queue (the catalogued, rated smells);
+- the **Landed** history (the record of what was already fixed
+  and when); and — most consequentially —
+- the **Investigated and skipped** reasoning, which is what stops
+  future Explore sweeps from re-proposing smells that were already
+  examined and deliberately rejected.
+
+Git history preserves the old file, so nothing is truly lost — but
+the *working* roadmap loses it, and the next agent reads the
+working file, not the git log. Before wiping, **state what's about
+to go** — the row counts in each of the three lists — and confirm
+with the user, unless they were already explicit ("yes, wipe the
+whole roadmap"). Use `AskUserQuestion` if there's any doubt.
+
+If only part of the roadmap has gone stale (e.g. Pending is
+obsolete but Landed and Investigated are still worth keeping), that
+is **not** a full clear — say so and offer to clear only Pending,
+or to handle the stale rows individually via Work / Explore mode
+instead. A full clear is the right tool only when the user wants a
+genuine blank slate.
+
+### 2. Reset the file to its bootstrap shape
+
+Rewrite `docs/refactoring-roadmap.md` to exactly the post-bootstrap
+state described under **Bootstrap** above:
+
+- **Keep the scaffolding** — the strategic-context intro and the
+  severity rubric. These are the *framework*, not findings, and
+  they give the next Explore sweep its leverage lens. (If the user
+  wants a truly fresh start that also re-derives the strategic
+  context — e.g. the churn analysis is years stale — re-run that
+  analysis as part of the clear and rewrite the intro; otherwise
+  leave it intact.)
+- **Empty the three finding lists** — leave **Pending** (with its
+  severity-band sub-headings and the "Easy wins" carve-out at the
+  bottom), **Landed**, and **Investigated and skipped** present but
+  empty. An empty Pending is a valid terminal state: Work mode
+  reads it as "backlog clean, stop".
+
+### 3. Offer a fresh Explore
+
+A cleared roadmap is an empty roadmap, so the natural next step is
+to repopulate it. Ask the user whether to chain a fresh Explore:
+
+- **If yes**: switch to the **Explore-mode loop** above, pick one
+  survey angle, and write its findings into the now-empty Pending.
+  This is the one case where two modes share a PR — the clear and
+  the re-explore are one logical "reset and re-survey" operation.
+  Still hold to one survey angle (Explore step 6); a fresh roadmap
+  doesn't license auditing everything at once.
+- **If no**: stop. Leave Pending empty and tell the user the
+  roadmap is now blank — the next run can Explore to repopulate it,
+  or they can do feature work on a clean runway.
+
+### 4. One PR, roadmap-only
+
+The clear (and any chained Explore) edits **only**
+`docs/refactoring-roadmap.md` — no code changes, same as Explore
+mode. Invoke `write-changeset`; a roadmap reset is not user-visible,
+so it lands `no-changelog`.
+
 ## What this skill explicitly does NOT do
 
 - **Doesn't refactor code that isn't on the roadmap.** If you see
@@ -379,7 +460,14 @@ different angle next time.
   stop.
 - **Doesn't bundle items.** Each PR carries one roadmap row. The
   one-row-per-PR discipline is what makes the rollback story
-  cheap and the review surface small.
+  cheap and the review surface small. (Clear mode is the lone
+  exception: a clear plus its chained re-explore are one logical
+  operation in one PR.)
+- **Doesn't clear the roadmap silently.** Clear mode wipes the
+  Landed history and the Investigated-and-skipped reasoning, not
+  just Pending — so it confirms what's about to be lost before
+  rewriting the file, and never destroys that history as a
+  drive-by during Work or Explore mode.
 
 ## Common pitfalls
 
