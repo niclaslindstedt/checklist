@@ -214,6 +214,7 @@ function AppShell() {
           namespaces={storage.namespaces}
           activeNamespace={storage.activeNamespace}
           onSwitchNamespace={storage.switchNamespace}
+          onRemoveNamespace={storage.removeNamespace}
         />
         <SettingsModalHost
           settings={settings}

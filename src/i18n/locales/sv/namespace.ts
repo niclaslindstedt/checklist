@@ -15,6 +15,7 @@ const namespace: NamespaceCatalog = {
   rename: "Byt namn",
   renameAction: "Byt namn på namnrymd",
   deleteAction: "Ta bort namnrymd",
+  confirmDelete: "Bekräfta",
   delete: "Ta bort",
   cancel: "Avbryt",
   save: "Spara",

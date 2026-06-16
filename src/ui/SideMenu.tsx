@@ -1,11 +1,15 @@
-import { useEffect, useId, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 import { BUILD_LABEL } from "../build-env.ts";
 import { useT } from "../i18n";
-import type { Namespace } from "../storage/namespaces.ts";
+import {
+  DEFAULT_NAMESPACE_SLUG,
+  type Namespace,
+} from "../storage/namespaces.ts";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useNav } from "./nav-context.ts";
 import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
+import { useSwipeReveal } from "./hooks/useSwipeReveal.ts";
 import {
   ArchiveIcon,
   CheckIcon,
@@ -19,6 +23,7 @@ import {
   RedoIcon,
   ShieldIcon,
   SparklesIcon,
+  TrashIcon,
   UndoIcon,
 } from "./icons.tsx";
 import { useModalDispatch } from "./modal-bus.ts";
@@ -39,8 +44,15 @@ import { useModalDispatch } from "./modal-bus.ts";
 // keyframes in styles/theme.css). The open/current/position state comes
 // from `useNav` and the undo/redo/archive counts from `useChecklistContext`
 // rather than props threaded down from App; the footer actions `dispatch` a
-// modal command on the bus (see `modal-bus.ts`). Only the namespace list —
-// storage state, not nav or checklist — is still passed as props.
+// modal command on the bus (see `modal-bus.ts`). Only the namespace list and
+// its remove verb — storage state, not nav or checklist — are passed as props.
+//
+// Both lists support swipe-to-remove: a left swipe on a namespace or
+// checklist row latches open a trash button (see `useSwipeReveal`).
+// Removing a checklist is one tap and recoverable via undo; removing a
+// namespace destroys a whole document in the active backend, so it asks for
+// a second confirming tap. The default namespace and the last remaining
+// checklist are never removable, so they render as plain rows.
 
 const SOURCE_URL = "https://github.com/niclaslindstedt/checklist";
 
@@ -51,12 +63,15 @@ type Props = {
   activeNamespace: string;
   /** Make a namespace active. */
   onSwitchNamespace: (slug: string) => void;
+  /** Remove a namespace and its data in the active backend (default can't). */
+  onRemoveNamespace: (slug: string) => Promise<void>;
 };
 
 export function SideMenu({
   namespaces,
   activeNamespace,
   onSwitchNamespace,
+  onRemoveNamespace,
 }: Props) {
   const t = useT();
   const dispatch = useModalDispatch();
@@ -82,6 +97,7 @@ export function SideMenu({
     activeChecklistId,
     selectChecklist,
     addChecklist,
+    removeChecklist,
   } = useChecklistContext();
   const archivedCount = archivedItems.length;
   const drag = useDraggableMenuButton(position, setPosition);
@@ -172,24 +188,39 @@ export function SideMenu({
               onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
               addLabel={t("namespace.newAction")}
             />
-            {namespaces.map((ns) => (
-              <NavItem
-                key={ns.slug}
-                icon={
-                  ns.slug === activeNamespace ? (
-                    <CheckIcon className="h-5 w-5" />
-                  ) : (
-                    <FolderIcon className="h-5 w-5" />
-                  )
-                }
-                label={ns.name}
-                active={ns.slug === activeNamespace}
-                onClick={() => {
-                  onSwitchNamespace(ns.slug);
-                  close();
-                }}
-              />
-            ))}
+            {namespaces.map((ns) => {
+              const row = (
+                <NavItem
+                  icon={
+                    ns.slug === activeNamespace ? (
+                      <CheckIcon className="h-5 w-5" />
+                    ) : (
+                      <FolderIcon className="h-5 w-5" />
+                    )
+                  }
+                  label={ns.name}
+                  active={ns.slug === activeNamespace}
+                  onClick={() => {
+                    onSwitchNamespace(ns.slug);
+                    close();
+                  }}
+                />
+              );
+              // The default namespace can't be removed — render it plain.
+              if (ns.slug === DEFAULT_NAMESPACE_SLUG) {
+                return <div key={ns.slug}>{row}</div>;
+              }
+              return (
+                <SwipeToRemove
+                  key={ns.slug}
+                  actionLabel={t("namespace.deleteAction")}
+                  confirmLabel={t("namespace.confirmDelete")}
+                  onRemove={() => onRemoveNamespace(ns.slug)}
+                >
+                  {row}
+                </SwipeToRemove>
+              );
+            })}
             <SectionHeader
               label={t("nav.checklists")}
               border
@@ -199,24 +230,39 @@ export function SideMenu({
               }}
               addLabel={t("nav.newChecklist")}
             />
-            {checklists.map((c) => (
-              <NavItem
-                key={c.id}
-                icon={
-                  c.id === activeChecklistId ? (
-                    <CheckIcon className="h-5 w-5" />
-                  ) : (
-                    <ChecklistIcon className="h-5 w-5" />
-                  )
-                }
-                label={c.name}
-                active={c.id === activeChecklistId && current === "checklist"}
-                onClick={() => {
-                  selectChecklist(c.id);
-                  navigate("checklist");
-                }}
-              />
-            ))}
+            {checklists.map((c) => {
+              const row = (
+                <NavItem
+                  icon={
+                    c.id === activeChecklistId ? (
+                      <CheckIcon className="h-5 w-5" />
+                    ) : (
+                      <ChecklistIcon className="h-5 w-5" />
+                    )
+                  }
+                  label={c.name}
+                  active={c.id === activeChecklistId && current === "checklist"}
+                  onClick={() => {
+                    selectChecklist(c.id);
+                    navigate("checklist");
+                  }}
+                />
+              );
+              // The last remaining list can't be removed — the views always
+              // need one to show — so it renders without the swipe action.
+              if (checklists.length <= 1) {
+                return <div key={c.id}>{row}</div>;
+              }
+              return (
+                <SwipeToRemove
+                  key={c.id}
+                  actionLabel={t("nav.removeChecklist")}
+                  onRemove={() => removeChecklist(c.id)}
+                >
+                  {row}
+                </SwipeToRemove>
+              );
+            })}
             {/* Archive lives at the foot of the checklists list — it's a
                 view onto the active list, not a section of its own. */}
             <NavItem
@@ -371,6 +417,74 @@ function NavItem({
         </span>
       )}
     </button>
+  );
+}
+
+// Wraps a drawer row so a left swipe latches it open to reveal a trailing
+// trash button (see `useSwipeReveal`). `confirmLabel`, when given, makes the
+// removal a two-tap action: the first tap on the trash arms a confirming
+// state (the button reads `confirmLabel`) and only the second tap commits —
+// the double confirmation a namespace deletion warrants. A checklist passes
+// no `confirmLabel`, so its single tap removes straight away (recoverable
+// via undo). The sliding foreground carries its own surface background so it
+// covers the action while closed.
+const REMOVE_ACTION_W = 96;
+
+function SwipeToRemove({
+  actionLabel,
+  confirmLabel,
+  onRemove,
+  children,
+}: {
+  /** Accessible label for the trash button in its resting state. */
+  actionLabel: string;
+  /** When set, removal needs a second confirming tap reading this label. */
+  confirmLabel?: string;
+  onRemove: () => void | Promise<void>;
+  children: ReactNode;
+}) {
+  const swipe = useSwipeReveal(REMOVE_ACTION_W);
+  const [confirming, setConfirming] = useState(false);
+
+  // Closing the row (a tap on an open row, or a swipe back) disarms the
+  // confirm step so it never lingers half-armed for the next open.
+  useEffect(() => {
+    if (!swipe.open) setConfirming(false);
+  }, [swipe.open]);
+
+  function act() {
+    if (confirmLabel && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
+    swipe.close();
+    void onRemove();
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={act}
+          aria-label={confirming ? confirmLabel : actionLabel}
+          style={{ width: REMOVE_ACTION_W }}
+          className="flex h-full items-center justify-center bg-danger text-xs font-semibold tracking-wide text-white uppercase"
+        >
+          {confirming ? confirmLabel : <TrashIcon className="h-5 w-5" />}
+        </button>
+      </div>
+      <div
+        {...swipe.handlers}
+        style={{ transform: `translateX(${swipe.offset}px)` }}
+        className={`relative bg-surface [touch-action:pan-y] ${
+          swipe.animating ? "transition-transform duration-200" : ""
+        }`}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 

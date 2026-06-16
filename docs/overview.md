@@ -111,11 +111,35 @@ burger-menu links — settings, "what's new", privacy, the source on GitHub
 (with the app version shown as a subtitle), and an optional donate link.
 The drawer's open/current/position state comes from `useNav`
 (`src/ui/nav-context.ts`, which exports the `View` type
-`"checklist" | "archive"`) and the undo/redo/archive counts from
-`useChecklistContext`; only the namespace list is still passed as a prop.
-Closes on Escape or backdrop click. The floating button itself is
-positioned by `useDraggableMenuButton` over the geometry in
-`sideMenuPosition.ts`.
+`"checklist" | "archive"`) and the undo/redo/archive counts plus
+`removeChecklist` from `useChecklistContext`; the namespace list and its
+remove verb are still passed as props. Both the namespace rows and the
+checklist rows support **swipe to remove** (below). Closes on Escape or
+backdrop click. The floating button itself is positioned by
+`useDraggableMenuButton` over the geometry in `sideMenuPosition.ts`.
+
+### Swipe to remove (sidebar)
+
+A left swipe on a namespace or checklist row in the side menu latches it
+open to uncover a trailing trash button — the navigation-drawer counterpart
+of the checklist row's swipe-to-delete. The gesture is `useSwipeReveal`
+(`src/ui/hooks/useSwipeReveal.ts`), a pared-down sibling of `useRowSwipe`:
+left-only, with no right-swipe outcome, so nothing is destroyed by the
+swipe itself — the revealed trash button is the only way to act. The
+`SwipeToRemove` wrapper in `src/ui/SideMenu.tsx` renders the button behind
+a sliding foreground and owns the confirm policy:
+
+- A **checklist** removes on a single tap of the trash (it is recoverable
+  via undo, so no extra confirmation), calling `removeChecklist`.
+- A **namespace** destroys a whole document in the active backend and is
+  not undoable, so the trash asks for a **second confirming tap**: the
+  first tap arms a confirm state (the button reads "Confirm"), the second
+  commits via the `onRemoveNamespace` prop (`useStorageBackend`'s
+  `removeNamespace`). Closing the row disarms the confirm step.
+
+The two rows that must always survive never grow the affordance: the
+**default namespace** (can't be removed) and the **last remaining
+checklist** (the views always need one to show) render as plain rows.
 
 ### Floating menu button
 
@@ -285,6 +309,11 @@ it, and records it on the undo timeline:
   the lowest unused suffix.
 - `renameChecklist(id, name)` — rename a list via the domain
   `renameChecklist` (a blank name is ignored).
+- `removeChecklist(id)` — drop a list from `checklists[]`. A no-op for the
+  last remaining list (the document must always carry one — `activeList`
+  falls back to `checklists[0]`); removing the selected list re-points the
+  selection at the first survivor. Like the other verbs it records on the
+  undo timeline, so a removed list is recoverable.
 
 The side menu (`src/ui/SideMenu.tsx`) renders the switcher: a
 "Checklists" section listing every list by name (the active one marked,
@@ -775,6 +804,20 @@ Open the archive view (side menu) and tap Restore
 
 Drag a row by its grip handle (`useListReorder` → `moveItem`). Commits
 once on drop.
+
+### Remove a checklist
+
+Open the side menu, swipe a checklist row left to uncover its trash, and
+tap it (`removeChecklist`). One tap removes — it's recoverable via undo.
+The last remaining list shows no trash (the views always need one).
+
+### Remove a namespace
+
+Open the side menu, swipe a namespace row left to uncover its trash, tap
+it once to arm the confirm, then tap again to commit (`removeNamespace` via
+`useStorageBackend`). The two taps guard a destructive, non-undoable delete
+of the namespace's document in the active backend. The default namespace
+shows no trash. The same delete also lives in the namespaces dialog.
 
 ### Undo / redo
 

@@ -54,6 +54,7 @@ names. Honour these when naming a new file, key, or string.
 | **Add-item form** / **composer**                       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
 | **Side menu** / **drawer** / **nav**                   | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`). [→](overview.md#side-menu)            |
+| **Swipe to remove** (sidebar) / **swipe a list/namespace away** | `useSwipeReveal` (`src/ui/hooks/useSwipeReveal.ts`); the `SwipeToRemove` wrapper in `src/ui/SideMenu.tsx`. [→](overview.md#swipe-to-remove-sidebar) |
 | **Floating menu button** / **drag button** / **sidebar button** | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`; `showButton` in `nav-context.ts`. [→](overview.md#floating-menu-button) |
 | **Edge swipe to open** / **swipe in from the edge**     | `useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`). [→](overview.md#edge-swipe-to-open) |
 | **Header menu** / **burger menu**                      | `src/ui/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                    |
@@ -72,7 +73,7 @@ names. Honour these when naming a new file, key, or string.
 | **Checklist**                                      | `Checklist` (`src/domain/types.ts`); `src/domain/checklists.ts`. [→](overview.md#checklist)        |
 | **Checklist item** / **item**                     | `Item`, `ChecklistItem` (`src/domain/types.ts`). [→](overview.md#checklist-item)                   |
 | **Active checklist** / **active list**            | `activeList`, `activeChecklistId` (`src/app/use-checklist-lists.ts`); `withActiveList` (`src/app/use-checklist-sync.ts`). [→](overview.md#active-checklist--active-list) |
-| **Checklist switcher** / **multiple checklists** / **switch checklist** / **add checklist** / **rename checklist** | `useChecklistLists` (`src/app/use-checklist-lists.ts`); `nextChecklistName`, `renameChecklist`, `createChecklist` (`src/domain/checklists.ts`); the checklists section in `src/ui/SideMenu.tsx`. [→](overview.md#checklist-switcher--multiple-checklists) |
+| **Checklist switcher** / **multiple checklists** / **switch checklist** / **add checklist** / **rename checklist** / **remove checklist** | `useChecklistLists` (`src/app/use-checklist-lists.ts`); `nextChecklistName`, `renameChecklist`, `createChecklist` (`src/domain/checklists.ts`); the checklists section in `src/ui/SideMenu.tsx`. [→](overview.md#checklist-switcher--multiple-checklists) |
 | **use-checklist hook** / **app state**            | `useChecklist`, `UseChecklist` (`src/app/use-checklist.ts`). [→](overview.md#use-checklist-hook)   |
 | **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
@@ -166,6 +167,8 @@ names. Honour these when naming a new file, key, or string.
 | **Archive an item**               | swipe-right → `setArchived(…, true)`. [→](overview.md#archive-an-item)             |
 | **Restore an item**               | archive view → `setArchived(…, false)`. [→](overview.md#restore-an-item)          |
 | **Reorder items**                 | grip drag → `useListReorder` → `moveItem`. [→](overview.md#reorder-items)          |
+| **Remove a checklist**            | side-menu swipe-left → trash → `removeChecklist`. [→](overview.md#remove-a-checklist) |
+| **Remove a namespace**            | side-menu swipe-left → trash → confirm tap → `removeNamespace`. [→](overview.md#remove-a-namespace) |
 | **Undo / redo**                   | side menu / keyboard. [→](overview.md#undo--redo-1)                                |
 | **Pull to refresh**               | `usePullToRefresh` → `reload`. [→](overview.md#pull-to-refresh)                    |
 | **Open settings**                 | header menu / sync glyph → `SettingsModal`. [→](overview.md#open-settings)         |
