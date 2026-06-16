@@ -74,6 +74,12 @@ describe("SettingsModal", () => {
     expect(onUpdate).toHaveBeenCalledWith("theme", "dracula");
   });
 
+  it("updates addItemPosition from the General tab", () => {
+    const { onUpdate } = renderModal();
+    fireEvent.click(screen.getByRole("radio", { name: "Top" }));
+    expect(onUpdate).toHaveBeenCalledWith("addItemPosition", "top");
+  });
+
   it("reveals the Developer and Logs tabs when developer mode is on", () => {
     renderModal();
     expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();

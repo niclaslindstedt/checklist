@@ -63,6 +63,18 @@ describe("free-standing checklist item operations", () => {
     expect(base.items).toHaveLength(0);
   });
 
+  it("appends to the bottom by default and when asked", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW, "bottom");
+    expect(c.items.map((i) => i.id)).toEqual(["i1", "i2"]);
+  });
+
+  it("prepends to the top when position is 'top'", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW, "top");
+    expect(c.items.map((i) => i.id)).toEqual(["i2", "i1"]);
+  });
+
   it("archives an item without removing it, hiding it from the view", () => {
     const withItem = addItem(base, { id: "i1", title: "A" }, NOW);
     const archived = setArchived(withItem, "i1", true, NOW);

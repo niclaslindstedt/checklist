@@ -21,6 +21,12 @@ const settings: SettingsCatalog = {
     devMode: "Utvecklarläge",
     devModeHint:
       "Visa flikarna Utvecklare och Loggar för att fånga diagnostik och läsa in exempeldata.",
+    listTitle: "Listor",
+    addItemPosition: "Lägg till nya poster",
+    addItemPositionHint:
+      "Var en ny post hamnar när du lägger till den i en lista.",
+    addItemTop: "Överst",
+    addItemBottom: "Nederst",
   },
 
   developer: {

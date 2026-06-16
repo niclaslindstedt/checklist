@@ -37,11 +37,15 @@ export function createChecklist(
   };
 }
 
-/** Append a fresh, unchecked item to the end of the list. */
+/**
+ * Add a fresh, unchecked item to the list. `position` controls where it
+ * lands — appended to the bottom (the default) or prepended to the top.
+ */
 export function addItem(
   checklist: Checklist,
   item: { id: string; title: string },
   now: string,
+  position: "top" | "bottom" = "bottom",
 ): Checklist {
   const next: ChecklistItem = {
     id: item.id,
@@ -50,7 +54,10 @@ export function addItem(
   };
   return {
     ...checklist,
-    items: [...checklist.items, next],
+    items:
+      position === "top"
+        ? [next, ...checklist.items]
+        : [...checklist.items, next],
     updatedAt: now,
   };
 }
