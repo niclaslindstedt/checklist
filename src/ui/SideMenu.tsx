@@ -6,6 +6,7 @@ import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,
 } from "../storage/namespaces.ts";
+import { APP_VIEWPORT_RECT } from "./appViewportRect.ts";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useNav } from "./nav-context.ts";
 import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
@@ -165,7 +166,8 @@ export function SideMenu({
 
       {open && (
         <div
-          className={`fixed inset-0 z-50 flex ${onRight ? "justify-end" : ""}`}
+          className={`fixed z-50 flex ${onRight ? "justify-end" : ""}`}
+          style={APP_VIEWPORT_RECT}
         >
           <button
             type="button"

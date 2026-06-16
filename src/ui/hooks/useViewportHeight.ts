@@ -16,6 +16,15 @@
 // composer lands just above the keyboard with the list still in view, and
 // because the focused input already sits inside an element positioned
 // within the visual viewport, the browser has nothing left to scroll.
+//
+// The same rect (`--app-top`/`--app-left`/`--app-width`/`--app-height`)
+// also pins the full-screen overlays — the settings/modal backdrop and the
+// side-menu drawer. They are `position: fixed`, which iOS lays out against
+// the *layout* viewport; when that drifts from the visual viewport (e.g.
+// the keyboard, or a pinch that leaves the page subtly offset) a bare
+// `inset: 0` leaves them shifted off the visible box while `#app` stays put.
+// Anchoring them to the same rect keeps every layer aligned to what's on
+// screen.
 
 import { useEffect } from "react";
 
@@ -27,6 +36,7 @@ export function useViewportHeight(): void {
     const root = document.documentElement;
     const sync = () => {
       root.style.setProperty("--app-height", `${vv.height}px`);
+      root.style.setProperty("--app-width", `${vv.width}px`);
       root.style.setProperty("--app-top", `${vv.offsetTop}px`);
       root.style.setProperty("--app-left", `${vv.offsetLeft}px`);
     };
@@ -38,6 +48,7 @@ export function useViewportHeight(): void {
       vv.removeEventListener("resize", sync);
       vv.removeEventListener("scroll", sync);
       root.style.removeProperty("--app-height");
+      root.style.removeProperty("--app-width");
       root.style.removeProperty("--app-top");
       root.style.removeProperty("--app-left");
     };
