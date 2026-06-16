@@ -99,10 +99,13 @@ surface for the view to place the draft row.
 ### Archive view
 
 `src/ui/ArchiveView.tsx` — the same pinned shell as the checklist view,
-listing the active list's archived items. Each row offers Restore
-(back into the active list) and Delete (permanent). There is no
-composer and no reordering — items only ever enter the archive by being
-swiped-right in the checklist view. Reached from the side menu.
+listing archived items from **every** checklist (`archivedByChecklist`),
+grouped under a header naming the list each item came from; lists with
+nothing archived are omitted, and the header count is the total across
+groups. Each row offers Restore (back into the item's **source** list,
+not the active one) and Delete (permanent). There is no composer and no
+reordering — items only ever enter the archive by being swiped-right in
+the checklist view. Reached from the side menu.
 
 ### Side menu
 
@@ -412,9 +415,14 @@ whole-document snapshot.
 ### Archive / unarchive item
 
 `setArchived` (`src/domain/checklists.ts`) — flips an item's `archived`
-flag without destroying it. `activeItems` / `archivedItems` partition
-the list into the checklist view and the archive view. Swiping a row
-right archives; Restore in the archive view unarchives.
+flag without destroying it. `activeItems` / `archivedItems` partition a
+single list into the checklist view and the archive view;
+`archivedByChecklist` rolls the archived items up across the whole
+snapshot into per-list groups for the archive view. Swiping a row right
+archives; Restore in the archive view unarchives. Because the archive
+spans every list, the restore / delete verbs (`useChecklistEdits`)
+resolve the owning checklist from the document rather than the active
+list.
 
 ### Reorder item
 

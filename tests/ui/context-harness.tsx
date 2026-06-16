@@ -26,7 +26,7 @@ export function makeChecklistValue(
   return {
     snapshot: emptySnapshot(),
     items: [],
-    archivedItems: [],
+    archivedGroups: [],
     checkedCount: 0,
     activeList: fallbackList,
     activeChecklistId: fallbackList.id,

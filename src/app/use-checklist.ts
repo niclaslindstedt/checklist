@@ -14,7 +14,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   activeItems,
-  archivedItems as archivedItemsOp,
+  type ArchivedGroup,
+  archivedByChecklist,
 } from "../domain/checklists.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -48,8 +49,12 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   snapshot: Snapshot;
   /** The active checklist's visible (non-archived) items. */
   items: ChecklistItem[];
-  /** The active checklist's archived items, for the archive view. */
-  archivedItems: ChecklistItem[];
+  /**
+   * Archived items across every checklist, grouped by their source list —
+   * what the archive view lists under a per-checklist header. Lists with
+   * nothing archived are omitted.
+   */
+  archivedGroups: ArchivedGroup[];
   /** How many visible items are checked. */
   checkedCount: number;
   /**
@@ -172,7 +177,10 @@ export function useChecklist(
   });
 
   const items = useMemo(() => activeItems(list), [list]);
-  const archived = useMemo(() => archivedItemsOp(list), [list]);
+  // The archive spans every checklist, so it derives from the whole document
+  // rather than the active list — restoring or deleting reaches into whatever
+  // list the item came from (see `useChecklistEdits`).
+  const archivedGroups = useMemo(() => archivedByChecklist(doc), [doc]);
   const checkedCount = useMemo(
     () => items.filter((it) => it.checked).length,
     [items],
@@ -187,7 +195,7 @@ export function useChecklist(
     () => ({
       snapshot: doc,
       items,
-      archivedItems: archived,
+      archivedGroups,
       checkedCount,
       ...lists,
       ...edits,
@@ -205,7 +213,7 @@ export function useChecklist(
     [
       doc,
       items,
-      archived,
+      archivedGroups,
       checkedCount,
       lists,
       edits,

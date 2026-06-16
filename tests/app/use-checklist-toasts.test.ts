@@ -69,7 +69,9 @@ describe("useChecklist action toasts", () => {
     const id = result.current.items[0]!.id;
 
     act(() => result.current.archive(id));
-    await waitFor(() => expect(result.current.archivedItems).toHaveLength(1));
+    await waitFor(() =>
+      expect(result.current.archivedGroups[0]?.items).toHaveLength(1),
+    );
     expect(notify).toHaveBeenCalledWith("Archived “eggs”");
 
     notify.mockClear();

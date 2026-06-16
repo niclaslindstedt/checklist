@@ -4,33 +4,48 @@ import { fireEvent, screen } from "@testing-library/react";
 
 import { ArchiveView } from "../../src/ui/ArchiveView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
-import type { ChecklistItem } from "../../src/domain/types.ts";
+import type { ArchivedGroup } from "../../src/domain/checklists.ts";
 import { renderWithChecklist } from "./context-harness.tsx";
 
-const items: ChecklistItem[] = [
-  { id: "i1", title: "Old milk", checked: true, archived: true },
-  { id: "i2", title: "Stale bread", checked: false, archived: true },
+const groups: ArchivedGroup[] = [
+  {
+    id: "list-1",
+    name: "Groceries",
+    items: [{ id: "i1", title: "Old milk", checked: true, archived: true }],
+  },
+  {
+    id: "list-2",
+    name: "Chores",
+    items: [{ id: "i2", title: "Stale bread", checked: false, archived: true }],
+  },
 ];
 
-// ArchiveView reads the archived items and their actions from the checklist
-// context, so each test seeds the context and overrides what it asserts on.
+// ArchiveView reads the grouped archived items and their actions from the
+// checklist context, so each test seeds the context and overrides what it
+// asserts on.
 function renderView(value: Partial<ChecklistContextValue> = {}) {
   return renderWithChecklist(<ArchiveView />, {
-    archivedItems: items,
+    archivedGroups: groups,
     ...value,
   });
 }
 
 describe("ArchiveView", () => {
-  it("lists archived items with the count", () => {
+  it("lists archived items with the total count", () => {
     renderView();
     expect(screen.getByText("Old milk")).toBeTruthy();
     expect(screen.getByText("Stale bread")).toBeTruthy();
     expect(screen.getByText("2")).toBeTruthy();
   });
 
+  it("groups archived items under a header for each source checklist", () => {
+    renderView();
+    expect(screen.getByRole("heading", { name: "Groceries" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Chores" })).toBeTruthy();
+  });
+
   it("shows an empty state when nothing is archived", () => {
-    renderView({ archivedItems: [] });
+    renderView({ archivedGroups: [] });
     expect(screen.getByText(/nothing archived/i)).toBeTruthy();
   });
 

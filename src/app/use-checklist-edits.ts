@@ -31,7 +31,7 @@ export interface ChecklistEdits {
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
   archive: (itemId: string) => void;
-  /** Restore an archived item back into the active view. */
+  /** Restore an archived item back into the list it came from. */
   unarchive: (itemId: string) => void;
   /** Move a visible item to a new position among the active items. */
   reorder: (itemId: string, toIndex: number) => void;
@@ -105,6 +105,21 @@ export function useChecklistEdits(deps: {
     [],
   );
 
+  // Locate an item by id anywhere in the document, returning it with its
+  // owning checklist. The archive spans every list, so restore and delete
+  // resolve the owner from the whole snapshot rather than the active list —
+  // an archived item may belong to a checklist the user isn't looking at.
+  const findItem = useCallback(
+    (itemId: string) => {
+      for (const checklist of docRef.current.checklists) {
+        const item = checklist.items.find((it) => it.id === itemId);
+        if (item) return { checklist, item };
+      }
+      return null;
+    },
+    [docRef],
+  );
+
   const addItem = useCallback(
     (title: string) => {
       const trimmed = title.trim();
@@ -139,11 +154,13 @@ export function useChecklistEdits(deps: {
 
   const remove = useCallback(
     (itemId: string) => {
-      const label = t("toast.itemDeleted", { title: titleOf(itemId) });
-      commit(deleteItemOp(listRef.current, itemId, now()), label);
+      const found = findItem(itemId);
+      if (!found) return;
+      const label = t("toast.itemDeleted", { title: found.item.title });
+      commit(deleteItemOp(found.checklist, itemId, now()), label);
       notify(label);
     },
-    [commit, notify, titleOf, t],
+    [commit, findItem, notify, t],
   );
 
   const archive = useCallback(
@@ -157,11 +174,13 @@ export function useChecklistEdits(deps: {
 
   const unarchive = useCallback(
     (itemId: string) => {
-      const label = t("toast.itemRestored", { title: titleOf(itemId) });
-      commit(setArchived(listRef.current, itemId, false, now()), label);
+      const found = findItem(itemId);
+      if (!found) return;
+      const label = t("toast.itemRestored", { title: found.item.title });
+      commit(setArchived(found.checklist, itemId, false, now()), label);
       notify(label, "success");
     },
-    [commit, notify, titleOf, t],
+    [commit, findItem, notify, t],
   );
 
   const reorder = useCallback(

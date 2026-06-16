@@ -141,6 +141,43 @@ describe("useChecklist multi-list verbs", () => {
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
   });
 
+  it("aggregates the archive across lists and restores into the source list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    // Archive an item in the first list.
+    const first = result.current.activeChecklistId;
+    act(() => result.current.addItem("milk"));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    const milkId = result.current.items[0]!.id;
+    act(() => result.current.archive(milkId));
+    await waitFor(() => expect(result.current.items).toHaveLength(0));
+
+    // Switch to a second list and archive an item there too.
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    act(() => result.current.addItem("eggs"));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    const eggsId = result.current.items[0]!.id;
+    act(() => result.current.archive(eggsId));
+    await waitFor(() => expect(result.current.items).toHaveLength(0));
+
+    // The archive spans both lists, grouped by source.
+    expect(
+      result.current.archivedGroups.map((g) => g.items.map((it) => it.id)),
+    ).toEqual([[milkId], [eggsId]]);
+
+    // Restoring the first list's item reaches into it even though the second
+    // list is active, leaving the active list's view untouched.
+    act(() => result.current.unarchive(milkId));
+    await waitFor(() => expect(result.current.archivedGroups).toHaveLength(1));
+    expect(result.current.items).toHaveLength(0); // second list still empty
+    act(() => result.current.selectChecklist(first));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.items[0]!.title).toBe("milk");
+  });
+
   it("ignores a blank rename", async () => {
     const adapter = memoryAdapter();
     const { result } = renderHook(() => useChecklist(adapter));

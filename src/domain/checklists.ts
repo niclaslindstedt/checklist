@@ -1,7 +1,7 @@
 // Pure operations over Checklists. Like templates.ts, callers supply ids and
 // timestamps so every function is deterministic and DOM-free.
 
-import type { Checklist, ChecklistItem, Template } from "./types.ts";
+import type { Checklist, ChecklistItem, Snapshot, Template } from "./types.ts";
 
 /** Stamp out an independent, checkable instance from a template. */
 export function instantiate(
@@ -125,6 +125,28 @@ export function activeItems(checklist: Checklist): ChecklistItem[] {
 /** The items shown in the archive view — everything marked archived. */
 export function archivedItems(checklist: Checklist): ChecklistItem[] {
   return checklist.items.filter((it) => it.archived);
+}
+
+/** A checklist's archived items, kept with its source list's identity. */
+export interface ArchivedGroup {
+  /** The source checklist's id. */
+  id: string;
+  /** The source checklist's name, shown as the archive view's header. */
+  name: string;
+  /** That checklist's archived items, in document order. */
+  items: ChecklistItem[];
+}
+
+/**
+ * Archived items across every checklist, grouped by their source list and
+ * kept in document order. Lists with nothing archived are dropped, so the
+ * archive view renders a header only for the lists that actually contributed
+ * an item.
+ */
+export function archivedByChecklist(snapshot: Snapshot): ArchivedGroup[] {
+  return snapshot.checklists
+    .map((c) => ({ id: c.id, name: c.name, items: archivedItems(c) }))
+    .filter((g) => g.items.length > 0);
 }
 
 /**

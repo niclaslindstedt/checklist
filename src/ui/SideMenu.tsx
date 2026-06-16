@@ -99,14 +99,14 @@ export function SideMenu({
     redo,
     canUndo,
     canRedo,
-    archivedItems,
+    archivedGroups,
     checklists,
     activeChecklistId,
     selectChecklist,
     addChecklist,
     removeChecklist,
   } = useChecklistContext();
-  const archivedCount = archivedItems.length;
+  const archivedCount = archivedGroups.reduce((n, g) => n + g.items.length, 0);
   const drag = useDraggableMenuButton(position, setPosition);
 
   // Mirror the live drag state up so the parent can gate pull-to-refresh
