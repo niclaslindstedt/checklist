@@ -21,6 +21,7 @@ import {
   SparklesIcon,
   UndoIcon,
 } from "./icons.tsx";
+import { useModalDispatch } from "./modal-bus.ts";
 
 // The navigation drawer. Collapsed to a single floating button the user
 // can drag to either side edge (its resting spot persists in settings);
@@ -32,9 +33,10 @@ import {
 // source with the app version as a subtitle, optional donate), in inverted
 // order so the whole of it sits flush at the foot of the drawer. The drawer
 // itself slides in from its resting edge on open (see the `drawer-*`
-// keyframes in styles/theme.css). Kept presentational —
-// App owns the open/current state and the persisted position, mirroring
-// how ChecklistView is wired.
+// keyframes in styles/theme.css). App owns the open/current state and the
+// persisted position, mirroring how ChecklistView is wired; the footer
+// actions `dispatch` a modal command on the bus rather than calling props
+// threaded down from App (see `modal-bus.ts`).
 
 const SOURCE_URL = "https://github.com/niclaslindstedt/checklist";
 
@@ -63,12 +65,6 @@ type Props = {
   activeNamespace: string;
   /** Make a namespace active. */
   onSwitchNamespace: (slug: string) => void;
-  /** Open the namespace management dialog (add / rename / delete). */
-  onManageNamespaces: () => void;
-  /** Open the settings modal. */
-  onOpenSettings: () => void;
-  /** Open the changelog ("what's new") modal. */
-  onOpenChangelog: () => void;
   /** Where the floating button rests; defaults to the left edge. */
   position?: MenuButtonPosition;
   /** Persist a new resting spot after the user drags the button. */
@@ -91,18 +87,16 @@ export function SideMenu({
   namespaces,
   activeNamespace,
   onSwitchNamespace,
-  onManageNamespaces,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
-  onOpenSettings,
-  onOpenChangelog,
   position = DEFAULT_MENU_BUTTON_POSITION,
   onPositionChange,
   onDraggingChange,
 }: Props) {
   const t = useT();
+  const dispatch = useModalDispatch();
   const drawerId = useId();
   const drag = useDraggableMenuButton(position, onPositionChange ?? (() => {}));
 
@@ -208,7 +202,7 @@ export function SideMenu({
               icon={<PlusIcon className="h-5 w-5" />}
               label={t("namespace.newAction")}
               active={false}
-              onClick={() => pick(onManageNamespaces)}
+              onClick={() => pick(() => dispatch({ kind: "namespaces" }))}
             />
             <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.label")}
@@ -274,12 +268,12 @@ export function SideMenu({
               <MenuButton
                 icon={<SparklesIcon className="h-5 w-5" />}
                 label={t("menu.changelog")}
-                onClick={() => pick(onOpenChangelog)}
+                onClick={() => pick(() => dispatch({ kind: "changelog" }))}
               />
               <MenuButton
                 icon={<CogIcon className="h-5 w-5" />}
                 label={t("menu.settings")}
-                onClick={() => pick(onOpenSettings)}
+                onClick={() => pick(() => dispatch({ kind: "settings" }))}
               />
             </div>
           </nav>

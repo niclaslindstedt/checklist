@@ -3,8 +3,24 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { SideMenu } from "../../src/ui/SideMenu.tsx";
+import { ModalBusProvider } from "../../src/ui/ModalBusProvider.tsx";
+import { useModalState } from "../../src/ui/modal-bus.ts";
 
 function noop(): void {}
+
+// Surfaces the bus modal a footer action opened, so a test can assert the
+// dispatched command without reaching into the provider's internals.
+function OpenModalProbe() {
+  const settings = useModalState("settings").command !== null;
+  const changelog = useModalState("changelog").command !== null;
+  const namespaces = useModalState("namespaces").command !== null;
+  const open = [
+    settings && "settings",
+    changelog && "changelog",
+    namespaces && "namespaces",
+  ].filter(Boolean);
+  return <span data-testid="open-modal">{open.join(",")}</span>;
+}
 
 // jsdom has no PointerEvent constructor, so `fireEvent.pointer*` drops the
 // coordinates the drag hook reads. Dispatch a plain Event with the few
@@ -24,25 +40,25 @@ function pointer(el: Element, type: string, coords: { x: number; y: number }) {
 
 function renderMenu(props: Partial<React.ComponentProps<typeof SideMenu>>) {
   return render(
-    <SideMenu
-      open={false}
-      onToggle={noop}
-      onClose={noop}
-      current="checklist"
-      onNavigate={noop}
-      archivedCount={0}
-      namespaces={[{ slug: "default", name: "Default" }]}
-      activeNamespace="default"
-      onSwitchNamespace={noop}
-      onManageNamespaces={noop}
-      onUndo={noop}
-      onRedo={noop}
-      canUndo={false}
-      canRedo={false}
-      onOpenSettings={noop}
-      onOpenChangelog={noop}
-      {...props}
-    />,
+    <ModalBusProvider>
+      <SideMenu
+        open={false}
+        onToggle={noop}
+        onClose={noop}
+        current="checklist"
+        onNavigate={noop}
+        archivedCount={0}
+        namespaces={[{ slug: "default", name: "Default" }]}
+        activeNamespace="default"
+        onSwitchNamespace={noop}
+        onUndo={noop}
+        onRedo={noop}
+        canUndo={false}
+        canRedo={false}
+        {...props}
+      />
+      <OpenModalProbe />
+    </ModalBusProvider>,
   );
 }
 
@@ -107,22 +123,19 @@ describe("SideMenu", () => {
   });
 
   it("opens namespace management from the New namespace entry", () => {
-    const onManageNamespaces = vi.fn();
-    renderMenu({ open: true, onManageNamespaces });
+    renderMenu({ open: true });
     fireEvent.click(screen.getByRole("menuitem", { name: "New namespace" }));
-    expect(onManageNamespaces).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("open-modal").textContent).toBe("namespaces");
   });
 
   it("opens settings and changelog from the relocated footer menu", () => {
-    const onOpenSettings = vi.fn();
-    const onOpenChangelog = vi.fn();
     const onClose = vi.fn();
-    renderMenu({ open: true, onOpenSettings, onOpenChangelog, onClose });
+    renderMenu({ open: true, onClose });
     fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("open-modal").textContent).toBe("settings");
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("menuitem", { name: "What's new" }));
-    expect(onOpenChangelog).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("open-modal").textContent).toBe("changelog");
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
@@ -154,25 +167,25 @@ describe("SideMenu", () => {
     expect(document.querySelector("nav.drawer-panel-left")).not.toBeNull();
 
     rerender(
-      <SideMenu
-        open
-        onToggle={noop}
-        onClose={noop}
-        current="checklist"
-        onNavigate={noop}
-        archivedCount={0}
-        namespaces={[{ slug: "default", name: "Default" }]}
-        activeNamespace="default"
-        onSwitchNamespace={noop}
-        onManageNamespaces={noop}
-        onUndo={noop}
-        onRedo={noop}
-        canUndo={false}
-        canRedo={false}
-        onOpenSettings={noop}
-        onOpenChangelog={noop}
-        position={{ side: "right", y: 0.5 }}
-      />,
+      <ModalBusProvider>
+        <SideMenu
+          open
+          onToggle={noop}
+          onClose={noop}
+          current="checklist"
+          onNavigate={noop}
+          archivedCount={0}
+          namespaces={[{ slug: "default", name: "Default" }]}
+          activeNamespace="default"
+          onSwitchNamespace={noop}
+          onUndo={noop}
+          onRedo={noop}
+          canUndo={false}
+          canRedo={false}
+          position={{ side: "right", y: 0.5 }}
+        />
+        <OpenModalProbe />
+      </ModalBusProvider>,
     );
     expect(document.querySelector("nav.drawer-panel-right")).not.toBeNull();
   });
