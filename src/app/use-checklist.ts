@@ -16,13 +16,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "../dev/logger.ts";
 import {
   activeItems,
-  addItem as addItemOp,
   archivedItems as archivedItemsOp,
   createChecklist,
-  deleteItem as deleteItemOp,
-  moveItem as moveItemOp,
-  setArchived,
-  toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
 import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
 import type { AddItemPosition } from "../settings/types.ts";
@@ -34,12 +29,12 @@ import {
 } from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { parse, serialize } from "../storage/serialize.ts";
+import { newId, now } from "./side-effects.ts";
+import { type ChecklistEdits, useChecklistEdits } from "./use-checklist-edits.ts";
 import { useUndoRedo } from "./use-undo-redo.ts";
 
 const log = createLogger("checklist");
 
-const newId = (): string => crypto.randomUUID();
-const now = (): string => new Date().toISOString();
 const DEFAULT_LIST_NAME = "Checklist";
 
 /** A divergence between the on-screen document and the backend's. */
@@ -65,7 +60,7 @@ export type SaveStatus =
   | "auth-error"
   | "throttled";
 
-export interface UseChecklist {
+export interface UseChecklist extends ChecklistEdits {
   /** The full in-memory document (used by the conflict summary). */
   snapshot: Snapshot;
   /** The active checklist's visible (non-archived) items. */
@@ -74,14 +69,6 @@ export interface UseChecklist {
   archivedItems: ChecklistItem[];
   /** How many visible items are checked. */
   checkedCount: number;
-  addItem: (title: string) => void;
-  toggle: (itemId: string) => void;
-  remove: (itemId: string) => void;
-  archive: (itemId: string) => void;
-  /** Restore an archived item back into the active view. */
-  unarchive: (itemId: string) => void;
-  /** Move a visible item to a new position among the active items. */
-  reorder: (itemId: string, toIndex: number) => void;
   /**
    * Re-read the document from the active backend, replacing what's on
    * screen — the pull-to-refresh action. A no-op-ish round trip for
@@ -127,11 +114,6 @@ export function useChecklist(
   // on a real backend change (e.g. the developer fake-data toggle).
   const [fallback] = useState(() => new BrowserLocalStorageAdapter());
   const active: StorageAdapter = adapter ?? fallback;
-
-  // Read the live preference from a ref so `addItem` stays referentially
-  // stable (App memoizes the view on it) even as the setting changes.
-  const addItemPositionRef = useRef(addItemPosition);
-  addItemPositionRef.current = addItemPosition;
 
   // Adapter and concurrency token survive re-renders.
   const adapterRef = useRef(active);
@@ -271,76 +253,18 @@ export function useChecklist(
   const list: Checklist =
     doc.checklists[0] ?? withActiveList(doc).checklists[0]!;
 
-  // Mirror the active list into a ref so the edit callbacks below can read
-  // the latest list without listing it as a dependency. That keeps
-  // `toggle` / `remove` / `archive` / … referentially stable across edits —
-  // the memoized `ChecklistRow`s only re-render the row that actually
-  // changed instead of the whole list on every edit, undo, or redo.
-  const listRef = useRef(list);
-  listRef.current = list;
-
-  const commit = useCallback(
-    (nextList: Checklist) => {
-      const prev = docRef.current;
-      const next: Snapshot = {
-        ...prev,
-        checklists: prev.checklists.map((c) =>
-          c.id === nextList.id ? nextList : c,
-        ),
-      };
-      setDoc(next);
-      scheduleSave(next);
-      // Snapshot the post-edit document onto the undo timeline. Recording
-      // the whole document (not just the diff) is what lets a later undo
-      // resurrect a deleted item from the prior entry.
-      record(next);
-    },
-    [scheduleSave, record],
-  );
-
-  const addItem = useCallback(
-    (title: string) => {
-      const trimmed = title.trim();
-      if (!trimmed) return;
-      commit(
-        addItemOp(
-          listRef.current,
-          { id: newId(), title: trimmed },
-          now(),
-          addItemPositionRef.current,
-        ),
-      );
-    },
-    [commit],
-  );
-
-  const toggle = useCallback(
-    (itemId: string) => commit(toggleItemOp(listRef.current, itemId, now())),
-    [commit],
-  );
-
-  const remove = useCallback(
-    (itemId: string) => commit(deleteItemOp(listRef.current, itemId, now())),
-    [commit],
-  );
-
-  const archive = useCallback(
-    (itemId: string) =>
-      commit(setArchived(listRef.current, itemId, true, now())),
-    [commit],
-  );
-
-  const unarchive = useCallback(
-    (itemId: string) =>
-      commit(setArchived(listRef.current, itemId, false, now())),
-    [commit],
-  );
-
-  const reorder = useCallback(
-    (itemId: string, toIndex: number) =>
-      commit(moveItemOp(listRef.current, itemId, toIndex, now())),
-    [commit],
-  );
+  // The edit verbs (add / toggle / remove / archive / unarchive / reorder)
+  // live in their own concern-scoped hook so a new action lands there
+  // rather than this central hook. The persistence engine (`setDoc` /
+  // `scheduleSave`) and the undo timeline (`record`) are threaded in.
+  const edits = useChecklistEdits({
+    list,
+    docRef,
+    setDoc,
+    scheduleSave,
+    record,
+    addItemPosition,
+  });
 
   const reload = useCallback(async () => {
     flushSave();
@@ -405,12 +329,7 @@ export function useChecklist(
       items,
       archivedItems: archived,
       checkedCount,
-      addItem,
-      toggle,
-      remove,
-      archive,
-      unarchive,
-      reorder,
+      ...edits,
       reload,
       conflict,
       resolveConflict,
@@ -427,12 +346,7 @@ export function useChecklist(
       items,
       archived,
       checkedCount,
-      addItem,
-      toggle,
-      remove,
-      archive,
-      unarchive,
-      reorder,
+      edits,
       reload,
       conflict,
       resolveConflict,

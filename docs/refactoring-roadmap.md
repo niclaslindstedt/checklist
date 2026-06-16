@@ -84,24 +84,40 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-#### R3. use-checklist.ts is a fat state hook with a ~20-field return
+#### R3. use-checklist.ts is a fat state hook (step 2: extract the save engine)
 
-`src/app/use-checklist.ts` (409 lines) returns one object with ~20 fields
-(items, archivedItems, checkedCount, addItem, toggle, remove, archive,
-unarchive, reorder, reload, conflict, resolveConflict, status, dirty,
-saveNow, undo, redo, canUndo, canRedo, snapshot). Every new action edits the
-same `return { … }` block and the same interface — a guaranteed collision
-point for parallel feature work. budget has ~22 *small* hooks instead of one.
+`src/app/use-checklist.ts` (362 lines, was 449) still owns the persistence
+engine — the debounced-save plumbing (`performSave` / `flushSave` /
+`scheduleSave`), the `conflict` / `status` / `dirty` state, `reload` /
+`saveNow` / `resolveConflict`, and the adapter-swap / unmount effects — plus
+the selectors and the composing `return`. A new save/conflict feature still
+edits this hub file.
 
-**Plan.** Split by concern into composed hooks — `useChecklistItems` (add /
-toggle / remove / reorder), `useChecklistArchive` (archive / unarchive),
-`useChecklistSync` (status / dirty / saveNow / reload / conflict), with
-undo/redo already separate — re-composed by a thin `useChecklist`. Each
-action then lands in a smaller, concern-scoped file.
+**Step 1 landed (2026-06):** the six edit verbs moved to
+`src/app/use-checklist-edits.ts` (`ChecklistEdits` interface +
+`useChecklistEdits`), with `newId` / `now` shared via
+`src/app/side-effects.ts`. `UseChecklist extends ChecklistEdits` and the
+composer spreads `...edits` (one memoized dep), so a new action no longer
+touches the central hook's interface or `return` block. This narrowed the
+original plan: items + archive + reorder share one `commit`, so they became
+**one** edits hook rather than the proposed `useChecklistItems` +
+`useChecklistArchive` split — splitting two co-located verbs that share a
+commit path was over-fragmentation.
 
-**Risk.** Pure refactor; the public `useChecklist` shape can stay identical
-so App and the views don't change. Low–medium. The file is well under the
-1000-line cap, so this is friction not a hard size signal — hence 5, not 7.
+**Step 2 (remaining).** Extract the save engine into `useChecklistSync`
+(doc state + `performSave` / `flushSave` / `scheduleSave` + `conflict` /
+`status` / `dirty` + `reload` / `saveNow` / `resolveConflict` + the two
+effects). The undo↔sync construction cycle (undo's `setData` needs sync's
+`setDoc` / `scheduleSave`; sync's load/reload/conflict-adopt paths need
+undo's `reset`) must be broken by injecting `reset` into sync via a ref —
+that ref indirection is the one non-mechanical part, so smoke-test the
+LocalStorage save/undo/reload path by hand after.
+
+**Risk.** Pure refactor; the public `useChecklist` shape stays identical so
+App and the views don't change. The save/conflict plumbing has **no
+automated coverage** (only `use-undo-redo` is unit-tested), so step 2's
+cycle-breaking is the medium-risk piece. The file is under the 1000-line
+cap, so this is friction, not a hard size signal — hence 5, not 7.
 **Severity: 5.**
 
 #### R4. Top-level view switching is hardcoded in App and SideMenu
