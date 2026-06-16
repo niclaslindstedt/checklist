@@ -23,6 +23,7 @@ function renderModal(
     onSwitch: vi.fn(),
     onCreate: vi.fn(),
     onRename: vi.fn(),
+    onSetAppearance: vi.fn(),
     onRemove: vi.fn(async () => {}),
   };
   render(
@@ -88,5 +89,34 @@ describe("NamespacesModal", () => {
     const { onRemove } = renderModal();
     fireEvent.click(screen.getByLabelText("Delete namespace"));
     expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it("picks an accent colour through the edit form, applied live", () => {
+    const { onSetAppearance } = renderModal();
+    // Open the default namespace's editor (the first rename affordance).
+    fireEvent.click(screen.getAllByLabelText("Rename namespace")[0]!);
+    fireEvent.click(screen.getByLabelText("Colour #98c379"));
+    expect(onSetAppearance).toHaveBeenCalledWith("default", {
+      color: "#98c379",
+    });
+  });
+
+  it("picks an icon through the edit form, applied live", () => {
+    const { onSetAppearance } = renderModal();
+    fireEvent.click(screen.getAllByLabelText("Rename namespace")[1]!);
+    fireEvent.click(screen.getByLabelText("Icon home"));
+    expect(onSetAppearance).toHaveBeenCalledWith("family", { glyph: "home" });
+  });
+
+  it("clears the icon back to the default through the no-icon cell", () => {
+    const { onSetAppearance } = renderModal({
+      namespaces: [
+        { slug: "default", name: "Default" },
+        { slug: "family", name: "Family", glyph: "home", color: "#98c379" },
+      ],
+    });
+    fireEvent.click(screen.getAllByLabelText("Rename namespace")[1]!);
+    fireEvent.click(screen.getByLabelText("No icon"));
+    expect(onSetAppearance).toHaveBeenCalledWith("family", { glyph: null });
   });
 });

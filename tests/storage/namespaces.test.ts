@@ -11,6 +11,7 @@ import {
   removeNamespace,
   renameNamespace,
   setActiveNamespaceSlug,
+  setNamespaceAppearance,
   slugify,
 } from "../../src/storage/namespaces.ts";
 
@@ -71,6 +72,42 @@ describe("namespaces registry", () => {
 
   it("rejects an empty name", () => {
     expect(() => addNamespace("   ")).toThrow();
+  });
+});
+
+describe("namespace appearance", () => {
+  it("sets and clears a glyph and colour, keeping the slug and name", () => {
+    const created = addNamespace("Family");
+    setNamespaceAppearance(created.slug, { glyph: "home", color: "#98c379" });
+    let found = getNamespaces().find((n) => n.slug === "family");
+    expect(found?.glyph).toBe("home");
+    expect(found?.color).toBe("#98c379");
+    expect(found?.name).toBe("Family");
+
+    // Clearing the glyph leaves the colour in place.
+    setNamespaceAppearance(created.slug, { glyph: null });
+    found = getNamespaces().find((n) => n.slug === "family");
+    expect(found?.glyph).toBeUndefined();
+    expect(found?.color).toBe("#98c379");
+  });
+
+  it("persists appearance for the default namespace", () => {
+    setNamespaceAppearance(DEFAULT_NAMESPACE_SLUG, { glyph: "list" });
+    const found = getNamespaces().find(
+      (n) => n.slug === DEFAULT_NAMESPACE_SLUG,
+    );
+    expect(found?.glyph).toBe("list");
+  });
+
+  it("drops a non-string appearance value when reloading a corrupt entry", () => {
+    localStorage.setItem(
+      "checklist:namespaces",
+      JSON.stringify([{ slug: "x", name: "X", glyph: 7 }]),
+    );
+    // The corrupt entry is rejected wholesale, leaving only the default.
+    expect(getNamespaces().map((n) => n.slug)).toEqual([
+      DEFAULT_NAMESPACE_SLUG,
+    ]);
   });
 });
 

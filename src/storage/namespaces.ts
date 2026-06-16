@@ -35,6 +35,28 @@ export type Namespace = {
   slug: string;
   /** User-facing display name. Editable; does not move stored data. */
   name: string;
+  /**
+   * Optional icon the user picked for this namespace. The name of a glyph
+   * in the namespace glyph set (see `src/ui/glyphs.ts`). When set, it
+   * tints the namespace's row in the side menu and replaces the app
+   * favicon while the namespace is active. Typed as a bare `string` here
+   * so the storage layer stays free of any `ui/` dependency; the UI
+   * validates it against the known glyph set on the way in.
+   */
+  glyph?: string;
+  /**
+   * Optional accent colour (a CSS colour string) the user picked for this
+   * namespace. Tints the namespace's glyph in the side menu and the
+   * favicon. Independent of `glyph`: a colour with no glyph still tints
+   * the default folder icon.
+   */
+  color?: string;
+};
+
+/** A partial appearance change — set a field to a value, or `null` to clear it. */
+export type NamespaceAppearance = {
+  glyph?: string | null;
+  color?: string | null;
 };
 
 export const DEFAULT_NAMESPACE_SLUG = "default";
@@ -70,13 +92,21 @@ function write(key: string, value: string): void {
 }
 
 function isNamespace(value: unknown): value is Namespace {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as Namespace).slug === "string" &&
-    typeof (value as Namespace).name === "string" &&
-    (value as Namespace).slug.length > 0
-  );
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as Namespace).slug !== "string" ||
+    typeof (value as Namespace).name !== "string" ||
+    (value as Namespace).slug.length === 0
+  ) {
+    return false;
+  }
+  // Appearance fields are optional; reject only a present-but-wrong type so
+  // a corrupt entry can't smuggle a non-string glyph/colour through.
+  const { glyph, color } = value as Namespace;
+  if (glyph !== undefined && typeof glyph !== "string") return false;
+  if (color !== undefined && typeof color !== "string") return false;
+  return true;
 }
 
 /**
@@ -168,6 +198,33 @@ export function renameNamespace(slug: string, name: string): void {
   if (!trimmed) throw new Error("A namespace name is required");
   setNamespaces(
     getNamespaces().map((n) => (n.slug === slug ? { ...n, name: trimmed } : n)),
+  );
+}
+
+/**
+ * Set or clear a namespace's appearance (its icon and/or accent colour).
+ * Passing `null` for a field clears it. Works for the default namespace
+ * too: `getNamespaces` always materialises the default, so writing the
+ * mapped list persists whatever appearance the default was given.
+ */
+export function setNamespaceAppearance(
+  slug: string,
+  patch: NamespaceAppearance,
+): void {
+  setNamespaces(
+    getNamespaces().map((n) => {
+      if (n.slug !== slug) return n;
+      const next: Namespace = { ...n };
+      if ("glyph" in patch) {
+        if (patch.glyph) next.glyph = patch.glyph;
+        else delete next.glyph;
+      }
+      if ("color" in patch) {
+        if (patch.color) next.color = patch.color;
+        else delete next.color;
+      }
+      return next;
+    }),
   );
 }
 

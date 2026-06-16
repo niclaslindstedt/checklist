@@ -30,6 +30,12 @@ export type ChecklistContextValue = UseChecklist & {
    * session (the icon only appears when a cloud backend is active).
    */
   sync: SyncInfo | null;
+  /**
+   * The header wordmark's logo `src` — the bundled favicon, or the active
+   * namespace's glyph (in its accent colour) when one is chosen. The
+   * browser-tab favicon is pointed at the same source (see `App`).
+   */
+  logoSrc: string;
 };
 
 export const ChecklistContext = createContext<ChecklistContextValue | null>(

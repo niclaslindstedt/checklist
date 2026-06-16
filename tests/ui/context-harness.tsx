@@ -53,6 +53,7 @@ export function makeChecklistValue(
     canUndo: false,
     canRedo: false,
     sync: null,
+    logoSrc: "/favicon.svg",
     ...over,
   };
 }

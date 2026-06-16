@@ -570,6 +570,42 @@ the `family/` folder shared with relatives). The management UI is
 `NamespacesModal` (`src/ui/NamespacesModal.tsx`), reached from the
 namespace section at the top of the side menu.
 
+A namespace can also carry an **appearance**: an optional `glyph` (an icon
+name from `src/ui/glyphs.ts`) and an optional `color` (a CSS colour), set
+through the picker in each row's edit form (`setNamespaceAppearance` —
+applied live, not gated behind the name's Save, so the side menu and
+favicon update immediately). Both fields are optional and independent: a
+colour with no glyph still tints the default folder icon. The appearance
+fields are typed as bare strings in the storage layer (which mustn't
+import from `ui/`); the picker validates the glyph against the known set
+on the way in, and `isNamespace` rejects a present-but-non-string value so
+a corrupt store can't smuggle one through. Setting appearance on the
+`default` namespace materialises it into the stored list (it's otherwise
+synthesised), so the customisation persists.
+
+### Namespace glyph and favicon
+
+The glyph catalogue lives in `src/ui/glyphs.ts`: each glyph is the inner
+SVG markup of a 24×24 lucide-weight outline, so one source feeds both the
+`NamespaceGlyph` component (`src/ui/NamespaceGlyph.tsx`, which wraps it in
+a styled `<svg>` painting with `currentColor`) and the favicon builder
+(`namespaceGlyphDataUri`, which renders the app's dark rounded-square badge
+with the glyph stroked in the chosen colour and serialises it to a data
+URI). The pickers are `ColorPalette` (`src/ui/ColorPalette.tsx`, palette in
+`src/ui/namespace-colors.ts`) and `GlyphGrid` (`src/ui/GlyphGrid.tsx`,
+whose leading cell clears the icon).
+
+In the **side menu** a customised namespace renders its own glyph tinted to
+its accent — only the glyph is coloured, never the row text — while an
+untouched one keeps the plain check (active) / folder (inactive) icon. When
+the active namespace has a glyph, that glyph (in its colour) **replaces the
+app logo**: `namespace-favicon.ts` resolves the logo `src`
+(`namespaceLogoSrc`) for both the header wordmark slot (threaded through
+`ChecklistContext` as `logoSrc`, read by `ChecklistView`) and the
+browser-tab favicon (`applyFaviconHref`, run from an effect in `App`). A
+namespace with only a colour keeps the bundled mark — the favicon is
+replaced only when a glyph is picked.
+
 ### Storage tab
 
 `src/ui/settings/tabs/storage.tsx` — the UI for picking the backend

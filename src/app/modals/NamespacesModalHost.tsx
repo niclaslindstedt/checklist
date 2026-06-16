@@ -27,6 +27,7 @@ export function NamespacesModalHost({ storage, onCreate, onRemove }: Props) {
       onSwitch={storage.switchNamespace}
       onCreate={onCreate}
       onRename={storage.renameNamespace}
+      onSetAppearance={storage.setNamespaceAppearance}
       onRemove={onRemove}
     />
   );

@@ -4,10 +4,16 @@ import { useT } from "../i18n";
 import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,
+  type NamespaceAppearance,
 } from "../storage/namespaces.ts";
+import { ColorPalette } from "./ColorPalette.tsx";
 import { Button, ClearableInput } from "./form/index.ts";
+import { GlyphGrid } from "./GlyphGrid.tsx";
+import { NAMESPACE_GLYPH_NAMES } from "./glyphs.ts";
+import { NAMESPACE_COLORS } from "./namespace-colors.ts";
 import { CheckIcon, CloseIcon, PencilIcon, TrashIcon } from "./icons.tsx";
 import { Modal } from "./Modal.tsx";
+import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 
 // Namespace management dialog: create a namespace, switch the active one,
 // rename a namespace's display name, and delete one (with its data in the
@@ -24,6 +30,7 @@ type Props = {
   onSwitch: (slug: string) => void;
   onCreate: (name: string) => void;
   onRename: (slug: string, name: string) => void;
+  onSetAppearance: (slug: string, patch: NamespaceAppearance) => void;
   onRemove: (slug: string) => Promise<void>;
 };
 
@@ -35,6 +42,7 @@ export function NamespacesModal({
   onSwitch,
   onCreate,
   onRename,
+  onSetAppearance,
   onRemove,
 }: Props) {
   const t = useT();
@@ -84,6 +92,7 @@ export function NamespacesModal({
               active={ns.slug === activeNamespace}
               onSwitch={() => onSwitch(ns.slug)}
               onRename={(name) => onRename(ns.slug, name)}
+              onSetAppearance={(patch) => onSetAppearance(ns.slug, patch)}
               onRemove={() => onRemove(ns.slug)}
             />
           ))}
@@ -128,12 +137,14 @@ function NamespaceRow({
   active,
   onSwitch,
   onRename,
+  onSetAppearance,
   onRemove,
 }: {
   namespace: Namespace;
   active: boolean;
   onSwitch: () => void;
   onRename: (name: string) => void;
+  onSetAppearance: (patch: NamespaceAppearance) => void;
   onRemove: () => Promise<void>;
 }) {
   const t = useT();
@@ -149,6 +160,16 @@ function NamespaceRow({
     onRename(trimmed);
     setEditing(false);
   };
+
+  // The glyph tile shown beside the name: the chosen icon (or the default
+  // folder) painted in the namespace's accent colour when it has one.
+  const glyphTile = (
+    <NamespaceGlyph
+      name={namespace.glyph}
+      className="h-4 w-4"
+      style={namespace.color ? { color: namespace.color } : undefined}
+    />
+  );
 
   const confirmRemove = async () => {
     if (busy) return;
@@ -167,11 +188,8 @@ function NamespaceRow({
 
   if (editing) {
     return (
-      <li>
-        <form
-          onSubmit={submitRename}
-          className="flex items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5"
-        >
+      <li className="flex flex-col gap-3 rounded border border-line bg-surface-2 px-3 py-3">
+        <form onSubmit={submitRename} className="flex items-center gap-2">
           <ClearableInput
             value={draft}
             onValueChange={setDraft}
@@ -192,6 +210,34 @@ function NamespaceRow({
             {t("namespace.cancel")}
           </Button>
         </form>
+
+        {/* Appearance applies live as the user picks (it isn't gated behind
+            Save, which only governs the name) so the side-menu glyph and the
+            favicon update immediately. */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+            {t("namespace.colorLabel")}
+          </span>
+          <ColorPalette
+            colors={NAMESPACE_COLORS}
+            value={namespace.color ?? null}
+            onChange={(color) => onSetAppearance({ color })}
+            ariaLabelPrefix={t("namespace.colorLabel")}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+            {t("namespace.glyphLabel")}
+          </span>
+          <GlyphGrid
+            glyphs={NAMESPACE_GLYPH_NAMES}
+            value={namespace.glyph ?? null}
+            onChange={(glyph) => onSetAppearance({ glyph })}
+            tintColor={namespace.color}
+            noneLabel={t("namespace.glyphNone")}
+            ariaLabelPrefix={t("namespace.glyphLabel")}
+          />
+        </div>
       </li>
     );
   }
@@ -209,6 +255,7 @@ function NamespaceRow({
         aria-label={t("namespace.switchTo", { name: namespace.name })}
         className="flex flex-1 cursor-pointer items-center gap-2 text-left"
       >
+        <span className="shrink-0">{glyphTile}</span>
         <span className="w-4 shrink-0 text-accent">
           {active && <CheckIcon className="h-4 w-4" />}
         </span>

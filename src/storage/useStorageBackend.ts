@@ -62,11 +62,13 @@ import {
 import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,
+  type NamespaceAppearance,
   addNamespace as registryAddNamespace,
   getActiveNamespaceSlug,
   getNamespaces,
   removeNamespace as registryRemoveNamespace,
   renameNamespace as registryRenameNamespace,
+  setNamespaceAppearance as registrySetNamespaceAppearance,
   setActiveNamespaceSlug,
 } from "./namespaces.ts";
 
@@ -124,6 +126,11 @@ export interface UseStorageBackend {
   createNamespace: (name: string) => void;
   /** Change a namespace's display name (its data stays put). */
   renameNamespace: (slug: string, name: string) => void;
+  /**
+   * Set or clear a namespace's appearance (its icon and/or accent colour).
+   * Applied live as the user picks; the data and slug stay put.
+   */
+  setNamespaceAppearance: (slug: string, patch: NamespaceAppearance) => void;
   /**
    * Remove a namespace and delete its data in the *active* backend. The
    * default namespace can't be removed. Orphaned copies in other backends
@@ -525,6 +532,14 @@ export function useStorageBackend(): UseStorageBackend {
     setNamespacesState(getNamespaces());
   }, []);
 
+  const setNamespaceAppearance = useCallback(
+    (slug: string, patch: NamespaceAppearance) => {
+      registrySetNamespaceAppearance(slug, patch);
+      setNamespacesState(getNamespaces());
+    },
+    [],
+  );
+
   const removeNamespace = useCallback(
     async (slug: string) => {
       if (slug === DEFAULT_NAMESPACE_SLUG) {
@@ -588,6 +603,7 @@ export function useStorageBackend(): UseStorageBackend {
     switchNamespace,
     createNamespace,
     renameNamespace,
+    setNamespaceAppearance,
     removeNamespace,
   };
 }
