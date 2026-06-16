@@ -155,13 +155,12 @@ file so they're in scope).
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `openApp(page)`             | Navigate to the app root and wait until the "checklist" wordmark heading is rendered. checklist has no auth gate, so this is the universal first step of every recipe.                                                          |
 | `openShareDialog(page)`     | Open the share dialog (URL-fragment share payload). **Stub** — confirm the trigger selector against the current `src/ui/` before relying on it.                                                                                 |
-| `openSettings(page)`        | Open the settings / storage-backend panel (LocalStorage / Google Drive / Dropbox picker). **Stub** — same selector caveat as `openShareDialog`.                                                                                |
+| `openSettings(page)`        | Open the settings dialog: opens the side navigation drawer ("Open navigation"), then picks "Settings" from the burger menu pinned at its foot. Verified against `src/ui/SideMenu.tsx` — note the menu items carry `role="menuitem"`, not `button`.                                                                                |
 
-The UI is still small and several surfaces (share dialog, settings
-panel) may not have stable selectors yet. The `openShareDialog` /
-`openSettings` helpers are documented stubs: when you build or wire up
-those surfaces, point the helper at the real selector and drop the
-"stub" caveat. When the helper set is missing something your recipe
+The UI is still small and some surfaces (the share dialog) may not
+have stable selectors yet. `openShareDialog` is a documented stub: when
+you wire up that surface, point the helper at the real selector and drop
+the "stub" caveat. When the helper set is missing something your recipe
 needs, add it to the HELPERS block of `screenshot.mjs` so the next
 agent gets it for free (and update the table above + the **Skill
 self-improvement** section).
