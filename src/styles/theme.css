@@ -137,6 +137,42 @@ body {
   transition: background-position 250ms linear;
 }
 
+/* Side-menu drawer entrance. The drawer mounts only while open, so a CSS
+   `animation` (not a `transition`) plays straight off the mount with no
+   first-frame at the resting position — that initial snap-then-settle is
+   what read as a flicker. The panel slides in from whichever edge it rests
+   against (`useDraggableMenuButton`) while the backdrop fades up. The
+   reduce-motion guard below zeroes both. */
+@keyframes drawer-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes drawer-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes drawer-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.drawer-panel-left {
+  animation: drawer-slide-in-left 300ms ease-out;
+}
+
+.drawer-panel-right {
+  animation: drawer-slide-in-right 300ms ease-out;
+}
+
+.drawer-backdrop {
+  animation: drawer-backdrop-in 300ms ease-out;
+}
+
 /* Reduce-motion: when the Custom theme opts in, short-circuit every
    transition and animation. High specificity (the attribute selector +
    `!important`) so it wins over utility-class durations. */
