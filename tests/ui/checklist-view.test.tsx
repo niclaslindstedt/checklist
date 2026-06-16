@@ -48,4 +48,26 @@ describe("ChecklistView", () => {
     renderView();
     expect(screen.getByLabelText("Drag to reorder")).toBeTruthy();
   });
+
+  it("shows the active checklist's name as the header title", () => {
+    renderView({
+      checklists: [{ id: "list-0", name: "Groceries" }],
+      activeChecklistId: "list-0",
+    });
+    expect(screen.getByRole("button", { name: "Groceries" })).toBeTruthy();
+  });
+
+  it("renames the active checklist from the clickable header title", () => {
+    const renameChecklist = vi.fn();
+    renderView({
+      checklists: [{ id: "list-0", name: "Groceries" }],
+      activeChecklistId: "list-0",
+      renameChecklist,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Groceries" }));
+    const input = screen.getByLabelText("Rename checklist");
+    fireEvent.change(input, { target: { value: "Packing" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(renameChecklist).toHaveBeenCalledWith("list-0", "Packing");
+  });
 });

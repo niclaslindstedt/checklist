@@ -8,7 +8,9 @@ import {
   instantiate,
   isComplete,
   moveItem,
+  nextChecklistName,
   progress,
+  renameChecklist,
   setArchived,
   toggleItem,
 } from "../../src/domain/checklists.ts";
@@ -109,6 +111,48 @@ describe("free-standing checklist item operations", () => {
     c = toggleItem(c, "i1", NOW);
     c = setArchived(c, "i2", true, NOW);
     expect(progress(c)).toEqual({ checked: 1, total: 1 });
+  });
+});
+
+describe("renameChecklist", () => {
+  const LATER = "2026-02-02T00:00:00.000Z";
+
+  it("trims the new name and bumps updatedAt without mutating the source", () => {
+    const c = createChecklist("c1", "Old", NOW);
+    const renamed = renameChecklist(c, "  Groceries  ", LATER);
+    expect(renamed.name).toBe("Groceries");
+    expect(renamed.updatedAt).toBe(LATER);
+    expect(c.name).toBe("Old");
+  });
+});
+
+describe("nextChecklistName", () => {
+  it("uses the bare base name when nothing carries it yet", () => {
+    expect(nextChecklistName([], "Checklist")).toBe("Checklist");
+    expect(nextChecklistName([{ name: "Groceries" }], "Checklist")).toBe(
+      "Checklist",
+    );
+  });
+
+  it("suffixes with the lowest unused number once the base is taken", () => {
+    expect(nextChecklistName([{ name: "Checklist" }], "Checklist")).toBe(
+      "Checklist 2",
+    );
+    expect(
+      nextChecklistName(
+        [{ name: "Checklist" }, { name: "Checklist 2" }],
+        "Checklist",
+      ),
+    ).toBe("Checklist 3");
+  });
+
+  it("fills the lowest gap rather than the count + 1", () => {
+    expect(
+      nextChecklistName(
+        [{ name: "Checklist" }, { name: "Checklist 3" }],
+        "Checklist",
+      ),
+    ).toBe("Checklist 2");
   });
 });
 

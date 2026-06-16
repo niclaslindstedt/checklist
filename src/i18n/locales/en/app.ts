@@ -2,12 +2,14 @@ import type { Widen } from "./_widen";
 
 // User-visible strings for the checklist shell itself — the header, the
 // empty state, the composer, and the per-row controls. The header title
-// stays "checklist" in every language (it's the wordmark), but lives
-// here so the shell has a single i18n entry point.
+// shows the active checklist's name (click it to rename); `title` is the
+// document/tab fallback. Lives here so the shell has a single i18n entry
+// point.
 
 const app = {
   title: "checklist",
   empty: "Nothing here yet — add your first item below.",
+  renameChecklist: "Rename checklist",
   addItem: "Add item",
   addItemPlaceholder: "Add item…",
   check: "Check item",

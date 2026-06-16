@@ -1,0 +1,107 @@
+// @vitest-environment jsdom
+// Coverage for the checklist-collection verbs (use-checklist-lists.ts)
+// wired through the public `useChecklist` composer: adding a default-named
+// list, switching the active selection, and renaming. Uses an in-memory
+// adapter so the persisted bytes can be read back.
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+
+import { useChecklist } from "../../src/app/use-checklist.ts";
+import type {
+  StorageAdapter,
+  StoredSnapshot,
+} from "../../src/storage/adapter.ts";
+import { parse } from "../../src/storage/serialize.ts";
+
+function memoryAdapter(): StorageAdapter & { stored: () => string | null } {
+  let text: string | null = null;
+  let rev = 0;
+  return {
+    id: "browser",
+    label: "mem",
+    capabilities: new Set(["loadSync"]),
+    loadSync: () => (text === null ? null : { text, revision: String(rev) }),
+    load: async (): Promise<StoredSnapshot | null> =>
+      text === null ? null : { text, revision: String(rev) },
+    save: async (next: string) => {
+      text = next;
+      rev += 1;
+      return { text, revision: String(rev) };
+    },
+    saveDebounceMs: 0,
+    stored: () => text,
+  };
+}
+
+describe("useChecklist multi-list verbs", () => {
+  it("seeds a single default-named active list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    expect(result.current.checklists).toHaveLength(1);
+    expect(result.current.checklists[0]!.name).toBe("Checklist");
+    expect(result.current.activeChecklistId).toBe(
+      result.current.checklists[0]!.id,
+    );
+  });
+
+  it("adds and switches to a new list, numbering past the default", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+
+    const names = result.current.checklists.map((c) => c.name);
+    expect(names).toEqual(["Checklist", "Checklist 2"]);
+    // The new list becomes active immediately.
+    expect(result.current.activeChecklistId).toBe(
+      result.current.checklists[1]!.id,
+    );
+    // Persisted, not just in memory.
+    expect(parse(adapter.stored()).checklists).toHaveLength(2);
+  });
+
+  it("keeps edits scoped to the active list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const first = result.current.activeChecklistId;
+    act(() => result.current.addItem("milk"));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    // The fresh list starts empty.
+    expect(result.current.items).toHaveLength(0);
+
+    // Switch back; the first list's item is still there.
+    act(() => result.current.selectChecklist(first));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.items[0]!.title).toBe("milk");
+  });
+
+  it("renames the active list and persists the new name", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const id = result.current.activeChecklistId;
+    act(() => result.current.renameChecklist(id, "Groceries"));
+    await waitFor(() =>
+      expect(result.current.checklists[0]!.name).toBe("Groceries"),
+    );
+    expect(parse(adapter.stored()).checklists[0]!.name).toBe("Groceries");
+  });
+
+  it("ignores a blank rename", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    const id = result.current.activeChecklistId;
+    act(() => result.current.renameChecklist(id, "   "));
+    expect(result.current.checklists[0]!.name).toBe("Checklist");
+  });
+});

@@ -30,7 +30,8 @@ import { newId, now } from "./side-effects.ts";
 
 const log = createLogger("checklist");
 
-const DEFAULT_LIST_NAME = "Checklist";
+/** The name a freshly-minted checklist carries until the user renames it. */
+export const DEFAULT_LIST_NAME = "Checklist";
 
 /** A divergence between the on-screen document and the backend's. */
 export type ConflictState = {

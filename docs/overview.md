@@ -98,9 +98,11 @@ button slides the drawer in from that edge over a dimmed backdrop (a CSS
 `styles/theme.css` — so there is no first-frame snap). The drawer opens
 with the **namespace** section — the known namespaces (the active one
 checked, click to switch) and a "New namespace" entry that opens
-`NamespacesModal` — then lists the views (Checklist, Archive — the latter
-badged with the archived-item count) and the Undo / Redo actions, and
-highlights the current view. Pinned to the foot are the relocated
+`NamespacesModal` — then the **Checklists** switcher (every list by name,
+the active one marked, click to switch + navigate; a "New checklist"
+action appends a default-named list), the Archive view (badged with the
+archived-item count), and the Undo / Redo actions, and highlights the
+active list and current view. Pinned to the foot are the relocated
 burger-menu links — settings, "what's new", privacy, the source on GitHub
 (with the app version shown as a subtitle), and an optional donate link.
 The drawer's open/current/position state comes from `useNav`
@@ -138,6 +140,19 @@ self-anchored dropdown with Settings and Changelog ("What's new")
 shortcuts, plus links to the privacy policy, the source on GitHub (with
 a build label), and — only when `VITE_DONATE_URL` is set — a Donate
 link. Dismisses on outside click or Escape.
+
+### Checklist title
+
+`src/ui/ChecklistTitle.tsx` — the header wordmark slot beside the
+favicon. It shows the **active checklist's name** and doubles as the
+rename affordance: clicking it swaps the text for an inline input
+(Enter or blur commits a trimmed, non-empty name via
+`renameChecklist`; Escape cancels). It also carries the PWA
+download-fill treatment (`usePwaUpdate`'s `progress`) the standalone
+wordmark used to own — the name fills with the accent colour from the
+bottom while a new build's service worker downloads. `ChecklistView`
+feeds it the active list's name (resolved from `checklists` +
+`activeChecklistId`) and an `onRename` bound to the active id.
 
 ### Sync status
 
@@ -196,9 +211,9 @@ by `LanguageRoot` so any component can raise a toast.
 `Snapshot` (`src/domain/types.ts`) — the full persisted document: a
 `templates[]` array and a `checklists[]` array. `emptySnapshot()` mints
 the empty one. This is the unit every storage backend serialises (see
-Serialize / parse). The UI today works against a single active
-checklist (`checklists[0]`); the multi-list / template surfaces are on
-the roadmap.
+Serialize / parse). The UI works against one **active** checklist at a
+time, chosen from `checklists[]` by the switcher (see Checklist switcher
+/ multiple checklists); the template surfaces are still on the roadmap.
 
 ### Checklist
 
@@ -216,12 +231,41 @@ document but drop out of the active view (see Archive view).
 
 ### Active checklist / active list
 
-The single checklist the UI currently renders — `doc.checklists[0]`,
-resolved in `use-checklist.ts`. `withActiveList` (in
-`use-checklist-sync.ts`) guarantees the document always has one to
-show, minting a default `"Checklist"` list
-(via `createChecklist`) that isn't persisted until the first real edit,
-so a bare reload never writes an empty document.
+The checklist the UI currently renders — `activeList`, resolved by
+`useChecklistLists` (`use-checklist-lists.ts`) from a device-local,
+in-memory `activeChecklistId`. The hook falls back to the first list
+(`doc.checklists[0]`) whenever the selection points at no surviving list
+— e.g. after a reload or a backend swap brought in a different document —
+so a stale selection never blanks the screen. The edit verbs
+(`use-checklist-edits.ts`) mutate this list by id, and the views read its
+items. `withActiveList` (in `use-checklist-sync.ts`) guarantees the
+document always has at least one list to show, minting a default
+`"Checklist"` list (via `createChecklist`) that isn't persisted until the
+first real edit, so a bare reload never writes an empty document.
+
+### Checklist switcher / multiple checklists
+
+`useChecklistLists` (`src/app/use-checklist-lists.ts`) owns the
+document's `checklists[]` collection and the active selection — the
+concern-scoped sibling of the item-level edit verbs. It exposes the
+selection (`activeList`, `activeChecklistId`), a `checklists` summary
+list (`{ id, name }` in document order, for the side-menu switcher), and
+three verbs, each of which folds the change into the document, persists
+it, and records it on the undo timeline:
+
+- `selectChecklist(id)` — flip the in-memory active selection.
+- `addChecklist()` — append a fresh, default-named list and switch to
+  it. The name comes from `nextChecklistName` (`src/domain/checklists.ts`):
+  `"Checklist"` if free, otherwise `"Checklist 2"`, `"Checklist 3"`, … —
+  the lowest unused suffix.
+- `renameChecklist(id, name)` — rename a list via the domain
+  `renameChecklist` (a blank name is ignored).
+
+The side menu (`src/ui/SideMenu.tsx`) renders the switcher: a
+"Checklists" section listing every list by name (the active one marked,
+a check glyph standing in for its icon), each row switching the active
+list and navigating to the checklist view, plus a "New checklist" action.
+The header **Checklist title** is the rename surface for the active list.
 
 ### use-checklist hook
 

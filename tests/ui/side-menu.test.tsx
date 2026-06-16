@@ -108,6 +108,38 @@ describe("SideMenu", () => {
     expect(navigate).toHaveBeenCalledWith("archive");
   });
 
+  it("lists every checklist by name and switches the active one", () => {
+    const navigate = vi.fn();
+    const selectChecklist = vi.fn();
+    renderMenu({
+      nav: { open: true, navigate },
+      checklist: {
+        checklists: [
+          { id: "c1", name: "Groceries" },
+          { id: "c2", name: "Packing" },
+        ],
+        activeChecklistId: "c1",
+        selectChecklist,
+      },
+    });
+    expect(screen.getByRole("menuitem", { name: /Groceries/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: /Packing/ }));
+    expect(selectChecklist).toHaveBeenCalledWith("c2");
+    expect(navigate).toHaveBeenCalledWith("checklist");
+  });
+
+  it("adds a checklist from the New checklist entry", () => {
+    const addChecklist = vi.fn();
+    const navigate = vi.fn();
+    renderMenu({
+      nav: { open: true, navigate },
+      checklist: { addChecklist },
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "New checklist" }));
+    expect(addChecklist).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith("checklist");
+  });
+
   it("marks the current view as the active page", () => {
     renderMenu({ nav: { open: true, current: "archive" } });
     const archive = screen.getByRole("menuitem", { name: /Archive/ });
