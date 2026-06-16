@@ -1,12 +1,18 @@
 // Google-Drive-backed `StorageAdapter`. Talks to the Drive v3 REST API
 // directly (no SDK — Drive v3 is two endpoints away from "two fetch
-// calls", same shape as the Dropbox adapter). Bytes land in a dedicated
-// `checklist/` folder at the root of the user's My Drive, written under
-// the `drive.file` scope so the files are visible to the user (they can
-// browse, share, or delete them directly from drive.google.com). Ported
-// and pared from the budget project's `gdrive-adapter.ts` — the
-// checklist has no backups or receipts, so this keeps load / save /
-// getRevision.
+// calls", same shape as the Dropbox adapter). Each namespace's document
+// lands in its own `checklist/<namespace>/` folder under the `drive.file`
+// scope so the files are visible to the user (they can browse, share, or
+// delete a namespace folder directly from drive.google.com). Ported and
+// pared from the budget project's `gdrive-adapter.ts` — the checklist has
+// no backups or receipts, so this keeps load / save / getRevision.
+//
+// Migration: builds before namespaces wrote the default document as
+// `checklist/checklist.json` (directly in the app folder). The default
+// namespace adapter re-parents that legacy file into
+// `checklist/default/` the first time it loads and finds the namespace
+// folder empty — do-once and self-healing, in the spirit of the budget
+// project's forward-only migrations.
 //
 // Concurrency rides on Drive's ETag: `StoredSnapshot.revision` is the
 // ETag returned from the previous `load` / `save`, and the next `save`
@@ -20,6 +26,7 @@ import {
   type StorageAdapter,
   type StoredSnapshot,
 } from "../adapter.ts";
+import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 
 const log = createLogger("gdrive");
 
@@ -97,14 +104,18 @@ type DriveListResponse = { files?: DriveFile[] };
 export function createGdriveAdapter(
   token: string,
   fetchImpl: FetchImpl = fetch,
+  namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): StorageAdapter {
-  log.info(`adapter created hasToken=${Boolean(token)}`);
+  log.info(`adapter created hasToken=${Boolean(token)} ns=${namespace}`);
+  const namespaceFolderName = namespaceCloudFolder(namespace);
+  const isDefaultNamespace = namespace === DEFAULT_NAMESPACE_SLUG;
   // The Drive file id never changes for the lifetime of the file, so we
   // look it up by name once and cache it in the closure. The cache is
   // invalidated on 404 (file deleted in Drive) so the next save
   // recreates it.
   let cachedFileId: string | null = null;
   let cachedAppFolderId: string | null = null;
+  let cachedNamespaceFolderId: string | null = null;
 
   function authHeader(): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
@@ -163,22 +174,101 @@ export function createGdriveAdapter(
     return meta.id;
   }
 
+  async function findNamespaceFolderId(): Promise<string | null> {
+    if (cachedNamespaceFolderId) return cachedNamespaceFolderId;
+    const appId = await findAppFolderId();
+    if (!appId) return null;
+    const id = await searchOne(
+      `name='${namespaceFolderName}' and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and '${appId}' in parents and trashed=false`,
+    );
+    if (id) cachedNamespaceFolderId = id;
+    return id;
+  }
+
+  async function ensureNamespaceFolder(): Promise<string> {
+    const existing = await findNamespaceFolderId();
+    if (existing) return existing;
+    const appId = await ensureAppFolder();
+    log.info(`nsFolder: creating ${namespaceFolderName}`);
+    const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
+      method: "POST",
+      headers: { ...authHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: namespaceFolderName,
+        mimeType: FOLDER_MIME_TYPE,
+        parents: [appId],
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "<unreadable>");
+      throw gdriveError("namespace folder create", res.status, body);
+    }
+    const meta = (await res.json()) as DriveFile;
+    cachedNamespaceFolderId = meta.id;
+    return meta.id;
+  }
+
+  // One-time relocation of the pre-namespaces document: the legacy file
+  // sat directly in the app folder (`checklist/checklist.json`). Re-parent
+  // it into the default namespace folder (`checklist/default/`) by adding
+  // the namespace folder and removing the app folder from its parents.
+  // Returns the file id when migrated, null when there's nothing to move.
+  async function migrateLegacyDefault(): Promise<string | null> {
+    const appId = await findAppFolderId();
+    if (!appId) return null;
+    const legacyId = await searchOne(
+      `name='${GDRIVE_FILE_NAME}' and '${appId}' in parents and trashed=false`,
+    );
+    if (!legacyId) return null;
+    const nsFolderId = await ensureNamespaceFolder();
+    log.info(
+      `migrate: re-parenting legacy ${legacyId} → ${namespaceFolderName}`,
+    );
+    const res = await fetchImpl(
+      `${DRIVE_FILES_API}/${legacyId}?addParents=${nsFolderId}` +
+        `&removeParents=${appId}&fields=id`,
+      { method: "PATCH", headers: authHeader() },
+    );
+    if (!res.ok) {
+      // A racing device may have moved it already; re-search the folder
+      // rather than failing the load.
+      const body = await res.text().catch(() => "<unreadable>");
+      log.warn(`migrate: re-parent failed ${res.status} — re-searching`, body);
+      const moved = await searchOne(
+        `name='${GDRIVE_FILE_NAME}' and '${nsFolderId}' in parents` +
+          ` and trashed=false`,
+      );
+      if (moved) cachedFileId = moved;
+      return moved;
+    }
+    cachedFileId = legacyId;
+    log.info(`migrate: moved id=${legacyId}`);
+    return legacyId;
+  }
+
   async function findFileId(): Promise<string | null> {
     if (cachedFileId) {
       log.info(`findFileId: cache hit ${cachedFileId}`);
       return cachedFileId;
     }
-    const folderId = await findAppFolderId();
-    if (folderId) {
+    const nsFolderId = await findNamespaceFolderId();
+    if (nsFolderId) {
       const id = await searchOne(
-        `name='${GDRIVE_FILE_NAME}' and '${folderId}' in parents` +
+        `name='${GDRIVE_FILE_NAME}' and '${nsFolderId}' in parents` +
           ` and trashed=false`,
       );
       if (id) {
         cachedFileId = id;
-        log.info(`findFileId: in folder ${id}`);
+        log.info(`findFileId: in namespace folder ${id}`);
         return id;
       }
+    }
+    // Namespace folder empty: migrate the legacy app-folder document into
+    // it (default namespace only).
+    if (isDefaultNamespace) {
+      const migrated = await migrateLegacyDefault();
+      if (migrated) return migrated;
     }
     log.info("findFileId: result <none>");
     return null;
@@ -253,7 +343,7 @@ export function createGdriveAdapter(
     // folder), the other is the body. Drive returns the new file id but
     // not the ETag in this response, so we issue a tiny follow-up GET to
     // pick up the revision token.
-    const folderId = await ensureAppFolder();
+    const folderId = await ensureNamespaceFolder();
     const meta = JSON.stringify({
       name: GDRIVE_FILE_NAME,
       parents: [folderId],
@@ -358,6 +448,64 @@ function randomBoundary(): string {
   let s = "";
   for (const b of bytes) s += b.toString(16).padStart(2, "0");
   return s;
+}
+
+// Delete a namespace's folder (and the document inside it) from Drive.
+// Used when a namespace is removed while Google Drive is the active
+// backend. Best-effort: a missing folder is treated as already gone.
+export async function deleteGdriveNamespace(
+  token: string,
+  namespace: string,
+  fetchImpl: FetchImpl = fetch,
+): Promise<void> {
+  const auth = { Authorization: `Bearer ${token}` };
+  const folderName = namespaceCloudFolder(namespace);
+  const appQuery =
+    `name='${GDRIVE_APP_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
+    ` and trashed=false`;
+  const appRes = await fetchImpl(
+    `${DRIVE_FILES_API}?q=${encodeURIComponent(appQuery)}&spaces=drive&fields=files(id)`,
+    { headers: auth },
+  );
+  if (!appRes.ok) {
+    const body = await appRes.text().catch(() => "<unreadable>");
+    throw gdriveError(
+      "namespace delete (app folder lookup)",
+      appRes.status,
+      body,
+    );
+  }
+  const appId = ((await appRes.json()) as DriveListResponse).files?.[0]?.id;
+  if (!appId) {
+    log.info("delete: no app folder — nothing to remove");
+    return;
+  }
+  const nsQuery =
+    `name='${folderName}' and mimeType='${FOLDER_MIME_TYPE}'` +
+    ` and '${appId}' in parents and trashed=false`;
+  const nsRes = await fetchImpl(
+    `${DRIVE_FILES_API}?q=${encodeURIComponent(nsQuery)}&spaces=drive&fields=files(id)`,
+    { headers: auth },
+  );
+  if (!nsRes.ok) {
+    const body = await nsRes.text().catch(() => "<unreadable>");
+    throw gdriveError("namespace delete (folder lookup)", nsRes.status, body);
+  }
+  const nsId = ((await nsRes.json()) as DriveListResponse).files?.[0]?.id;
+  if (!nsId) {
+    log.info("delete: no namespace folder — already gone");
+    return;
+  }
+  log.info(`delete: removing namespace folder ${folderName} (${nsId})`);
+  const delRes = await fetchImpl(`${DRIVE_FILES_API}/${nsId}`, {
+    method: "DELETE",
+    headers: auth,
+  });
+  if (!delRes.ok && delRes.status !== 404) {
+    const body = await delRes.text().catch(() => "<unreadable>");
+    throw gdriveError("namespace delete", delRes.status, body);
+  }
+  log.info("delete: ok");
 }
 
 // ---- OAuth (GIS token client) --------------------------------------

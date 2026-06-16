@@ -1,0 +1,252 @@
+import { useState, type FormEvent } from "react";
+
+import { useT } from "../i18n";
+import {
+  DEFAULT_NAMESPACE_SLUG,
+  type Namespace,
+} from "../storage/namespaces.ts";
+import { Button, ClearableInput } from "./form/index.ts";
+import { CheckIcon, CloseIcon, PencilIcon, TrashIcon } from "./icons.tsx";
+import { Modal } from "./Modal.tsx";
+
+// Namespace management dialog: create a namespace, switch the active one,
+// rename a namespace's display name, and delete one (with its data in the
+// active backend). The switcher in the side menu handles the common
+// "switch namespace" path; this dialog is the full add / rename / delete
+// surface. Presentational — App owns the namespace state via
+// `useStorageBackend` and passes the operations down.
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  namespaces: Namespace[];
+  activeNamespace: string;
+  onSwitch: (slug: string) => void;
+  onCreate: (name: string) => void;
+  onRename: (slug: string, name: string) => void;
+  onRemove: (slug: string) => Promise<void>;
+};
+
+export function NamespacesModal({
+  open,
+  onClose,
+  namespaces,
+  activeNamespace,
+  onSwitch,
+  onCreate,
+  onRename,
+  onRemove,
+}: Props) {
+  const t = useT();
+  const [newName, setNewName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submitCreate = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      setError(t("namespace.nameRequired"));
+      return;
+    }
+    onCreate(trimmed);
+    setNewName("");
+    setError(null);
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} labelledBy="namespaces-title">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3">
+        <h2
+          id="namespaces-title"
+          className="text-sm font-bold tracking-wide text-fg-bright"
+        >
+          {t("namespace.heading")}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t("common.close")}
+          className="-mr-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <CloseIcon className="h-5 w-5" />
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <p className="mb-4 text-xs text-muted">{t("namespace.blurb")}</p>
+
+        <ul className="flex flex-col gap-1">
+          {namespaces.map((ns) => (
+            <NamespaceRow
+              key={ns.slug}
+              namespace={ns}
+              active={ns.slug === activeNamespace}
+              onSwitch={() => onSwitch(ns.slug)}
+              onRename={(name) => onRename(ns.slug, name)}
+              onRemove={() => onRemove(ns.slug)}
+            />
+          ))}
+        </ul>
+
+        <form onSubmit={submitCreate} className="mt-5 flex flex-col gap-2">
+          <label
+            htmlFor="namespace-new"
+            className="text-xs font-semibold tracking-wide text-muted uppercase"
+          >
+            {t("namespace.newAction")}
+          </label>
+          <div className="flex items-center gap-2">
+            <ClearableInput
+              id="namespace-new"
+              value={newName}
+              onValueChange={(v) => {
+                setNewName(v);
+                if (error) setError(null);
+              }}
+              placeholder={t("namespace.namePlaceholder")}
+              aria-label={t("namespace.nameLabel")}
+              wrapperClassName="flex-1 rounded border border-line bg-surface-2 px-2 py-1.5"
+            />
+            <Button type="submit" variant="primary">
+              {t("namespace.create")}
+            </Button>
+          </div>
+          {error && (
+            <p role="alert" className="text-xs text-danger">
+              {error}
+            </p>
+          )}
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+function NamespaceRow({
+  namespace,
+  active,
+  onSwitch,
+  onRename,
+  onRemove,
+}: {
+  namespace: Namespace;
+  active: boolean;
+  onSwitch: () => void;
+  onRename: (name: string) => void;
+  onRemove: () => Promise<void>;
+}) {
+  const t = useT();
+  const isDefault = namespace.slug === DEFAULT_NAMESPACE_SLUG;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(namespace.name);
+  const [busy, setBusy] = useState(false);
+
+  const submitRename = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    onRename(trimmed);
+    setEditing(false);
+  };
+
+  const confirmRemove = async () => {
+    if (busy) return;
+    if (
+      !window.confirm(t("namespace.deleteConfirm", { name: namespace.name }))
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await onRemove();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <li>
+        <form
+          onSubmit={submitRename}
+          className="flex items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5"
+        >
+          <ClearableInput
+            value={draft}
+            onValueChange={setDraft}
+            aria-label={t("namespace.nameLabel")}
+            wrapperClassName="flex-1"
+          />
+          <Button type="submit" variant="primary">
+            {t("namespace.save")}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setDraft(namespace.name);
+              setEditing(false);
+            }}
+          >
+            {t("namespace.cancel")}
+          </Button>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li
+      className={`flex items-center gap-2 rounded border px-3 py-2 ${
+        active ? "border-accent bg-accent/10" : "border-line bg-surface-2"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onSwitch}
+        aria-current={active ? "true" : undefined}
+        aria-label={t("namespace.switchTo", { name: namespace.name })}
+        className="flex flex-1 cursor-pointer items-center gap-2 text-left"
+      >
+        <span className="w-4 shrink-0 text-accent">
+          {active && <CheckIcon className="h-4 w-4" />}
+        </span>
+        <span
+          className={`flex-1 truncate text-sm ${
+            active ? "font-bold text-accent" : "text-fg"
+          }`}
+        >
+          {namespace.name}
+        </span>
+        {isDefault && (
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted">
+            {t("namespace.defaultBadge")}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setDraft(namespace.name);
+          setEditing(true);
+        }}
+        aria-label={t("namespace.renameAction")}
+        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-3 hover:text-fg"
+      >
+        <PencilIcon className="h-4 w-4" />
+      </button>
+      {!isDefault && (
+        <button
+          type="button"
+          onClick={() => void confirmRemove()}
+          disabled={busy}
+          aria-label={t("namespace.deleteAction")}
+          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-danger/15 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
+      )}
+    </li>
+  );
+}

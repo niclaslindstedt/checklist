@@ -36,16 +36,31 @@ import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto.ts";
 import {
   completeDropboxAuth,
   createDropboxAdapter,
+  deleteDropboxNamespace,
   hasPendingDropboxAuth,
   isDropboxConfigured,
 } from "./dropbox/index.ts";
 import { withEncryption } from "./encrypting/index.ts";
 import {
   createGdriveAdapter,
+  deleteGdriveNamespace,
   isGdriveConfigured,
   startGdriveAuth,
 } from "./gdrive/index.ts";
-import { BrowserLocalStorageAdapter } from "./local/index.ts";
+import {
+  BrowserLocalStorageAdapter,
+  deleteLocalNamespace,
+} from "./local/index.ts";
+import {
+  DEFAULT_NAMESPACE_SLUG,
+  type Namespace,
+  addNamespace as registryAddNamespace,
+  getActiveNamespaceSlug,
+  getNamespaces,
+  removeNamespace as registryRemoveNamespace,
+  renameNamespace as registryRenameNamespace,
+  setActiveNamespaceSlug,
+} from "./namespaces.ts";
 
 const log = createLogger("storage");
 
@@ -75,6 +90,22 @@ export interface UseStorageBackend {
   disableEncryption: () => Promise<void>;
   /** Supply the passphrase for an already-encrypted store; throws if wrong. */
   unlock: (password: string) => Promise<void>;
+  /** Namespaces known on this device (default always first). */
+  namespaces: Namespace[];
+  /** The active namespace's slug. */
+  activeNamespace: string;
+  /** Make a namespace active, swapping which document the app reads/writes. */
+  switchNamespace: (slug: string) => void;
+  /** Create a namespace from a display name and switch to it. */
+  createNamespace: (name: string) => void;
+  /** Change a namespace's display name (its data stays put). */
+  renameNamespace: (slug: string, name: string) => void;
+  /**
+   * Remove a namespace and delete its data in the *active* backend. The
+   * default namespace can't be removed. Orphaned copies in other backends
+   * (or on other devices) are left untouched.
+   */
+  removeNamespace: (slug: string) => Promise<void>;
 }
 
 // Strip the OAuth redirect's query params (`code`, `state`, `scope`) from
@@ -132,6 +163,10 @@ export function useStorageBackend(): UseStorageBackend {
     useState<EncryptionMode>(getEncryption);
   // Session-only passphrase. Never persisted — lost on reload by design.
   const [password, setPassword] = useState<string | null>(null);
+  const [namespaces, setNamespacesState] = useState<Namespace[]>(getNamespaces);
+  const [activeNamespace, setActiveNamespaceState] = useState<string>(
+    getActiveNamespaceSlug,
+  );
 
   // Complete a Dropbox OAuth redirect on boot. Google Drive uses a popup
   // (resolved inline in `connectGdrive`), so only Dropbox lands back here
@@ -170,20 +205,27 @@ export function useStorageBackend(): UseStorageBackend {
   // silently-refreshed access token back to localStorage and state.
   const inner = useMemo<StorageAdapter>(() => {
     if (backend === "dropbox" && dropboxToken) {
-      return createDropboxAdapter({
-        accessToken: dropboxToken,
-        refreshToken: dropboxRefresh,
-        onAccessTokenRefreshed: (token) => {
-          setDropboxToken(token);
-          setDropboxTokenState(token);
+      return createDropboxAdapter(
+        {
+          accessToken: dropboxToken,
+          refreshToken: dropboxRefresh,
+          onAccessTokenRefreshed: (token) => {
+            setDropboxToken(token);
+            setDropboxTokenState(token);
+          },
         },
-      });
+        fetch,
+        activeNamespace,
+      );
     }
     if (backend === "gdrive" && gdriveToken) {
-      return createGdriveAdapter(gdriveToken);
+      return createGdriveAdapter(gdriveToken, fetch, activeNamespace);
     }
-    return new BrowserLocalStorageAdapter();
-  }, [backend, dropboxToken, dropboxRefresh, gdriveToken]);
+    return new BrowserLocalStorageAdapter(
+      globalThis.localStorage,
+      activeNamespace,
+    );
+  }, [backend, dropboxToken, dropboxRefresh, gdriveToken, activeNamespace]);
 
   const locked = encryption === "encrypted" && password === null;
 
@@ -277,6 +319,54 @@ export function useStorageBackend(): UseStorageBackend {
     [inner],
   );
 
+  const switchNamespace = useCallback((slug: string) => {
+    setActiveNamespaceSlug(slug);
+    setActiveNamespaceState(slug);
+  }, []);
+
+  const createNamespace = useCallback((name: string) => {
+    const created = registryAddNamespace(name);
+    setNamespacesState(getNamespaces());
+    // Land the user in the namespace they just created.
+    setActiveNamespaceSlug(created.slug);
+    setActiveNamespaceState(created.slug);
+  }, []);
+
+  const renameNamespace = useCallback((slug: string, name: string) => {
+    registryRenameNamespace(slug, name);
+    setNamespacesState(getNamespaces());
+  }, []);
+
+  const removeNamespace = useCallback(
+    async (slug: string) => {
+      if (slug === DEFAULT_NAMESPACE_SLUG) {
+        throw new Error("The default namespace can't be removed");
+      }
+      // Delete the namespace's bytes in whatever backend is active right
+      // now — that's the only one we hold a connection / key for. A failure
+      // (offline, revoked token) is logged but doesn't block removing the
+      // registry entry; the user can clean up orphaned bytes manually.
+      try {
+        if (backend === "browser") {
+          deleteLocalNamespace(slug);
+        } else if (backend === "dropbox" && dropboxToken) {
+          await deleteDropboxNamespace(dropboxToken, slug);
+        } else if (backend === "gdrive" && gdriveToken) {
+          await deleteGdriveNamespace(gdriveToken, slug);
+        }
+      } catch (err) {
+        log.warn(`removeNamespace: data delete failed for ${slug}`, err);
+      }
+      registryRemoveNamespace(slug);
+      setNamespacesState(getNamespaces());
+      if (activeNamespace === slug) {
+        setActiveNamespaceSlug(DEFAULT_NAMESPACE_SLUG);
+        setActiveNamespaceState(DEFAULT_NAMESPACE_SLUG);
+      }
+    },
+    [backend, dropboxToken, gdriveToken, activeNamespace],
+  );
+
   return {
     adapter,
     backend,
@@ -294,5 +384,11 @@ export function useStorageBackend(): UseStorageBackend {
     enableEncryption,
     disableEncryption,
     unlock,
+    namespaces,
+    activeNamespace,
+    switchNamespace,
+    createNamespace,
+    renameNamespace,
+    removeNamespace,
   };
 }

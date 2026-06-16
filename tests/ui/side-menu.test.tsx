@@ -31,6 +31,10 @@ function renderMenu(props: Partial<React.ComponentProps<typeof SideMenu>>) {
       current="checklist"
       onNavigate={noop}
       archivedCount={0}
+      namespaces={[{ slug: "default", name: "Default" }]}
+      activeNamespace="default"
+      onSwitchNamespace={noop}
+      onManageNamespaces={noop}
       onUndo={noop}
       onRedo={noop}
       canUndo={false}
@@ -82,6 +86,31 @@ describe("SideMenu", () => {
     expect(onRedo).not.toHaveBeenCalled();
     fireEvent.click(undo);
     expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists namespaces and switches when one is chosen", () => {
+    const onSwitchNamespace = vi.fn();
+    const onClose = vi.fn();
+    renderMenu({
+      open: true,
+      onSwitchNamespace,
+      onClose,
+      namespaces: [
+        { slug: "default", name: "Default" },
+        { slug: "family", name: "Family" },
+      ],
+      activeNamespace: "default",
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: /Family/ }));
+    expect(onSwitchNamespace).toHaveBeenCalledWith("family");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens namespace management from the New namespace entry", () => {
+    const onManageNamespaces = vi.fn();
+    renderMenu({ open: true, onManageNamespaces });
+    fireEvent.click(screen.getByRole("menuitem", { name: "New namespace" }));
+    expect(onManageNamespaces).toHaveBeenCalledTimes(1);
   });
 
   it("opens settings and changelog from the relocated footer menu", () => {

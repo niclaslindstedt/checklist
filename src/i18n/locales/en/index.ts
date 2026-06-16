@@ -10,6 +10,7 @@ import app from "./app";
 import changelog from "./changelog";
 import common from "./common";
 import menu from "./menu";
+import namespace from "./namespace";
 import nav from "./nav";
 import pwa from "./pwa";
 import settings from "./settings";
@@ -21,6 +22,7 @@ export const en = {
   changelog,
   common,
   menu,
+  namespace,
   nav,
   pwa,
   settings,

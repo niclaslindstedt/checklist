@@ -3,8 +3,14 @@ import { describe, expect, it } from "vitest";
 import { ConflictError, RateLimitError } from "../../src/storage/adapter.ts";
 import {
   createDropboxAdapter,
+  deleteDropboxNamespace,
   dropboxApiArg,
 } from "../../src/storage/dropbox/index.ts";
+
+function argPath(call: Call): string {
+  const headers = call.init?.headers as Record<string, string> | undefined;
+  return JSON.parse(headers?.["Dropbox-API-Arg"] ?? "{}").path as string;
+}
 
 // Minimal `Response` shim. The adapter only ever reads `.status`, `.ok`,
 // `.headers.get`, `.json()`, and `.text()`.
@@ -309,6 +315,94 @@ describe("dropboxApiArg header encoding", () => {
     expect([...encoded].every((ch) => ch.charCodeAt(0) < 0x80)).toBe(true);
     expect(() => new Headers({ "Dropbox-API-Arg": encoded })).not.toThrow();
     expect(JSON.parse(encoded)).toEqual(arg);
+  });
+});
+
+describe("dropbox namespaces", () => {
+  it("writes a namespace's document into its own folder", async () => {
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url.includes("/files/upload")) {
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ rev: "r1" }),
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createDropboxAdapter("token", fn, "family");
+    await adapter.save("payload");
+    const upload = calls.find((c) => c.url.includes("/files/upload"))!;
+    expect(argPath(upload)).toBe("/family/checklist.json");
+  });
+
+  it("migrates the legacy root document into the default folder on first load", async () => {
+    const legacyText = '{"version":1,"legacy":true}';
+    let moved = false;
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url.includes("/files/download")) {
+        const path = argPath(call);
+        if (path === "/default/checklist.json") {
+          if (!moved) {
+            return makeResponse({
+              status: 409,
+              body: JSON.stringify({ error_summary: "path/not_found/" }),
+            });
+          }
+          return makeResponse({ status: 200, body: legacyText });
+        }
+        if (path === "/checklist.json") {
+          return makeResponse({
+            status: 200,
+            body: legacyText,
+            headers: {
+              "Dropbox-API-Result": JSON.stringify({ rev: "legacy" }),
+            },
+          });
+        }
+      }
+      if (call.url.includes("/files/move_v2")) {
+        moved = true;
+        return makeResponse({
+          status: 200,
+          body: JSON.stringify({ metadata: { rev: "moved-rev" } }),
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+
+    const adapter = createDropboxAdapter("token", fn); // default namespace
+    const loaded = await adapter.load();
+    expect(loaded).toEqual({ text: legacyText, revision: "moved-rev" });
+    expect(calls.some((c) => c.url.includes("/files/move_v2"))).toBe(true);
+  });
+
+  it("never probes the legacy document for a non-default namespace", async () => {
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url.includes("/files/download")) {
+        return makeResponse({
+          status: 409,
+          body: JSON.stringify({ error_summary: "path/not_found/" }),
+        });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    const adapter = createDropboxAdapter("token", fn, "family");
+    expect(await adapter.load()).toBeNull();
+    const downloads = calls.filter((c) => c.url.includes("/files/download"));
+    expect(downloads).toHaveLength(1);
+    expect(argPath(downloads[0]!)).toBe("/family/checklist.json");
+  });
+
+  it("deletes a namespace's whole folder", async () => {
+    const { fn, calls } = fakeFetch((call) => {
+      if (call.url.includes("/files/delete_v2")) {
+        return makeResponse({ status: 200, body: "{}" });
+      }
+      throw new Error(`Unexpected URL: ${call.url}`);
+    });
+    await deleteDropboxNamespace("token", "family", fn);
+    const del = calls.find((c) => c.url.includes("/files/delete_v2"))!;
+    expect(JSON.parse(del.init?.body as string).path).toBe("/family");
   });
 });
 

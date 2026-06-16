@@ -9,6 +9,7 @@ import { ArchiveView } from "../ui/ArchiveView.tsx";
 import { ChangelogModal } from "../ui/changelog/ChangelogModal.tsx";
 import { ChecklistView, type SyncInfo } from "../ui/ChecklistView.tsx";
 import { ConflictResolutionModal } from "../ui/ConflictResolutionModal.tsx";
+import { NamespacesModal } from "../ui/NamespacesModal.tsx";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu, type View } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
@@ -35,6 +36,7 @@ export function App() {
     undefined,
   );
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [namespacesOpen, setNamespacesOpen] = useState(false);
 
   // The left navigation drawer and which top-level view it has selected.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -59,6 +61,7 @@ export function App() {
     setSettingsOpen(true);
   }, []);
   const openChangelog = useCallback(() => setChangelogOpen(true), []);
+  const openNamespaces = useCallback(() => setNamespacesOpen(true), []);
 
   // The active backend (this device / Dropbox / Google Drive), optionally
   // wrapped with at-rest encryption. A fresh seed adapter whenever fake
@@ -144,6 +147,10 @@ export function App() {
         current={view}
         onNavigate={navigate}
         archivedCount={checklist.archivedItems.length}
+        namespaces={storage.namespaces}
+        activeNamespace={storage.activeNamespace}
+        onSwitchNamespace={storage.switchNamespace}
+        onManageNamespaces={openNamespaces}
         onUndo={checklist.undo}
         onRedo={checklist.redo}
         canUndo={checklist.canUndo}
@@ -165,6 +172,16 @@ export function App() {
       <ChangelogModal
         open={changelogOpen}
         onClose={() => setChangelogOpen(false)}
+      />
+      <NamespacesModal
+        open={namespacesOpen}
+        onClose={() => setNamespacesOpen(false)}
+        namespaces={storage.namespaces}
+        activeNamespace={storage.activeNamespace}
+        onSwitch={storage.switchNamespace}
+        onCreate={storage.createNamespace}
+        onRename={storage.renameNamespace}
+        onRemove={storage.removeNamespace}
       />
       <ConflictResolutionModal
         open={checklist.conflict !== null}

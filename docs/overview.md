@@ -86,13 +86,15 @@ swiped-right in the checklist view. Reached from the side menu.
 `src/ui/SideMenu.tsx` — the navigation drawer, which collapses into a
 single floating menu button the user can drag to either vertical edge
 (its resting spot persists in `menuButtonPosition`). Pressing the
-button slides the drawer in from that edge over a dimmed backdrop; the
-drawer lists the views (Checklist, Archive — the latter badged with the
-archived-item count) and the Undo / Redo actions, and highlights the
-current view. The `View` type (`"checklist" | "archive"`) is exported
-here. Closes on Escape or backdrop click. The floating button itself is
-positioned by `useDraggableMenuButton` over the geometry in
-`sideMenuPosition.ts`.
+button slides the drawer in from that edge over a dimmed backdrop. The
+drawer opens with the **namespace** section — the known namespaces (the
+active one checked, click to switch) and a "New namespace" entry that
+opens `NamespacesModal` — then lists the views (Checklist, Archive — the
+latter badged with the archived-item count) and the Undo / Redo actions,
+and highlights the current view. The `View` type
+(`"checklist" | "archive"`) is exported here. Closes on Escape or
+backdrop click. The floating button itself is positioned by
+`useDraggableMenuButton` over the geometry in `sideMenuPosition.ts`.
 
 ### Floating menu button
 
@@ -356,8 +358,29 @@ tokens, completes an OAuth redirect on load, and layers optional
 at-rest encryption (`withEncryption`). Returns the active backend id /
 adapter, per-provider connection status, the encryption mode, the
 `locked` flag (and `unlock`), and methods to switch backend, connect /
-disconnect a provider, and enable / disable encryption. The session
-passphrase is held in memory only — never persisted, lost on reload.
+disconnect a provider, and enable / disable encryption. It also owns the
+active namespace: the inner adapter is built scoped to it, so switching
+namespace swaps which document the app reads/writes, and it exposes the
+namespace list plus `switchNamespace` / `createNamespace` /
+`renameNamespace` / `removeNamespace`. The session passphrase is held in
+memory only — never persisted, lost on reload.
+
+### Namespaces
+
+`src/storage/namespaces.ts` — the per-device registry of **namespaces**:
+named buckets that each hold their own checklist document. The registry
+(the list and the active slug) lives in `localStorage`, like the backend
+preference, because the namespaces a person sees are a property of their
+install, not of any one document. Every namespace has a `slug` (fixed at
+creation, folder-/key-safe) and an editable display `name`; rename only
+changes the name so data never has to move. The `default` namespace
+always exists and can't be removed. `namespaceLocalKey` /
+`namespaceCloudFolder` map a slug onto a concrete location: the default
+namespace keeps the legacy `checklist:v1` key locally, every namespace
+gets its own folder in the cloud (so a folder can be shared wholesale —
+the `family/` folder shared with relatives). The management UI is
+`NamespacesModal` (`src/ui/NamespacesModal.tsx`), reached from the
+namespace section at the top of the side menu.
 
 ### Storage tab
 
@@ -370,29 +393,40 @@ glyph.
 ### Local backend / This device
 
 `src/storage/local/index.ts` (`BrowserLocalStorageAdapter`) — the
-default backend, persisting the document to `localStorage` under
-`checklist:v1`. It implements the synchronous `loadSync` fast path (so
-the first paint shows stored data, no empty-list flash) and saves
-immediately (`saveDebounceMs` 0). The underlying `Storage` is
-injectable so tests pass an in-memory stub.
+default backend, persisting the document to `localStorage`. The default
+namespace keeps the historical key `checklist:v1`; other namespaces are
+keyed `checklist:v1:<slug>` (there are no folders locally, so namespacing
+is just a key change — `deleteLocalNamespace` removes one). It implements
+the synchronous `loadSync` fast path (so the first paint shows stored
+data, no empty-list flash) and saves immediately (`saveDebounceMs` 0).
+The underlying `Storage` is injectable so tests pass an in-memory stub.
 
 ### Dropbox backend
 
 `src/storage/dropbox/index.ts` — the Dropbox adapter, talking to the v2
-HTTP API directly and storing the document in the app's scoped folder.
-Uses PKCE OAuth with refresh tokens, a silent access-token refresh on
-401 (then `AuthError`), and the file `rev` for optimistic concurrency
-(write-mode conflict → `ConflictError`). `isDropboxConfigured()` gates
-the connect button on the build-time app key.
+HTTP API directly and storing each namespace's document as
+`/<namespace>/checklist.json` inside the app's scoped folder
+(`deleteDropboxNamespace` removes the whole folder). The default
+namespace adapter performs a one-time, self-healing migration the first
+time it loads an empty folder: it moves the legacy `/checklist.json` at
+the app-folder root into `/default/checklist.json` (`move_v2`). Uses PKCE
+OAuth with refresh tokens, a silent access-token refresh on 401 (then
+`AuthError`), and the file `rev` for optimistic concurrency (write-mode
+conflict → `ConflictError`). `isDropboxConfigured()` gates the connect
+button on the build-time app key.
 
 ### Google Drive backend
 
 `src/storage/gdrive/index.ts` — the Google Drive adapter, using the
 Drive v3 REST API with the GIS token client (popup flow, no client
 secret, `drive.file` scope, so it only sees files it created). Stores
-the document in a `checklist/` folder; uses the ETag for concurrency
-(412 → `ConflictError`). The GIS script is lazy-loaded only when the
-user connects. `isGdriveConfigured()` gates the connect button.
+each namespace's document in its own `checklist/<namespace>/` folder
+(`deleteGdriveNamespace` removes the folder). The default namespace
+adapter migrates the legacy `checklist/checklist.json` by re-parenting it
+into `checklist/default/` the first time it loads an empty folder. Uses
+the ETag for concurrency (412 → `ConflictError`). The GIS script is
+lazy-loaded only when the user connects. `isGdriveConfigured()` gates the
+connect button.
 
 ### At-rest encryption / unlock
 
