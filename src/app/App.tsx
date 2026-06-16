@@ -5,10 +5,12 @@ import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import { useStorageBackend } from "../storage/useStorageBackend.ts";
 import { useTheme } from "../theme/useTheme.ts";
+import { ArchiveView } from "../ui/ArchiveView.tsx";
 import { ChangelogModal } from "../ui/changelog/ChangelogModal.tsx";
 import { ChecklistView, type SyncInfo } from "../ui/ChecklistView.tsx";
 import { ConflictResolutionModal } from "../ui/ConflictResolutionModal.tsx";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
+import { SideMenu, type View } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
@@ -32,6 +34,17 @@ export function App() {
     undefined,
   );
   const [changelogOpen, setChangelogOpen] = useState(false);
+
+  // The left navigation drawer and which top-level view it has selected.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [view, setView] = useState<View>("checklist");
+  const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const navigate = useCallback((next: View) => {
+    setView(next);
+    setMenuOpen(false);
+  }, []);
+
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
   // appearance settings (which share this component) change.
   const openSettings = useCallback(() => {
@@ -77,7 +90,8 @@ export function App() {
   // active backend (see `useChecklist.reload`). Gated off while a modal
   // owns the screen.
   const ptr = usePullToRefresh(checklist.reload, {
-    enabled: !settingsOpen && !changelogOpen,
+    enabled:
+      !settingsOpen && !changelogOpen && !menuOpen && view === "checklist",
   });
 
   return (
@@ -86,17 +100,33 @@ export function App() {
         state={ptr.state}
         pullDistance={ptr.pullDistance}
       />
-      <ChecklistView
-        items={checklist.items}
-        checkedCount={checklist.checkedCount}
-        onAdd={checklist.addItem}
-        onToggle={checklist.toggle}
-        onRemove={checklist.remove}
-        onArchive={checklist.archive}
-        onReorder={checklist.reorder}
-        onOpenSettings={openSettings}
-        onOpenChangelog={openChangelog}
-        sync={sync}
+      {view === "archive" ? (
+        <ArchiveView
+          items={checklist.archivedItems}
+          onRestore={checklist.unarchive}
+          onRemove={checklist.remove}
+        />
+      ) : (
+        <ChecklistView
+          items={checklist.items}
+          checkedCount={checklist.checkedCount}
+          onAdd={checklist.addItem}
+          onToggle={checklist.toggle}
+          onRemove={checklist.remove}
+          onArchive={checklist.archive}
+          onReorder={checklist.reorder}
+          onOpenSettings={openSettings}
+          onOpenChangelog={openChangelog}
+          sync={sync}
+        />
+      )}
+      <SideMenu
+        open={menuOpen}
+        onToggle={toggleMenu}
+        onClose={closeMenu}
+        current={view}
+        onNavigate={navigate}
+        archivedCount={checklist.archivedItems.length}
       />
       <SettingsModal
         open={settingsOpen}

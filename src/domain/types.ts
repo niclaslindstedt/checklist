@@ -26,8 +26,9 @@ export interface ChecklistItem extends Item {
   checked: boolean;
   /**
    * Archived items stay in the document but drop out of the active view.
-   * There is no archive surface yet — swiping an item right marks it
-   * archived so it disappears without being destroyed. Absent means active.
+   * Swiping an item right marks it archived so it disappears without being
+   * destroyed; the archive view (reached from the side menu) lists them and
+   * can restore or delete each one. Absent means active.
    */
   archived?: boolean;
 }

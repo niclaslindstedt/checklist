@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeItems,
   addItem,
+  archivedItems,
   createChecklist,
   deleteItem,
   instantiate,
@@ -67,6 +68,22 @@ describe("free-standing checklist item operations", () => {
     const archived = setArchived(withItem, "i1", true, NOW);
     expect(archived.items[0]?.archived).toBe(true);
     expect(activeItems(archived)).toHaveLength(0);
+  });
+
+  it("partitions items into active and archived views", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW);
+    c = setArchived(c, "i2", true, NOW);
+    expect(activeItems(c).map((it) => it.id)).toEqual(["i1"]);
+    expect(archivedItems(c).map((it) => it.id)).toEqual(["i2"]);
+  });
+
+  it("restores an archived item back into the active view", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = setArchived(c, "i1", true, NOW);
+    const restored = setArchived(c, "i1", false, NOW);
+    expect(archivedItems(restored)).toHaveLength(0);
+    expect(activeItems(restored).map((it) => it.id)).toEqual(["i1"]);
   });
 
   it("deletes an item entirely", () => {
