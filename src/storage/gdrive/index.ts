@@ -21,6 +21,7 @@ import { AuthError, type StorageAdapter } from "../adapter.ts";
 import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
+import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
 
 const log = createLogger("gdrive");
 
@@ -83,6 +84,16 @@ export function createGdriveAdapter(
     label: "Google Drive",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
   });
+}
+
+// Root settings store for the Google Drive backend: `settings.json` in the
+// `checklist/` app folder, beside the namespace folders. Built with an
+// empty namespace so the file store resolves at the app-folder root.
+export function createGdriveSettingsStore(
+  token: string,
+  fetchImpl: FetchImpl = fetch,
+): SettingsStore {
+  return fileSettingsStore(createGdriveFileStore(token, fetchImpl, ""));
 }
 
 function createGdriveFileStore(
@@ -158,7 +169,12 @@ function createGdriveFileStore(
     }
 
     let parentId = appId;
-    for (const segment of [namespaceFolderName, ...split(relDir)]) {
+    // An empty namespace resolves at the app-folder root (the root settings
+    // store), so the namespace segment drops out and files land directly in
+    // `checklist/`.
+    for (const segment of [namespaceFolderName, ...split(relDir)].filter(
+      (s) => s.length > 0,
+    )) {
       let id = await findChildFolder(segment, parentId);
       if (!id) {
         if (!create) return null;

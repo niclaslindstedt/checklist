@@ -36,6 +36,7 @@ import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto.ts";
 import {
   completeDropboxAuth,
   createDropboxAdapter,
+  createDropboxSettingsStore,
   deleteDropboxNamespace,
   hasPendingDropboxAuth,
   isDropboxConfigured,
@@ -43,6 +44,7 @@ import {
 import { withEncryption } from "./encrypting/index.ts";
 import {
   createGdriveAdapter,
+  createGdriveSettingsStore,
   deleteGdriveNamespace,
   isGdriveConfigured,
   startGdriveAuth,
@@ -51,7 +53,11 @@ import {
   BrowserLocalStorageAdapter,
   deleteLocalNamespace,
 } from "./local/index.ts";
-import { createFolderAdapter } from "./folder/index.ts";
+import {
+  createFolderAdapter,
+  createFolderSettingsStore,
+} from "./folder/index.ts";
+import type { SettingsStore } from "./settings-store.ts";
 import {
   clearDirectoryHandle,
   ensurePermission,
@@ -77,6 +83,14 @@ const log = createLogger("storage");
 export interface UseStorageBackend {
   /** The adapter to hand to `useChecklist`. A no-op placeholder while locked. */
   adapter: StorageAdapter;
+  /**
+   * The active backend's root settings store — `settings.json` at the
+   * app-folder root, shared by every namespace and stored as plaintext JSON
+   * even when the document is encrypted. Null for the browser backend
+   * (which keeps settings in localStorage) and while a folder grant is
+   * unresolved; `useSettings` reconciles against it when present.
+   */
+  settingsStore: SettingsStore | null;
   /** Which backend is selected. */
   backend: BackendId;
   /** Whether each cloud backend's app key / client id is built in. */
@@ -320,6 +334,42 @@ export function useStorageBackend(): UseStorageBackend {
     dropboxRefresh,
     gdriveToken,
     activeNamespace,
+    folderHandle,
+    folderHandleLoaded,
+    markFolderPermissionLost,
+  ]);
+
+  // The active backend's root settings store, built from the same backend
+  // selection as `inner` but rooted at the app folder (no namespace) and
+  // independent of encryption — settings are app-wide and stored plaintext.
+  // Null for the browser backend (localStorage is its canonical settings
+  // home) and while a folder grant is unresolved.
+  const settingsStore = useMemo<SettingsStore | null>(() => {
+    if (backend === "dropbox" && dropboxToken) {
+      return createDropboxSettingsStore(
+        {
+          accessToken: dropboxToken,
+          refreshToken: dropboxRefresh,
+          onAccessTokenRefreshed: (token) => {
+            setDropboxToken(token);
+            setDropboxTokenState(token);
+          },
+        },
+        fetch,
+      );
+    }
+    if (backend === "gdrive" && gdriveToken) {
+      return createGdriveSettingsStore(gdriveToken, fetch);
+    }
+    if (backend === "folder" && folderHandleLoaded && folderHandle) {
+      return createFolderSettingsStore(folderHandle, markFolderPermissionLost);
+    }
+    return null;
+  }, [
+    backend,
+    dropboxToken,
+    dropboxRefresh,
+    gdriveToken,
     folderHandle,
     folderHandleLoaded,
     markFolderPermissionLost,
@@ -577,6 +627,7 @@ export function useStorageBackend(): UseStorageBackend {
 
   return {
     adapter,
+    settingsStore,
     backend,
     dropboxConfigured: isDropboxConfigured(),
     gdriveConfigured: isGdriveConfigured(),

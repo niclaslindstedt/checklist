@@ -138,6 +138,24 @@ bytes can't be markdown) falls back to a single `checklist.json` envelope
 and migrated to markdown on the next plaintext save. Only the browser
 backend keeps the single JSON document.
 
+**Root settings file.** App settings (theme, font, list-behaviour
+preferences) are device-wide, not part of any one namespace's document, so
+they live *outside* the namespace folders. The `SettingsStore` seam
+(`src/storage/settings-store.ts`) persists them as a single
+`settings.json` at the **app-folder root** — the level above the namespace
+folders — so one file is shared by every namespace and travels with the
+synced/shared folder. `fileSettingsStore` builds one over any backend's
+`FileStore` constructed with an *empty namespace* (its paths then resolve
+at the app-folder root rather than inside a namespace folder); each
+file-based backend exports a `create*SettingsStore`, and
+`useStorageBackend` exposes the active backend's as `settingsStore` (null
+for the browser backend, whose settings stay in `localStorage`). It is
+independent of the document adapter and of encryption — `settings.json`
+stays plaintext even when the document is an encrypted envelope.
+`useSettings` reconciles against it (adopt-or-seed on mount, write-through
+on update) while keeping `localStorage` as the synchronous first-paint
+cache.
+
 **Local folder backend.** `createFolderAdapter`
 (`src/storage/folder/index.ts`) implements a `FileStore` over the **File
 System Access API**: the user picks a directory, its handle is persisted

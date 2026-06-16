@@ -6,6 +6,7 @@ import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
 import {
   createGdriveAdapter,
+  createGdriveSettingsStore,
   deleteGdriveNamespace,
 } from "../../src/storage/gdrive/index.ts";
 import { parse, serialize } from "../../src/storage/serialize.ts";
@@ -209,5 +210,27 @@ describe("gdrive adapter (markdown file store)", () => {
     expect(sim.fileNames().length).toBe(1);
     await deleteGdriveNamespace("token", "work", sim.fetch);
     expect(sim.fileNames()).toEqual([]);
+  });
+
+  it("settings store stores settings.json in the app folder, beside namespaces", async () => {
+    const sim = new DriveSim();
+    const adapter = createGdriveAdapter("token", sim.fetch, "work");
+    const settings = createGdriveSettingsStore("token", sim.fetch);
+    await adapter.save(serialize(snapshot));
+    expect(await settings.load()).toBeNull();
+    await settings.save('{"theme":"dark"}');
+    expect(await settings.load()).toBe('{"theme":"dark"}');
+    // settings.json's parent is the `checklist` app folder, not the `work`
+    // namespace folder — so it sits at the app-folder root.
+    const appFolder = sim.nodes.find(
+      (n) => n.name === "checklist" && n.parent === "root",
+    )!;
+    const settingsNode = sim.nodes.find((n) => n.name === "settings.json")!;
+    expect(settingsNode.parent).toBe(appFolder.id);
+    expect(sim.folderNames().sort()).toEqual([
+      "checklist",
+      "checklists",
+      "work",
+    ]);
   });
 });

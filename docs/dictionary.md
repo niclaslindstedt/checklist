@@ -103,6 +103,7 @@ names. Honour these when naming a new file, key, or string.
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
 | **Settings dialog**                        | `src/ui/settings/SettingsModal.tsx`; `TabId`. [→](overview.md#settings-dialog)     |
 | **Settings store** / **preferences**       | `src/settings/store.ts`, `src/settings/useSettings.ts`; `Settings`. [→](overview.md#settings-store) |
+| **Root settings file** / **settings.json** / **synced settings** | `src/storage/settings-store.ts` (`SettingsStore`, `SETTINGS_FILE_NAME`, `fileSettingsStore`); `create*SettingsStore` in `src/storage/{folder,dropbox,gdrive}/index.ts`; `settingsStore` on `useStorageBackend`. [→](overview.md#root-settings-file) |
 | **General tab**                            | `src/ui/settings/tabs/general.tsx`. [→](overview.md#general-tab)                   |
 | **Lists tab** / **list settings**          | `src/ui/settings/tabs/lists.tsx`. [→](overview.md#lists-tab)                       |
 | **Appearance tab** / **theme tab**         | `src/ui/settings/tabs/appearance.tsx`. [→](overview.md#appearance--theme-tab)      |

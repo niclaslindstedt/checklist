@@ -21,6 +21,7 @@ import { AuthError, RateLimitError, type StorageAdapter } from "../adapter.ts";
 import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
+import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
 import {
   type OAuthConfig,
   type TokenResult,
@@ -135,7 +136,43 @@ export function createDropboxAdapter(
   namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): StorageAdapter {
   const rootPath = dropboxNamespacePath(namespace);
+  log.info(`adapter created ns=${namespace}`);
+  const store = createDropboxFileStore(
+    createAuthedFetch(auth, fetchImpl),
+    rootPath,
+  );
+  return createDirectoryAdapter(store, {
+    id: "dropbox",
+    label: "Dropbox",
+    saveDebounceMs: SAVE_DEBOUNCE_MS,
+  });
+}
 
+// Root settings store for the Dropbox backend: `/settings.json` at the
+// app-folder root (an empty root path), beside the namespace folders.
+export function createDropboxSettingsStore(
+  auth: string | DropboxAuth,
+  fetchImpl: FetchImpl = fetch,
+): SettingsStore {
+  return fileSettingsStore(
+    createDropboxFileStore(createAuthedFetch(auth, fetchImpl), ""),
+  );
+}
+
+type AuthedFetch = (
+  url: string,
+  build: (token: string) => RequestInit,
+) => Promise<Response>;
+
+// Build the bearer-token fetch the file store runs on: issue with the
+// current access token, and on a 401 swap in a fresh one via the refresh
+// token (coalescing concurrent refreshes) and retry exactly once before
+// surfacing `AuthError`. Shared by the document adapter and the settings
+// store so both ride the same silent-refresh path.
+function createAuthedFetch(
+  auth: string | DropboxAuth,
+  fetchImpl: FetchImpl,
+): AuthedFetch {
   let currentAccessToken: string;
   let refreshToken: string | null;
   let onAccessTokenRefreshed: ((token: string) => void) | null;
@@ -148,9 +185,6 @@ export function createDropboxAdapter(
     refreshToken = auth.refreshToken;
     onAccessTokenRefreshed = auth.onAccessTokenRefreshed;
   }
-  log.info(
-    `adapter created hasAccessToken=${Boolean(currentAccessToken)} hasRefreshToken=${Boolean(refreshToken)} ns=${namespace}`,
-  );
 
   // Coalesce in-flight refreshes so a concurrent burst doesn't trade the
   // refresh_token in twice.
@@ -178,9 +212,7 @@ export function createDropboxAdapter(
     }
   }
 
-  // Issue a request with the current bearer token; on 401 swap in a fresh
-  // access token via the refresh token and retry exactly once.
-  async function authedFetch(
+  return async function authedFetch(
     url: string,
     build: (token: string) => RequestInit,
   ): Promise<Response> {
@@ -195,20 +227,8 @@ export function createDropboxAdapter(
       throw new AuthError(`Dropbox auth failed: 401 ${body}`);
     }
     return res;
-  }
-
-  const store = createDropboxFileStore(authedFetch, rootPath);
-  return createDirectoryAdapter(store, {
-    id: "dropbox",
-    label: "Dropbox",
-    saveDebounceMs: SAVE_DEBOUNCE_MS,
-  });
+  };
 }
-
-type AuthedFetch = (
-  url: string,
-  build: (token: string) => RequestInit,
-) => Promise<Response>;
 
 function createDropboxFileStore(
   authedFetch: AuthedFetch,
