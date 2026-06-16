@@ -10,6 +10,7 @@ import common from "./common";
 import menu from "./menu";
 import pwa from "./pwa";
 import settings from "./settings";
+import sync from "./sync";
 import toast from "./toast";
 
 export const sv: Catalog = {
@@ -19,5 +20,6 @@ export const sv: Catalog = {
   menu,
   pwa,
   settings,
+  sync,
   toast,
 };

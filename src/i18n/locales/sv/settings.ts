@@ -9,6 +9,7 @@ const settings: SettingsCatalog = {
   tab: {
     general: "Allmänt",
     theme: "Tema",
+    storage: "Lagring",
     developer: "Utvecklare",
     logs: "Loggar",
   },
@@ -49,6 +50,47 @@ const settings: SettingsCatalog = {
     borderWidth: "Kantbredd",
     reduceMotion: "Minska rörelse",
     reduceMotionHint: "Inaktivera övergångar och animationer i hela appen.",
+  },
+
+  storage: {
+    backendTitle: "Lagring",
+    backendBlurb:
+      "Välj var dina listor sparas. Molnlagring synkar samma dokument mellan dina enheter; den här enheten behåller det endast i den här webbläsaren.",
+    backendBrowser: "Den här enheten",
+    backendDropbox: "Dropbox",
+    backendGoogleDrive: "Google Drive",
+    browserHint:
+      "Dina listor finns i den här webbläsarens lagring. Inget lämnar den här enheten.",
+    dropboxConnected:
+      "Ansluten. Dina listor synkas till en privat appmapp i din Dropbox.",
+    dropboxUnconnected:
+      "Anslut din Dropbox för att synka dina listor till en privat appmapp.",
+    gdriveConnected:
+      "Ansluten. Dina listor synkas till en mapp i din Google Drive.",
+    gdriveUnconnected:
+      "Anslut din Google Drive för att synka dina listor till en mapp du styr över.",
+    connect: "Anslut",
+    disconnect: "Koppla från",
+    connected: "Ansluten",
+    encryptionTitle: "Kryptering",
+    encryptionOn: "Kryptering är på",
+    encryptionOff: "Kryptering är av",
+    encryptionHint:
+      "När den är på krypteras dina listor med en lösenfras innan de sparas — på den här enheten och i molnet. Bara den som har lösenfrasen kan läsa dem.",
+    enableEncryption: "Aktivera kryptering",
+    disableEncryption: "Stäng av kryptering",
+    passphrase: "Lösenfras",
+    passphraseConfirm: "Bekräfta lösenfras",
+    passphraseWarning:
+      "Det finns ingen återställning. Om du glömmer lösenfrasen kan dina listor inte läsas.",
+    passphraseTooShort: "Använd en lösenfras på minst 4 tecken.",
+    passphraseMismatch: "Lösenfraserna matchar inte.",
+    cancel: "Avbryt",
+    unlockTitle: "Lås upp dina listor",
+    unlockHint:
+      "Dina listor är krypterade. Ange din lösenfras för att låsa upp dem på den här enheten.",
+    unlock: "Lås upp",
+    unlockWrong: "Fel lösenfras. Försök igen.",
   },
 
   logs: {

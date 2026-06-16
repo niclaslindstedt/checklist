@@ -14,6 +14,7 @@ const settings = {
   tab: {
     general: "General",
     theme: "Theme",
+    storage: "Storage",
     developer: "Developer",
     logs: "Logs",
   },
@@ -54,6 +55,47 @@ const settings = {
     borderWidth: "Border width",
     reduceMotion: "Reduce motion",
     reduceMotionHint: "Disable transitions and animations across the app.",
+  },
+
+  storage: {
+    backendTitle: "Storage",
+    backendBlurb:
+      "Choose where your lists are saved. Cloud backends sync the same document across your devices; this device keeps it in this browser only.",
+    backendBrowser: "This device",
+    backendDropbox: "Dropbox",
+    backendGoogleDrive: "Google Drive",
+    browserHint:
+      "Your lists live in this browser's storage. Nothing leaves this device.",
+    dropboxConnected:
+      "Connected. Your lists sync to a private app folder in your Dropbox.",
+    dropboxUnconnected:
+      "Connect your Dropbox to sync your lists to a private app folder.",
+    gdriveConnected:
+      "Connected. Your lists sync to a folder in your Google Drive.",
+    gdriveUnconnected:
+      "Connect your Google Drive to sync your lists to a folder you control.",
+    connect: "Connect",
+    disconnect: "Disconnect",
+    connected: "Connected",
+    encryptionTitle: "Encryption",
+    encryptionOn: "Encryption is on",
+    encryptionOff: "Encryption is off",
+    encryptionHint:
+      "When on, your lists are encrypted with a passphrase before being saved — on this device and in the cloud. Only someone with the passphrase can read them.",
+    enableEncryption: "Turn on encryption",
+    disableEncryption: "Turn off encryption",
+    passphrase: "Passphrase",
+    passphraseConfirm: "Confirm passphrase",
+    passphraseWarning:
+      "There is no recovery. If you forget this passphrase, your lists cannot be read.",
+    passphraseTooShort: "Use a passphrase of at least 4 characters.",
+    passphraseMismatch: "The passphrases don't match.",
+    cancel: "Cancel",
+    unlockTitle: "Unlock your lists",
+    unlockHint:
+      "Your lists are encrypted. Enter your passphrase to unlock them on this device.",
+    unlock: "Unlock",
+    unlockWrong: "Wrong passphrase. Try again.",
   },
 
   logs: {

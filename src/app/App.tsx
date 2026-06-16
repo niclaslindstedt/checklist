@@ -2,12 +2,14 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useDevSeed } from "../dev/useDevSeed.ts";
 import { useSettings } from "../settings/useSettings.ts";
-import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
+import { useStorageBackend } from "../storage/useStorageBackend.ts";
 import { useTheme } from "../theme/useTheme.ts";
 import { ChangelogModal } from "../ui/changelog/ChangelogModal.tsx";
 import { ChecklistView } from "../ui/ChecklistView.tsx";
+import { ConflictResolutionModal } from "../ui/ConflictResolutionModal.tsx";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
+import { UnlockGate } from "../ui/UnlockGate.tsx";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
 import { SettingsModal } from "../ui/settings/SettingsModal.tsx";
@@ -33,15 +35,17 @@ export function App() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const openChangelog = useCallback(() => setChangelogOpen(true), []);
 
-  // Stable localStorage backend; a fresh seed adapter whenever fake data
-  // is toggled on (so each enable starts from a pristine sample).
+  // The active backend (this device / Dropbox / Google Drive), optionally
+  // wrapped with at-rest encryption. A fresh seed adapter whenever fake
+  // data is toggled on (so each enable starts from a pristine sample)
+  // overrides it for the session.
+  const storage = useStorageBackend();
   const { active: fakeData } = useDevSeed();
-  const localAdapter = useMemo(() => new BrowserLocalStorageAdapter(), []);
   const seedAdapter = useMemo(
     () => (fakeData ? createDevSeedAdapter() : null),
     [fakeData],
   );
-  const checklist = useChecklist(seedAdapter ?? localAdapter);
+  const checklist = useChecklist(seedAdapter ?? storage.adapter);
 
   // Pull-to-refresh: a downward drag from the top of the list re-reads the
   // active backend (see `useChecklist.reload`). Gated off while a modal
@@ -74,11 +78,19 @@ export function App() {
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onUpdate={update}
+        storage={storage}
       />
       <ChangelogModal
         open={changelogOpen}
         onClose={() => setChangelogOpen(false)}
       />
+      <ConflictResolutionModal
+        open={checklist.conflict !== null}
+        local={checklist.snapshot}
+        remote={checklist.conflict?.remote ?? checklist.snapshot}
+        onResolve={checklist.resolveConflict}
+      />
+      <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
     </>
   );
 }
