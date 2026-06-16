@@ -77,4 +77,41 @@ describe("validateSettings", () => {
     ).toBe(d.addItemPosition);
     expect(validateSettings({}).addItemPosition).toBe(d.addItemPosition);
   });
+
+  it("defaults the menu button to the left edge, halfway down", () => {
+    expect(defaultSettings().menuButtonPosition).toEqual({
+      side: "left",
+      y: 0.5,
+    });
+    expect(validateSettings({}).menuButtonPosition).toEqual({
+      side: "left",
+      y: 0.5,
+    });
+  });
+
+  it("keeps a valid menu button position and clamps the fraction", () => {
+    expect(
+      validateSettings({ menuButtonPosition: { side: "right", y: 0.2 } })
+        .menuButtonPosition,
+    ).toEqual({ side: "right", y: 0.2 });
+    expect(
+      validateSettings({ menuButtonPosition: { side: "right", y: 5 } })
+        .menuButtonPosition,
+    ).toEqual({ side: "right", y: 1 });
+    expect(
+      validateSettings({ menuButtonPosition: { side: "left", y: -3 } })
+        .menuButtonPosition,
+    ).toEqual({ side: "left", y: 0 });
+  });
+
+  it("falls back to defaults for a malformed menu button position", () => {
+    const d = defaultSettings().menuButtonPosition;
+    expect(
+      validateSettings({ menuButtonPosition: "left" }).menuButtonPosition,
+    ).toEqual(d);
+    expect(
+      validateSettings({ menuButtonPosition: { side: "up", y: "x" } })
+        .menuButtonPosition,
+    ).toEqual(d);
+  });
 });
