@@ -45,6 +45,10 @@ export const DEFAULT_MENU_BUTTON_POSITION: MenuButtonPosition = {
 // (replacing it with an inward edge swipe) is off until the user asks for it.
 export const DEFAULT_SHOW_MENU_BUTTON = true;
 
+// Toasts are shown by default. The opt-out suppresses the whole general
+// toast stack (but never the "new build ready" upgrade hint).
+export const DEFAULT_DISABLE_TOASTS = false;
+
 export function defaultSettings(): Settings {
   return {
     theme: DEFAULT_THEME,
@@ -54,6 +58,7 @@ export function defaultSettings(): Settings {
     addItemPosition: DEFAULT_ADD_ITEM_POSITION,
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
+    disableToasts: DEFAULT_DISABLE_TOASTS,
   };
 }
 
@@ -149,6 +154,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.showMenuButton === "boolean"
         ? raw.showMenuButton
         : DEFAULT_SHOW_MENU_BUTTON,
+    disableToasts:
+      typeof raw.disableToasts === "boolean"
+        ? raw.disableToasts
+        : DEFAULT_DISABLE_TOASTS,
   };
 }
 

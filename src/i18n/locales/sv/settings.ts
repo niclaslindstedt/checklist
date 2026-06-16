@@ -25,6 +25,9 @@ const settings: SettingsCatalog = {
     menuButton: "Visa menyknapp",
     menuButtonHint:
       "När den är av sveper du in från skärmkanten för att öppna menyn.",
+    disableToasts: "Inaktivera aviseringar",
+    disableToastsHint:
+      "Sluta visa popup-aviseringar. Tipset ”ny version klar” visas fortfarande.",
   },
 
   lists: {

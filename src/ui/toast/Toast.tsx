@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { useT } from "../../i18n";
+import { loadSettings } from "../../settings/store.ts";
 import {
   ToastContext,
   type ToastContextValue,
@@ -46,6 +47,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const push = useCallback((input: ToastInput): number => {
+    // The "disable toasts" setting suppresses the whole general stack.
+    // Read it live so toggling it takes effect without a reload (the
+    // upgrade hint is a separate surface and is never gated here). A
+    // dropped toast returns the sentinel id 0, which `dismiss` ignores.
+    if (loadSettings().disableToasts) return 0;
     const id = nextId.current++;
     const kind = input.kind ?? "info";
     const durationMs =

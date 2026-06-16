@@ -2,6 +2,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { defaultSettings, saveSettings } from "../../../src/settings/store.ts";
 import { ToastProvider } from "../../../src/ui/toast/Toast.tsx";
 import { useToast } from "../../../src/ui/toast/useToast.ts";
 
@@ -30,7 +31,10 @@ function renderWithToasts() {
 
 describe("ToastProvider", () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+  });
 
   it("renders a pushed toast and auto-dismisses it after its duration", () => {
     const api = renderWithToasts();
@@ -69,6 +73,18 @@ describe("ToastProvider", () => {
       api.current!.dismiss(id);
     });
     expect(screen.queryByText("dismiss me")).toBeNull();
+  });
+
+  it("drops every toast when the disable-toasts setting is on", () => {
+    saveSettings({ ...defaultSettings(), disableToasts: true });
+    const api = renderWithToasts();
+    let id = 0;
+    act(() => {
+      id = api.current!.push({ message: "suppressed", durationMs: 99_999 });
+    });
+    expect(screen.queryByText("suppressed")).toBeNull();
+    // A dropped toast returns the sentinel id 0.
+    expect(id).toBe(0);
   });
 
   it("marks error toasts as assertive alerts", () => {
