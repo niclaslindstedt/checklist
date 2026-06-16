@@ -20,8 +20,35 @@ const DRAG_THRESHOLD = 6;
 
 type Rect = { left: number; top: number };
 
-function readViewport(): { vw: number; vh: number } {
-  return { vw: window.innerWidth, vh: window.innerHeight };
+type Viewport = {
+  vw: number;
+  vh: number;
+  offsetLeft: number;
+  offsetTop: number;
+};
+
+// Prefer the visual viewport: on iOS the software keyboard shrinks (and can
+// offset) it while leaving `window.innerWidth/innerHeight` at the full layout
+// size. Since the button is `position: fixed` — laid out against this same
+// client space — reading the visual viewport keeps the resting spot inside
+// the area left above the keyboard and the drag clamp reachable. Falls back
+// to the window box where the API is missing (older engines, jsdom).
+function readViewport(): Viewport {
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  if (vv) {
+    return {
+      vw: vv.width,
+      vh: vv.height,
+      offsetLeft: vv.offsetLeft,
+      offsetTop: vv.offsetTop,
+    };
+  }
+  return {
+    vw: window.innerWidth,
+    vh: window.innerHeight,
+    offsetLeft: 0,
+    offsetTop: 0,
+  };
 }
 
 export interface DraggableMenuButton {
@@ -46,13 +73,27 @@ export function useDraggableMenuButton(
   position: MenuButtonPosition,
   onPositionChange: (next: MenuButtonPosition) => void,
 ): DraggableMenuButton {
-  const [viewport, setViewport] = useState(() =>
-    typeof window === "undefined" ? { vw: 0, vh: 0 } : readViewport(),
+  const [viewport, setViewport] = useState<Viewport>(() =>
+    typeof window === "undefined"
+      ? { vw: 0, vh: 0, offsetLeft: 0, offsetTop: 0 }
+      : readViewport(),
   );
   useEffect(() => {
     const onResize = () => setViewport(readViewport());
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    // The visual viewport fires its own resize / scroll as the keyboard
+    // opens and closes (and on pinch-zoom); `window` resize alone misses
+    // those on iOS, so the button would stay pinned to its full-height spot
+    // behind the keyboard. Listening here re-normalizes it into the space
+    // that's left.
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", onResize);
+    vv?.addEventListener("scroll", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      vv?.removeEventListener("resize", onResize);
+      vv?.removeEventListener("scroll", onResize);
+    };
   }, []);
 
   // The live top-left while dragging; null when resting at `position`.
@@ -72,6 +113,8 @@ export function useDraggableMenuButton(
     viewport.vh,
     MENU_BUTTON_SIZE,
     MENU_BUTTON_MARGIN,
+    viewport.offsetLeft,
+    viewport.offsetTop,
   );
 
   const onPointerDown = useCallback(
@@ -96,7 +139,7 @@ export function useDraggableMenuButton(
     (e: React.PointerEvent<HTMLButtonElement>) => {
       const d = drag.current;
       if (!d || e.pointerId !== d.pointerId) return;
-      const { vw, vh } = readViewport();
+      const { vw, vh, offsetLeft, offsetTop } = readViewport();
       const left = e.clientX - d.offX;
       const top = e.clientY - d.offY;
       if (!d.moved) {
@@ -108,7 +151,16 @@ export function useDraggableMenuButton(
         draggedRef.current = true;
       }
       setDragRect(
-        clampRect(left, top, vw, vh, MENU_BUTTON_SIZE, MENU_BUTTON_MARGIN),
+        clampRect(
+          left,
+          top,
+          vw,
+          vh,
+          MENU_BUTTON_SIZE,
+          MENU_BUTTON_MARGIN,
+          offsetLeft,
+          offsetTop,
+        ),
       );
     },
     [resting.left, resting.top],
@@ -126,7 +178,7 @@ export function useDraggableMenuButton(
         setDragRect(null);
         return;
       }
-      const { vw, vh } = readViewport();
+      const { vw, vh, offsetLeft, offsetTop } = readViewport();
       const final = dragRect ?? resting;
       onPositionChange(
         rectToPosition(
@@ -136,6 +188,8 @@ export function useDraggableMenuButton(
           vh,
           MENU_BUTTON_SIZE,
           MENU_BUTTON_MARGIN,
+          offsetLeft,
+          offsetTop,
         ),
       );
       setDragRect(null);

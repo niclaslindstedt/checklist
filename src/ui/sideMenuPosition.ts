@@ -4,6 +4,15 @@
 // and back again when a drag ends. Kept free of React and the DOM so the
 // snap / clamp maths can be unit-tested in isolation; `SideMenu` and its
 // drag hook own the event wiring.
+//
+// All coordinates are in the visual viewport's client space: `vw`/`vh`
+// are its visible size and `offsetLeft`/`offsetTop` its top-left within
+// the layout viewport. On iOS the software keyboard shrinks the visual
+// viewport (and can offset it) without touching `window.innerHeight`, so
+// the button — `position: fixed`, hence laid out against that same client
+// space — must be clamped to the visible box or it disappears behind the
+// keyboard. Passing the offsets keeps the resting spot normalized into
+// whatever space is left, and the drag clamp reachable.
 
 import type { MenuButtonPosition } from "../settings/types.ts";
 
@@ -31,9 +40,12 @@ export function restingRect(
   vh: number,
   size = MENU_BUTTON_SIZE,
   margin = MENU_BUTTON_MARGIN,
+  offsetLeft = 0,
+  offsetTop = 0,
 ): { left: number; top: number } {
-  const left = pos.side === "left" ? margin : vw - margin - size;
-  const top = margin + clampUnit(pos.y) * verticalTravel(vh, size, margin);
+  const left = offsetLeft + (pos.side === "left" ? margin : vw - margin - size);
+  const top =
+    offsetTop + margin + clampUnit(pos.y) * verticalTravel(vh, size, margin);
   return { left, top };
 }
 
@@ -45,12 +57,16 @@ export function clampRect(
   vh: number,
   size = MENU_BUTTON_SIZE,
   margin = MENU_BUTTON_MARGIN,
+  offsetLeft = 0,
+  offsetTop = 0,
 ): { left: number; top: number } {
-  const maxLeft = Math.max(margin, vw - margin - size);
-  const maxTop = Math.max(margin, vh - margin - size);
+  const minLeft = offsetLeft + margin;
+  const minTop = offsetTop + margin;
+  const maxLeft = Math.max(minLeft, offsetLeft + vw - margin - size);
+  const maxTop = Math.max(minTop, offsetTop + vh - margin - size);
   return {
-    left: Math.min(maxLeft, Math.max(margin, left)),
-    top: Math.min(maxTop, Math.max(margin, top)),
+    left: Math.min(maxLeft, Math.max(minLeft, left)),
+    top: Math.min(maxTop, Math.max(minTop, top)),
   };
 }
 
@@ -66,9 +82,12 @@ export function rectToPosition(
   vh: number,
   size = MENU_BUTTON_SIZE,
   margin = MENU_BUTTON_MARGIN,
+  offsetLeft = 0,
+  offsetTop = 0,
 ): MenuButtonPosition {
-  const side = left + size / 2 < vw / 2 ? "left" : "right";
+  const localLeft = left - offsetLeft;
+  const side = localLeft + size / 2 < vw / 2 ? "left" : "right";
   const travel = verticalTravel(vh, size, margin);
-  const y = travel > 0 ? clampUnit((top - margin) / travel) : 0.5;
+  const y = travel > 0 ? clampUnit((top - offsetTop - margin) / travel) : 0.5;
   return { side, y };
 }
