@@ -79,7 +79,7 @@ names. Honour these when naming a new file, key, or string.
 | **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
 | **Delete item**                                   | `deleteItem` (`src/domain/checklists.ts`). [→](overview.md#delete-item)                            |
-| **Archive / unarchive item**                      | `setArchived`, `activeItems`, `archivedItems` (`src/domain/checklists.ts`). [→](overview.md#archive--unarchive-item) |
+| **Archive / unarchive item**                      | `setArchived`, `activeItems`, `archivedItems`, `archivedByChecklist` (`src/domain/checklists.ts`). [→](overview.md#archive--unarchive-item) |
 | **Reorder item** / **drag to reorder**            | `moveItem` (`src/domain/checklists.ts`); `useListReorder`. [→](overview.md#reorder-item)           |
 | **Progress** / **completion** / **checked count** | `progress`, `isComplete` (`src/domain/checklists.ts`). [→](overview.md#progress--completion)       |
 

@@ -161,7 +161,9 @@ describe("SideMenu", () => {
   it("shows the archived count as a badge when there are archived items", () => {
     renderMenu({
       nav: { open: true },
-      checklist: { archivedItems: archived(3) },
+      checklist: {
+        archivedGroups: [{ id: "l1", name: "List", items: archived(3) }],
+      },
     });
     expect(screen.getByText("3")).toBeTruthy();
   });
