@@ -1,55 +1,33 @@
 // Google-Drive-backed `StorageAdapter`. Talks to the Drive v3 REST API
-// directly (no SDK — Drive v3 is two endpoints away from "two fetch
-// calls", same shape as the Dropbox adapter). Each namespace's document
-// lands in its own `checklist/<namespace>/` folder under the `drive.file`
-// scope so the files are visible to the user (they can browse, share, or
-// delete a namespace folder directly from drive.google.com). Ported and
-// pared from the budget project's `gdrive-adapter.ts` — the checklist has
-// no backups or receipts, so this keeps load / save / getRevision.
+// directly (no SDK). Each namespace becomes a folder of individual
+// markdown files under `checklist/<namespace>/` (one file per checklist
+// and template, in `checklists/` and `templates/` subfolders), so the
+// files are visible and editable from drive.google.com and any tool the
+// user syncs the folder into.
 //
-// Migration: builds before namespaces wrote the default document as
-// `checklist/checklist.json` (directly in the app folder). The default
-// namespace adapter re-parents that legacy file into
-// `checklist/default/` the first time it loads and finds the namespace
-// folder empty — do-once and self-healing, in the spirit of the budget
-// project's forward-only migrations.
+// The markdown <-> snapshot conversion, the encrypted-blob fallback, and
+// conflict detection live in the shared directory adapter
+// (`../directory-adapter.ts`); this module implements the small
+// `FileStore` that moves one file at a time over Drive's API plus the
+// nested-folder id bookkeeping Drive requires, and the GIS OAuth flow.
+// Encryption happens one level up in `withEncryption`, so an encrypted
+// store lands as a single `checklist.json` envelope in the namespace
+// folder rather than markdown.
 //
-// Concurrency rides on Drive's ETag: `StoredSnapshot.revision` is the
-// ETag returned from the previous `load` / `save`, and the next `save`
-// passes it back via `If-Match`. A 412 surfaces as `ConflictError`
-// carrying the fresh remote snapshot.
+// Ported and pared from the budget project's `gdrive-adapter.ts`.
 
 import { createLogger } from "../../dev/logger.ts";
-import {
-  AuthError,
-  ConflictError,
-  type StorageAdapter,
-  type StoredSnapshot,
-} from "../adapter.ts";
+import { AuthError, type StorageAdapter } from "../adapter.ts";
+import { createDirectoryAdapter } from "../directory-adapter.ts";
+import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 
 const log = createLogger("gdrive");
 
-// Public OAuth client id. The Drive flow uses Google Identity Services'
-// token client (popup + postMessage), the SPA-friendly path Google
-// steers public clients to today — no client secret, no redirect URI,
-// no code-for-token exchange. The id itself is published in the deployed
-// JS bundle either way; it's read from a build-time env var so a fork
-// can plug in its own Google Cloud project. Set `VITE_GOOGLE_CLIENT_ID`
-// in `.env.local` for dev and as a GitHub Actions secret for the
-// production build. Unset means the Google Drive backend is disabled in
-// the picker.
-//
-// Setup:
-//   1. Create a Google Cloud project at console.cloud.google.com.
-//   2. Enable the Google Drive API (APIs & Services → Library).
-//   3. Create an OAuth 2.0 Client ID, Application type "Web application".
-//   4. Authorized JavaScript origins (the only origin check GIS runs):
-//        https://checklist.niclaslindstedt.se
-//        http://localhost:5173
-//   5. Authorized redirect URIs: leave empty (the token client uses a
-//      Google-hosted popup that posts results back via postMessage).
-//   6. Expose the client id to the build as `VITE_GOOGLE_CLIENT_ID`.
+// Public OAuth client id, read from a build-time env var so a fork can
+// plug in its own Google Cloud project. Unset means the Google Drive
+// backend is disabled in the picker. See the budget project's setup notes
+// for the Google Cloud console steps (Drive API + OAuth client).
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
 
 export function isGdriveConfigured(): boolean {
@@ -60,45 +38,37 @@ export function isGdriveConfigured(): boolean {
 // this adapter manages live inside it.
 export const GDRIVE_APP_FOLDER_NAME = "checklist";
 
-// Name of the single document the app reads / writes, stored inside
-// `GDRIVE_APP_FOLDER_NAME`.
-export const GDRIVE_FILE_NAME = "checklist.json";
-
-// `drive.file` lets the app see and manage only files it created. The
-// file is visible to the user in Drive's UI, mirroring the Dropbox "App
-// folder" visibility model.
+// `drive.file` lets the app see and manage only files it created. Files
+// stay visible to the user in Drive's UI.
 export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
-
 const DRIVE_FILES_API = "https://www.googleapis.com/drive/v3/files";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 
-// 1-second coalescing window — matches the Dropbox adapter so the "save
-// on every change" behaviour is consistent regardless of the active
-// cloud backend.
 const SAVE_DEBOUNCE_MS = 1000;
 
 export type FetchImpl = typeof fetch;
 
-// Build the Error a failed Drive response surfaces. A 401 lands as
-// AuthError so the UI can surface a "Reconnect" affordance — GIS popup
-// tokens have no refresh path and expire after ~1h, so an expired token
-// is the common cause.
 function gdriveError(op: string, status: number, body: string): Error {
   const message = `Google Drive ${op} failed: ${status} ${body}`;
   return status === 401 ? new AuthError(message) : new Error(message);
 }
 
-// Returns a URL that opens the document (or the Drive home, if the file
-// id isn't known here) in Drive's web UI.
-export function gdriveWebUrl(fileId: string | null): string {
-  return fileId
-    ? `https://drive.google.com/file/d/${fileId}/view`
+// Returns a URL that opens Drive's web UI (the app folder, or My Drive
+// when the folder id isn't known here).
+export function gdriveWebUrl(folderId: string | null): string {
+  return folderId
+    ? `https://drive.google.com/drive/folders/${folderId}`
     : "https://drive.google.com/drive/my-drive";
 }
 
-type DriveFile = { id: string };
+type DriveFile = {
+  id: string;
+  name?: string;
+  mimeType?: string;
+  version?: string;
+};
 type DriveListResponse = { files?: DriveFile[] };
 
 export function createGdriveAdapter(
@@ -107,15 +77,24 @@ export function createGdriveAdapter(
   namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): StorageAdapter {
   log.info(`adapter created hasToken=${Boolean(token)} ns=${namespace}`);
+  const store = createGdriveFileStore(token, fetchImpl, namespace);
+  return createDirectoryAdapter(store, {
+    id: "gdrive",
+    label: "Google Drive",
+    saveDebounceMs: SAVE_DEBOUNCE_MS,
+  });
+}
+
+function createGdriveFileStore(
+  token: string,
+  fetchImpl: FetchImpl,
+  namespace: string,
+): FileStore {
   const namespaceFolderName = namespaceCloudFolder(namespace);
-  const isDefaultNamespace = namespace === DEFAULT_NAMESPACE_SLUG;
-  // The Drive file id never changes for the lifetime of the file, so we
-  // look it up by name once and cache it in the closure. The cache is
-  // invalidated on 404 (file deleted in Drive) so the next save
-  // recreates it.
-  let cachedFileId: string | null = null;
-  let cachedAppFolderId: string | null = null;
-  let cachedNamespaceFolderId: string | null = null;
+  // Cache folder ids by their relative directory path ("" = the namespace
+  // folder, "checklists" / "templates" = its subfolders). Drive ids are
+  // stable, so this only ever grows within an adapter's lifetime.
+  const dirIdCache = new Map<string, string>();
 
   function authHeader(): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
@@ -125,235 +104,194 @@ export function createGdriveAdapter(
     const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
       query,
     )}&spaces=drive&fields=files(id)`;
-    log.info(`search: ${query}`);
-    let res: Response;
-    try {
-      res = await fetchImpl(url, { headers: authHeader() });
-    } catch (err) {
-      log.error("search: network error", err);
-      throw err;
-    }
-    log.info(`search: → ${res.status}`);
+    const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      log.error(`search: failed ${res.status}`, body);
       throw gdriveError("search", res.status, body);
     }
     const json = (await res.json()) as DriveListResponse;
     return json.files?.[0]?.id ?? null;
   }
 
-  async function findAppFolderId(): Promise<string | null> {
-    if (cachedAppFolderId) return cachedAppFolderId;
-    const id = await searchOne(
-      `name='${GDRIVE_APP_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
-        ` and trashed=false`,
+  async function findChildFolder(
+    name: string,
+    parentId: string,
+  ): Promise<string | null> {
+    return searchOne(
+      `name='${name}' and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and '${parentId}' in parents and trashed=false`,
     );
-    if (id) cachedAppFolderId = id;
-    return id;
   }
 
-  async function ensureAppFolder(): Promise<string> {
-    const existing = await findAppFolderId();
-    if (existing) return existing;
-    log.info("appFolder: creating");
+  async function createFolder(
+    name: string,
+    parentId: string | null,
+  ): Promise<string> {
+    const body: Record<string, unknown> = { name, mimeType: FOLDER_MIME_TYPE };
+    if (parentId) body.parents = [parentId];
     const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
       method: "POST",
       headers: { ...authHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: GDRIVE_APP_FOLDER_NAME,
-        mimeType: FOLDER_MIME_TYPE,
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      throw gdriveError("app folder create", res.status, body);
+      const detail = await res.text().catch(() => "<unreadable>");
+      throw gdriveError("folder create", res.status, detail);
     }
-    const meta = (await res.json()) as DriveFile;
-    cachedAppFolderId = meta.id;
-    return meta.id;
+    return ((await res.json()) as DriveFile).id;
   }
 
-  async function findNamespaceFolderId(): Promise<string | null> {
-    if (cachedNamespaceFolderId) return cachedNamespaceFolderId;
-    const appId = await findAppFolderId();
-    if (!appId) return null;
-    const id = await searchOne(
-      `name='${namespaceFolderName}' and mimeType='${FOLDER_MIME_TYPE}'` +
-        ` and '${appId}' in parents and trashed=false`,
+  // Resolve the id of the directory at `relDir` (""/"checklists"/…),
+  // creating each missing segment when `create` is set. Returns null when
+  // a segment is absent and `create` is false.
+  async function resolveDirId(
+    relDir: string,
+    create: boolean,
+  ): Promise<string | null> {
+    if (dirIdCache.has(relDir)) return dirIdCache.get(relDir)!;
+
+    // App folder at My Drive root.
+    let appId = await findChildFolderAtRoot(GDRIVE_APP_FOLDER_NAME);
+    if (!appId) {
+      if (!create) return null;
+      appId = await createFolder(GDRIVE_APP_FOLDER_NAME, null);
+    }
+
+    let parentId = appId;
+    for (const segment of [namespaceFolderName, ...split(relDir)]) {
+      let id = await findChildFolder(segment, parentId);
+      if (!id) {
+        if (!create) return null;
+        id = await createFolder(segment, parentId);
+      }
+      parentId = id;
+    }
+    dirIdCache.set(relDir, parentId);
+    return parentId;
+  }
+
+  async function findChildFolderAtRoot(name: string): Promise<string | null> {
+    return searchOne(
+      `name='${name}' and mimeType='${FOLDER_MIME_TYPE}'` +
+        ` and 'root' in parents and trashed=false`,
     );
-    if (id) cachedNamespaceFolderId = id;
-    return id;
   }
 
-  async function ensureNamespaceFolder(): Promise<string> {
-    const existing = await findNamespaceFolderId();
-    if (existing) return existing;
-    const appId = await ensureAppFolder();
-    log.info(`nsFolder: creating ${namespaceFolderName}`);
-    const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
-      method: "POST",
-      headers: { ...authHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: namespaceFolderName,
-        mimeType: FOLDER_MIME_TYPE,
-        parents: [appId],
-      }),
-    });
+  async function listDir(
+    dirId: string,
+    prefix: string,
+    out: FileEntry[],
+  ): Promise<void> {
+    const query = `'${dirId}' in parents and trashed=false`;
+    const url =
+      `${DRIVE_FILES_API}?q=${encodeURIComponent(query)}&spaces=drive` +
+      `&fields=files(id,name,mimeType,version)`;
+    const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw gdriveError("namespace folder create", res.status, body);
+      throw gdriveError("list", res.status, body);
     }
-    const meta = (await res.json()) as DriveFile;
-    cachedNamespaceFolderId = meta.id;
-    return meta.id;
-  }
-
-  // One-time relocation of the pre-namespaces document: the legacy file
-  // sat directly in the app folder (`checklist/checklist.json`). Re-parent
-  // it into the default namespace folder (`checklist/default/`) by adding
-  // the namespace folder and removing the app folder from its parents.
-  // Returns the file id when migrated, null when there's nothing to move.
-  async function migrateLegacyDefault(): Promise<string | null> {
-    const appId = await findAppFolderId();
-    if (!appId) return null;
-    const legacyId = await searchOne(
-      `name='${GDRIVE_FILE_NAME}' and '${appId}' in parents and trashed=false`,
-    );
-    if (!legacyId) return null;
-    const nsFolderId = await ensureNamespaceFolder();
-    log.info(
-      `migrate: re-parenting legacy ${legacyId} → ${namespaceFolderName}`,
-    );
-    const res = await fetchImpl(
-      `${DRIVE_FILES_API}/${legacyId}?addParents=${nsFolderId}` +
-        `&removeParents=${appId}&fields=id`,
-      { method: "PATCH", headers: authHeader() },
-    );
-    if (!res.ok) {
-      // A racing device may have moved it already; re-search the folder
-      // rather than failing the load.
-      const body = await res.text().catch(() => "<unreadable>");
-      log.warn(`migrate: re-parent failed ${res.status} — re-searching`, body);
-      const moved = await searchOne(
-        `name='${GDRIVE_FILE_NAME}' and '${nsFolderId}' in parents` +
-          ` and trashed=false`,
-      );
-      if (moved) cachedFileId = moved;
-      return moved;
-    }
-    cachedFileId = legacyId;
-    log.info(`migrate: moved id=${legacyId}`);
-    return legacyId;
-  }
-
-  async function findFileId(): Promise<string | null> {
-    if (cachedFileId) {
-      log.info(`findFileId: cache hit ${cachedFileId}`);
-      return cachedFileId;
-    }
-    const nsFolderId = await findNamespaceFolderId();
-    if (nsFolderId) {
-      const id = await searchOne(
-        `name='${GDRIVE_FILE_NAME}' and '${nsFolderId}' in parents` +
-          ` and trashed=false`,
-      );
-      if (id) {
-        cachedFileId = id;
-        log.info(`findFileId: in namespace folder ${id}`);
-        return id;
+    const files = ((await res.json()) as DriveListResponse).files ?? [];
+    for (const file of files) {
+      const path = prefix ? `${prefix}/${file.name}` : (file.name ?? "");
+      if (file.mimeType === FOLDER_MIME_TYPE) {
+        await listDir(file.id, path, out);
+      } else {
+        out.push({ path, rev: file.version });
       }
     }
-    // Namespace folder empty: migrate the legacy app-folder document into
-    // it (default namespace only).
-    if (isDefaultNamespace) {
-      const migrated = await migrateLegacyDefault();
-      if (migrated) return migrated;
-    }
-    log.info("findFileId: result <none>");
-    return null;
   }
 
-  async function load(): Promise<StoredSnapshot | null> {
-    log.info("load: start");
-    const fileId = await findFileId();
-    if (!fileId) {
-      log.info("load: no file id — empty");
-      return null;
-    }
-    const url = `${DRIVE_FILES_API}/${fileId}?alt=media`;
-    let res: Response;
-    try {
-      res = await fetchImpl(url, { headers: authHeader() });
-    } catch (err) {
-      log.error("load: network error", err);
-      throw err;
-    }
-    log.info(`load: download → ${res.status}`);
-    if (res.status === 404) {
-      // File was deleted between the search and the download. Drop the
-      // cache so the next save recreates it.
-      log.warn("load: 404 — cached id is stale, clearing");
-      cachedFileId = null;
-      return null;
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      log.error(`load: failed ${res.status}`, body);
-      throw gdriveError("load", res.status, body);
-    }
-    const text = await res.text();
-    const revision = res.headers.get("ETag") ?? undefined;
-    log.info(`load: bytes=${text.length} etag=${revision ?? "<none>"}`);
-    return { text, revision };
+  function dirAndName(path: string): { dir: string; name: string } {
+    const idx = path.lastIndexOf("/");
+    return idx === -1
+      ? { dir: "", name: path }
+      : { dir: path.slice(0, idx), name: path.slice(idx + 1) };
   }
 
-  // Cheap revision probe. A metadata GET (`fields=id`) returns the
-  // file's ETag in the response header — the same token `load` reads off
-  // the `alt=media` download — so a caller can compare it against a
-  // last-known revision and skip the body fetch when nothing changed.
-  async function getRevision(): Promise<string | null> {
-    log.info("getRevision: start");
-    const fileId = await findFileId();
-    if (!fileId) {
-      log.info("getRevision: no file id — empty");
-      return null;
-    }
-    const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}?fields=id`, {
-      headers: authHeader(),
-    });
-    if (res.status === 404) {
-      log.warn("getRevision: 404 — cached id is stale, clearing");
-      cachedFileId = null;
-      return null;
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      log.error(`getRevision: failed ${res.status}`, body);
-      throw gdriveError("getRevision", res.status, body);
-    }
-    const revision = res.headers.get("ETag");
-    log.info(`getRevision: etag=${revision ?? "<none>"}`);
-    return revision;
+  async function findFileId(path: string): Promise<string | null> {
+    const { dir, name } = dirAndName(path);
+    const dirId = await resolveDirId(dir, false);
+    if (!dirId) return null;
+    return searchOne(
+      `name='${name}' and '${dirId}' in parents and trashed=false`,
+    );
   }
 
-  async function create(text: string): Promise<StoredSnapshot> {
-    log.info(`create: multipart upload bytes=${text.length}`);
-    // Multipart upload — one part is the metadata (file name + parent
-    // folder), the other is the body. Drive returns the new file id but
-    // not the ETag in this response, so we issue a tiny follow-up GET to
-    // pick up the revision token.
-    const folderId = await ensureNamespaceFolder();
-    const meta = JSON.stringify({
-      name: GDRIVE_FILE_NAME,
-      parents: [folderId],
-    });
+  return {
+    async list(): Promise<FileEntry[]> {
+      const nsId = await resolveDirId("", false);
+      if (!nsId) return [];
+      const out: FileEntry[] = [];
+      await listDir(nsId, "", out);
+      return out;
+    },
+
+    async read(path: string): Promise<string | null> {
+      const fileId = await findFileId(path);
+      if (!fileId) return null;
+      const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}?alt=media`, {
+        headers: authHeader(),
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw gdriveError("download", res.status, body);
+      }
+      return res.text();
+    },
+
+    async write(path: string, text: string): Promise<void> {
+      const { dir, name } = dirAndName(path);
+      const dirId = await resolveDirId(dir, true);
+      if (!dirId) throw new Error(`Google Drive: cannot resolve ${dir}`);
+      const existing = await searchOne(
+        `name='${name}' and '${dirId}' in parents and trashed=false`,
+      );
+      if (existing) {
+        const res = await fetchImpl(
+          `${DRIVE_UPLOAD_API}/${existing}?uploadType=media`,
+          {
+            method: "PATCH",
+            headers: { ...authHeader(), "Content-Type": "text/markdown" },
+            body: text,
+          },
+        );
+        if (!res.ok) {
+          const body = await res.text().catch(() => "<unreadable>");
+          throw gdriveError("update", res.status, body);
+        }
+        return;
+      }
+      await createFile(dirId, name, text);
+    },
+
+    async remove(path: string): Promise<void> {
+      const fileId = await findFileId(path);
+      if (!fileId) return;
+      const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}`, {
+        method: "DELETE",
+        headers: authHeader(),
+      });
+      if (!res.ok && res.status !== 404) {
+        const body = await res.text().catch(() => "<unreadable>");
+        throw gdriveError("delete", res.status, body);
+      }
+    },
+  };
+
+  async function createFile(
+    parentId: string,
+    name: string,
+    text: string,
+  ): Promise<void> {
+    const meta = JSON.stringify({ name, parents: [parentId] });
     const boundary = `checklist-${randomBoundary()}`;
     const body =
       `--${boundary}\r\n` +
       `Content-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
       `--${boundary}\r\n` +
-      `Content-Type: application/octet-stream\r\n\r\n${text}\r\n` +
+      `Content-Type: text/markdown\r\n\r\n${text}\r\n` +
       `--${boundary}--`;
     const res = await fetchImpl(
       `${DRIVE_UPLOAD_API}?uploadType=multipart&fields=id`,
@@ -366,80 +304,15 @@ export function createGdriveAdapter(
         body,
       },
     );
-    log.info(`create: → ${res.status}`);
     if (!res.ok) {
       const errBody = await res.text().catch(() => "<unreadable>");
-      log.error(`create: failed ${res.status}`, errBody);
       throw gdriveError("create", res.status, errBody);
     }
-    const created = (await res.json()) as DriveFile;
-    cachedFileId = created.id;
-    log.info(`create: ok id=${cachedFileId}, fetching ETag`);
-    const head = await fetchImpl(
-      `${DRIVE_FILES_API}/${cachedFileId}?fields=id`,
-      {
-        headers: authHeader(),
-      },
-    );
-    const revision = head.headers.get("ETag") ?? undefined;
-    log.info(`create: etag=${revision ?? "<none>"}`);
-    return { text, revision };
   }
+}
 
-  async function save(
-    text: string,
-    baseRevision?: string,
-  ): Promise<StoredSnapshot> {
-    log.info(`save: bytes=${text.length} baseRev=${baseRevision ?? "<none>"}`);
-    const fileId = await findFileId();
-    if (!fileId) {
-      log.info("save: no file id — creating");
-      return create(text);
-    }
-    const headers: Record<string, string> = {
-      ...authHeader(),
-      "Content-Type": "application/octet-stream",
-    };
-    if (baseRevision) headers["If-Match"] = baseRevision;
-    const res = await fetchImpl(
-      `${DRIVE_UPLOAD_API}/${fileId}?uploadType=media`,
-      { method: "PATCH", headers, body: text },
-    );
-    log.info(`save: PATCH → ${res.status}`);
-    if (res.status === 412) {
-      log.warn("save: 412 If-Match failed — re-reading remote");
-      // Precondition failed — the remote ETag moved past our
-      // baseRevision. Re-fetch so the caller can surface a proper
-      // ConflictError with the current bytes.
-      const remote = await load();
-      if (remote) throw new ConflictError(remote);
-      log.error("save: 412 with no remote bytes");
-      throw new Error("Google Drive save failed: 412 with no remote bytes");
-    }
-    if (res.status === 404) {
-      log.warn("save: 404 — cached id stale, recreating");
-      cachedFileId = null;
-      return create(text);
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      log.error(`save: failed ${res.status}`, body);
-      throw gdriveError("save", res.status, body);
-    }
-    const revision = res.headers.get("ETag") ?? undefined;
-    log.info(`save: ok etag=${revision ?? "<none>"}`);
-    return { text, revision };
-  }
-
-  return {
-    id: "gdrive",
-    label: "Google Drive",
-    saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["getRevision"]),
-    load,
-    save,
-    getRevision,
-  };
+function split(relDir: string): string[] {
+  return relDir.split("/").filter((s) => s.length > 0);
 }
 
 function randomBoundary(): string {
@@ -450,9 +323,9 @@ function randomBoundary(): string {
   return s;
 }
 
-// Delete a namespace's folder (and the document inside it) from Drive.
-// Used when a namespace is removed while Google Drive is the active
-// backend. Best-effort: a missing folder is treated as already gone.
+// Delete a namespace's folder (and everything inside it) from Drive. Used
+// when a namespace is removed while Google Drive is the active backend.
+// Best-effort: a missing folder is treated as already gone.
 export async function deleteGdriveNamespace(
   token: string,
   namespace: string,
@@ -462,7 +335,7 @@ export async function deleteGdriveNamespace(
   const folderName = namespaceCloudFolder(namespace);
   const appQuery =
     `name='${GDRIVE_APP_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
-    ` and trashed=false`;
+    ` and 'root' in parents and trashed=false`;
   const appRes = await fetchImpl(
     `${DRIVE_FILES_API}?q=${encodeURIComponent(appQuery)}&spaces=drive&fields=files(id)`,
     { headers: auth },
@@ -476,10 +349,7 @@ export async function deleteGdriveNamespace(
     );
   }
   const appId = ((await appRes.json()) as DriveListResponse).files?.[0]?.id;
-  if (!appId) {
-    log.info("delete: no app folder — nothing to remove");
-    return;
-  }
+  if (!appId) return;
   const nsQuery =
     `name='${folderName}' and mimeType='${FOLDER_MIME_TYPE}'` +
     ` and '${appId}' in parents and trashed=false`;
@@ -492,11 +362,7 @@ export async function deleteGdriveNamespace(
     throw gdriveError("namespace delete (folder lookup)", nsRes.status, body);
   }
   const nsId = ((await nsRes.json()) as DriveListResponse).files?.[0]?.id;
-  if (!nsId) {
-    log.info("delete: no namespace folder — already gone");
-    return;
-  }
-  log.info(`delete: removing namespace folder ${folderName} (${nsId})`);
+  if (!nsId) return;
   const delRes = await fetchImpl(`${DRIVE_FILES_API}/${nsId}`, {
     method: "DELETE",
     headers: auth,
@@ -505,21 +371,9 @@ export async function deleteGdriveNamespace(
     const body = await delRes.text().catch(() => "<unreadable>");
     throw gdriveError("namespace delete", delRes.status, body);
   }
-  log.info("delete: ok");
 }
 
 // ---- OAuth (GIS token client) --------------------------------------
-
-// Google Identity Services token client. The popup flow is the modern
-// SPA path — no redirect URI, no `/token` exchange, no client secret.
-// `requestAccessToken` opens a Google-hosted consent popup; the popup
-// posts the result back to GIS via `postMessage`, and GIS hands us an
-// access token through `callback`. Tokens are short-lived (~1h) and
-// there is no refresh token; the user reconnects when an API call
-// returns 401.
-//
-// The GIS script is loaded lazily on first connect so an offline app
-// load doesn't hang on accounts.google.com.
 
 const GIS_SCRIPT_URL = "https://accounts.google.com/gsi/client";
 
@@ -577,10 +431,8 @@ function loadGisScript(): Promise<void> {
     script.defer = true;
     script.onload = () => {
       if (window.google?.accounts?.oauth2) {
-        log.info("loadGisScript: ready");
         resolve();
       } else {
-        log.error("loadGisScript: loaded but globals missing");
         gisLoaderPromise = null;
         reject(
           new Error(
@@ -590,7 +442,6 @@ function loadGisScript(): Promise<void> {
       }
     };
     script.onerror = () => {
-      log.error(`loadGisScript: network error src=${GIS_SCRIPT_URL}`);
       gisLoaderPromise = null;
       reject(
         new Error(
@@ -603,12 +454,10 @@ function loadGisScript(): Promise<void> {
   return gisLoaderPromise;
 }
 
-// Kick off the GIS script load without blocking. Call this as soon as
-// the UI knows the user will likely click "connect" so the eventual
-// `requestAccessToken` call runs synchronously inside the user gesture
-// and the popup isn't blocked by strict popup blockers.
+// Kick off the GIS script load without blocking, so the eventual
+// `requestAccessToken` runs synchronously inside the user gesture and the
+// popup isn't blocked.
 export function preloadGdriveAuth(): void {
-  log.info("preloadGdriveAuth: warming GIS script");
   void loadGisScript().catch((err: unknown) => {
     log.warn(
       `preloadGdriveAuth: preload failed (will retry on click): ${
@@ -622,13 +471,11 @@ export function preloadGdriveAuth(): void {
 // token. Throws when the user dismisses the popup, the popup is blocked,
 // or Google returns an error.
 export async function startGdriveAuth(): Promise<string> {
-  log.info("startGdriveAuth: loading GIS");
   await loadGisScript();
   const gis = window.google?.accounts?.oauth2;
   if (!gis) {
     throw new Error("Google Identity Services unavailable after load");
   }
-  log.info("startGdriveAuth: opening consent popup");
   return new Promise<string>((resolve, reject) => {
     const client = gis.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
@@ -636,20 +483,16 @@ export async function startGdriveAuth(): Promise<string> {
       callback: (resp) => {
         if (resp.error) {
           const desc = resp.error_description ?? resp.error;
-          log.error(`token client: error ${resp.error} (${desc})`);
           reject(new Error(`Google sign-in failed: ${desc}`));
           return;
         }
         if (!resp.access_token) {
-          log.error("token client: no access_token in response");
           reject(new Error("Google did not return an access token"));
           return;
         }
-        log.info(`token client: token received expires_in=${resp.expires_in}`);
         resolve(resp.access_token);
       },
       error_callback: (err) => {
-        log.error(`token client: error_callback type=${err.type}`);
         reject(
           new Error(err.message ?? `Google sign-in ${err.type ?? "failed"}`),
         );

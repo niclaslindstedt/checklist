@@ -7,7 +7,7 @@ through **Settings** inside the app and persist to `localStorage`.
 
 | Key (in `localStorage`)          | Type                                  | Default       | Effect |
 |----------------------------------|---------------------------------------|---------------|--------|
-| `checklist:backend`              | `"browser" \| "dropbox" \| "gdrive"`  | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends. |
+| `checklist:backend`              | `"browser" \| "folder" \| "dropbox" \| "gdrive"`  | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends (except the local-folder connect, which seeds an empty folder from the current document). |
 | `checklist:dropbox:token`        | string                                | (unset)       | Dropbox OAuth access token. Short-lived; silently refreshed via the refresh token. |
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:gdrive:token`         | string                                | (unset)       | Google Drive access token from the GIS popup. Short-lived (~1h); the user reconnects when it expires. |
@@ -38,13 +38,23 @@ to `checklist:settings:v1`.
 The **Settings → Storage** tab chooses where your lists are saved and
 whether they're encrypted:
 
-- **Backend** — **This device** (localStorage, the default), **Dropbox**,
-  or **Google Drive**. The cloud options appear only when the build was
-  given the matching app key / client id (see _Build-time configuration_).
-  Picking a cloud backend connects it: Dropbox redirects to its consent
-  screen and returns; Google Drive opens a popup. Each syncs the same
-  single document to a private per-app folder you can see and manage in
-  your own account.
+- **Backend** — **This device** (localStorage, the default), **Local
+  folder**, **Dropbox**, or **Google Drive**. The cloud options appear
+  only when the build was given the matching app key / client id (see
+  _Build-time configuration_); **Local folder** appears only in browsers
+  that support the File System Access API directory picker (Chromium-based
+  today). Picking a cloud backend connects it: Dropbox redirects to its
+  consent screen and returns; Google Drive opens a popup. **Local folder**
+  prompts you to pick a directory on this device — its grant is remembered
+  in IndexedDB, and if the browser later asks again a **Reconnect folder**
+  button re-grants it.
+
+  Every backend except **This device** stores each list as its own
+  **markdown file** (standard `- [ ]` / `- [x]` task syntax, with the
+  list name as the heading), so you can open, edit, diff, or back up your
+  lists with any other tool. Turning on encryption replaces the per-list
+  markdown with a single encrypted file, since an encrypted list can't be
+  plain markdown.
 - **Encryption** — turn it on with a passphrase to wrap your lists in an
   AES-GCM envelope (PBKDF2-SHA256, 600k iterations) before they're saved,
   on this device and in the cloud. There is **no recovery**: forget the
@@ -64,11 +74,11 @@ create, rename, or delete them. The set of namespaces is per device — it
 isn't stored inside any document — so each device (or family member)
 manages its own list.
 
-Each namespace lives in its own folder on the cloud backends
-(`/<name>/checklist.json` on Dropbox, `checklist/<name>/` on Google
-Drive), so you can share one namespace's folder from your Dropbox / Drive
-account — a grocery list with the household — without sharing the rest. On
-**This device** each namespace is simply a separate localStorage entry.
+Each namespace lives in its own folder on the file-based backends
+(`<name>/` under your picked folder, Dropbox, or Google Drive), so you can
+share one namespace's folder — a grocery list with the household — without
+sharing the rest. On **This device** each namespace is simply a separate
+localStorage entry.
 Deleting a namespace also deletes its data in the **currently active**
 backend; copies in another backend or on another device are left
 untouched. The Default namespace can't be deleted, and your existing

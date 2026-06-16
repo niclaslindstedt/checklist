@@ -481,32 +481,67 @@ the synchronous `loadSync` fast path (so the first paint shows stored
 data, no empty-list flash) and saves immediately (`saveDebounceMs` 0).
 The underlying `Storage` is injectable so tests pass an in-memory stub.
 
+### Local folder backend
+
+`src/storage/folder/index.ts` (`createFolderAdapter`) — a file-based
+backend over the **File System Access API**: the user picks a directory
+and each checklist and template is saved there as its own markdown file,
+so the lists are browsable, git-trackable, and editable by any other
+tool. The picked directory handle is persisted in IndexedDB
+(`src/storage/folder/handle-store.ts`) so the OS-level grant survives
+reloads, gated by a fresh `queryPermission` on boot; a revoked grant
+surfaces a Reconnect cue and falls back to the browser store so editing
+keeps working. Namespaces are subfolders of the picked directory
+(`<picked>/<namespace>/…`). The backend is only offered in browsers that
+expose `showDirectoryPicker` (`isFolderBackendAvailable`, Chromium-only
+today). The adapter is built on the shared **markdown file store** below;
+per-file `lastModified` timestamps drive conflict detection. The hook's
+`connectFolder` / `reconnectFolder` / `disconnectFolder` own the
+lifecycle (pick + seed, re-grant, mirror-back-to-browser).
+
+### Markdown file store
+
+`src/storage/directory-adapter.ts` (`createDirectoryAdapter`) is the
+shared engine the three file-based backends (local folder, Dropbox,
+Google Drive) run on. It wraps a small `FileStore`
+(`src/storage/file-store.ts` — `list` / `read` / `write` / `remove` over
+relative paths) into a full `StorageAdapter`, so the markdown
+representation, the conflict logic, and the encrypted/legacy fallback are
+written once. The codec (`src/storage/markdown/codec.ts`) turns a
+`Snapshot` into one file per entry (`checklists/<stem>.md`,
+`templates/<stem>.md`) using standard `- [ ]` / `- [x]` task syntax with
+YAML frontmatter for ids and timestamps, and back again (item ids are
+regenerated deterministically, so loads are idempotent). On `save` it
+writes changed files, deletes removed ones, and computes an aggregate
+revision from the directory's per-file revisions to detect drift
+(`ConflictError`). An **encrypted** store can't be expressed as markdown,
+so it lands whole in a single `checklist.json` envelope — which is also
+where the pre-markdown legacy cloud document is read from and migrated to
+markdown on the next plaintext save.
+
 ### Dropbox backend
 
 `src/storage/dropbox/index.ts` — the Dropbox adapter, talking to the v2
-HTTP API directly and storing each namespace's document as
-`/<namespace>/checklist.json` inside the app's scoped folder
-(`deleteDropboxNamespace` removes the whole folder). The default
-namespace adapter performs a one-time, self-healing migration the first
-time it loads an empty folder: it moves the legacy `/checklist.json` at
-the app-folder root into `/default/checklist.json` (`move_v2`). Uses PKCE
-OAuth with refresh tokens, a silent access-token refresh on 401 (then
-`AuthError`), and the file `rev` for optimistic concurrency (write-mode
-conflict → `ConflictError`). `isDropboxConfigured()` gates the connect
-button on the build-time app key.
+HTTP API directly. It implements a `FileStore` (`list_folder`, download,
+upload, `delete_v2`) over `/<namespace>/` inside the app's scoped folder
+and hands it to the markdown file store, so each list is a markdown file
+under `/<namespace>/checklists/` (`deleteDropboxNamespace` removes the
+whole folder). Uses PKCE OAuth with refresh tokens and a silent
+access-token refresh on 401 (then `AuthError`); a 429 surfaces as
+`RateLimitError`. `isDropboxConfigured()` gates the connect button on the
+build-time app key.
 
 ### Google Drive backend
 
 `src/storage/gdrive/index.ts` — the Google Drive adapter, using the
 Drive v3 REST API with the GIS token client (popup flow, no client
-secret, `drive.file` scope, so it only sees files it created). Stores
-each namespace's document in its own `checklist/<namespace>/` folder
-(`deleteGdriveNamespace` removes the folder). The default namespace
-adapter migrates the legacy `checklist/checklist.json` by re-parenting it
-into `checklist/default/` the first time it loads an empty folder. Uses
-the ETag for concurrency (412 → `ConflictError`). The GIS script is
-lazy-loaded only when the user connects. `isGdriveConfigured()` gates the
-connect button.
+secret, `drive.file` scope, so it only sees files it created). It
+implements a `FileStore` over `checklist/<namespace>/` — resolving and
+caching the nested folder ids Drive needs — and hands it to the markdown
+file store, so each list is a markdown file under
+`checklist/<namespace>/checklists/` (`deleteGdriveNamespace` removes the
+folder). The GIS script is lazy-loaded only when the user connects.
+`isGdriveConfigured()` gates the connect button.
 
 ### At-rest encryption / unlock
 

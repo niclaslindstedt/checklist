@@ -67,10 +67,19 @@ const settings = {
     backendBlurb:
       "Choose where your lists are saved. Cloud backends sync the same document across your devices; this device keeps it in this browser only.",
     backendBrowser: "This device",
+    backendFolder: "Local folder",
     backendDropbox: "Dropbox",
     backendGoogleDrive: "Google Drive",
     browserHint:
       "Your lists live in this browser's storage. Nothing leaves this device.",
+    folderConnected:
+      "Connected. Each list is saved as a markdown file in your folder — open or edit it with any tool.",
+    folderUnconnected:
+      "Pick a folder on this device. Each list is saved there as a markdown file you can open, edit, or back up with any tool.",
+    folderReconnectHint:
+      "This browser needs permission to use your folder again. Reconnect to grant it.",
+    folderReconnect: "Reconnect folder",
+    folderChoose: "Choose folder",
     dropboxConnected:
       "Connected. Your lists sync to a private app folder in your Dropbox.",
     dropboxUnconnected:

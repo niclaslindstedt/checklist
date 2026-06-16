@@ -63,10 +63,19 @@ const settings: SettingsCatalog = {
     backendBlurb:
       "Välj var dina listor sparas. Molnlagring synkar samma dokument mellan dina enheter; den här enheten behåller det endast i den här webbläsaren.",
     backendBrowser: "Den här enheten",
+    backendFolder: "Lokal mapp",
     backendDropbox: "Dropbox",
     backendGoogleDrive: "Google Drive",
     browserHint:
       "Dina listor finns i den här webbläsarens lagring. Inget lämnar den här enheten.",
+    folderConnected:
+      "Ansluten. Varje lista sparas som en markdown-fil i din mapp — öppna eller redigera den med valfritt verktyg.",
+    folderUnconnected:
+      "Välj en mapp på den här enheten. Varje lista sparas där som en markdown-fil du kan öppna, redigera eller säkerhetskopiera med valfritt verktyg.",
+    folderReconnectHint:
+      "Den här webbläsaren behöver behörighet att använda din mapp igen. Återanslut för att ge den.",
+    folderReconnect: "Återanslut mapp",
+    folderChoose: "Välj mapp",
     dropboxConnected:
       "Ansluten. Dina listor synkas till en privat appmapp i din Dropbox.",
     dropboxUnconnected:

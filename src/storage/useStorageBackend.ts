@@ -51,6 +51,14 @@ import {
   BrowserLocalStorageAdapter,
   deleteLocalNamespace,
 } from "./local/index.ts";
+import { createFolderAdapter } from "./folder/index.ts";
+import {
+  clearDirectoryHandle,
+  ensurePermission,
+  isFolderBackendAvailable,
+  loadDirectoryHandle,
+  saveDirectoryHandle,
+} from "./folder/handle-store.ts";
 import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,
@@ -75,11 +83,27 @@ export interface UseStorageBackend {
   /** Whether each cloud backend currently holds a usable token. */
   dropboxConnected: boolean;
   gdriveConnected: boolean;
+  /** Whether this browser exposes the File System Access directory picker. */
+  folderAvailable: boolean;
+  /** Whether a picked folder is connected and usable right now. */
+  folderConnected: boolean;
+  /**
+   * Set when the stored folder grant needs re-confirming (the OS revoked
+   * it between sessions). The folder backend falls back to the browser
+   * store until the user clicks Reconnect.
+   */
+  folderReconnectNeeded: boolean;
   /** Encryption mode and whether a passphrase is held this session. */
   encryption: EncryptionMode;
   /** True when encryption is on but no passphrase is held yet (needs unlock). */
   locked: boolean;
   selectBrowser: () => void;
+  /** Pick a folder, seed it from the current document, and switch to it. */
+  connectFolder: () => Promise<void>;
+  /** Re-confirm the OS grant on the already-picked folder. */
+  reconnectFolder: () => Promise<void>;
+  /** Mirror the folder back into the browser store, then forget the folder. */
+  disconnectFolder: () => Promise<void>;
   connectDropbox: () => void;
   disconnectDropbox: () => void;
   connectGdrive: () => Promise<void>;
@@ -167,6 +191,54 @@ export function useStorageBackend(): UseStorageBackend {
   const [activeNamespace, setActiveNamespaceState] = useState<string>(
     getActiveNamespaceSlug,
   );
+  // The picked local folder (File System Access API). `null` until the
+  // boot probe resolves, the user picks one, or a revoked grant drops it.
+  const [folderHandle, setFolderHandle] =
+    useState<FileSystemDirectoryHandle | null>(null);
+  // Gates the folder branch of the adapter memo until the boot probe has
+  // run, so we don't briefly build a folder adapter without a handle.
+  const [folderHandleLoaded, setFolderHandleLoaded] = useState<boolean>(
+    () => getBackend() !== "folder",
+  );
+  const [folderReconnectNeeded, setFolderReconnectNeeded] = useState(false);
+
+  // Drop the live handle and surface the reconnect cue. Called by the
+  // folder adapter when an in-flight read / write hits a revoked grant;
+  // the IDB record stays so Settings can re-grant in one click.
+  const markFolderPermissionLost = useCallback(() => {
+    log.warn("folder: permission lost during operation");
+    setFolderHandle(null);
+    setFolderReconnectNeeded(true);
+  }, []);
+
+  // Boot probe: when the saved backend is the folder, load the stored
+  // handle from IndexedDB and ask the OS whether the grant still stands.
+  // Either rehydrate the handle or fall back to the browser store with a
+  // reconnect cue (the IDB record is kept so Reconnect can re-grant).
+  useEffect(() => {
+    if (getBackend() !== "folder") {
+      setFolderHandleLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    setFolderHandleLoaded(false);
+    void (async () => {
+      const stored = await loadDirectoryHandle();
+      if (cancelled) return;
+      if (!stored) {
+        setFolderHandleLoaded(true);
+        return;
+      }
+      const status = await ensurePermission(stored, false);
+      if (cancelled) return;
+      if (status === "granted") setFolderHandle(stored);
+      else setFolderReconnectNeeded(true);
+      setFolderHandleLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Complete a Dropbox OAuth redirect on boot. Google Drive uses a popup
   // (resolved inline in `connectGdrive`), so only Dropbox lands back here
@@ -221,11 +293,30 @@ export function useStorageBackend(): UseStorageBackend {
     if (backend === "gdrive" && gdriveToken) {
       return createGdriveAdapter(gdriveToken, fetch, activeNamespace);
     }
+    // Folder backend: only once the boot probe has resolved with a live,
+    // permission-granted handle. While probing, or after a revoked grant,
+    // fall through to the browser store so editing keeps working.
+    if (backend === "folder" && folderHandleLoaded && folderHandle) {
+      return createFolderAdapter({
+        directoryHandle: folderHandle,
+        namespace: activeNamespace,
+        onPermissionLost: markFolderPermissionLost,
+      });
+    }
     return new BrowserLocalStorageAdapter(
       globalThis.localStorage,
       activeNamespace,
     );
-  }, [backend, dropboxToken, dropboxRefresh, gdriveToken, activeNamespace]);
+  }, [
+    backend,
+    dropboxToken,
+    dropboxRefresh,
+    gdriveToken,
+    activeNamespace,
+    folderHandle,
+    folderHandleLoaded,
+    markFolderPermissionLost,
+  ]);
 
   const locked = encryption === "encrypted" && password === null;
 
@@ -243,6 +334,103 @@ export function useStorageBackend(): UseStorageBackend {
     persistBackend("browser");
     setBackendState("browser");
   }, []);
+
+  // Wrap a raw adapter in the session's encryption envelope so a folder
+  // probe / seed / mirror reads and writes the same bytes the steady-state
+  // app does. A no-op when encryption is off (or locked).
+  const wrapForActive = useCallback(
+    (raw: StorageAdapter): StorageAdapter =>
+      encryption === "encrypted" && password !== null
+        ? withEncryption(raw, { current: password })
+        : raw,
+    [encryption, password],
+  );
+
+  // Pick a folder and switch to it. When the folder is empty, seed it with
+  // the current document so the switch doesn't blank the screen; when it
+  // already holds lists, adopt them (the folder wins). The handle is
+  // persisted to IndexedDB so the grant survives reloads.
+  const connectFolder = useCallback(async () => {
+    if (typeof window === "undefined" || !window.showDirectoryPicker) return;
+    let handle: FileSystemDirectoryHandle;
+    try {
+      handle = await window.showDirectoryPicker({ mode: "readwrite" });
+    } catch (err) {
+      // AbortError = the user dismissed the picker; nothing to do.
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      log.error("folder picker failed", err);
+      return;
+    }
+    const folder = wrapForActive(
+      createFolderAdapter({
+        directoryHandle: handle,
+        namespace: activeNamespace,
+      }),
+    );
+    try {
+      const [remote, source] = await Promise.all([
+        folder.load().catch(() => null),
+        adapter.load().catch(() => null),
+      ]);
+      if (!remote && source) await folder.save(source.text);
+    } catch (err) {
+      log.error("folder seed failed", err);
+    }
+    await saveDirectoryHandle(handle);
+    persistBackend("folder");
+    setFolderHandle(handle);
+    setFolderReconnectNeeded(false);
+    setFolderHandleLoaded(true);
+    setBackendState("folder");
+  }, [activeNamespace, adapter, wrapForActive]);
+
+  // Re-confirm the OS grant on the already-stored handle. `requestPermission`
+  // needs a user gesture, which is why this lives in a click handler.
+  const reconnectFolder = useCallback(async () => {
+    const stored = await loadDirectoryHandle();
+    if (!stored) {
+      await connectFolder();
+      return;
+    }
+    const status = await ensurePermission(stored, true);
+    if (status === "granted") {
+      setFolderHandle(stored);
+      setFolderReconnectNeeded(false);
+    }
+  }, [connectFolder]);
+
+  // Mirror the folder's current document back into the browser store, then
+  // forget the handle and switch back. Best-effort: a stale browser copy is
+  // a few-edit regression at worst.
+  const disconnectFolder = useCallback(async () => {
+    if (folderHandle) {
+      try {
+        const folder = wrapForActive(
+          createFolderAdapter({
+            directoryHandle: folderHandle,
+            namespace: activeNamespace,
+          }),
+        );
+        const snap = await folder.load();
+        if (snap) {
+          const browser = wrapForActive(
+            new BrowserLocalStorageAdapter(
+              globalThis.localStorage,
+              activeNamespace,
+            ),
+          );
+          await browser.save(snap.text);
+        }
+      } catch (err) {
+        log.error("folder disconnect: mirror to browser failed", err);
+      }
+    }
+    await clearDirectoryHandle();
+    persistBackend("browser");
+    setFolderHandle(null);
+    setFolderReconnectNeeded(false);
+    setBackendState("browser");
+  }, [folderHandle, activeNamespace, wrapForActive]);
 
   const connectDropbox = useCallback(() => {
     // Redirects away; completion runs in the boot effect above.
@@ -349,6 +537,11 @@ export function useStorageBackend(): UseStorageBackend {
       try {
         if (backend === "browser") {
           deleteLocalNamespace(slug);
+        } else if (backend === "folder" && folderHandle) {
+          // Remove the namespace's whole subfolder (and its markdown files).
+          await folderHandle
+            .removeEntry(slug, { recursive: true })
+            .catch(() => {});
         } else if (backend === "dropbox" && dropboxToken) {
           await deleteDropboxNamespace(dropboxToken, slug);
         } else if (backend === "gdrive" && gdriveToken) {
@@ -364,7 +557,7 @@ export function useStorageBackend(): UseStorageBackend {
         setActiveNamespaceState(DEFAULT_NAMESPACE_SLUG);
       }
     },
-    [backend, dropboxToken, gdriveToken, activeNamespace],
+    [backend, dropboxToken, gdriveToken, activeNamespace, folderHandle],
   );
 
   return {
@@ -374,9 +567,15 @@ export function useStorageBackend(): UseStorageBackend {
     gdriveConfigured: isGdriveConfigured(),
     dropboxConnected: dropboxToken !== null,
     gdriveConnected: gdriveToken !== null,
+    folderAvailable: isFolderBackendAvailable(),
+    folderConnected: backend === "folder" && folderHandle !== null,
+    folderReconnectNeeded,
     encryption,
     locked,
     selectBrowser,
+    connectFolder,
+    reconnectFolder,
+    disconnectFolder,
     connectDropbox,
     disconnectDropbox,
     connectGdrive,

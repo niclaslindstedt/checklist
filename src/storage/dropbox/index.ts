@@ -1,36 +1,25 @@
-// Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly
-// (no SDK — a handful of endpoints don't justify ~100kB of bundle) and
-// stores each namespace's document as `/<namespace>/checklist.json`
-// inside the app's scoped folder, so a whole namespace folder can be
-// shared with another Dropbox account (the `family/` folder shared with
-// relatives). Encryption happens one level up in `withEncryption`, so the
-// bytes that land in Dropbox are the same AES-GCM envelope localStorage
-// would have held. Ported and pared from the budget project's
-// `dropbox-adapter.ts` — the checklist has no backups, receipts, or
-// payslips, so this keeps load / save / getRevision.
+// Dropbox-backed `StorageAdapter`. Talks to the v2 HTTP API directly (no
+// SDK — a handful of endpoints don't justify ~100kB of bundle) and stores
+// each namespace as a folder of individual markdown files under the app's
+// scoped folder (`/<namespace>/checklists/*.md`, `/<namespace>/templates/*.md`),
+// so a whole namespace folder can be shared with another Dropbox account
+// (the `family/` folder shared with relatives) and the files open as plain
+// task lists in any editor.
 //
-// Migration: builds before namespaces wrote the default document to
-// `/checklist.json` at the app-folder root. The default namespace adapter
-// moves that legacy file into `/default/checklist.json` the first time it
-// loads and finds the folder empty (Dropbox `move_v2`). The move is
-// do-once and self-healing — once relocated the folder file exists, so the
-// legacy probe never fires again — in the spirit of the budget project's
-// forward-only migrations.
+// The markdown <-> snapshot conversion, the encrypted-blob fallback, and
+// conflict detection live in the shared directory adapter
+// (`../directory-adapter.ts`); this module only implements the small
+// `FileStore` that moves one file's bytes at a time, plus the OAuth /
+// token-refresh machinery the cloud connection needs. Encryption still
+// happens one level up in `withEncryption`, so an encrypted store lands as
+// a single `/<namespace>/checklist.json` envelope instead of markdown.
 //
-// Concurrency mirrors Dropbox's own `rev`: `StoredSnapshot.revision`
-// round-trips through the caller, and `save` uses the `update`
-// write-mode variant (`{".tag":"update","update":<rev>}`) with the
-// previous `rev` so a remote that moved underneath us surfaces as
-// `ConflictError` instead of a silent overwrite.
+// Ported and pared from the budget project's `dropbox-adapter.ts`.
 
 import { createLogger } from "../../dev/logger.ts";
-import {
-  AuthError,
-  ConflictError,
-  RateLimitError,
-  type StorageAdapter,
-  type StoredSnapshot,
-} from "../adapter.ts";
+import { AuthError, RateLimitError, type StorageAdapter } from "../adapter.ts";
+import { createDirectoryAdapter } from "../directory-adapter.ts";
+import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import {
   type OAuthConfig,
@@ -68,34 +57,26 @@ export function isDropboxConfigured(): boolean {
 // the user sees when browsing Dropbox in their file manager.
 export const DROPBOX_APP_FOLDER = "checklist.niclaslindstedt.se";
 
-// Legacy single-file location, written before namespaces existed. The
-// default namespace adapter migrates this into `/default/checklist.json`
-// on first load (see the header note).
-export const DROPBOX_LEGACY_FILE_PATH = "/checklist.json";
-
-// Document file name inside each namespace folder.
-const DROPBOX_FILE_NAME = "checklist.json";
-
-/** `/<namespace>/checklist.json` — where a namespace's document lives. */
-export function dropboxFilePath(namespace: string): string {
-  return `/${namespaceCloudFolder(namespace)}/${DROPBOX_FILE_NAME}`;
+/** `/<namespace>` — the folder a namespace's markdown files live under. */
+export function dropboxNamespacePath(namespace: string): string {
+  return `/${namespaceCloudFolder(namespace)}`;
 }
 
-// Web URL that opens a namespace's folder in Dropbox's web UI with the
-// document pre-selected for preview.
+// Web URL that opens a namespace's folder in Dropbox's web UI.
 export function dropboxWebUrl(
   namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): string {
   const folder = namespaceCloudFolder(namespace);
-  return `https://www.dropbox.com/home/Apps/${DROPBOX_APP_FOLDER}/${encodeURIComponent(folder)}?preview=${encodeURIComponent(DROPBOX_FILE_NAME)}`;
+  return `https://www.dropbox.com/home/Apps/${DROPBOX_APP_FOLDER}/${encodeURIComponent(folder)}`;
 }
 
-const AUTH_BASE = "https://www.dropbox.com/oauth2/authorize";
 const TOKEN_ENDPOINT = "https://api.dropboxapi.com/oauth2/token";
+const AUTH_BASE = "https://www.dropbox.com/oauth2/authorize";
 const UPLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/upload";
 const DOWNLOAD_ENDPOINT = "https://content.dropboxapi.com/2/files/download";
-const METADATA_ENDPOINT = "https://api.dropboxapi.com/2/files/get_metadata";
-const MOVE_ENDPOINT = "https://api.dropboxapi.com/2/files/move_v2";
+const LIST_FOLDER_ENDPOINT = "https://api.dropboxapi.com/2/files/list_folder";
+const LIST_FOLDER_CONTINUE_ENDPOINT =
+  "https://api.dropboxapi.com/2/files/list_folder/continue";
 const DELETE_ENDPOINT = "https://api.dropboxapi.com/2/files/delete_v2";
 
 // 1-second coalescing window so cloud sync matches local-storage "save
@@ -104,25 +85,19 @@ const DELETE_ENDPOINT = "https://api.dropboxapi.com/2/files/delete_v2";
 const SAVE_DEBOUNCE_MS = 1000;
 
 // Floor for the cooldown after Dropbox returns 429
-// "too_many_write_operations". Dropbox normally sets `Retry-After`, but
-// we clamp to at least this so a missing / zero / one-second header
-// still gives the burst a chance to settle before we try again.
+// "too_many_write_operations".
 const RATE_LIMIT_FALLBACK_MS = 5000;
 
 // `sessionStorage` survives the OAuth redirect round-trip but is scoped
-// to the tab, so a parallel auth flow in another tab can't race with
-// this one.
+// to the tab, so a parallel auth flow in another tab can't race with this.
 const PKCE_VERIFIER_KEY = "checklist:dropbox:pkce:verifier";
 
 export type FetchImpl = typeof fetch;
 
-// Serialize an argument struct for the `Dropbox-API-Arg` header. The
-// header travels as an HTTP header value, which the browser's `fetch`
-// refuses to send when it contains a code point above U+00FF. Dropbox
-// documents the fix and ships it in its own SDKs as
-// `http_header_safe_json`: ASCII-escape every character at or above
-// U+0080 to its `\uXXXX` form, which is valid JSON Dropbox decodes back
-// to the original string.
+// Serialize an argument struct for the `Dropbox-API-Arg` header.
+// ASCII-escape every character at or above U+0080 to its `\uXXXX` form —
+// the browser's `fetch` refuses header values above U+00FF, and Dropbox
+// decodes the escapes back to the original string.
 export function dropboxApiArg(arg: unknown): string {
   return JSON.stringify(arg).replace(
     /[\u0080-\uffff]/g,
@@ -131,42 +106,36 @@ export function dropboxApiArg(arg: unknown): string {
 }
 
 // Live access to the user's Dropbox tokens. The access token is short-
-// lived (~4 hours), so the adapter holds a mutable copy in its closure
-// and exchanges the refresh token for a fresh one on any 401 before
-// retrying the request. `onAccessTokenRefreshed` is the hook back into
-// app-level state / localStorage so the new token survives reloads.
-//
-// `refreshToken` may be null for legacy connections that authorized
-// before refresh tokens were captured — those users hit the "Sync
-// failed" UI on expiry and reconnect from Settings.
+// lived (~4 hours), so the adapter holds a mutable copy and exchanges the
+// refresh token for a fresh one on any 401 before retrying.
+// `refreshToken` may be null for legacy connections authorized before
+// refresh tokens were captured.
 export type DropboxAuth = {
   accessToken: string;
   refreshToken: string | null;
   onAccessTokenRefreshed: (accessToken: string) => void;
 };
 
-type FileMetadata = {
-  rev: string;
+type DropboxEntry = {
+  ".tag": "file" | "folder" | "deleted";
+  path_display?: string;
+  path_lower?: string;
+  rev?: string;
 };
 
-// Dropbox's `WriteMode` is a tag union. `add` carries no payload so the
-// short string form is accepted, but `update` carries the parent `rev`
-// and must use the explicit `{".tag":"update",…}` struct form — sending
-// `update` as a sibling of `mode` makes the upload endpoint reject the
-// call with `unknown field 'update'`.
-type WriteMode = "add" | { ".tag": "update"; update: string };
+type ListFolderResult = {
+  entries: DropboxEntry[];
+  cursor: string;
+  has_more: boolean;
+};
 
 export function createDropboxAdapter(
   auth: string | DropboxAuth,
   fetchImpl: FetchImpl = fetch,
   namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): StorageAdapter {
-  const filePath = dropboxFilePath(namespace);
-  const isDefaultNamespace = namespace === DEFAULT_NAMESPACE_SLUG;
+  const rootPath = dropboxNamespacePath(namespace);
 
-  // Mutable so a silent refresh swap doesn't require rebuilding the
-  // adapter. Plain string `auth` is still accepted for tests and any
-  // caller that doesn't need refresh.
   let currentAccessToken: string;
   let refreshToken: string | null;
   let onAccessTokenRefreshed: ((token: string) => void) | null;
@@ -180,28 +149,20 @@ export function createDropboxAdapter(
     onAccessTokenRefreshed = auth.onAccessTokenRefreshed;
   }
   log.info(
-    `adapter created hasAccessToken=${Boolean(currentAccessToken)} hasRefreshToken=${Boolean(refreshToken)}`,
+    `adapter created hasAccessToken=${Boolean(currentAccessToken)} hasRefreshToken=${Boolean(refreshToken)} ns=${namespace}`,
   );
 
-  // Coalesce in-flight refreshes so a concurrent load + save burst
-  // doesn't trade the refresh_token in twice.
+  // Coalesce in-flight refreshes so a concurrent burst doesn't trade the
+  // refresh_token in twice.
   let pendingRefresh: Promise<string> | null = null;
   async function refreshOnce(): Promise<string | null> {
     if (!refreshToken) {
       log.warn("refresh skipped — no refresh token (legacy connection)");
       return null;
     }
-    if (!pendingRefresh) {
-      log.info("refreshing access token");
-    } else {
-      log.info("refresh already in flight — joining");
-    }
     pendingRefresh ??= (async () => {
       try {
-        const start = performance.now();
         const fresh = await refreshDropboxAccessToken(refreshToken!, fetchImpl);
-        const ms = (performance.now() - start).toFixed(0);
-        log.info(`refresh ok (${ms}ms)`);
         currentAccessToken = fresh;
         onAccessTokenRefreshed?.(fresh);
         return fresh;
@@ -217,40 +178,17 @@ export function createDropboxAdapter(
     }
   }
 
-  // Issues a request with the current bearer token; on 401 (expired or
-  // revoked token), swaps in a new access token via the refresh token
-  // and retries exactly once.
+  // Issue a request with the current bearer token; on 401 swap in a fresh
+  // access token via the refresh token and retry exactly once.
   async function authedFetch(
     url: string,
     build: (token: string) => RequestInit,
   ): Promise<Response> {
-    const start = performance.now();
-    log.info(`fetch ${shortUrl(url)}`);
-    let res: Response;
-    try {
-      res = await fetchImpl(url, build(currentAccessToken));
-    } catch (err) {
-      log.error(`fetch network error ${shortUrl(url)}`, err);
-      throw err;
-    }
-    const ms = (performance.now() - start).toFixed(0);
-    log.info(`fetch ${shortUrl(url)} → ${res.status} (${ms}ms)`);
+    let res = await fetchImpl(url, build(currentAccessToken));
     if (res.status === 401) {
-      log.info("401 received — attempting silent refresh");
+      log.info("401 — attempting silent refresh");
       const fresh = await refreshOnce();
-      if (fresh) {
-        const retryStart = performance.now();
-        try {
-          res = await fetchImpl(url, build(fresh));
-        } catch (err) {
-          log.error(`retry network error ${shortUrl(url)}`, err);
-          throw err;
-        }
-        const retryMs = (performance.now() - retryStart).toFixed(0);
-        log.info(`retry ${shortUrl(url)} → ${res.status} (${retryMs}ms)`);
-      } else {
-        log.warn("no refresh available — surfacing original 401");
-      }
+      if (fresh) res = await fetchImpl(url, build(fresh));
     }
     if (res.status === 401) {
       const body = await res.text().catch(() => "<unreadable>");
@@ -259,185 +197,148 @@ export function createDropboxAdapter(
     return res;
   }
 
-  // Download a single path. Returns null on path/not_found (409) so
-  // callers can decide whether to fall back / seed an empty document.
-  async function downloadPath(path: string): Promise<StoredSnapshot | null> {
-    log.info(`load: download path=${path}`);
-    const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Dropbox-API-Arg": dropboxApiArg({ path }),
-      },
-    }));
-    if (res.status === 409) {
-      log.info(`load: 409 path/not_found path=${path}`);
-      return null;
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      log.error(`load: failed ${res.status}`, body);
-      throw new Error(`Dropbox load failed: ${res.status} ${body}`);
-    }
-    const metaHeader = res.headers.get("Dropbox-API-Result");
-    let meta: FileMetadata | null = null;
-    if (metaHeader) {
-      try {
-        meta = JSON.parse(metaHeader) as FileMetadata;
-      } catch (err) {
-        log.warn("load: Dropbox-API-Result header was not valid JSON", err);
-      }
-    }
-    const text = await res.text();
-    log.info(
-      `load: read body ${text.length} bytes rev=${meta?.rev ?? "<none>"}`,
-    );
-    return { text, revision: meta?.rev };
-  }
-
-  // One-time relocation of the pre-namespaces document. When the default
-  // namespace folder is empty but the legacy `/checklist.json` exists at
-  // the app-folder root, move it into `/default/checklist.json` (Dropbox
-  // auto-creates the folder). Returns the relocated snapshot, or null when
-  // there is nothing to migrate. Only the default namespace ever carries
-  // legacy data, so this runs for no other namespace.
-  async function migrateLegacyDefault(): Promise<StoredSnapshot | null> {
-    log.info("migrate: probing legacy root document");
-    const legacy = await downloadPath(DROPBOX_LEGACY_FILE_PATH);
-    if (!legacy) return null;
-    log.info(`migrate: moving ${DROPBOX_LEGACY_FILE_PATH} → ${filePath}`);
-    const res = await authedFetch(MOVE_ENDPOINT, (token) => ({
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from_path: DROPBOX_LEGACY_FILE_PATH,
-        to_path: filePath,
-        autorename: false,
-      }),
-    }));
-    if (!res.ok) {
-      // A racing device may have moved it already; fall back to reading
-      // the (now-populated) folder path rather than failing the load.
-      const body = await res.text().catch(() => "<unreadable>");
-      log.warn(`migrate: move failed ${res.status} — re-reading folder`, body);
-      return downloadPath(filePath);
-    }
-    const moved = (await res.json()) as { metadata?: FileMetadata };
-    log.info(`migrate: moved rev=${moved.metadata?.rev ?? "<none>"}`);
-    return { text: legacy.text, revision: moved.metadata?.rev };
-  }
-
-  async function loadFromDropbox(): Promise<StoredSnapshot | null> {
-    const stored = await downloadPath(filePath);
-    if (stored) return stored;
-    // Folder empty: migrate the legacy root document into it (default
-    // namespace only), otherwise this is a genuinely empty namespace.
-    if (isDefaultNamespace) return migrateLegacyDefault();
-    return null;
-  }
-
-  // Cheap revision probe. `get_metadata` returns the file's `rev` in a
-  // small JSON body — the same token `loadFromDropbox` reads off the
-  // download response — so a caller can compare it against a last-known
-  // revision and skip the body fetch when nothing changed.
-  async function getRevision(): Promise<string | null> {
-    log.info(`getRevision: metadata path=${filePath}`);
-    const res = await authedFetch(METADATA_ENDPOINT, (token) => ({
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ path: filePath }),
-    }));
-    if (res.status === 409) {
-      log.info("getRevision: 409 path/not_found — empty namespace folder");
-      return null;
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
-      log.error(`getRevision: failed ${res.status}`, body);
-      throw new Error(`Dropbox get_metadata failed: ${res.status} ${body}`);
-    }
-    const meta = (await res.json()) as FileMetadata;
-    log.info(`getRevision: rev=${meta.rev}`);
-    return meta.rev;
-  }
-
-  return {
+  const store = createDropboxFileStore(authedFetch, rootPath);
+  return createDirectoryAdapter(store, {
     id: "dropbox",
     label: "Dropbox",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
-    capabilities: new Set(["getRevision"]),
-    getRevision: () => getRevision(),
-    load: () => loadFromDropbox(),
+  });
+}
 
-    async save(text: string, baseRevision?: string): Promise<StoredSnapshot> {
-      const args: { path: string; mute: boolean; mode: WriteMode } = {
-        path: filePath,
-        mute: true,
-        mode: baseRevision ? { ".tag": "update", update: baseRevision } : "add",
-      };
-      log.info(
-        `save: upload bytes=${text.length} mode=${
-          baseRevision ? `update(${baseRevision})` : "add"
-        }`,
-      );
+type AuthedFetch = (
+  url: string,
+  build: (token: string) => RequestInit,
+) => Promise<Response>;
+
+function createDropboxFileStore(
+  authedFetch: AuthedFetch,
+  rootPath: string,
+): FileStore {
+  const rootPrefix = `${rootPath}/`.toLowerCase();
+
+  function relativePath(entry: DropboxEntry): string | null {
+    const full = entry.path_display ?? entry.path_lower;
+    if (!full) return null;
+    if (full.toLowerCase().startsWith(rootPrefix)) {
+      return full.slice(rootPrefix.length);
+    }
+    return null;
+  }
+
+  async function listOnce(
+    endpoint: string,
+    body: unknown,
+  ): Promise<ListFolderResult | null> {
+    const res = await authedFetch(endpoint, (token) => ({
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }));
+    if (res.status === 409) return null; // path/not_found — empty folder
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "<unreadable>");
+      throw new Error(`Dropbox list_folder failed: ${res.status} ${detail}`);
+    }
+    return (await res.json()) as ListFolderResult;
+  }
+
+  return {
+    async list(): Promise<FileEntry[]> {
+      let page = await listOnce(LIST_FOLDER_ENDPOINT, {
+        path: rootPath,
+        recursive: true,
+      });
+      if (!page) return [];
+      const out: FileEntry[] = [];
+      for (;;) {
+        for (const entry of page.entries) {
+          if (entry[".tag"] !== "file") continue;
+          const path = relativePath(entry);
+          if (path) out.push({ path, rev: entry.rev });
+        }
+        if (!page.has_more) break;
+        const next = await listOnce(LIST_FOLDER_CONTINUE_ENDPOINT, {
+          cursor: page.cursor,
+        });
+        if (!next) break;
+        page = next;
+      }
+      return out;
+    },
+
+    async read(path: string): Promise<string | null> {
+      const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Dropbox-API-Arg": dropboxApiArg({ path: `${rootPath}/${path}` }),
+        },
+      }));
+      if (res.status === 409) return null;
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "<unreadable>");
+        throw new Error(`Dropbox download failed: ${res.status} ${detail}`);
+      }
+      return res.text();
+    },
+
+    async write(path: string, text: string): Promise<void> {
       const res = await authedFetch(UPLOAD_ENDPOINT, (token) => ({
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Dropbox-API-Arg": dropboxApiArg(args),
+          "Dropbox-API-Arg": dropboxApiArg({
+            path: `${rootPath}/${path}`,
+            mode: "overwrite",
+            mute: true,
+          }),
           "Content-Type": "application/octet-stream",
         },
         body: text,
       }));
-      if (res.status === 409) {
-        log.warn("save: 409 — re-reading remote to surface conflict");
-        // Either a write_conflict (the remote moved past our
-        // baseRevision) or an "add" mode collision. Re-read so the
-        // caller can surface a proper ConflictError with current bytes.
-        const remote = await loadFromDropbox();
-        if (remote) throw new ConflictError(remote);
-        const detail = await res.text().catch(() => "conflict");
-        log.error(`save: 409 with no remote bytes: ${detail}`);
-        throw new Error(`Dropbox save failed: 409 ${detail}`);
-      }
       if (res.status === 429) {
         const headerSeconds = Number(res.headers.get("Retry-After") ?? "");
         const headerMs = Number.isFinite(headerSeconds)
           ? Math.max(0, headerSeconds) * 1000
           : 0;
-        const retryAfterMs = Math.max(headerMs, RATE_LIMIT_FALLBACK_MS);
-        log.warn(`save: 429 — throttled retryAfter=${retryAfterMs}ms`);
-        throw new RateLimitError(retryAfterMs);
+        throw new RateLimitError(Math.max(headerMs, RATE_LIMIT_FALLBACK_MS));
       }
       if (!res.ok) {
-        const body = await res.text().catch(() => "<unreadable>");
-        log.error(`save: failed ${res.status}`, body);
-        throw new Error(`Dropbox save failed: ${res.status} ${body}`);
+        const detail = await res.text().catch(() => "<unreadable>");
+        throw new Error(`Dropbox upload failed: ${res.status} ${detail}`);
       }
-      const meta = (await res.json()) as FileMetadata;
-      log.info(`save: ok rev=${meta.rev}`);
-      return { text, revision: meta.rev };
+    },
+
+    async remove(path: string): Promise<void> {
+      const res = await authedFetch(DELETE_ENDPOINT, (token) => ({
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: `${rootPath}/${path}` }),
+      }));
+      if (res.status === 409) return; // already gone
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "<unreadable>");
+        throw new Error(`Dropbox delete failed: ${res.status} ${detail}`);
+      }
     },
   };
 }
 
 // Delete a namespace's entire folder (`/<namespace>`) from Dropbox. Used
 // when a namespace is removed while Dropbox is the active backend. A 409
-// (path/not_found) is treated as "already gone". Best-effort: a hard
-// failure is logged and surfaced so the caller can decide whether to keep
-// the registry entry.
+// (path/not_found) is treated as "already gone".
 export async function deleteDropboxNamespace(
   accessToken: string,
   namespace: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<void> {
-  const path = `/${namespaceCloudFolder(namespace)}`;
+  const path = dropboxNamespacePath(namespace);
   log.info(`delete: removing folder ${path}`);
   const res = await fetchImpl(DELETE_ENDPOINT, {
     method: "POST",
@@ -481,11 +382,7 @@ export function startDropboxAuth(): Promise<void> {
 // stashed a PKCE verifier in `sessionStorage` and the redirect back from
 // Dropbox has not yet been consumed by `completeDropboxAuth`.
 export function hasPendingDropboxAuth(): boolean {
-  const present = sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
-  log.info(
-    `hasPendingDropboxAuth: key=${PKCE_VERIFIER_KEY} present=${present}`,
-  );
-  return present;
+  return sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
 }
 
 export function completeDropboxAuth(
@@ -500,10 +397,4 @@ export function refreshDropboxAccessToken(
   fetchImpl: FetchImpl = fetch,
 ): Promise<string> {
   return refreshAccessToken(DROPBOX_OAUTH, refreshToken, fetchImpl);
-}
-
-// Short tail of a URL, used in logs so each line stays readable.
-function shortUrl(url: string): string {
-  const idx = url.lastIndexOf("/");
-  return idx >= 0 ? url.slice(idx + 1) : url;
 }
