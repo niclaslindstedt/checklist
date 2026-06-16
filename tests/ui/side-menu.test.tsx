@@ -108,6 +108,21 @@ describe("SideMenu", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
+  it("reports the drag lifecycle so the parent can gate pull-to-refresh", () => {
+    const onDraggingChange = vi.fn();
+    renderMenu({ onDraggingChange });
+    const btn = screen.getByLabelText("Open navigation");
+    // Mounts resting — reports not-dragging.
+    expect(onDraggingChange).toHaveBeenLastCalledWith(false);
+
+    pointer(btn, "pointerdown", { x: 12, y: 400 });
+    pointer(btn, "pointermove", { x: 900, y: 400 });
+    expect(onDraggingChange).toHaveBeenLastCalledWith(true);
+
+    pointer(btn, "pointerup", { x: 900, y: 400 });
+    expect(onDraggingChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("treats a press without movement as a tap that toggles", () => {
     const onPositionChange = vi.fn();
     const onToggle = vi.fn();

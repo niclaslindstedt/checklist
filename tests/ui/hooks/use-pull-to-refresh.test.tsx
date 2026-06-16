@@ -85,6 +85,28 @@ describe("usePullToRefresh", () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  it("clears an armed pull when it becomes disabled mid-gesture", () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    const { result, rerender } = renderHook(
+      ({ enabled }) => usePullToRefresh(onRefresh, { enabled }),
+      { initialProps: { enabled: true } },
+    );
+
+    act(() => dispatchTouch("touchstart", 0));
+    act(() => dispatchTouch("touchmove", 200));
+    expect(result.current.state).toBe("release");
+
+    // Disabling mid-pull (e.g. the menu button drag claims the pointer)
+    // resets the indicator — no touchend will fire to clear it.
+    act(() => rerender({ enabled: false }));
+    expect(result.current.state).toBe("idle");
+    expect(result.current.pullDistance).toBe(0);
+
+    // The torn-down listeners no longer fire a refresh on release.
+    act(() => dispatchTouch("touchend", null));
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   it("is suppressed while a modal is open", () => {
     const onRefresh = vi.fn(() => Promise.resolve());
     const modal = document.createElement("div");

@@ -126,7 +126,15 @@ export function usePullToRefresh(
   }, [setPullBoth, setStateBoth]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      // Disabling mid-gesture (a modal opening, or the menu button drag
+      // claiming the pointer) must clear any armed pull — the document
+      // listeners are about to be torn down, so no `touchend` will fire to
+      // reset the indicator and it would otherwise stick on screen. Leave a
+      // refresh that's already in flight alone; its own `finally` resets it.
+      if (stateRef.current !== "refreshing") resetIdle();
+      return;
+    }
 
     const onTouchStart = (e: TouchEvent) => {
       if (stateRef.current === "refreshing") return;
