@@ -17,6 +17,7 @@ import { createLogger } from "../dev/logger.ts";
 import {
   activeItems,
   addItem as addItemOp,
+  archivedItems as archivedItemsOp,
   createChecklist,
   deleteItem as deleteItemOp,
   moveItem as moveItemOp,
@@ -67,12 +68,16 @@ export interface UseChecklist {
   snapshot: Snapshot;
   /** The active checklist's visible (non-archived) items. */
   items: ChecklistItem[];
+  /** The active checklist's archived items, for the archive view. */
+  archivedItems: ChecklistItem[];
   /** How many visible items are checked. */
   checkedCount: number;
   addItem: (title: string) => void;
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
   archive: (itemId: string) => void;
+  /** Restore an archived item back into the active view. */
+  unarchive: (itemId: string) => void;
   /** Move a visible item to a new position among the active items. */
   reorder: (itemId: string, toIndex: number) => void;
   /**
@@ -268,6 +273,11 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     [commit, list],
   );
 
+  const unarchive = useCallback(
+    (itemId: string) => commit(setArchived(list, itemId, false, now())),
+    [commit, list],
+  );
+
   const reorder = useCallback(
     (itemId: string, toIndex: number) =>
       commit(moveItemOp(list, itemId, toIndex, now())),
@@ -315,6 +325,7 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   );
 
   const items = useMemo(() => activeItems(list), [list]);
+  const archived = useMemo(() => archivedItemsOp(list), [list]);
   const checkedCount = useMemo(
     () => items.filter((it) => it.checked).length,
     [items],
@@ -323,11 +334,13 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   return {
     snapshot: doc,
     items,
+    archivedItems: archived,
     checkedCount,
     addItem,
     toggle,
     remove,
     archive,
+    unarchive,
     reorder,
     reload,
     conflict,

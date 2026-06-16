@@ -89,6 +89,11 @@ export function activeItems(checklist: Checklist): ChecklistItem[] {
   return checklist.items.filter((it) => !it.archived);
 }
 
+/** The items shown in the archive view — everything marked archived. */
+export function archivedItems(checklist: Checklist): ChecklistItem[] {
+  return checklist.items.filter((it) => it.archived);
+}
+
 /**
  * Move the active item `itemId` so it sits at `toIndex` among the active
  * (non-archived) items. Archived items are hidden from the view, so they
