@@ -21,6 +21,12 @@ import {
 // stationary press on the handle never nudges the list.
 const AXIS_LOCK = 6;
 
+// Shared, stable "no transform" style handed to every row while no drag is
+// in progress. Returning one frozen reference (rather than a fresh `{}` per
+// row per render) lets the memoized rows skip re-rendering on an unrelated
+// edit — only the row whose item changed reconciles.
+const IDLE_ROW_STYLE: CSSProperties = Object.freeze({});
+
 interface Rect {
   id: string;
   top: number;
@@ -147,7 +153,7 @@ export function useListReorder(
 
   const rowStyle = useCallback(
     (id: string): CSSProperties => {
-      if (!draggingId) return {};
+      if (!draggingId) return IDLE_ROW_STYLE;
       if (id === draggingId) {
         return {
           transform: `translateY(${delta}px)`,
@@ -173,13 +179,37 @@ export function useListReorder(
     [draggingId, delta, targetIndex],
   );
 
+  // Hand each row the same `DragHandleProps` object across renders so a
+  // memoized row isn't forced to reconcile just because its handle props
+  // were freshly allocated. The cache is rebuilt only when one of the
+  // composing handlers changes identity (e.g. mid-drag, when `onPointerUp`
+  // closes over a new target index) — at which point the rows re-render
+  // anyway to follow the drag.
+  const handleCache = useRef<{
+    deps: readonly unknown[];
+    byId: Map<string, DragHandleProps>;
+  }>({ deps: [], byId: new Map() });
+
   const dragHandleProps = useCallback(
-    (id: string): DragHandleProps => ({
-      onPointerDown: onPointerDown(id),
-      onPointerMove,
-      onPointerUp,
-      onPointerCancel: onPointerUp,
-    }),
+    (id: string): DragHandleProps => {
+      const cache = handleCache.current;
+      const deps = [onPointerDown, onPointerMove, onPointerUp] as const;
+      if (deps.some((d, i) => d !== cache.deps[i])) {
+        cache.deps = deps;
+        cache.byId = new Map();
+      }
+      let props = cache.byId.get(id);
+      if (!props) {
+        props = {
+          onPointerDown: onPointerDown(id),
+          onPointerMove,
+          onPointerUp,
+          onPointerCancel: onPointerUp,
+        };
+        cache.byId.set(id, props);
+      }
+      return props;
+    },
     [onPointerDown, onPointerMove, onPointerUp],
   );
 

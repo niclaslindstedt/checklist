@@ -271,6 +271,14 @@ export function useChecklist(
   const list: Checklist =
     doc.checklists[0] ?? withActiveList(doc).checklists[0]!;
 
+  // Mirror the active list into a ref so the edit callbacks below can read
+  // the latest list without listing it as a dependency. That keeps
+  // `toggle` / `remove` / `archive` / … referentially stable across edits —
+  // the memoized `ChecklistRow`s only re-render the row that actually
+  // changed instead of the whole list on every edit, undo, or redo.
+  const listRef = useRef(list);
+  listRef.current = list;
+
   const commit = useCallback(
     (nextList: Checklist) => {
       const prev = docRef.current;
@@ -296,40 +304,42 @@ export function useChecklist(
       if (!trimmed) return;
       commit(
         addItemOp(
-          list,
+          listRef.current,
           { id: newId(), title: trimmed },
           now(),
           addItemPositionRef.current,
         ),
       );
     },
-    [commit, list],
+    [commit],
   );
 
   const toggle = useCallback(
-    (itemId: string) => commit(toggleItemOp(list, itemId, now())),
-    [commit, list],
+    (itemId: string) => commit(toggleItemOp(listRef.current, itemId, now())),
+    [commit],
   );
 
   const remove = useCallback(
-    (itemId: string) => commit(deleteItemOp(list, itemId, now())),
-    [commit, list],
+    (itemId: string) => commit(deleteItemOp(listRef.current, itemId, now())),
+    [commit],
   );
 
   const archive = useCallback(
-    (itemId: string) => commit(setArchived(list, itemId, true, now())),
-    [commit, list],
+    (itemId: string) =>
+      commit(setArchived(listRef.current, itemId, true, now())),
+    [commit],
   );
 
   const unarchive = useCallback(
-    (itemId: string) => commit(setArchived(list, itemId, false, now())),
-    [commit, list],
+    (itemId: string) =>
+      commit(setArchived(listRef.current, itemId, false, now())),
+    [commit],
   );
 
   const reorder = useCallback(
     (itemId: string, toIndex: number) =>
-      commit(moveItemOp(list, itemId, toIndex, now())),
-    [commit, list],
+      commit(moveItemOp(listRef.current, itemId, toIndex, now())),
+    [commit],
   );
 
   const reload = useCallback(async () => {
