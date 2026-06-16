@@ -14,6 +14,7 @@ import {
 
 import type { ChecklistSummary } from "../../../src/app/use-checklist.ts";
 import { useT } from "../../../src/i18n";
+import type { BackendOption, NativeBackendId } from "../storage/backends.ts";
 import { radius, spacing, useTokens } from "../theme.ts";
 
 export function ListSwitcher({
@@ -26,6 +27,9 @@ export function ListSwitcher({
   onRemove,
   archivedCount,
   onOpenArchive,
+  backends,
+  activeBackendId,
+  onSelectBackend,
   canUndo,
   canRedo,
   onUndo,
@@ -40,6 +44,10 @@ export function ListSwitcher({
   onRemove: (id: string) => void;
   archivedCount: number;
   onOpenArchive: () => void;
+  /** Storage backends offered on this device (>1 only on iOS, with iCloud). */
+  backends: BackendOption[];
+  activeBackendId: NativeBackendId;
+  onSelectBackend: (id: NativeBackendId) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -172,6 +180,49 @@ export function ListSwitcher({
             ) : null}
           </Pressable>
 
+          {backends.length > 1 ? (
+            <>
+              <View
+                style={[styles.divider, { backgroundColor: tokens.border }]}
+              />
+              <Text style={[styles.sectionLabel, { color: tokens.textMuted }]}>
+                {t("nav.storage")}
+              </Text>
+              {backends.map((b) => {
+                const isActive = b.id === activeBackendId;
+                return (
+                  <Pressable
+                    key={b.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
+                    style={[styles.listRow, styles.listRowMain]}
+                    onPress={() => onSelectBackend(b.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.radio,
+                        { color: isActive ? tokens.accent : tokens.textMuted },
+                      ]}
+                    >
+                      {isActive ? "◉" : "○"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.listName,
+                        {
+                          color: isActive ? tokens.accent : tokens.text,
+                          fontWeight: isActive ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {b.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </>
+          ) : null}
+
           <View style={[styles.divider, { backgroundColor: tokens.border }]} />
 
           <View style={styles.undoRow}>
@@ -276,6 +327,18 @@ const styles = StyleSheet.create({
   },
   footerRow: {
     paddingVertical: spacing.md,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  radio: {
+    fontSize: 16,
+    width: 20,
   },
   footerAction: {
     fontSize: 16,

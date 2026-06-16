@@ -19,6 +19,7 @@ React Native views in `native/src/`:
 | Storage contract, serialize, migrations, namespaces | `../src/storage/{adapter,serialize,migrations,namespaces}.ts` | ✅ verbatim |
 | i18n runtime + catalogs | `../src/i18n/` | ✅ verbatim |
 | **Local storage backend** | `native/src/storage/asyncStorageAdapter.ts` | ⛔ native (AsyncStorage) |
+| **iCloud storage backend (iOS only)** | `native/src/storage/icloudStorageAdapter.ts` | ⛔ native (iCloud KVS) |
 | **Presentation** | `native/src/components/`, `native/src/App.tsx` | ⛔ native (`View`/`Text`/…) |
 | **Theme tokens** | `native/src/theme.ts` | ⛔ native (no CSS variables) |
 
@@ -34,6 +35,34 @@ web's `BrowserLocalStorageAdapter`, so `useChecklist` drives it unchanged. It
 does not advertise the synchronous `loadSync` capability (AsyncStorage has no
 sync read); `useChecklistSync` already tolerates that by seeding empty and
 loading in its mount effect.
+
+## iCloud backend (iOS only)
+
+On iOS the app offers a second backend, **iCloud**
+(`native/src/storage/icloudStorageAdapter.ts`), which stores the document in
+Apple's iCloud key-value store (`NSUbiquitousKeyValueStore`, via
+`react-native-icloudstore`) so it syncs across the signed-in user's devices
+with no accounts, OAuth, or network code of our own. It implements the same
+`StorageAdapter` contract as the on-device backend and advertises the `watch`
+capability — when another device pushes an edit, iCloud fires a change event,
+the adapter re-reads its key, and `App.tsx` calls `reload()` so the new state
+appears live.
+
+The backend is **only exposed on iOS**: `native/src/storage/backends.ts` is
+the single platform gate — `availableBackends()` appends iCloud only when
+`Platform.OS === "ios"`, and the iCloud adapter module (which pulls the
+iOS-only native dependency) is required lazily so it never loads on Android or
+web. The choice is persisted per device in AsyncStorage
+(`backendPreference.ts`) and surfaced as a **Storage** picker in the
+list-switcher sheet, which renders only when more than one backend is
+available — i.e. only on iOS. The on-device default is unchanged everywhere.
+
+> iCloud key-value sync needs the
+> `com.apple.developer.ubiquity-kvstore-identifier` entitlement (declared in
+> `app.json` under `ios.entitlements`) and a native build — it is inert in
+> Expo Go, which can't load the custom native module. Selecting it there
+> simply falls back to "no data" reads until the app runs as a dev/standalone
+> build signed with the entitlement.
 
 ## What's implemented
 

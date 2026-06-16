@@ -9,6 +9,7 @@ const nav: NavCatalog = {
   newChecklist: "Ny checklista",
   removeChecklist: "Ta bort checklista",
   archive: "Arkiv",
+  storage: "Lagring",
   archiveEmpty: "Inget arkiverat — svep en rad åt höger för att arkivera den.",
   restore: "Återställ rad",
   edit: "Redigera",
