@@ -24,7 +24,12 @@ import {
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
 import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
-import { ConflictError, type StorageAdapter } from "../storage/adapter.ts";
+import {
+  AuthError,
+  ConflictError,
+  RateLimitError,
+  type StorageAdapter,
+} from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
 import { parse, serialize } from "../storage/serialize.ts";
 
@@ -41,6 +46,21 @@ export type ConflictState = {
   /** The remote revision to base a "keep mine" overwrite on. */
   remoteRevision?: string;
 };
+
+/**
+ * Coarse state of the last save against the active backend, driving the
+ * cloud-sync status glyph in the header. A pared-down version of the
+ * budget project's `SaveStatus` — the checklist has no offline mirror or
+ * parse-error surface, so those states don't apply.
+ */
+export type SaveStatus =
+  | "idle"
+  | "saving"
+  | "saved"
+  | "error"
+  | "conflict"
+  | "auth-error"
+  | "throttled";
 
 export interface UseChecklist {
   /** The full in-memory document (used by the conflict summary). */
@@ -66,6 +86,12 @@ export interface UseChecklist {
   conflict: ConflictState | null;
   /** Resolve an open conflict by keeping this device's copy or the remote's. */
   resolveConflict: (keep: "local" | "remote") => void;
+  /** Coarse state of the last save, for the cloud-sync status glyph. */
+  status: SaveStatus;
+  /** Whether there are local edits not yet persisted to the backend. */
+  dirty: boolean;
+  /** Flush any debounced save immediately (the "save now" affordance). */
+  saveNow: () => void;
 }
 
 // Guarantee the document always has one checklist to render. A freshly
@@ -101,6 +127,8 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   }, [doc]);
 
   const [conflict, setConflict] = useState<ConflictState | null>(null);
+  const [status, setStatus] = useState<SaveStatus>("idle");
+  const [dirty, setDirty] = useState(false);
 
   // Debounced-save plumbing. `pendingDoc` holds the latest unsaved
   // document; the timer coalesces a burst of edits into one write per
@@ -109,20 +137,32 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   const pendingDoc = useRef<Snapshot | null>(null);
 
   const performSave = useCallback((next: Snapshot, baseRevision?: string) => {
+    setStatus("saving");
     void adapterRef.current
       .save(serialize(next), baseRevision)
       .then((stored) => {
         revisionRef.current = stored.revision;
+        // Another edit may have arrived mid-flight; stay dirty if so.
+        if (pendingDoc.current === null) setDirty(false);
+        setStatus("saved");
       })
       .catch((err: unknown) => {
         if (err instanceof ConflictError) {
           log.warn("save: remote moved — surfacing conflict");
+          setStatus("conflict");
           setConflict({
             remote: withActiveList(parse(err.remote.text)),
             remoteRevision: err.remote.revision,
           });
+        } else if (err instanceof AuthError) {
+          log.error("save: auth error", err);
+          setStatus("auth-error");
+        } else if (err instanceof RateLimitError) {
+          log.warn("save: rate limited", err);
+          setStatus("throttled");
         } else {
           log.error("save failed", err);
+          setStatus("error");
         }
       });
   }, []);
@@ -141,6 +181,7 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
   const scheduleSave = useCallback(
     (next: Snapshot) => {
       pendingDoc.current = next;
+      setDirty(true);
       const ms = adapterRef.current.saveDebounceMs ?? 0;
       if (ms <= 0) {
         flushSave();
@@ -164,6 +205,8 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     adapterRef.current = active;
     revisionRef.current = undefined;
     setConflict(null);
+    setStatus("idle");
+    setDirty(false);
     let cancelled = false;
     void active.load().then((stored) => {
       if (cancelled) return;
@@ -236,7 +279,15 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     const stored = await adapterRef.current.load();
     revisionRef.current = stored?.revision;
     setConflict(null);
+    setStatus("idle");
+    setDirty(false);
     setDoc(withActiveList(parse(stored?.text)));
+  }, [flushSave]);
+
+  // Push any debounced edit to the backend immediately — the "save now"
+  // action on the cloud-sync glyph when there are unsaved changes.
+  const saveNow = useCallback(() => {
+    flushSave();
   }, [flushSave]);
 
   const resolveConflict = useCallback(
@@ -254,6 +305,8 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
           // write-back, so we don't bounce the conflict.
           revisionRef.current = current.remoteRevision;
           setDoc(current.remote);
+          setDirty(false);
+          setStatus("saved");
         }
         return null;
       });
@@ -279,5 +332,8 @@ export function useChecklist(adapter?: StorageAdapter): UseChecklist {
     reload,
     conflict,
     resolveConflict,
+    status,
+    dirty,
+    saveNow,
   };
 }

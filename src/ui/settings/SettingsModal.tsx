@@ -37,6 +37,9 @@ type Props = {
   settings: Settings;
   onUpdate: UpdateSetting;
   storage: UseStorageBackend;
+  /** Tab to jump to when the dialog opens (e.g. the cloud-sync glyph
+   *  deep-links to Storage). Omit to keep the last-used tab. */
+  initialTab?: TabId;
 };
 
 export function SettingsModal({
@@ -45,6 +48,7 @@ export function SettingsModal({
   settings,
   onUpdate,
   storage,
+  initialTab,
 }: Props) {
   const t = useT();
   const { devMode } = useDevMode();
@@ -57,6 +61,11 @@ export function SettingsModal({
         : ["general", "theme", "storage"],
     [devMode],
   );
+
+  // Jump to the requested tab each time the dialog opens with one set.
+  useEffect(() => {
+    if (open && initialTab) setActiveTab(initialTab);
+  }, [open, initialTab]);
 
   // If developer mode is switched off while the Developer / Logs tab is
   // active, fall back to General so we never show an empty panel.

@@ -6,7 +6,7 @@ import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import { useStorageBackend } from "../storage/useStorageBackend.ts";
 import { useTheme } from "../theme/useTheme.ts";
 import { ChangelogModal } from "../ui/changelog/ChangelogModal.tsx";
-import { ChecklistView } from "../ui/ChecklistView.tsx";
+import { ChecklistView, type SyncInfo } from "../ui/ChecklistView.tsx";
 import { ConflictResolutionModal } from "../ui/ConflictResolutionModal.tsx";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
@@ -19,9 +19,8 @@ import { useChecklist } from "./use-checklist.ts";
 // hooks and hand state down to the view. Appearance settings apply
 // immediately through `useTheme`; the header menu opens the settings and
 // changelog modals. When the developer "Fake data" toggle is on, the
-// localStorage backend is swapped for an ephemeral in-memory seed adapter
-// so `useChecklist` reloads a sample document without touching the user's
-// real data.
+// active backend is swapped for an ephemeral in-memory seed adapter so
+// `useChecklist` reloads a sample document without touching real data.
 
 export function App() {
   const { settings, update } = useSettings();
@@ -29,10 +28,20 @@ export function App() {
   useViewportHeight();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"storage" | undefined>(
+    undefined,
+  );
   const [changelogOpen, setChangelogOpen] = useState(false);
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
   // appearance settings (which share this component) change.
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const openSettings = useCallback(() => {
+    setSettingsTab(undefined);
+    setSettingsOpen(true);
+  }, []);
+  const openStorageSettings = useCallback(() => {
+    setSettingsTab("storage");
+    setSettingsOpen(true);
+  }, []);
   const openChangelog = useCallback(() => setChangelogOpen(true), []);
 
   // The active backend (this device / Dropbox / Google Drive), optionally
@@ -47,11 +56,26 @@ export function App() {
   );
   const checklist = useChecklist(seedAdapter ?? storage.adapter);
 
+  // The cloud-sync glyph only shows for a real cloud-backed session — not
+  // for the local backend (nothing to sync) nor while fake data overrides
+  // the adapter (the status wouldn't reflect the user's actual backend).
+  const cloudBacked =
+    !fakeData &&
+    (storage.backend === "dropbox" || storage.backend === "gdrive");
+  const sync: SyncInfo | null = cloudBacked
+    ? {
+        providerName:
+          storage.backend === "dropbox" ? "Dropbox" : "Google Drive",
+        status: checklist.status,
+        dirty: checklist.dirty,
+        onSave: checklist.saveNow,
+        onOpenDetails: openStorageSettings,
+      }
+    : null;
+
   // Pull-to-refresh: a downward drag from the top of the list re-reads the
   // active backend (see `useChecklist.reload`). Gated off while a modal
-  // owns the screen — the hook also bails on its own when an
-  // `[aria-modal="true"]` element is mounted, but disabling here keeps the
-  // document listeners off entirely while a dialog is up.
+  // owns the screen.
   const ptr = usePullToRefresh(checklist.reload, {
     enabled: !settingsOpen && !changelogOpen,
   });
@@ -72,6 +96,7 @@ export function App() {
         onReorder={checklist.reorder}
         onOpenSettings={openSettings}
         onOpenChangelog={openChangelog}
+        sync={sync}
       />
       <SettingsModal
         open={settingsOpen}
@@ -79,6 +104,7 @@ export function App() {
         settings={settings}
         onUpdate={update}
         storage={storage}
+        initialTab={settingsTab}
       />
       <ChangelogModal
         open={changelogOpen}
