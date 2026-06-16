@@ -20,21 +20,28 @@ import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import type { AddItemPosition } from "../settings/types.ts";
 import { type StorageAdapter } from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
-import { type ChecklistEdits, useChecklistEdits } from "./use-checklist-edits.ts";
+import {
+  type ChecklistEdits,
+  useChecklistEdits,
+} from "./use-checklist-edits.ts";
+import {
+  type ChecklistLists,
+  type ChecklistSummary,
+  useChecklistLists,
+} from "./use-checklist-lists.ts";
 import {
   type ConflictState,
   type SaveStatus,
   useChecklistSync,
-  withActiveList,
 } from "./use-checklist-sync.ts";
 import { useUndoRedo } from "./use-undo-redo.ts";
 
 // Re-exported from the persistence engine so consumers (SyncStatus, the
 // checklist context, the conflict modal) keep importing the save-state
 // types from the hook's barrel.
-export type { ConflictState, SaveStatus };
+export type { ChecklistSummary, ConflictState, SaveStatus };
 
-export interface UseChecklist extends ChecklistEdits {
+export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   /** The full in-memory document (used by the conflict summary). */
   snapshot: Snapshot;
   /** The active checklist's visible (non-archived) items. */
@@ -110,7 +117,17 @@ export function useChecklist(
   });
   resetHistory.current = reset;
 
-  const list = doc.checklists[0] ?? withActiveList(doc).checklists[0]!;
+  // The checklist-collection verbs (select / add / rename) and the active
+  // selection. The active list it resolves is what the edit verbs below
+  // mutate and what the views render.
+  const lists = useChecklistLists({
+    doc,
+    docRef,
+    setDoc,
+    scheduleSave,
+    record,
+  });
+  const list = lists.activeList;
 
   // The edit verbs (add / toggle / remove / archive / unarchive / reorder)
   // live in their own concern-scoped hook so a new action lands there
@@ -143,6 +160,7 @@ export function useChecklist(
       items,
       archivedItems: archived,
       checkedCount,
+      ...lists,
       ...edits,
       reload: sync.reload,
       conflict: sync.conflict,
@@ -160,6 +178,7 @@ export function useChecklist(
       items,
       archived,
       checkedCount,
+      lists,
       edits,
       sync.reload,
       sync.conflict,

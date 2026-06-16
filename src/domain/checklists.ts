@@ -37,6 +37,32 @@ export function createChecklist(
   };
 }
 
+/** Rename a checklist, trimming the new name and bumping `updatedAt`. */
+export function renameChecklist(
+  checklist: Checklist,
+  name: string,
+  now: string,
+): Checklist {
+  return { ...checklist, name: name.trim(), updatedAt: now };
+}
+
+/**
+ * The next free default name for a new checklist: `base` if no existing
+ * list already carries it, otherwise `base 2`, `base 3`, … — the lowest
+ * unused suffix. Lets "add checklist" mint "Checklist", then "Checklist 2",
+ * and so on without ever colliding with a list the user already has.
+ */
+export function nextChecklistName(
+  existing: readonly { name: string }[],
+  base: string,
+): string {
+  const names = new Set(existing.map((c) => c.name));
+  if (!names.has(base)) return base;
+  let n = 2;
+  while (names.has(`${base} ${n}`)) n++;
+  return `${base} ${n}`;
+}
+
 /**
  * Add a fresh, unchecked item to the list. `position` controls where it
  * lands — appended to the bottom (the default) or prepended to the top.

@@ -26,8 +26,9 @@ import { useModalDispatch } from "./modal-bus.ts";
 // The navigation drawer. Collapsed to a single floating button the user
 // can drag to either side edge (its resting spot persists in settings);
 // pressing it slides the drawer in from that same side over a dimmed
-// backdrop. The drawer lists the app's views (the active checklist and the
-// archive) and highlights the current one. Selecting a view navigates and
+// backdrop. The drawer lists every checklist by name (the switcher — click
+// to make one active, plus a "new checklist" action) and the archive view,
+// highlighting the active list and current view. Selecting one navigates and
 // closes the drawer. Pinned to the bottom is what used to be the top-right
 // burger menu — settings, "what's new", and the project links (privacy,
 // source with the app version as a subtitle, optional donate), in inverted
@@ -68,7 +69,17 @@ export function SideMenu({
     position,
     setPosition,
   } = useNav();
-  const { undo, redo, canUndo, canRedo, archivedItems } = useChecklistContext();
+  const {
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    archivedItems,
+    checklists,
+    activeChecklistId,
+    selectChecklist,
+    addChecklist,
+  } = useChecklistContext();
   const archivedCount = archivedItems.length;
   const drag = useDraggableMenuButton(position, setPosition);
 
@@ -177,14 +188,38 @@ export function SideMenu({
               onClick={() => pick(() => dispatch({ kind: "namespaces" }))}
             />
             <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+              {t("nav.checklists")}
+            </p>
+            {checklists.map((c) => (
+              <NavItem
+                key={c.id}
+                icon={
+                  c.id === activeChecklistId ? (
+                    <CheckIcon className="h-5 w-5" />
+                  ) : (
+                    <ChecklistIcon className="h-5 w-5" />
+                  )
+                }
+                label={c.name}
+                active={c.id === activeChecklistId && current === "checklist"}
+                onClick={() => {
+                  selectChecklist(c.id);
+                  navigate("checklist");
+                }}
+              />
+            ))}
+            <NavItem
+              icon={<PlusIcon className="h-5 w-5" />}
+              label={t("nav.newChecklist")}
+              active={false}
+              onClick={() => {
+                addChecklist();
+                navigate("checklist");
+              }}
+            />
+            <p className="border-t border-line px-5 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">
               {t("nav.label")}
             </p>
-            <NavItem
-              icon={<ChecklistIcon className="h-5 w-5" />}
-              label={t("nav.checklist")}
-              active={current === "checklist"}
-              onClick={() => navigate("checklist")}
-            />
             <NavItem
               icon={<ArchiveIcon className="h-5 w-5" />}
               label={t("nav.archive")}

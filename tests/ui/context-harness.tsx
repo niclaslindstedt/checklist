@@ -4,6 +4,7 @@
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 
+import { createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot } from "../../src/domain/types.ts";
 import {
   ChecklistContext,
@@ -13,6 +14,12 @@ import type { NavContextValue } from "../../src/ui/nav-context.ts";
 
 const noop = (): void => {};
 
+const fallbackList = createChecklist(
+  "list-0",
+  "Checklist",
+  "2026-01-01T00:00:00.000Z",
+);
+
 export function makeChecklistValue(
   over: Partial<ChecklistContextValue> = {},
 ): ChecklistContextValue {
@@ -21,6 +28,12 @@ export function makeChecklistValue(
     items: [],
     archivedItems: [],
     checkedCount: 0,
+    activeList: fallbackList,
+    activeChecklistId: fallbackList.id,
+    checklists: [{ id: fallbackList.id, name: fallbackList.name }],
+    selectChecklist: noop,
+    addChecklist: noop,
+    renameChecklist: noop,
     addItem: noop,
     toggle: noop,
     remove: noop,

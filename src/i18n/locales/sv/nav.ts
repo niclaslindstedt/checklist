@@ -5,6 +5,8 @@ const nav: NavCatalog = {
   close: "Stäng navigering",
   label: "Vyer",
   checklist: "Checklista",
+  checklists: "Checklistor",
+  newChecklist: "Ny checklista",
   archive: "Arkiv",
   archiveEmpty: "Inget arkiverat — svep en rad åt höger för att arkivera den.",
   restore: "Återställ rad",

@@ -1,9 +1,9 @@
-import { memo, type CSSProperties } from "react";
+import { memo } from "react";
 
 import { useT } from "../i18n";
-import { usePwaUpdate } from "../pwa/usePwaUpdate.ts";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
+import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
@@ -26,42 +26,40 @@ import { useListReorder } from "./hooks/useListReorder.ts";
 // provider value), so `memo` skips the whole list instead of reconciling N
 // rows. Theme is applied as CSS vars on `:root`, not through context.
 function ChecklistViewImpl() {
-  const { items, checkedCount, addItem, toggle, remove, archive, reorder, sync } =
-    useChecklistContext();
+  const {
+    items,
+    checkedCount,
+    addItem,
+    toggle,
+    remove,
+    archive,
+    reorder,
+    sync,
+    checklists,
+    activeChecklistId,
+    renameChecklist,
+  } = useChecklistContext();
   const reorderCtl = useListReorder(reorder);
   const t = useT();
-  // While a new build's service worker downloads, fill the "checklist"
-  // wordmark with the accent colour from the bottom — a vertical power
-  // bar; `progress` is null when no update is in flight (see usePwaUpdate).
-  const { progress: pwaProgress } = usePwaUpdate();
+  const activeName =
+    checklists.find((c) => c.id === activeChecklistId)?.name ?? t("app.title");
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
-      <header className="mb-2 flex items-center justify-between border-b border-line px-1 pb-3">
-        <h1 className="flex items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
+      <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
+        <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
           <img
             src={`${import.meta.env.BASE_URL}favicon.svg`}
             alt=""
             aria-hidden
-            className="h-6 w-6 rounded"
+            className="h-6 w-6 shrink-0 rounded"
           />
-          <span
-            className={pwaProgress === null ? undefined : "pwa-title-fill"}
-            style={
-              pwaProgress === null
-                ? undefined
-                : ({ "--pwa-fill": String(pwaProgress) } as CSSProperties)
-            }
-            title={
-              pwaProgress === null
-                ? undefined
-                : t("pwa.downloading", { percent: String(pwaProgress) })
-            }
-          >
-            {t("app.title")}
-          </span>
+          <ChecklistTitle
+            name={activeName}
+            onRename={(next) => renameChecklist(activeChecklistId, next)}
+          />
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-sm text-muted tabular-nums">
             {checkedCount}/{items.length}
           </span>
