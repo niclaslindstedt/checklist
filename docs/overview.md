@@ -111,7 +111,15 @@ The snap / clamp math is pure in `src/ui/sideMenuPosition.ts`
 (`restingRect`, `clampRect`, `rectToPosition`, `MENU_BUTTON_SIZE`,
 `MENU_BUTTON_MARGIN`), translating between the persisted
 `MenuButtonPosition` (edge + vertical fraction) and pixel coordinates
-so the position survives viewport resizes.
+so the position survives viewport resizes. The hook measures the
+**visual viewport** (`window.visualViewport`) rather than
+`window.innerWidth/innerHeight` and re-reads it on the visual
+viewport's own `resize` / `scroll` events. This matters on iOS, where
+the software keyboard shrinks (and can offset) the visual viewport
+while leaving `innerHeight` at the full layout size: the geometry takes
+the visible size plus its `offsetLeft` / `offsetTop`, so the fixed
+button normalizes into whatever space the keyboard leaves above it
+instead of disappearing behind it, and the drag clamp stays reachable.
 
 ### Header menu
 
