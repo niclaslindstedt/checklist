@@ -135,6 +135,16 @@ the cloud adapter throws `ConflictError` carrying the remote bytes;
 remote) or take the remote (adopt its bytes). Adapters also throw
 `AuthError` (re-auth needed) and `RateLimitError` (HTTP 429 cooldown).
 
+**Status glyph.** For a cloud-backed session, `useChecklist` exposes a
+coarse `SaveStatus` (idle / saving / saved / error / conflict /
+auth-error / throttled) and a `dirty` flag; saves are debounced by the
+adapter's `saveDebounceMs`. The header's `SyncStatus` glyph (left of the
+burger menu, ported from budget) morphs with that state — an accent
+cloud-upload when there are unsaved edits (tap to save now), a spinner
+while saving, a green check when synced, and a coloured alert for
+conflict / auth / throttle / error (tap to open the Storage settings).
+It is hidden for the local backend, where there is nothing to sync.
+
 ## Theming
 
 `src/theme/` holds a small framework-free **theme engine** (the

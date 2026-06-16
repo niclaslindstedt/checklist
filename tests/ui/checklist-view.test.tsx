@@ -26,6 +26,7 @@ function renderView(
       onReorder={noop}
       onOpenSettings={noop}
       onOpenChangelog={noop}
+      sync={null}
       {...props}
     />,
   );

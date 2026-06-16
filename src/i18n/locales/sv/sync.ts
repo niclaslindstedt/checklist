@@ -9,6 +9,14 @@ const sync: SyncCatalog = {
   conflictCounts: "{lists} listor · {items} objekt",
   keepLocal: "Behåll den här enhetens",
   keepRemote: "Behåll den andra",
+
+  saving: "Sparar…",
+  syncedTo: "Synkad till {name}",
+  saveUnsaved: "Osparade ändringar — tryck för att spara nu",
+  failed: "Synk misslyckades — tryck för detaljer",
+  throttled: "Ta det lugnt — backend begränsar sparningar",
+  reauthRequired: "Återanslutning krävs — tryck för att åtgärda",
+  syncConflict: "Synkkonflikt — tryck för att lösa",
 };
 
 export default sync;

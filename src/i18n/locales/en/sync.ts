@@ -12,6 +12,15 @@ const sync = {
   conflictCounts: "{lists} lists · {items} items",
   keepLocal: "Keep this device's",
   keepRemote: "Keep the other",
+
+  // Cloud-sync status glyph in the header.
+  saving: "Saving…",
+  syncedTo: "Synced to {name}",
+  saveUnsaved: "Unsaved changes — tap to save now",
+  failed: "Sync failed — tap for details",
+  throttled: "Slow down — the backend is rate-limiting saves",
+  reauthRequired: "Reconnect needed — tap to fix",
+  syncConflict: "Sync conflict — tap to resolve",
 } as const;
 
 export type SyncCatalog = Widen<typeof sync>;

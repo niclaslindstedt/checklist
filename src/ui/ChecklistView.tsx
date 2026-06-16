@@ -3,9 +3,11 @@ import { memo, type CSSProperties } from "react";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { usePwaUpdate } from "../pwa/usePwaUpdate.ts";
+import type { SaveStatus } from "../app/use-checklist.ts";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { HeaderMenu } from "./HeaderMenu.tsx";
+import { SyncStatus } from "./SyncStatus.tsx";
 import { useListReorder } from "./hooks/useListReorder.ts";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
@@ -27,6 +29,20 @@ type Props = {
   onReorder: (id: string, toIndex: number) => void;
   onOpenSettings: () => void;
   onOpenChangelog: () => void;
+  /**
+   * Cloud-sync status for the header glyph, or null for a local-only
+   * session (the icon only appears when a cloud backend is active).
+   */
+  sync: SyncInfo | null;
+};
+
+/** Props the header's cloud-sync glyph needs (see `SyncStatus`). */
+export type SyncInfo = {
+  providerName: string;
+  status: SaveStatus;
+  dirty: boolean;
+  onSave: () => void;
+  onOpenDetails: () => void;
 };
 
 // Memoised: App holds appearance settings alongside the checklist, so
@@ -44,6 +60,7 @@ function ChecklistViewImpl({
   onReorder,
   onOpenSettings,
   onOpenChangelog,
+  sync,
 }: Props) {
   const reorder = useListReorder(onReorder);
   const t = useT();
@@ -76,6 +93,15 @@ function ChecklistViewImpl({
           <span className="text-sm text-muted tabular-nums">
             {checkedCount}/{items.length}
           </span>
+          {sync && (
+            <SyncStatus
+              providerName={sync.providerName}
+              status={sync.status}
+              dirty={sync.dirty}
+              onSave={sync.onSave}
+              onOpenDetails={sync.onOpenDetails}
+            />
+          )}
           <HeaderMenu
             onOpenSettings={onOpenSettings}
             onOpenChangelog={onOpenChangelog}
