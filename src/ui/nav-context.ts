@@ -31,6 +31,12 @@ export type NavContextValue = {
   position: MenuButtonPosition;
   /** Persist a new resting spot after the user drags the button. */
   setPosition: (next: MenuButtonPosition) => void;
+  /**
+   * Whether the floating menu button is rendered. False only when the user
+   * has hidden it in the installed PWA, where an inward edge swipe opens the
+   * drawer instead (see `useEdgeSwipeOpen`).
+   */
+  showButton: boolean;
 };
 
 export const NavContext = createContext<NavContextValue | null>(null);

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useDevSeed } from "../dev/useDevSeed.ts";
+import { useStandaloneMobile } from "../pwa/standalone.ts";
 import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import { useStorageBackend } from "../storage/useStorageBackend.ts";
@@ -21,6 +22,7 @@ import {
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
+import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
@@ -67,6 +69,14 @@ function AppShell() {
   const [view, setView] = useState<View>("checklist");
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+
+  // The floating menu button can only be hidden in the installed PWA on a
+  // phone / tablet — there the inward edge swipe that replaces it has a free
+  // edge to live on. Everywhere else the button always shows, whatever the
+  // persisted flag says (it's shared per-origin with the PWA).
+  const standaloneMobile = useStandaloneMobile();
+  const showMenuButton = !standaloneMobile || settings.showMenuButton;
   const navigate = useCallback((next: View) => {
     setView(next);
     setMenuOpen(false);
@@ -142,6 +152,15 @@ function AppShell() {
       !anyModalOpen && !menuOpen && !menuButtonDragging && view === "checklist",
   });
 
+  // When the floating button is hidden, an inward swipe from the drawer's
+  // resting edge opens it. Gated off while a modal or the drawer already
+  // owns the screen.
+  useEdgeSwipeOpen({
+    side: settings.menuButtonPosition.side,
+    enabled: !showMenuButton && !anyModalOpen && !menuOpen,
+    onOpen: openMenu,
+  });
+
   // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z mirror the burger-menu undo & redo.
   useUndoRedoShortcuts({
     canUndo: checklist.canUndo,
@@ -169,6 +188,7 @@ function AppShell() {
       setDragging: setMenuButtonDragging,
       position: settings.menuButtonPosition,
       setPosition: (next) => update("menuButtonPosition", next),
+      showButton: showMenuButton,
     }),
     [
       menuOpen,
@@ -178,6 +198,7 @@ function AppShell() {
       navigate,
       settings.menuButtonPosition,
       update,
+      showMenuButton,
     ],
   );
 

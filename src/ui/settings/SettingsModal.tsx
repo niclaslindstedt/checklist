@@ -123,7 +123,9 @@ export function SettingsModal({
           tabIndex={0}
           className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4"
         >
-          {activeTab === "general" && <GeneralTab />}
+          {activeTab === "general" && (
+            <GeneralTab settings={settings} onUpdate={onUpdate} />
+          )}
           {activeTab === "lists" && (
             <ListsTab settings={settings} onUpdate={onUpdate} />
           )}

@@ -22,6 +22,9 @@ const settings: SettingsCatalog = {
     devMode: "Utvecklarläge",
     devModeHint:
       "Visa flikarna Utvecklare och Loggar för att fånga diagnostik och läsa in exempeldata.",
+    menuButton: "Visa menyknapp",
+    menuButtonHint:
+      "När den är av sveper du in från skärmkanten för att öppna menyn.",
   },
 
   lists: {

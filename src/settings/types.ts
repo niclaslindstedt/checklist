@@ -38,4 +38,9 @@ export type Settings = {
   addItemPosition: AddItemPosition;
   // Where the floating navigation button sits after the user drags it.
   menuButtonPosition: MenuButtonPosition;
+  // Whether the floating navigation button is shown. Only honoured in the
+  // installed PWA on Android / iOS (where the gesture replacing it — an
+  // inward edge swipe — doesn't collide with the browser's back-swipe);
+  // everywhere else the button always shows regardless of this flag.
+  showMenuButton: boolean;
 };

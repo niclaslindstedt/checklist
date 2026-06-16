@@ -147,6 +147,12 @@ The draggable launcher for the side menu. `useDraggableMenuButton`
 (`src/ui/hooks/useDraggableMenuButton.ts`) follows the finger 1:1 while
 dragging and snaps to the nearer edge on release; a press under the
 drag threshold counts as a tap (so keyboard activation still works).
+The button can be **hidden** — `SideMenu` only renders it when the nav
+context's `showButton` is true. App sets that flag from the
+`showMenuButton` setting, but only honours the opt-out in the installed
+PWA on a phone / tablet (`useStandaloneMobile`, `src/pwa/standalone.ts`);
+everywhere else the button always shows. When hidden, an inward edge
+swipe opens the drawer instead (see Edge swipe to open).
 The snap / clamp math is pure in `src/ui/sideMenuPosition.ts`
 (`restingRect`, `clampRect`, `rectToPosition`, `MENU_BUTTON_SIZE`,
 `MENU_BUTTON_MARGIN`), translating between the persisted
@@ -160,6 +166,21 @@ while leaving `innerHeight` at the full layout size: the geometry takes
 the visible size plus its `offsetLeft` / `offsetTop`, so the fixed
 button normalizes into whatever space the keyboard leaves above it
 instead of disappearing behind it, and the drag clamp stays reachable.
+
+### Edge swipe to open
+
+`useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`) is the gesture
+that replaces the floating menu button when the user hides it: a
+touch that starts within ~30px of the drawer's resting edge and travels
+inward (more horizontally than vertically) past ~48px opens the drawer.
+It mirrors `usePullToRefresh` — a document-level, touch-only listener
+gated by an `enabled` flag (App enables it only while the button is
+hidden and no modal or drawer already owns the screen) and suppressed
+while a modal is mounted. It watches the edge matching
+`menuButtonPosition.side`, so the panel always pulls in from where it
+lives. Touch-only and PWA-only by design: in a normal browser tab an
+edge swipe collides with the back-swipe, but a standalone window's edge
+is free — which is why the opt-out is offered only there.
 
 ### Header menu
 
@@ -419,8 +440,8 @@ labels come from i18n. Built on `Modal`.
 
 `src/settings/store.ts` + `src/settings/useSettings.ts` — the persisted
 appearance `Settings` (theme preset, font family, font scale, the
-custom-theme overrides, `addItemPosition`, `menuButtonPosition`), kept
-in `localStorage` under `checklist:settings:v1`. `useSettings` is
+custom-theme overrides, `addItemPosition`, `menuButtonPosition`,
+`showMenuButton`), kept in `localStorage` under `checklist:settings:v1`. `useSettings` is
 apply-immediately: every `update(key, value)` writes through and
 re-renders so the theme engine previews the change at once. `store.ts`
 is defensive on read — a missing or corrupt field falls back to its
@@ -430,7 +451,9 @@ excludes the device-local dev flags (those live under `src/dev/`).
 ### General tab
 
 `src/ui/settings/tabs/general.tsx` — the dev-mode toggle (which reveals
-the Developer and Logs tabs). List-behaviour preferences moved out to the
+the Developer and Logs tabs) and, **only in the installed PWA on a phone
+/ tablet** (`useStandaloneMobile`), the "Show menu button" toggle that
+drives `showMenuButton`. List-behaviour preferences moved out to the
 Lists tab.
 
 ### Lists tab
@@ -724,6 +747,15 @@ download progress by polling the precache against the manifest total
 (0..100), and exposes `needRefresh`, the `incomingVersion`, `reload`
 (posts `SKIP_WAITING`), and `dismiss`. The manifest and icons are
 configured in `vite.config.ts` (see the `tune-pwa-icons` skill).
+
+### Standalone-mobile detection
+
+`src/pwa/standalone.ts` — `isStandaloneMobile()` (and the
+`useStandaloneMobile()` hook that reads it once into state) is true only
+when the app runs as an installed PWA (standalone display mode, or iOS's
+`navigator.standalone`) on Android or iOS. It's what gates the
+"Show menu button" opt-out and the edge-swipe gesture to that one
+context where the replacement gesture has a free screen edge.
 
 ### Changelog / what's new
 

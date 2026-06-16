@@ -55,7 +55,8 @@ names. Honour these when naming a new file, key, or string.
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
 | **Side menu** / **drawer** / **nav**                   | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`). [→](overview.md#side-menu)            |
 | **Swipe to remove** (sidebar) / **swipe a list/namespace away** | `useSwipeReveal` (`src/ui/hooks/useSwipeReveal.ts`); the `SwipeToRemove` wrapper in `src/ui/SideMenu.tsx`. [→](overview.md#swipe-to-remove-sidebar) |
-| **Floating menu button** / **drag button**             | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`. [→](overview.md#floating-menu-button) |
+| **Floating menu button** / **drag button** / **sidebar button** | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`; `showButton` in `nav-context.ts`. [→](overview.md#floating-menu-button) |
+| **Edge swipe to open** / **swipe in from the edge**     | `useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`). [→](overview.md#edge-swipe-to-open) |
 | **Header menu** / **burger menu**                      | `src/ui/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                    |
 | **Checklist title** / **the list name** / **rename the list** | `src/ui/ChecklistTitle.tsx`. [→](overview.md#checklist-title)                                       |
 | **Sync status** / **cloud glyph** / **sync icon**      | `src/ui/SyncStatus.tsx`. [→](overview.md#sync-status)                                                    |
@@ -152,6 +153,7 @@ names. Honour these when naming a new file, key, or string.
 | Term                                              | Refers to                                                                          |
 | ------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Service worker** / **app update** / **install** | `usePwaUpdate` (`src/pwa/usePwaUpdate.ts`); manifest + icons in `vite.config.ts`. [→](overview.md#service-worker--app-update) |
+| **Standalone-mobile detection** / **PWA on Android/iOS** | `isStandaloneMobile`, `useStandaloneMobile` (`src/pwa/standalone.ts`). [→](overview.md#standalone-mobile-detection) |
 | **Changelog** / **what's new**                    | `src/ui/changelog/ChangelogModal.tsx`, `src/ui/changelog/data.ts`, `parseChangelog` (`src/ui/changelog/parse.ts`). [→](overview.md#changelog--whats-new) |
 | **Privacy page** / **privacy policy**             | `src/ui/PrivacyPage.tsx` (route `/privacy`). [→](overview.md#privacy-page)         |
 

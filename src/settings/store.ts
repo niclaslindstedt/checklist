@@ -41,6 +41,10 @@ export const DEFAULT_MENU_BUTTON_POSITION: MenuButtonPosition = {
   y: 0.5,
 };
 
+// The floating navigation button is shown by default. The PWA-only opt-out
+// (replacing it with an inward edge swipe) is off until the user asks for it.
+export const DEFAULT_SHOW_MENU_BUTTON = true;
+
 export function defaultSettings(): Settings {
   return {
     theme: DEFAULT_THEME,
@@ -49,6 +53,7 @@ export function defaultSettings(): Settings {
     customTheme: DEFAULT_CUSTOM_THEME,
     addItemPosition: DEFAULT_ADD_ITEM_POSITION,
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
+    showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
   };
 }
 
@@ -140,6 +145,10 @@ export function validateSettings(raw: unknown): Settings {
       DEFAULT_ADD_ITEM_POSITION,
     ),
     menuButtonPosition: validMenuButtonPosition(raw.menuButtonPosition),
+    showMenuButton:
+      typeof raw.showMenuButton === "boolean"
+        ? raw.showMenuButton
+        : DEFAULT_SHOW_MENU_BUTTON,
   };
 }
 
