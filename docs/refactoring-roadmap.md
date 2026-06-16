@@ -147,21 +147,6 @@ that introduces a third view, not speculatively before. **Severity: 5.**
 
 ### Easy wins
 
-#### R5. i18n locale barrels are append-only in one spot
-
-`src/i18n/locales/en/index.ts` and `…/sv/index.ts` re-assemble per-namespace
-catalogs with a manual import + an entry in the exported object. Catalogs are
-already split per feature (good) — but adding a namespace still edits the same
-import block and object literal in both locale indexes, where parallel feature
-strings collide.
-
-**Plan.** Auto-compose the catalog via `import.meta.glob` (eager) so a new
-`foo.ts` is picked up with no index edit. Keep the `Catalog` type derivation
-working (derive from the glob map). Mechanical, zero behaviour change.
-
-**Risk.** Low; the type derivation needs care so `Widen<typeof en>` stays
-correct and `sv` is checked against it. **Severity: 4 (easy win).**
-
 #### R6. icons.tsx is a 475-line append-only barrel
 
 `src/ui/icons.tsx` (475 lines, up from 401 at the last sweep) is touched in
@@ -271,6 +256,26 @@ marginal. No automated cloud coverage — smoke-test both migrations.
 
 ## Investigated and skipped
 
+- **R5. Auto-composing the i18n locale barrels via `import.meta.glob`**
+  (2026-06). The plan was to glob-assemble `en/index.ts` and `sv/index.ts`
+  so a new `foo.ts` is picked up with no index edit. Re-verification killed
+  it: `en/index.ts` is the *sole static source* of the `Catalog` /
+  `MessageKey` types (`src/i18n/index.ts:35` derives
+  `MessageKey = Leaves<Catalog>` from `typeof en`), and `MessageKey` is
+  relied on at every typed `t()` call site (e.g.
+  `src/ui/settings/SettingsModal.tsx`). `import.meta.glob` returns a
+  *uniform* `Record<string, T>` — TypeScript cannot infer per-namespace
+  literal types from it, so globbing `en` would collapse `MessageKey` to
+  `string` and destroy typed-key autocomplete app-wide. `en` therefore
+  cannot be glob-composed. Globbing only `sv` would halve an
+  already-low conflict surface (these two indexes changed in just 4 of the
+  last 40 commits — not one of the top-5 churn hubs) while trading away
+  `sv`'s compile-time dropped-namespace guarantee (its `: Catalog`
+  annotation) for, at best, a runtime parity test. Net marginal-to-negative.
+  Re-evaluate only if the locale indexes start showing up as a recurring
+  conflict source, *and* a glob approach is found that preserves the
+  `MessageKey` derivation (e.g. build-time codegen, which is heavier than an
+  "easy win").
 - **`.gitattributes merge=union` on barrels / lists.** Considered as a
   zero-refactor mitigation, but union-merge concatenates both sides' lines
   blindly — safe only for unordered append-only text, and dangerous for the
