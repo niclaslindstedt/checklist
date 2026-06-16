@@ -34,6 +34,7 @@ export function makeChecklistValue(
     selectChecklist: noop,
     addChecklist: noop,
     renameChecklist: noop,
+    removeChecklist: noop,
     addItem: noop,
     toggle: noop,
     remove: noop,

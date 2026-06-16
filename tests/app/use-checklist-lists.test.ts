@@ -96,6 +96,51 @@ describe("useChecklist multi-list verbs", () => {
     expect(parse(adapter.stored()).checklists[0]!.name).toBe("Groceries");
   });
 
+  it("removes a list and re-points the active selection at a survivor", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const first = result.current.activeChecklistId;
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const second = result.current.activeChecklistId;
+    expect(second).not.toBe(first);
+
+    // Remove the active (second) list; the selection falls back to the first.
+    act(() => result.current.removeChecklist(second));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(1));
+    expect(result.current.activeChecklistId).toBe(first);
+    expect(parse(adapter.stored()).checklists).toHaveLength(1);
+  });
+
+  it("refuses to remove the last remaining list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const only = result.current.activeChecklistId;
+    act(() => result.current.removeChecklist(only));
+    expect(result.current.checklists).toHaveLength(1);
+    expect(result.current.activeChecklistId).toBe(only);
+  });
+
+  it("restores a removed list via undo", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const second = result.current.activeChecklistId;
+
+    act(() => result.current.removeChecklist(second));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(1));
+
+    act(() => result.current.undo());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+  });
+
   it("ignores a blank rename", async () => {
     const adapter = memoryAdapter();
     const { result } = renderHook(() => useChecklist(adapter));

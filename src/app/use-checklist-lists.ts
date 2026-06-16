@@ -43,6 +43,12 @@ export interface ChecklistLists {
   addChecklist: () => void;
   /** Rename a checklist (the clickable header title). */
   renameChecklist: (id: string, name: string) => void;
+  /**
+   * Remove a checklist from the document. A no-op for the last remaining
+   * list (the views always need one to show). Recoverable via undo —
+   * `commit` records the whole document on the timeline.
+   */
+  removeChecklist: (id: string) => void;
 }
 
 export function useChecklistLists(deps: {
@@ -106,6 +112,23 @@ export function useChecklistLists(deps: {
     [docRef, commit],
   );
 
+  const removeChecklist = useCallback(
+    (id: string) => {
+      const prev = docRef.current;
+      // The document must always carry at least one list — `activeList`
+      // falls back to `checklists[0]`, so dropping the last one would blank
+      // the screen. Refuse it (the side menu also hides the affordance).
+      if (prev.checklists.length <= 1) return;
+      const remaining = prev.checklists.filter((c) => c.id !== id);
+      if (remaining.length === prev.checklists.length) return;
+      commit({ ...prev, checklists: remaining });
+      // Removing the explicitly-selected list re-points the selection at the
+      // first survivor; an unset selection already falls back to `[0]`.
+      if (id === activeId) setActiveId(remaining[0]!.id);
+    },
+    [docRef, commit, activeId],
+  );
+
   const checklists = useMemo(
     () => doc.checklists.map((c) => ({ id: c.id, name: c.name })),
     [doc.checklists],
@@ -119,7 +142,15 @@ export function useChecklistLists(deps: {
       selectChecklist,
       addChecklist,
       renameChecklist,
+      removeChecklist,
     }),
-    [activeList, checklists, selectChecklist, addChecklist, renameChecklist],
+    [
+      activeList,
+      checklists,
+      selectChecklist,
+      addChecklist,
+      renameChecklist,
+      removeChecklist,
+    ],
   );
 }

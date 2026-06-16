@@ -64,6 +64,7 @@ function tree({ nav = {}, checklist = {}, props = {} }: Options): ReactElement {
             namespaces={[{ slug: "default", name: "Default" }]}
             activeNamespace="default"
             onSwitchNamespace={noop}
+            onRemoveNamespace={async () => {}}
             {...props}
           />
           <OpenModalProbe />
@@ -187,6 +188,76 @@ describe("SideMenu", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: /Family/ }));
     expect(onSwitchNamespace).toHaveBeenCalledWith("family");
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes a checklist from its swipe-revealed trash (single tap)", () => {
+    const removeChecklist = vi.fn();
+    renderMenu({
+      nav: { open: true },
+      checklist: {
+        checklists: [
+          { id: "c1", name: "Groceries" },
+          { id: "c2", name: "Packing" },
+        ],
+        activeChecklistId: "c1",
+        removeChecklist,
+      },
+    });
+    // Two lists → each gets a trash action; remove the second.
+    const trash = screen.getAllByRole("button", { name: "Delete checklist" });
+    expect(trash).toHaveLength(2);
+    fireEvent.click(trash[1]!);
+    expect(removeChecklist).toHaveBeenCalledWith("c2");
+  });
+
+  it("never exposes a trash action for the last remaining checklist", () => {
+    renderMenu({
+      nav: { open: true },
+      checklist: {
+        checklists: [{ id: "c1", name: "Groceries" }],
+        activeChecklistId: "c1",
+      },
+    });
+    expect(
+      screen.queryByRole("button", { name: "Delete checklist" }),
+    ).toBeNull();
+  });
+
+  it("requires a second confirming tap to remove a namespace", () => {
+    const onRemoveNamespace = vi.fn(async () => {});
+    renderMenu({
+      nav: { open: true },
+      props: {
+        onRemoveNamespace,
+        namespaces: [
+          { slug: "default", name: "Default" },
+          { slug: "family", name: "Family" },
+        ],
+        activeNamespace: "default",
+      },
+    });
+    // The default namespace is not removable, only "Family".
+    const trash = screen.getByRole("button", { name: "Delete namespace" });
+    // First tap arms the confirm step; nothing is removed yet.
+    fireEvent.click(trash);
+    expect(onRemoveNamespace).not.toHaveBeenCalled();
+    // The button now reads the confirm label; the second tap commits.
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    fireEvent.click(confirm);
+    expect(onRemoveNamespace).toHaveBeenCalledWith("family");
+  });
+
+  it("never exposes a trash action for the default namespace", () => {
+    renderMenu({
+      nav: { open: true },
+      props: {
+        namespaces: [{ slug: "default", name: "Default" }],
+        activeNamespace: "default",
+      },
+    });
+    expect(
+      screen.queryByRole("button", { name: "Delete namespace" }),
+    ).toBeNull();
   });
 
   it("opens namespace management from the Namespace heading's add button", () => {
