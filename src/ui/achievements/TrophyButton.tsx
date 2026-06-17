@@ -3,14 +3,18 @@ import { useT } from "../../i18n";
 import { useModalDispatch } from "../modal-bus.ts";
 import { useAchievements } from "./achievements-context.ts";
 
-// Header affordance that opens the achievements tour, sitting beside the
-// copy / sync glyphs in the checklist header (the checklist's analogue of
-// budget's `HeaderStar`). Two visual modes:
+// Header affordance for achievements, sitting beside the copy / sync glyphs
+// in the checklist header (the checklist's analogue of budget's
+// `HeaderStar`). Two visual modes, each opening a different modal — same as
+// budget:
 //
-// - **Quiet (outline)** — nothing new to acknowledge.
-// - **Lit (yellow)** — one or more achievements unlocked since the list was
-//   last opened; a small count badge rides the corner. Opening the modal
-//   clears the unseen queue, returning the button to its quiet state.
+// - **Quiet (outline)** — nothing new to acknowledge. Click opens the full
+//   four-tier achievements tour (`{ kind: "achievements" }`).
+// - **Lit (yellow)** — one or more achievements unlocked since they were
+//   last acknowledged; a small count badge rides the corner. Click opens the
+//   unlock notification modal listing just those new ones
+//   (`{ kind: "achievements-unlock" }`); closing it clears the unseen queue,
+//   returning the button to its quiet state.
 //
 // Styled to match `CopyButton` / `SyncStatus` so the header chrome stays
 // uniform (36 × 36, 18-pixel glyph). Reads the unseen count from
@@ -29,7 +33,9 @@ export function TrophyButton() {
   return (
     <button
       type="button"
-      onClick={() => dispatch({ kind: "achievements" })}
+      onClick={() =>
+        dispatch({ kind: lit ? "achievements-unlock" : "achievements" })
+      }
       title={label}
       aria-label={label}
       className={`relative inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border bg-transparent focus-visible:ring-2 focus-visible:ring-fg focus-visible:outline-none ${

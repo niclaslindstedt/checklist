@@ -17,6 +17,11 @@ const achievements = {
     unlockedOne: "Achievement unlocked: {name}",
     unlockedOther: "{n} achievements unlocked!",
   },
+  unlockModal: {
+    titleOne: "Achievement unlocked!",
+    titleOther: "{n} achievements unlocked!",
+    dismiss: "Awesome!",
+  },
   modal: {
     title: "Achievements",
     counter: "{unlocked} of {total} unlocked · {earned} / {max} pts",

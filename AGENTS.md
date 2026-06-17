@@ -137,9 +137,10 @@ The app ships an **achievements** system, ported from the budget project:
 every user-facing feature is also an unlockable trophy, sorted into four
 tiers that mirror how far the user has grown into the app —
 **Beginner → Intermediate → Pro → Expert**. The trophy button in the
-checklist header (and the "Achievements" entry in the side menu) opens a
-guided tour of the whole catalog; a fresh unlock raises a toast and badges
-the button until the list is opened.
+checklist header opens the guided tour of the whole catalog when it's
+quiet; when one or more unlocks are unacknowledged it lights up with a
+badge and instead opens an unlock-notification modal listing just the new
+ones (closing that clears the queue). A fresh unlock also raises a toast.
 
 It lives in three places that must stay in lockstep:
 

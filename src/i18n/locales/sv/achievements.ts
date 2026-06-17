@@ -10,6 +10,11 @@ const achievements: AchievementsCatalog = {
     unlockedOne: "Bedrift upplåst: {name}",
     unlockedOther: "{n} bedrifter upplåsta!",
   },
+  unlockModal: {
+    titleOne: "Bedrift upplåst!",
+    titleOther: "{n} bedrifter upplåsta!",
+    dismiss: "Toppen!",
+  },
   modal: {
     title: "Bedrifter",
     counter: "{unlocked} av {total} upplåsta · {earned} / {max} p",
