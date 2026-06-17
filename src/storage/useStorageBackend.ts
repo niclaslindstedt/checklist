@@ -37,6 +37,7 @@ import {
 } from "./backend-preference.ts";
 import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto.ts";
 import {
+  type DropboxAuth,
   completeDropboxAuth,
   createDropboxAdapter,
   createDropboxSettingsStore,
@@ -196,6 +197,16 @@ function lockedAdapter(id: BackendId): StorageAdapter {
   };
 }
 
+// The resolved active backend, computed once per change so the
+// namespace-scoped document adapter and the root settings store are built
+// from the same branch instead of re-deriving the `backend && token` chain
+// twice. Carries exactly what each builder needs.
+type BackendSelection =
+  | { kind: "dropbox"; auth: DropboxAuth }
+  | { kind: "gdrive"; token: string }
+  | { kind: "folder"; handle: FileSystemDirectoryHandle }
+  | { kind: "browser" };
+
 export function useStorageBackend(): UseStorageBackend {
   const [backend, setBackendState] = useState<BackendId>(getBackend);
   const [dropboxToken, setDropboxTokenState] = useState<string | null>(
@@ -297,13 +308,15 @@ export function useStorageBackend(): UseStorageBackend {
     };
   }, []);
 
-  // The unwrapped backend. Cloud adapters get fresh tokens on every
-  // change so a reconnect rebuilds them. The Dropbox adapter persists any
-  // silently-refreshed access token back to localStorage and state.
-  const inner = useMemo<StorageAdapter>(() => {
+  // Resolve the active backend once. Both builders below switch on this
+  // single selection rather than re-deriving the `backend && token` chain.
+  // Keyed independent of `activeNamespace` so a namespace switch rebuilds
+  // only the document adapter, not the namespace-agnostic settings store.
+  const selection = useMemo<BackendSelection>(() => {
     if (backend === "dropbox" && dropboxToken) {
-      return createDropboxAdapter(
-        {
+      return {
+        kind: "dropbox",
+        auth: {
           accessToken: dropboxToken,
           refreshToken: dropboxRefresh,
           onAccessTokenRefreshed: (token) => {
@@ -311,73 +324,71 @@ export function useStorageBackend(): UseStorageBackend {
             setDropboxTokenState(token);
           },
         },
-        fetch,
-        activeNamespace,
-      );
+      };
     }
     if (backend === "gdrive" && gdriveToken) {
-      return createGdriveAdapter(gdriveToken, fetch, activeNamespace);
+      return { kind: "gdrive", token: gdriveToken };
     }
     // Folder backend: only once the boot probe has resolved with a live,
     // permission-granted handle. While probing, or after a revoked grant,
     // fall through to the browser store so editing keeps working.
     if (backend === "folder" && folderHandleLoaded && folderHandle) {
-      return createFolderAdapter({
-        directoryHandle: folderHandle,
-        namespace: activeNamespace,
-        onPermissionLost: markFolderPermissionLost,
-      });
+      return { kind: "folder", handle: folderHandle };
     }
-    return new BrowserLocalStorageAdapter(
-      globalThis.localStorage,
-      activeNamespace,
-    );
+    return { kind: "browser" };
   }, [
     backend,
     dropboxToken,
     dropboxRefresh,
     gdriveToken,
-    activeNamespace,
     folderHandle,
     folderHandleLoaded,
-    markFolderPermissionLost,
   ]);
 
-  // The active backend's root settings store, built from the same backend
-  // selection as `inner` but rooted at the app folder (no namespace) and
-  // independent of encryption — settings are app-wide and stored plaintext.
-  // Null for the browser backend (localStorage is its canonical settings
-  // home) and while a folder grant is unresolved.
+  // The unwrapped, namespace-scoped backend. Cloud adapters get fresh
+  // tokens on every change so a reconnect rebuilds them; the Dropbox
+  // adapter persists any silently-refreshed access token back to
+  // localStorage and state via the selection's `onAccessTokenRefreshed`.
+  const inner = useMemo<StorageAdapter>(() => {
+    switch (selection.kind) {
+      case "dropbox":
+        return createDropboxAdapter(selection.auth, fetch, activeNamespace);
+      case "gdrive":
+        return createGdriveAdapter(selection.token, fetch, activeNamespace);
+      case "folder":
+        return createFolderAdapter({
+          directoryHandle: selection.handle,
+          namespace: activeNamespace,
+          onPermissionLost: markFolderPermissionLost,
+        });
+      case "browser":
+        return new BrowserLocalStorageAdapter(
+          globalThis.localStorage,
+          activeNamespace,
+        );
+    }
+  }, [selection, activeNamespace, markFolderPermissionLost]);
+
+  // The active backend's root settings store — the same selection as
+  // `inner` but rooted at the app folder (no namespace) and independent of
+  // encryption (settings are app-wide plaintext). Null for the browser
+  // backend (localStorage is its canonical settings home) and while a
+  // folder grant is unresolved.
   const settingsStore = useMemo<SettingsStore | null>(() => {
-    if (backend === "dropbox" && dropboxToken) {
-      return createDropboxSettingsStore(
-        {
-          accessToken: dropboxToken,
-          refreshToken: dropboxRefresh,
-          onAccessTokenRefreshed: (token) => {
-            setDropboxToken(token);
-            setDropboxTokenState(token);
-          },
-        },
-        fetch,
-      );
+    switch (selection.kind) {
+      case "dropbox":
+        return createDropboxSettingsStore(selection.auth, fetch);
+      case "gdrive":
+        return createGdriveSettingsStore(selection.token, fetch);
+      case "folder":
+        return createFolderSettingsStore(
+          selection.handle,
+          markFolderPermissionLost,
+        );
+      case "browser":
+        return null;
     }
-    if (backend === "gdrive" && gdriveToken) {
-      return createGdriveSettingsStore(gdriveToken, fetch);
-    }
-    if (backend === "folder" && folderHandleLoaded && folderHandle) {
-      return createFolderSettingsStore(folderHandle, markFolderPermissionLost);
-    }
-    return null;
-  }, [
-    backend,
-    dropboxToken,
-    dropboxRefresh,
-    gdriveToken,
-    folderHandle,
-    folderHandleLoaded,
-    markFolderPermissionLost,
-  ]);
+  }, [selection, markFolderPermissionLost]);
 
   const locked = encryption === "encrypted" && password === null;
 
