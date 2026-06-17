@@ -56,14 +56,16 @@ describe("per-route head SEO", () => {
       });
 
       it("every JSON-LD block parses and carries an @type (§11.3.3)", () => {
-        const blocks = [
+        const raws = [
           ...head.matchAll(
             /<script type="application\/ld\+json">\n([\s\S]*?)\n<\/script>/g,
           ),
-        ];
-        expect(blocks.length).toBe(route.jsonLd.length);
-        expect(blocks.length).toBeGreaterThan(0);
-        for (const [, raw] of blocks) {
+        ]
+          .map((m) => m[1])
+          .filter((s): s is string => Boolean(s));
+        expect(raws.length).toBe(route.jsonLd.length);
+        expect(raws.length).toBeGreaterThan(0);
+        for (const raw of raws) {
           const parsed = JSON.parse(raw) as Record<string, unknown>;
           expect(parsed["@type"]).toBeTruthy();
         }
