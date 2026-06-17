@@ -719,14 +719,19 @@ always exists and can't be removed. `namespaceLocalKey` /
 namespace keeps the legacy `checklist:v1` key locally, every namespace
 gets its own folder in the cloud (so a folder can be shared wholesale —
 the `family/` folder shared with relatives). The management UI is
-`NamespacesModal` (`src/ui/NamespacesModal.tsx`), reached from the
-namespace section at the top of the side menu.
+`NamespacesModal` (`src/ui/NamespacesModal.tsx`), reached from the cogwheel
+on the namespace section header at the top of the side menu — one button
+that opens the combined manage-and-create dialog (which is why it's a cog,
+not a `+`).
 
 A namespace can also carry an **appearance**: an optional `glyph` (an icon
-name from `src/ui/glyphs.ts`) and an optional `color` (a CSS colour), set
-through the picker in each row's edit form (`setNamespaceAppearance` —
-applied live, not gated behind the name's Save, so the side menu and
-favicon update immediately). Both fields are optional and independent: a
+name from `src/ui/glyphs.ts`) and an optional `color` (a CSS colour). The
+colour and icon can be picked **up front** in the dialog's create form (the
+pickers below the name field, passed to `createNamespace` so the namespace
+lands already badged) or changed later through the picker in each row's edit
+form (`setNamespaceAppearance` — applied live, not gated behind the name's
+Save, so the side menu and favicon update immediately). Both fields are
+optional and independent: a
 colour with no glyph still tints the default folder icon. The appearance
 fields are typed as bare strings in the storage layer (which mustn't
 import from `ui/`); the picker validates the glyph against the known set
@@ -745,7 +750,9 @@ a styled `<svg>` painting with `currentColor`) and the favicon builder
 with the glyph stroked in the chosen colour and serialises it to a data
 URI). The pickers are `ColorPalette` (`src/ui/ColorPalette.tsx`, palette in
 `src/ui/namespace-colors.ts`) and `GlyphGrid` (`src/ui/GlyphGrid.tsx`,
-whose leading cell clears the icon).
+whose leading cell is the default **folder** glyph — picking it is "no
+custom icon", drawn as the folder, so the folder is omitted from the rest
+of the grid to avoid a duplicate).
 
 In the **side menu** a customised namespace renders its own glyph tinted to
 its accent — only the glyph is coloured, never the row text — while an

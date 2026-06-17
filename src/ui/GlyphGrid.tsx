@@ -1,11 +1,13 @@
-import { CloseIcon } from "./icons.tsx";
+import { DEFAULT_NAMESPACE_GLYPH } from "./glyphs.ts";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 
 // A grid of glyph buttons — the "pick an icon" surface for a namespace.
-// The leading cell clears the icon (back to the default favicon); the rest
-// are the named glyphs from `NAMESPACE_GLYPH_NAMES`. Presentational: the
-// caller owns the selected value and the tint colour. Ported from budget's
-// `GlyphGrid`, trimmed to the checklist's needs (no roving-tabindex hook).
+// The leading cell clears any custom icon back to the default folder glyph
+// (picking it is "no custom icon", which the app draws as the folder); the
+// rest are the named glyphs from `NAMESPACE_GLYPH_NAMES`. Presentational:
+// the caller owns the selected value and the tint colour. Ported from
+// budget's `GlyphGrid`, trimmed to the checklist's needs (no roving-tabindex
+// hook).
 
 type Props = {
   glyphs: readonly string[];
@@ -41,12 +43,18 @@ export function GlyphGrid({
         title={noneLabel}
         onClick={() => onChange(null)}
         className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded border ${
-          value === null
-            ? "border-accent text-accent"
-            : "border-line text-muted hover:border-fg"
+          value === null && tintColor
+            ? "border-current"
+            : value === null
+              ? "border-accent text-accent"
+              : "border-line text-muted hover:border-fg"
         }`}
+        style={tintStyle(value === null)}
       >
-        <CloseIcon className="h-3.5 w-3.5" />
+        <NamespaceGlyph
+          name={DEFAULT_NAMESPACE_GLYPH}
+          className="h-3.5 w-3.5"
+        />
       </button>
       {glyphs.map((name) => {
         const selected = name === value;

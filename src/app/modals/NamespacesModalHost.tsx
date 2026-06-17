@@ -1,3 +1,4 @@
+import type { NamespaceAppearance } from "../../storage/namespaces.ts";
 import type { UseStorageBackend } from "../../storage/useStorageBackend.ts";
 import { NamespacesModal } from "../../ui/NamespacesModal.tsx";
 import { useModalState } from "../../ui/modal-bus.ts";
@@ -11,7 +12,7 @@ import { useModalState } from "../../ui/modal-bus.ts";
 type Props = {
   storage: UseStorageBackend;
   /** Create a namespace and toast it (App's toast-wrapped `createNamespace`). */
-  onCreate: (name: string) => void;
+  onCreate: (name: string, appearance?: NamespaceAppearance) => void;
   /** Remove a namespace and toast it (App's toast-wrapped `removeNamespace`). */
   onRemove: (slug: string) => Promise<void>;
 };

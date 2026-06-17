@@ -28,7 +28,7 @@ type Props = {
   namespaces: Namespace[];
   activeNamespace: string;
   onSwitch: (slug: string) => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string, appearance?: NamespaceAppearance) => void;
   onRename: (slug: string, name: string) => void;
   onSetAppearance: (slug: string, patch: NamespaceAppearance) => void;
   onRemove: (slug: string) => Promise<void>;
@@ -47,6 +47,8 @@ export function NamespacesModal({
 }: Props) {
   const t = useT();
   const [newName, setNewName] = useState("");
+  const [newColor, setNewColor] = useState<string | null>(null);
+  const [newGlyph, setNewGlyph] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const submitCreate = (e: FormEvent) => {
@@ -56,8 +58,10 @@ export function NamespacesModal({
       setError(t("namespace.nameRequired"));
       return;
     }
-    onCreate(trimmed);
+    onCreate(trimmed, { glyph: newGlyph, color: newColor });
     setNewName("");
+    setNewColor(null);
+    setNewGlyph(null);
     setError(null);
     onClose();
   };
@@ -126,6 +130,36 @@ export function NamespacesModal({
               {error}
             </p>
           )}
+
+          {/* Pick the new namespace's colour and icon up front, so it lands
+              already badged rather than as a bare folder the user has to
+              open the editor to skin. The pickers carry a "new namespace"
+              aria prefix so their swatches stay distinct from any open
+              edit form's identical pickers. */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+              {t("namespace.colorLabel")}
+            </span>
+            <ColorPalette
+              colors={NAMESPACE_COLORS}
+              value={newColor}
+              onChange={setNewColor}
+              ariaLabelPrefix={`${t("namespace.newAction")} ${t("namespace.colorLabel")}`}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+              {t("namespace.glyphLabel")}
+            </span>
+            <GlyphGrid
+              glyphs={NAMESPACE_GLYPH_NAMES}
+              value={newGlyph}
+              onChange={setNewGlyph}
+              tintColor={newColor}
+              noneLabel={`${t("namespace.newAction")} ${t("namespace.glyphNone")}`}
+              ariaLabelPrefix={`${t("namespace.newAction")} ${t("namespace.glyphLabel")}`}
+            />
+          </div>
         </form>
       </div>
     </Modal>

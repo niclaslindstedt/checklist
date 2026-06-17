@@ -294,9 +294,9 @@ describe("SideMenu", () => {
     ).toBeNull();
   });
 
-  it("opens namespace management from the Namespace heading's add button", () => {
+  it("opens namespace management from the Namespace heading's cog button", () => {
     renderMenu({ nav: { open: true } });
-    fireEvent.click(screen.getByRole("button", { name: "New namespace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Manage namespaces" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("namespaces");
   });
 

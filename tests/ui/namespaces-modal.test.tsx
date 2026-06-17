@@ -54,7 +54,24 @@ describe("NamespacesModal", () => {
     const input = screen.getByLabelText("Name");
     fireEvent.change(input, { target: { value: "Groceries" } });
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
-    expect(onCreate).toHaveBeenCalledWith("Groceries");
+    expect(onCreate).toHaveBeenCalledWith("Groceries", {
+      glyph: null,
+      color: null,
+    });
+  });
+
+  it("creates a namespace with an icon and colour picked up front", () => {
+    const { onCreate } = renderModal();
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Groceries" },
+    });
+    fireEvent.click(screen.getByLabelText("New namespace Colour #98c379"));
+    fireEvent.click(screen.getByLabelText("New namespace Icon cart"));
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate).toHaveBeenCalledWith("Groceries", {
+      glyph: "cart",
+      color: "#98c379",
+    });
   });
 
   it("switches to a namespace when its row is chosen", () => {
@@ -116,7 +133,7 @@ describe("NamespacesModal", () => {
       ],
     });
     fireEvent.click(screen.getAllByLabelText("Rename namespace")[1]!);
-    fireEvent.click(screen.getByLabelText("No icon"));
+    fireEvent.click(screen.getByLabelText("Folder (default)"));
     expect(onSetAppearance).toHaveBeenCalledWith("family", { glyph: null });
   });
 });

@@ -26,7 +26,7 @@ const namespace: NamespaceCatalog = {
   appearance: "Utseende",
   colorLabel: "Färg",
   glyphLabel: "Ikon",
-  glyphNone: "Ingen ikon",
+  glyphNone: "Mapp (standard)",
 };
 
 export default namespace;
