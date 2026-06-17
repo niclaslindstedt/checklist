@@ -81,6 +81,28 @@ export function ArrowDownIcon({ className }: IconProps) {
   );
 }
 
+// Small downward chevron used as the disclosure caret on custom
+// dropdown triggers (the `SelectPicker`). Distinct from `ArrowDownIcon`
+// (a full-stemmed arrow) — this is the slim "v" a closed `<select>`
+// wears.
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="m4 6 4 4 4-4" />
+    </svg>
+  );
+}
+
 // Indeterminate spinner: a 270° arc that callers spin with
 // `animate-spin`. The gap makes the rotation legible.
 export function SpinnerIcon({ className }: IconProps) {

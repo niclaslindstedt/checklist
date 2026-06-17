@@ -280,6 +280,33 @@ the trigger on close). No portal — the app has a single root with no
 competing stacking contexts. `SettingsModal`, `ChangelogModal`, and
 `ConflictResolutionModal` build on it.
 
+### Dropdown / custom select
+
+`src/ui/form/SelectPicker.tsx` — the custom `<select>` replacement,
+cloned from the budget project. The app uses **no native `<input>`
+dropdowns**: every settings control that would otherwise be a `<select>`
+(the font-family and text-size pickers on the Appearance tab, the
+level filter on the Logs tab) renders a `SelectPicker` instead, so the
+list of options is themed and styled consistently with the rest of the
+UI. The trigger is a `role="combobox"` button wearing the `field-input`
+look with a `ChevronDownIcon` caret; opening it portals a
+`role="listbox"` of `role="option"` rows. Full keyboard nav (Arrow
+keys / Home / End to move the highlight, Enter / Space to commit,
+Escape to dismiss without committing) and a check mark on the current
+value.
+
+The popover machinery lives in `src/ui/FloatingPanel.tsx` — a portalled
+shell that owns the float position (`useFloatingPosition`, which
+measures the trigger and flips the panel above it when there isn't room
+below), Escape dismissal (`useEscapeKey`, capture-phase so a dropdown
+inside the settings `Modal` swallows the key before the dialog does),
+and outside-click dismissal (`DismissBackdrop`, an invisible
+full-viewport catcher that also swallows the trailing tap events iOS
+would otherwise use to focus whatever sat under the dismissing tap).
+These are pared-down ports of the budget project's equivalents — no
+swipeable-row coordinator, and no inline body-scroll lock since the only
+caller opens inside the already-locked settings `Modal`.
+
 ### Pull-to-refresh indicator
 
 `src/ui/PullToRefreshIndicator.tsx` — the slide-down pill pinned to the

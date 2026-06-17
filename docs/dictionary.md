@@ -63,6 +63,7 @@ names. Honour these when naming a new file, key, or string.
 | **Sync status** / **cloud glyph** / **sync icon**      | `src/ui/SyncStatus.tsx`. [→](overview.md#sync-status)                                                    |
 | **Copy button** / **copy glyph** / **copy/paste glyph** / **copy the list** | `src/ui/CopyButton.tsx`; `checklistBodyMarkdown` (`src/storage/markdown/codec.ts`); `CopyIcon` (`src/ui/icons.tsx`). [→](overview.md#copy-checklist) |
 | **Modal**                                              | `src/ui/Modal.tsx`. [→](overview.md#modal)                                                               |
+| **Dropdown** / **custom dropdown** / **picker** / **custom select** | `SelectPicker` (`src/ui/form/SelectPicker.tsx`); `FloatingPanel` (`src/ui/FloatingPanel.tsx`), `DismissBackdrop` (`src/ui/DismissBackdrop.tsx`); `useFloatingPosition` (`src/ui/hooks/useFloatingPosition.ts`), `useEscapeKey` (`src/ui/hooks/useEscapeKey.ts`). [→](overview.md#dropdown--custom-select) |
 | **Pull-to-refresh indicator**                          | `src/ui/PullToRefreshIndicator.tsx`. [→](overview.md#pull-to-refresh-indicator)                          |
 | **Update toast** / **"new build ready"**               | `src/ui/UpdateToast.tsx`. [→](overview.md#update-toast)                                                  |
 | **Toast** / **notification** / **disable toasts**       | `src/ui/toast/Toast.tsx` (`ToastProvider`; `disableToasts` gate), `src/ui/toast/useToast.ts` (`useToast`). [→](overview.md#toast) |

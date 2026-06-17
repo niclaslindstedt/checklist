@@ -8,13 +8,13 @@ import {
   type LogLevel,
 } from "../../../dev/logger.ts";
 import { useT } from "../../../i18n";
+import { SelectPicker, type SelectOption } from "../../form/index.ts";
 import { Field, Section } from "../shared.tsx";
 
 type LogFilter = "all" | LogLevel;
 
 // Live view of the in-app log buffer, shown when developer mode is on.
-// Cloned from the budget project's Logs tab; the native select replaces
-// budget's portalled picker.
+// Cloned from the budget project's Logs tab.
 export function LogsTab() {
   const t = useT();
   // `version` bumps whenever the logger pushes or clears, forcing a
@@ -69,17 +69,19 @@ export function LogsTab() {
     <Section title={t("settings.logs.title")}>
       <div className="flex flex-wrap items-end justify-between gap-2">
         <Field label={t("settings.logs.filter")}>
-          <select
+          <SelectPicker<LogFilter>
             value={filter}
-            onChange={(e) => setFilter(e.target.value as LogFilter)}
-            aria-label={t("settings.logs.filterAria")}
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
-          >
-            <option value="all">{t("settings.logs.all")}</option>
-            <option value="info">{t("settings.logs.info")}</option>
-            <option value="warn">{t("settings.logs.warnings")}</option>
-            <option value="error">{t("settings.logs.errors")}</option>
-          </select>
+            onChange={setFilter}
+            ariaLabel={t("settings.logs.filterAria")}
+            options={
+              [
+                { value: "all", label: t("settings.logs.all") },
+                { value: "info", label: t("settings.logs.info") },
+                { value: "warn", label: t("settings.logs.warnings") },
+                { value: "error", label: t("settings.logs.errors") },
+              ] satisfies SelectOption<LogFilter>[]
+            }
+          />
         </Field>
         <div className="flex items-center gap-2">
           <button
