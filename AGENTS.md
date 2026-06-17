@@ -110,6 +110,13 @@ guessing — then record the answer so the next agent doesn't have to.
 
 ## Test conventions
 
+- **Always ship tests with the code.** New code lands with tests that
+  exercise it, and changed code lands with its tests added or updated in
+  the **same PR** — never as a follow-up. A bug fix carries a regression
+  test that fails before the fix and passes after; a refactor leaves
+  coverage no lower than it found it (see the `refactor` skill). If a unit
+  is hard to test, that's a signal to make it more testable (extract a pure
+  function, inject the dependency), not to skip the test.
 - **All tests live in separate files** — never inline in source files. No test harnesses inside source modules.
 - Test files use the `.test.ts` suffix (e.g. `share.test.ts`) so the stem matches `_?[Tt]ests?$` per §20 of `OSS_SPEC.md`.
 - Tests live in `tests/`, mirroring the `src/` tree. Use Vitest. Mock the storage layer at the `StorageBackend` interface — never reach into `localStorage` directly from a test.
