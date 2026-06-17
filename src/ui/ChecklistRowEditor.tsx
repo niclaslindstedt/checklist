@@ -141,10 +141,10 @@ export function ChecklistRowEditor({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onKeyDown={onBodyKey}
-          rows={Math.min(8, Math.max(2, notes.split("\n").length))}
+          rows={Math.min(14, Math.max(5, notes.split("\n").length + 1))}
           placeholder={t("app.notePlaceholder")}
           aria-label={t("app.notePlaceholder")}
-          className="ml-8 resize-y rounded-md border border-line bg-page-bg px-2 py-1 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
+          className="-ml-1 resize-y rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
         />
       ) : (
         <button
