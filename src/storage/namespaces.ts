@@ -1,13 +1,19 @@
-// Per-device registry of namespaces, plus the path/key helpers that map a
-// namespace onto a concrete storage location. A namespace is a named
-// bucket holding its own checklist document: switching the active
-// namespace swaps which document the app reads and writes.
+// Registry of namespaces, plus the path/key helpers that map a namespace
+// onto a concrete storage location. A namespace is a named bucket holding
+// its own checklist document: switching the active namespace swaps which
+// document the app reads and writes.
 //
-// Why per-device (localStorage), like `backend-preference.ts`: the list of
-// namespaces a person sees is a property of *their* install, not of any
-// one document. A family member who has the shared Dropbox `family/`
-// folder synced into their own account adds a "Family" namespace on their
-// device pointing at that folder; they don't inherit the owner's list.
+// localStorage is the synchronous home the registry is read from (first
+// paint and adapter construction need it before any network resolves), but
+// on a file backend it is no longer the canonical store: the list of
+// namespaces is mirrored to `namespaces.json` at the app-folder root (see
+// `namespace-store.ts`) so it travels with the synced/shared folder.
+// Connecting a backend on a new device reconciles the two — adopting the
+// backend's namespaces and uploading this device's local-only ones (see
+// `mergeNamespaceLists`) — so the namespace list follows the user across
+// devices the way `settings.json` does. The *active* namespace pointer
+// stays per-device: which list you're looking at is a local cursor, not
+// shared state.
 //
 // Storage layout (the part that makes folder-sharing work):
 //   - Cloud backends give every namespace its own folder so a whole
@@ -110,6 +116,29 @@ function isNamespace(value: unknown): value is Namespace {
 }
 
 /**
+ * Coerce any parsed value into a clean namespace list: drop non-namespace
+ * entries, collapse duplicate slugs to the first seen, and materialise the
+ * default namespace at the front. Shared by the localStorage reader and the
+ * synced-registry parser so both apply identical validation.
+ */
+function normalizeNamespaceList(parsed: unknown): Namespace[] {
+  const stored = Array.isArray(parsed) ? parsed.filter(isNamespace) : [];
+
+  const seen = new Set<string>();
+  const deduped: Namespace[] = [];
+  for (const ns of stored) {
+    if (seen.has(ns.slug)) continue;
+    seen.add(ns.slug);
+    deduped.push(ns);
+  }
+
+  const defaultEntry =
+    deduped.find((n) => n.slug === DEFAULT_NAMESPACE_SLUG) ?? DEFAULT_NAMESPACE;
+  const others = deduped.filter((n) => n.slug !== DEFAULT_NAMESPACE_SLUG);
+  return [defaultEntry, ...others];
+}
+
+/**
  * The namespaces known on this device. The default namespace is always
  * present and sorts first; a custom display name the user gave it is
  * preserved. Duplicate slugs (a corrupt store) collapse to the first
@@ -125,20 +154,58 @@ export function getNamespaces(): Namespace[] {
       parsed = null;
     }
   }
-  const stored = Array.isArray(parsed) ? parsed.filter(isNamespace) : [];
+  return normalizeNamespaceList(parsed);
+}
 
-  const seen = new Set<string>();
-  const deduped: Namespace[] = [];
-  for (const ns of stored) {
-    if (seen.has(ns.slug)) continue;
-    seen.add(ns.slug);
-    deduped.push(ns);
+/** Serialize a namespace list to the JSON written into `namespaces.json`. */
+export function serializeNamespaces(list: Namespace[]): string {
+  return JSON.stringify(list);
+}
+
+/**
+ * Parse the raw `namespaces.json` text from a backend's root registry store
+ * into a clean namespace list. A missing or corrupt blob yields just the
+ * default namespace rather than throwing, mirroring `getNamespaces`.
+ */
+export function parseNamespaces(raw: string | null): Namespace[] {
+  if (!raw) return normalizeNamespaceList(null);
+  try {
+    return normalizeNamespaceList(JSON.parse(raw));
+  } catch {
+    return normalizeNamespaceList(null);
   }
+}
 
-  const defaultEntry =
-    deduped.find((n) => n.slug === DEFAULT_NAMESPACE_SLUG) ?? DEFAULT_NAMESPACE;
-  const others = deduped.filter((n) => n.slug !== DEFAULT_NAMESPACE_SLUG);
-  return [defaultEntry, ...others];
+/**
+ * Merge a device's local namespace list with the one a backend already
+ * holds, for the "connect on a new device" reconcile. The backend wins on
+ * any slug both sides know (it's the shared source of truth, so its display
+ * name and appearance are adopted), and namespaces that exist only on this
+ * device are carried over — so connecting publishes the device's own lists
+ * to the cloud instead of dropping them. The result is normalised (default
+ * first, deduped).
+ */
+export function mergeNamespaceLists(
+  local: Namespace[],
+  remote: Namespace[],
+): Namespace[] {
+  const bySlug = new Map<string, Namespace>();
+  for (const ns of remote) if (!bySlug.has(ns.slug)) bySlug.set(ns.slug, ns);
+  for (const ns of local) if (!bySlug.has(ns.slug)) bySlug.set(ns.slug, ns);
+  return normalizeNamespaceList([...bySlug.values()]);
+}
+
+/**
+ * Whether `local` carries any namespace the backend's `remote` list doesn't
+ * yet have — i.e. whether a reconcile needs to push the merged list back up
+ * to publish this device's own namespaces.
+ */
+export function hasLocalOnlyNamespaces(
+  local: Namespace[],
+  remote: Namespace[],
+): boolean {
+  const remoteSlugs = new Set(remote.map((n) => n.slug));
+  return local.some((n) => !remoteSlugs.has(n.slug));
 }
 
 export function setNamespaces(list: Namespace[]): void {

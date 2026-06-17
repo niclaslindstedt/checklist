@@ -21,6 +21,10 @@ import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
+import {
+  fileNamespaceStore,
+  type NamespaceRegistryStore,
+} from "../namespace-store.ts";
 
 const log = createLogger("folder");
 
@@ -194,6 +198,19 @@ export function createFolderSettingsStore(
   onPermissionLost?: () => void,
 ): SettingsStore {
   return fileSettingsStore(
+    new FolderFileStore(directoryHandle, "", onPermissionLost),
+  );
+}
+
+// Root namespace-registry store for the folder backend: `namespaces.json`
+// at the picked directory root, beside `settings.json` and the namespace
+// folders. Built with an empty namespace so the file store resolves at the
+// root.
+export function createFolderNamespaceStore(
+  directoryHandle: FileSystemDirectoryHandle,
+  onPermissionLost?: () => void,
+): NamespaceRegistryStore {
+  return fileNamespaceStore(
     new FolderFileStore(directoryHandle, "", onPermissionLost),
   );
 }

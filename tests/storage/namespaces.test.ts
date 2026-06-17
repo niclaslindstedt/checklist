@@ -6,14 +6,19 @@ import {
   addNamespace,
   getActiveNamespaceSlug,
   getNamespaces,
+  hasLocalOnlyNamespaces,
+  mergeNamespaceLists,
   namespaceCloudFolder,
   namespaceLocalKey,
+  parseNamespaces,
   removeNamespace,
   renameNamespace,
+  serializeNamespaces,
   setActiveNamespaceSlug,
   setNamespaceAppearance,
   slugify,
 } from "../../src/storage/namespaces.ts";
+import type { Namespace } from "../../src/storage/namespaces.ts";
 
 afterEach(() => {
   localStorage.clear();
@@ -108,6 +113,47 @@ describe("namespace appearance", () => {
     expect(getNamespaces().map((n) => n.slug)).toEqual([
       DEFAULT_NAMESPACE_SLUG,
     ]);
+  });
+});
+
+describe("namespace registry sync helpers", () => {
+  const family: Namespace = { slug: "family", name: "Family" };
+  const work: Namespace = { slug: "work", name: "Work" };
+  const def: Namespace = { slug: DEFAULT_NAMESPACE_SLUG, name: "Default" };
+
+  it("round-trips a list through serialize / parse", () => {
+    const list = [def, family];
+    expect(parseNamespaces(serializeNamespaces(list))).toEqual(list);
+  });
+
+  it("parses a missing or corrupt blob down to just the default", () => {
+    expect(parseNamespaces(null).map((n) => n.slug)).toEqual([
+      DEFAULT_NAMESPACE_SLUG,
+    ]);
+    expect(parseNamespaces("not json").map((n) => n.slug)).toEqual([
+      DEFAULT_NAMESPACE_SLUG,
+    ]);
+  });
+
+  it("adopts the backend list and uploads this device's local-only ones", () => {
+    // New device knows default + work; the cloud holds default + family.
+    const local = [def, work];
+    const remote = [def, family];
+    const merged = mergeNamespaceLists(local, remote);
+    expect(merged.map((n) => n.slug)).toEqual(["default", "family", "work"]);
+  });
+
+  it("lets the backend win the display name on a shared slug", () => {
+    const local: Namespace[] = [def, { slug: "family", name: "Relatives" }];
+    const remote: Namespace[] = [def, { slug: "family", name: "Family" }];
+    const merged = mergeNamespaceLists(local, remote);
+    expect(merged.find((n) => n.slug === "family")?.name).toBe("Family");
+  });
+
+  it("flags that a push is needed only when a local-only namespace exists", () => {
+    expect(hasLocalOnlyNamespaces([def, work], [def, family])).toBe(true);
+    expect(hasLocalOnlyNamespaces([def, family], [def, family])).toBe(false);
+    expect(hasLocalOnlyNamespaces([def], [def, family])).toBe(false);
   });
 });
 

@@ -22,6 +22,10 @@ import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
+import {
+  fileNamespaceStore,
+  type NamespaceRegistryStore,
+} from "../namespace-store.ts";
 import { parseRetryAfterMs, readErrorBody } from "../http-utils.ts";
 import {
   type OAuthConfig,
@@ -156,6 +160,17 @@ export function createDropboxSettingsStore(
   fetchImpl: FetchImpl = fetch,
 ): SettingsStore {
   return fileSettingsStore(
+    createDropboxFileStore(createAuthedFetch(auth, fetchImpl), ""),
+  );
+}
+
+// Root namespace-registry store for the Dropbox backend: `/namespaces.json`
+// at the app-folder root, beside `settings.json` and the namespace folders.
+export function createDropboxNamespaceStore(
+  auth: string | DropboxAuth,
+  fetchImpl: FetchImpl = fetch,
+): NamespaceRegistryStore {
+  return fileNamespaceStore(
     createDropboxFileStore(createAuthedFetch(auth, fetchImpl), ""),
   );
 }

@@ -22,6 +22,10 @@ import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
+import {
+  fileNamespaceStore,
+  type NamespaceRegistryStore,
+} from "../namespace-store.ts";
 import { parseRetryAfterMs, readErrorBody } from "../http-utils.ts";
 
 const log = createLogger("gdrive");
@@ -127,6 +131,17 @@ export function createGdriveSettingsStore(
   fetchImpl: FetchImpl = fetch,
 ): SettingsStore {
   return fileSettingsStore(createGdriveFileStore(token, fetchImpl, ""));
+}
+
+// Root namespace-registry store for the Google Drive backend:
+// `namespaces.json` in the `checklist/` app folder, beside `settings.json`
+// and the namespace folders. Built with an empty namespace so the file
+// store resolves at the app-folder root.
+export function createGdriveNamespaceStore(
+  token: string,
+  fetchImpl: FetchImpl = fetch,
+): NamespaceRegistryStore {
+  return fileNamespaceStore(createGdriveFileStore(token, fetchImpl, ""));
 }
 
 function createGdriveFileStore(
