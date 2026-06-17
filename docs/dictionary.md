@@ -125,6 +125,7 @@ names. Honour these when naming a new file, key, or string.
 | **Markdown file store** / **directory adapter**      | `createDirectoryAdapter` (`src/storage/directory-adapter.ts`), `FileStore` (`src/storage/file-store.ts`), codec (`src/storage/markdown/codec.ts`). [→](overview.md#markdown-file-store) |
 | **Dropbox backend**                                  | `src/storage/dropbox/index.ts`. [→](overview.md#dropbox-backend)                  |
 | **Google Drive backend** / **gdrive**                | `src/storage/gdrive/index.ts`. [→](overview.md#google-drive-backend)              |
+| **iCloud backend** / **iCloud (iOS)** / **native storage picker** | `ICloudStorageAdapter` (`native/src/storage/icloudStorageAdapter.ts`); platform gate + registry in `native/src/storage/backends.ts`; per-device choice in `native/src/storage/backendPreference.ts`; picker in `native/src/components/ListSwitcher.tsx`. [→](overview.md#icloud-backend-ios) |
 | **At-rest encryption** / **passphrase** / **unlock** | `withEncryption` (`src/storage/encrypting/index.ts`), `src/storage/crypto.ts`, `src/ui/UnlockGate.tsx`. [→](overview.md#at-rest-encryption--unlock) |
 | **OAuth (PKCE)**                                     | `src/storage/oauth-pkce.ts`. [→](overview.md#oauth-pkce)                          |
 | **Serialize / parse**                                | `serialize`, `parse` (`src/storage/serialize.ts`). [→](overview.md#serialize--parse) |

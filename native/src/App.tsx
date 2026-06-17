@@ -5,7 +5,7 @@
 // screen-local UI state (which view is showing, the switcher sheet, the
 // transient toast).
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -29,7 +29,15 @@ import { Header } from "./components/Header.tsx";
 import { ListSwitcher } from "./components/ListSwitcher.tsx";
 import { Toast } from "./components/Toast.tsx";
 import { NativeLanguageProvider } from "./i18n/NativeLanguageProvider.tsx";
-import { AsyncStorageAdapter } from "./storage/asyncStorageAdapter.ts";
+import {
+  availableBackends,
+  backendById,
+  type NativeBackendId,
+} from "./storage/backends.ts";
+import {
+  loadBackendPreference,
+  saveBackendPreference,
+} from "./storage/backendPreference.ts";
 import { spacing, useTokens } from "./theme.ts";
 
 const TOAST_MS = 2600;
@@ -38,9 +46,32 @@ function AppInner() {
   const t = useT();
   const tokens = useTokens();
 
-  // The on-device backend. Created once so its identity is stable — the
-  // sync engine only reloads when the adapter instance actually changes.
-  const [adapter] = useState(() => new AsyncStorageAdapter());
+  // Which storage backend is active. Starts on the on-device default and is
+  // reconciled with the persisted choice once it loads from AsyncStorage.
+  // The set of options is platform-gated: `availableBackends()` only includes
+  // iCloud on iOS, so the picker below is empty everywhere else.
+  const backends = useMemo(() => availableBackends(), []);
+  const [backendId, setBackendId] = useState<NativeBackendId>("browser");
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadBackendPreference().then((id) => {
+      if (!cancelled) setBackendId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectBackend = useCallback((id: NativeBackendId) => {
+    setBackendId(id);
+    void saveBackendPreference(id);
+  }, []);
+
+  // The active backend instance. Rebuilt when the choice changes so the sync
+  // engine — which reloads on adapter identity change — picks up the new
+  // backend's document.
+  const adapter = useMemo(() => backendById(backendId).create(), [backendId]);
 
   // The transient action banner. `notify` is the sink the shared edit verbs
   // call for results the user can't otherwise see (delete, archive, undo…).
@@ -53,6 +84,18 @@ function AppInner() {
   }, []);
 
   const cl = useChecklist(adapter, "bottom", notify);
+
+  // Live cross-device sync: backends that push remote changes (iCloud, via
+  // its `watch` capability) wake the app so another device's edit appears
+  // without a manual refresh. Backends without `watch` (the on-device one)
+  // skip this entirely.
+  const reload = cl.reload;
+  useEffect(() => {
+    if (!adapter.watch) return;
+    return adapter.watch(() => {
+      void reload();
+    });
+  }, [adapter, reload]);
 
   const [view, setView] = useState<"checklist" | "archive">("checklist");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -136,6 +179,9 @@ function AppInner() {
         onRemove={cl.removeChecklist}
         archivedCount={archivedCount}
         onOpenArchive={() => setView("archive")}
+        backends={backends}
+        activeBackendId={backendId}
+        onSelectBackend={selectBackend}
         canUndo={cl.canUndo}
         canRedo={cl.canRedo}
         onUndo={cl.undo}

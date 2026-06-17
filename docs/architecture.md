@@ -87,7 +87,7 @@ budget project's pattern, defined in `src/storage/adapter.ts`:
 
 ```ts
 interface StorageAdapter {
-  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev";
+  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev" | "icloud";
   readonly label: string;
   readonly capabilities: ReadonlySet<AdapterCapability>;
   loadSync?(): StoredSnapshot | null;
@@ -111,6 +111,12 @@ The default adapter is `BrowserLocalStorageAdapter` (`id: "browser"`),
 which reads and writes a single JSON document in `localStorage` under
 the key `checklist:v1` and implements the synchronous `loadSync` fast
 path so the first paint shows stored data.
+
+The `"icloud"` id has no web counterpart: it belongs to the React Native
+app's iOS-only iCloud backend (`native/src/storage/icloudStorageAdapter.ts`),
+which stores the document in Apple's iCloud key-value store and is offered
+only on iOS. It lives in the shared union so the native adapter satisfies the
+same contract — see [`native/README.md`](../native/README.md).
 
 **Namespaces.** Each adapter is scoped to a *namespace* — a named bucket
 holding its own document. The per-device registry of namespaces and the

@@ -734,6 +734,29 @@ file store, so each list is a markdown file under
 folder). The GIS script is lazy-loaded only when the user connects.
 `isGdriveConfigured()` gates the connect button.
 
+### iCloud backend (iOS)
+
+`native/src/storage/icloudStorageAdapter.ts` — the React Native app's
+iOS-only backend, storing the document in Apple's iCloud key-value store
+(`NSUbiquitousKeyValueStore`, via `react-native-icloudstore`) under the same
+per-namespace key the on-device backend uses. It implements the shared
+`StorageAdapter` contract (so `useChecklist` drives it unchanged) and is the
+one backend in the native app that advertises the `watch` capability: iCloud's
+`onStoreDidChange` event fires when another device pushes an edit, the adapter
+re-reads its key, and `App.tsx` calls `reload()` so the change appears live.
+
+It is **only exposed on iOS**. `native/src/storage/backends.ts` is the single
+platform gate — `availableBackends()` lists the on-device backend everywhere
+and appends iCloud only when `Platform.OS === "ios"`, requiring the iCloud
+adapter module (and its native dependency) lazily so it never loads on
+Android/web. The choice is persisted per device in AsyncStorage
+(`native/src/storage/backendPreference.ts`) and surfaced as a **Storage**
+picker in the list-switcher sheet (`native/src/components/ListSwitcher.tsx`),
+which renders only when more than one backend is available — i.e. only on iOS.
+iCloud key-value sync needs the
+`com.apple.developer.ubiquity-kvstore-identifier` entitlement (`app.json`) and
+a native build; it is inert in Expo Go.
+
 ### At-rest encryption / unlock
 
 `src/storage/encrypting/index.ts` (`withEncryption`) wraps any adapter
