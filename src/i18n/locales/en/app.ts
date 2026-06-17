@@ -18,6 +18,9 @@ const app = {
   delete: "Delete",
   dragToReorder: "Drag to reorder",
   openSettings: "Open settings",
+  copyChecklist: "Copy checklist as markdown",
+  copied: "Copied",
+  copyFailed: "Couldn't copy to the clipboard",
 } as const;
 
 export type AppCatalog = Widen<typeof app>;

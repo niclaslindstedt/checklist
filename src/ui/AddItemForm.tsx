@@ -12,12 +12,20 @@ import { ClearableInput } from "./form/index.ts";
 // focus, so several can be jotted in a row. Blurring commits whatever was
 // typed and closes; blurring an empty field just closes — an empty draft
 // is never added, so the list never persists a blank item.
+//
+// Paste a markdown checklist (one or many `- [ ]` / `- [x]` / `- ` lines)
+// into the field and it's imported as fresh items instead of landing as
+// literal text — `onImport` parses it, appends the items to the current
+// list, and returns how many it added; a zero means the paste wasn't a
+// checklist, so the default paste proceeds untouched.
 
 export function AddItemForm({
   onAdd,
+  onImport,
   onClose,
 }: {
   onAdd: (title: string) => void;
+  onImport: (markdown: string) => number;
   onClose: () => void;
 }) {
   const [value, setValue] = useState("");
@@ -53,6 +61,17 @@ export function AddItemForm({
         ref={inputRef}
         value={value}
         onValueChange={setValue}
+        onPaste={(e) => {
+          const text = e.clipboardData.getData("text");
+          // Hand the paste to the importer; a non-zero count means it was a
+          // checklist and the items are already in, so swallow the default
+          // paste and reset the field for the next entry.
+          if (onImport(text) > 0) {
+            e.preventDefault();
+            setValue("");
+            inputRef.current?.focus();
+          }
+        }}
         onBlur={() => {
           const trimmed = value.trim();
           if (trimmed) onAdd(trimmed);

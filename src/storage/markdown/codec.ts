@@ -96,11 +96,22 @@ export function checklistToMarkdown(checklist: Checklist): string {
     updated: checklist.updatedAt,
   };
   if (checklist.templateId) front.template = checklist.templateId;
+  return renderFrontmatter(front) + "\n" + checklistBodyMarkdown(checklist);
+}
 
+/**
+ * The body of a checklist as standalone markdown — the `# Name` heading,
+ * the active `- [ ] / - [x]` items, then a `## Archived` section if any —
+ * without the persistence frontmatter. This is what the in-app "copy"
+ * affordance puts on the clipboard: human-readable task-list markdown a
+ * user can paste anywhere (and back into the app, see
+ * `parseItemsFromMarkdown`), where checked items stay checked.
+ */
+export function checklistBodyMarkdown(checklist: Checklist): string {
   const active = checklist.items.filter((it) => !it.archived);
   const archived = checklist.items.filter((it) => it.archived);
 
-  const lines: string[] = [renderFrontmatter(front), `# ${checklist.name}`, ""];
+  const lines: string[] = [`# ${checklist.name}`, ""];
   for (const item of active) lines.push(...renderChecklistItem(item));
   if (archived.length > 0) {
     lines.push("", "## Archived", "");
@@ -209,6 +220,39 @@ export function parseEntry(text: string): ParsedEntry | null {
     };
   }
   return null;
+}
+
+/** An item recovered from pasted markdown (see `parseItemsFromMarkdown`). */
+export interface ImportedItem {
+  title: string;
+  checked: boolean;
+  required: boolean;
+  notes?: string;
+}
+
+/**
+ * Parse pasted markdown into items, ignoring any frontmatter, headings,
+ * and blank lines. Recognises GitHub task-list syntax (`- [ ]` / `- [x]`)
+ * and plain bullets (`- ` / `* `); checked state and the `*(required)*`
+ * marker round-trip, and two-space-indented continuation lines fold into
+ * `notes`. Items under a `## Archived` heading are returned too — a paste
+ * always lands as fresh items, so the section split is irrelevant here.
+ *
+ * Returns an empty array when the text holds no list lines, which is how a
+ * caller tells an ordinary paste from a checklist paste worth importing.
+ */
+export function parseItemsFromMarkdown(text: string): ImportedItem[] {
+  const { body } = splitFrontmatter(text);
+  const { items, archived } = parseBody(body);
+  return [...items, ...archived].map((raw) => {
+    const item: ImportedItem = {
+      title: raw.title,
+      checked: raw.checked,
+      required: raw.required,
+    };
+    if (raw.notes) item.notes = raw.notes;
+    return item;
+  });
 }
 
 type RawItem = {

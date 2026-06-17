@@ -12,6 +12,9 @@ const app: AppCatalog = {
   delete: "Ta bort",
   dragToReorder: "Dra för att ändra ordning",
   openSettings: "Öppna inställningar",
+  copyChecklist: "Kopiera checklista som markdown",
+  copied: "Kopierad",
+  copyFailed: "Kunde inte kopiera till urklipp",
 };
 
 export default app;

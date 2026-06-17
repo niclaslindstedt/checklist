@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeItems,
   addItem,
+  addItems,
   archivedByChecklist,
   archivedItems,
   createChecklist,
@@ -144,6 +145,42 @@ describe("free-standing checklist item operations", () => {
     c = toggleItem(c, "i1", NOW);
     c = setArchived(c, "i2", true, NOW);
     expect(progress(c)).toEqual({ checked: 1, total: 1 });
+  });
+});
+
+describe("addItems", () => {
+  const base = createChecklist("c1", "List", NOW);
+
+  it("appends many items, preserving checked / required / notes", () => {
+    const seeded = addItem(base, { id: "i0", title: "Existing" }, "2025");
+    const next = addItems(
+      seeded,
+      [
+        { id: "i1", title: "Milk", checked: false },
+        { id: "i2", title: "Bread", checked: true, notes: "Whole grain" },
+        { id: "i3", title: "Passport", checked: true, required: true },
+      ],
+      NOW,
+    );
+    // Existing item is kept; imports land after it in order.
+    expect(next.items.map((i) => i.title)).toEqual([
+      "Existing",
+      "Milk",
+      "Bread",
+      "Passport",
+    ]);
+    expect(next.items[2]).toEqual({
+      id: "i2",
+      title: "Bread",
+      checked: true,
+      notes: "Whole grain",
+    });
+    expect(next.items[3]?.required).toBe(true);
+    expect(next.updatedAt).toBe(NOW);
+  });
+
+  it("is a no-op (same reference) when given no items", () => {
+    expect(addItems(base, [], NOW)).toBe(base);
   });
 });
 
