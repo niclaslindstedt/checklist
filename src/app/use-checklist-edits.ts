@@ -15,19 +15,28 @@ import type { MutableRefObject } from "react";
 
 import {
   addItem as addItemOp,
+  addItems as addItemsOp,
   deleteItem as deleteItemOp,
   moveItem as moveItemOp,
   setArchived,
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
-import type { Checklist, Snapshot } from "../domain/types.ts";
+import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import type { AddItemPosition } from "../settings/types.ts";
+import { parseItemsFromMarkdown } from "../storage/markdown/codec.ts";
 import type { Notify } from "./notify.ts";
 import { newId, now } from "./side-effects.ts";
 
 export interface ChecklistEdits {
   addItem: (title: string) => void;
+  /**
+   * Import a pasted markdown checklist as fresh items appended to the
+   * active list (existing items are kept). Returns how many items were
+   * added — zero when the text held no task/bullet lines, which the
+   * composer uses to tell a checklist paste from ordinary text.
+   */
+  importItems: (markdown: string) => number;
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
   archive: (itemId: string) => void;
@@ -138,6 +147,28 @@ export function useChecklistEdits(deps: {
     [commit, t],
   );
 
+  const importItems = useCallback(
+    (markdown: string): number => {
+      const parsed = parseItemsFromMarkdown(markdown);
+      if (parsed.length === 0) return 0;
+      const items: ChecklistItem[] = parsed.map((raw) => {
+        const item: ChecklistItem = {
+          id: newId(),
+          title: raw.title,
+          checked: raw.checked,
+        };
+        if (raw.required) item.required = true;
+        if (raw.notes) item.notes = raw.notes;
+        return item;
+      });
+      const label = t("toast.itemsImported", { count: items.length });
+      commit(addItemsOp(listRef.current, items, now()), label);
+      notify(label, "success");
+      return items.length;
+    },
+    [commit, notify, t],
+  );
+
   const toggle = useCallback(
     (itemId: string) => {
       const title = titleOf(itemId);
@@ -196,6 +227,7 @@ export function useChecklistEdits(deps: {
   return useMemo(
     () => ({
       addItem,
+      importItems,
       toggle,
       remove,
       archive,
@@ -203,6 +235,15 @@ export function useChecklistEdits(deps: {
       reorder,
       addItemPosition,
     }),
-    [addItem, toggle, remove, archive, unarchive, reorder, addItemPosition],
+    [
+      addItem,
+      importItems,
+      toggle,
+      remove,
+      archive,
+      unarchive,
+      reorder,
+      addItemPosition,
+    ],
   );
 }

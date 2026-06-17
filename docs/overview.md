@@ -102,6 +102,27 @@ item is never created or persisted. Where the new item lands (top or
 bottom) follows the `addItemPosition` setting, surfaced on the checklist
 surface for the view to place the draft row.
 
+Pasting a markdown checklist into the field is the bulk-import path:
+`onPaste` hands the clipboard text to `importItems` (see [Import
+items](#import-items--paste-a-checklist)); a non-zero count means it was
+a checklist (one or many `- [ ]` / `- [x]` / `- ` lines), so the default
+paste is swallowed and the items are appended to the current list rather
+than landing as literal text. A zero lets ordinary text paste through
+untouched.
+
+### Copy checklist
+
+`src/ui/CopyButton.tsx` — the header glyph just left of the cloud-sync
+glyph (and leftmost of the right-hand controls when no cloud backend is
+active). Tapping it writes the active checklist to the clipboard as plain
+task-list markdown via `checklistBodyMarkdown` (the `# Name` heading and
+every `- [ ]` / `- [x]` line, checked items still checked, archived items
+under `## Archived`) — **without** the persistence frontmatter the
+on-disk `.md` files carry. It raises a confirmation toast and flips to a
+tick for a beat so the copy reads even with toasts disabled; a failed
+clipboard write raises an error toast. The body it produces round-trips
+back through the paste-import path (see [Add-item form](#add-item-form)).
+
 ### Archive view
 
 `src/ui/ArchiveView.tsx` — the same pinned shell as the checklist view,
@@ -411,6 +432,19 @@ and the memoized `UseChecklist` surface the views consume:
 a fresh unchecked item appended (bottom, default) or prepended (top),
 per the `position` argument the hook feeds from `addItemPosition`. The
 hook trims the title and ignores an empty one.
+
+### Import items / paste a checklist
+
+`importItems` (the edit verb in `src/app/use-checklist-edits.ts`) parses
+pasted markdown with `parseItemsFromMarkdown`
+(`src/storage/markdown/codec.ts`) and appends the result to the active
+list with `addItems` (`src/domain/checklists.ts`), preserving each item's
+checked state, `required` flag, and notes. Existing items are kept — an
+import adds to the list, never replaces it. It returns the number of
+items added (zero when the text held no list lines), which the composer
+uses to tell a checklist paste from ordinary text. Reached from the
+[Add-item form](#add-item-form) by pasting; see also [Copy
+checklist](#copy-checklist) for the inverse.
 
 ### Toggle item
 

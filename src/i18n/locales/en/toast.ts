@@ -17,6 +17,7 @@ const toast = {
   itemArchived: "Archived “{title}”",
   itemRestored: "Restored “{title}”",
   itemMoved: "Moved “{title}”",
+  itemsImported: "Imported {count} items",
   listCreated: "Created list “{name}”",
   listRenamed: "Renamed list to “{name}”",
   listDeleted: "Deleted list “{name}”",

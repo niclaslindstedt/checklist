@@ -61,6 +61,7 @@ names. Honour these when naming a new file, key, or string.
 | **Header menu** / **burger menu**                      | `src/ui/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                    |
 | **Checklist title** / **the list name** / **rename the list** | `src/ui/ChecklistTitle.tsx`. [→](overview.md#checklist-title)                                       |
 | **Sync status** / **cloud glyph** / **sync icon**      | `src/ui/SyncStatus.tsx`. [→](overview.md#sync-status)                                                    |
+| **Copy button** / **copy glyph** / **copy/paste glyph** / **copy the list** | `src/ui/CopyButton.tsx`; `checklistBodyMarkdown` (`src/storage/markdown/codec.ts`); `CopyIcon` (`src/ui/icons.tsx`). [→](overview.md#copy-checklist) |
 | **Modal**                                              | `src/ui/Modal.tsx`. [→](overview.md#modal)                                                               |
 | **Pull-to-refresh indicator**                          | `src/ui/PullToRefreshIndicator.tsx`. [→](overview.md#pull-to-refresh-indicator)                          |
 | **Update toast** / **"new build ready"**               | `src/ui/UpdateToast.tsx`. [→](overview.md#update-toast)                                                  |
@@ -77,6 +78,7 @@ names. Honour these when naming a new file, key, or string.
 | **Checklist switcher** / **multiple checklists** / **switch checklist** / **add checklist** / **rename checklist** / **remove checklist** | `useChecklistLists` (`src/app/use-checklist-lists.ts`); `nextChecklistName`, `renameChecklist`, `createChecklist` (`src/domain/checklists.ts`); the checklists section in `src/ui/SideMenu.tsx`. [→](overview.md#checklist-switcher--multiple-checklists) |
 | **use-checklist hook** / **app state**            | `useChecklist`, `UseChecklist` (`src/app/use-checklist.ts`). [→](overview.md#use-checklist-hook)   |
 | **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
+| **Import items** / **paste a checklist** / **paste to import** | `importItems` (`src/app/use-checklist-edits.ts`); `parseItemsFromMarkdown` (`src/storage/markdown/codec.ts`); `addItems` (`src/domain/checklists.ts`). [→](overview.md#import-items--paste-a-checklist) |
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
 | **Delete item**                                   | `deleteItem` (`src/domain/checklists.ts`). [→](overview.md#delete-item)                            |
 | **Archive / unarchive item**                      | `setArchived`, `activeItems`, `archivedItems`, `archivedByChecklist` (`src/domain/checklists.ts`). [→](overview.md#archive--unarchive-item) |

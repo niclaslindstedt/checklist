@@ -88,6 +88,26 @@ export function addItem(
   };
 }
 
+/**
+ * Append several items at once, preserving each one's checked state (and
+ * any `required` flag / `notes`) rather than forcing them unchecked the way
+ * `addItem` does. Backs the "paste a markdown checklist" import: the parsed
+ * items land at the bottom of the list, so an existing list is added to, not
+ * replaced. A no-op (empty `items`) returns the same checklist untouched.
+ */
+export function addItems(
+  checklist: Checklist,
+  items: readonly ChecklistItem[],
+  now: string,
+): Checklist {
+  if (items.length === 0) return checklist;
+  return {
+    ...checklist,
+    items: [...checklist.items, ...items],
+    updatedAt: now,
+  };
+}
+
 /** Permanently remove an item from the list. */
 export function deleteItem(
   checklist: Checklist,

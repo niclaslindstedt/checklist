@@ -11,6 +11,7 @@ import {
   type ChecklistContextValue,
 } from "../../src/ui/checklist-context.ts";
 import type { NavContextValue } from "../../src/ui/nav-context.ts";
+import { ToastProvider } from "../../src/ui/toast/Toast.tsx";
 
 const noop = (): void => {};
 
@@ -38,6 +39,7 @@ export function makeChecklistValue(
     renameChecklist: noop,
     removeChecklist: noop,
     addItem: noop,
+    importItems: () => 0,
     toggle: noop,
     remove: noop,
     archive: noop,
@@ -84,8 +86,10 @@ export function renderWithChecklist(
   value: Partial<ChecklistContextValue> = {},
 ) {
   return render(
-    <ChecklistContext.Provider value={makeChecklistValue(value)}>
-      {ui}
-    </ChecklistContext.Provider>,
+    <ToastProvider>
+      <ChecklistContext.Provider value={makeChecklistValue(value)}>
+        {ui}
+      </ChecklistContext.Provider>
+    </ToastProvider>,
   );
 }

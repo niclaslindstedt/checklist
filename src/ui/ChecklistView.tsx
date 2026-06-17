@@ -5,6 +5,7 @@ import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
+import { CopyButton } from "./CopyButton.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
@@ -31,6 +32,7 @@ function ChecklistViewImpl() {
     items,
     checkedCount,
     addItem,
+    importItems,
     toggle,
     remove,
     archive,
@@ -38,6 +40,7 @@ function ChecklistViewImpl() {
     sync,
     checklists,
     activeChecklistId,
+    activeList,
     renameChecklist,
     addItemPosition,
     logoSrc,
@@ -54,7 +57,7 @@ function ChecklistViewImpl() {
   const startDraft = useCallback(() => setDrafting(true), []);
   const closeDraft = useCallback(() => setDrafting(false), []);
   const draftRow = drafting ? (
-    <AddItemForm onAdd={addItem} onClose={closeDraft} />
+    <AddItemForm onAdd={addItem} onImport={importItems} onClose={closeDraft} />
   ) : null;
 
   return (
@@ -76,6 +79,7 @@ function ChecklistViewImpl() {
           <span className="text-sm text-muted tabular-nums">
             {checkedCount}/{items.length}
           </span>
+          <CopyButton checklist={activeList} />
           {sync && (
             <SyncStatus
               providerName={sync.providerName}

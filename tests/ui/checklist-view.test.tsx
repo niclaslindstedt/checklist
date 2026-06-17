@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { ChecklistView } from "../../src/ui/ChecklistView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
-import type { ChecklistItem } from "../../src/domain/types.ts";
+import type { Checklist, ChecklistItem } from "../../src/domain/types.ts";
 import { renderWithChecklist } from "./context-harness.tsx";
+
+const NOW = "2026-01-01T00:00:00.000Z";
 
 const items: ChecklistItem[] = [
   { id: "i1", title: "Buy milk", checked: false },
@@ -92,5 +94,66 @@ describe("ChecklistView", () => {
     fireEvent.change(input, { target: { value: "Packing" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(renameChecklist).toHaveBeenCalledWith("list-0", "Packing");
+  });
+
+  describe("copy to clipboard", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("copies the active checklist as frontmatter-free markdown", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+      const activeList: Checklist = {
+        version: 1,
+        id: "list-0",
+        templateId: "",
+        name: "Groceries",
+        items: [
+          { id: "a", title: "Milk", checked: false },
+          { id: "b", title: "Bread", checked: true },
+        ],
+        createdAt: NOW,
+        updatedAt: NOW,
+      };
+      renderView({ activeList });
+      fireEvent.click(
+        screen.getByRole("button", { name: "Copy checklist as markdown" }),
+      );
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      const md = writeText.mock.calls[0]![0] as string;
+      expect(md).toContain("# Groceries");
+      expect(md).toContain("- [ ] Milk");
+      expect(md).toContain("- [x] Bread");
+      expect(md).not.toContain("---");
+    });
+  });
+
+  describe("import by paste", () => {
+    function openComposer(importItems: (md: string) => number) {
+      renderView({ items: [], importItems });
+      fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+      return screen.getByLabelText("Add item");
+    }
+
+    it("routes a pasted markdown checklist to the importer", () => {
+      const importItems = vi.fn().mockReturnValue(2);
+      const input = openComposer(importItems);
+      fireEvent.paste(input, {
+        clipboardData: { getData: () => "- [ ] Milk\n- [x] Bread" },
+      });
+      expect(importItems).toHaveBeenCalledWith("- [ ] Milk\n- [x] Bread");
+    });
+
+    it("lets ordinary text paste through (importer returns zero)", () => {
+      const importItems = vi.fn().mockReturnValue(0);
+      const input = openComposer(importItems);
+      fireEvent.paste(input, {
+        clipboardData: { getData: () => "just one line" },
+      });
+      expect(importItems).toHaveBeenCalledWith("just one line");
+      // The field still holds whatever the default paste would insert — the
+      // composer didn't swallow it as an import.
+    });
   });
 });

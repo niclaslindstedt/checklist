@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { Checklist, Snapshot, Template } from "../../src/domain/types.ts";
 import {
+  checklistBodyMarkdown,
   checklistToMarkdown,
   entryFileStem,
   filesToSnapshot,
   parseEntry,
+  parseItemsFromMarkdown,
   snapshotToFiles,
   templateToMarkdown,
 } from "../../src/storage/markdown/codec.ts";
@@ -112,5 +114,80 @@ describe("markdown codec", () => {
   it("skips files with missing frontmatter or id", () => {
     expect(parseEntry("# No frontmatter\n- [ ] x")).toBeNull();
     expect(parseEntry("---\ntype: checklist\n---\n# x")).toBeNull();
+  });
+
+  describe("checklistBodyMarkdown", () => {
+    it("renders the checklist without persistence frontmatter", () => {
+      const body = checklistBodyMarkdown(checklist);
+      expect(body).not.toContain("---");
+      expect(body).not.toContain("type: checklist");
+      expect(body.startsWith("# Groceries")).toBe(true);
+      expect(body).toContain("- [ ] Milk");
+      expect(body).toContain("- [x] Bread");
+      expect(body).toContain("## Archived");
+      expect(body.endsWith("\n")).toBe(true);
+    });
+
+    it("is the frontmatter-stripped tail of the full markdown", () => {
+      const full = checklistToMarkdown(checklist);
+      const body = checklistBodyMarkdown(checklist);
+      expect(full.endsWith(body)).toBe(true);
+    });
+  });
+
+  describe("parseItemsFromMarkdown", () => {
+    it("returns no items for ordinary, non-list text", () => {
+      expect(parseItemsFromMarkdown("just a plain note")).toEqual([]);
+      expect(parseItemsFromMarkdown("")).toEqual([]);
+    });
+
+    it("imports task lines, preserving checked state", () => {
+      const items = parseItemsFromMarkdown(
+        "# Groceries\n\n- [ ] Milk\n- [x] Bread\n",
+      );
+      expect(items).toEqual([
+        { title: "Milk", checked: false, required: false },
+        { title: "Bread", checked: true, required: false },
+      ]);
+    });
+
+    it("imports a single bullet line (one or many)", () => {
+      expect(parseItemsFromMarkdown("- Eggs")).toEqual([
+        { title: "Eggs", checked: false, required: false },
+      ]);
+    });
+
+    it("keeps the required marker and indented notes", () => {
+      const items = parseItemsFromMarkdown(
+        "- [x] Passport *(required)*\n  Check expiry",
+      );
+      expect(items).toEqual([
+        {
+          title: "Passport",
+          checked: true,
+          required: true,
+          notes: "Check expiry",
+        },
+      ]);
+    });
+
+    it("ignores frontmatter and the archived heading, flattening to items", () => {
+      const items = parseItemsFromMarkdown(
+        "---\ntype: checklist\nid: x\n---\n# T\n\n- [ ] Active\n\n## Archived\n\n- [x] Old",
+      );
+      expect(items.map((i) => i.title)).toEqual(["Active", "Old"]);
+    });
+
+    it("round-trips the body produced by checklistBodyMarkdown", () => {
+      const items = parseItemsFromMarkdown(checklistBodyMarkdown(checklist));
+      expect(
+        items.map((i) => ({ title: i.title, checked: i.checked })),
+      ).toEqual([
+        { title: "Milk", checked: false },
+        { title: "Bread", checked: true },
+        { title: "Eggs", checked: true },
+        { title: "Old thing", checked: true },
+      ]);
+    });
   });
 });
