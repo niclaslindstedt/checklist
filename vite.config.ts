@@ -67,6 +67,41 @@ const BUILD_LABEL =
   (BUILD_SLOT ? `-${BUILD_SLOT}` : "") +
   (COMMIT_HASH ? `+${COMMIT_HASH}` : "");
 
+// Per-slot PWA display name so the preview and branch slots install as
+// visibly separate apps on the home screen rather than three identically
+// named "checklist" tiles the user can't tell apart. The W3C identity
+// (`id`/`scope`/`start_url`) is already per-slot below; this just labels
+// the tile to match.
+const PWA_NAME =
+  base === "/preview/"
+    ? `${SITE_NAME} (preview)`
+    : base === "/branch/"
+      ? `${SITE_NAME} (branch)`
+      : SITE_NAME;
+const PWA_SHORT_NAME =
+  base === "/preview/"
+    ? `${SITE_NAME} pre`
+    : base === "/branch/"
+      ? `${SITE_NAME} br`
+      : SITE_NAME;
+
+// Keep each slot's service worker inside its own base path. The default
+// `navigateFallback` (index.html for any in-scope navigation) means the
+// production SW, scoped to `/`, would otherwise claim `/preview/` and
+// `/branch/` navigations and serve the production app shell at those
+// URLs — so a PWA installed from `/preview/` silently runs production.
+// The slot patterns also match the slash-less `/preview` / `/branch`
+// spellings: GitHub Pages 301-redirects those to the trailing-slash URL,
+// but the SW intercepts the navigation before the network, so a denylist
+// that only knew `/preview/` would still hand back the wrong index.html.
+// Workbox tests these against `url.pathname + url.search`, hence the `\?`
+// alternative. A non-root build denies everything outside its own base.
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const NAVIGATE_FALLBACK_DENYLIST =
+  base === "/"
+    ? [/^\/preview(?:\/|\?|$)/, /^\/branch(?:\/|\?|$)/]
+    : [new RegExp(`^/(?!${escapeRegex(base.slice(1))})`)];
+
 // Emit a tiny `version.json` carrying this build's BUILD_LABEL into the
 // slot root (`/version.json`, `/preview/version.json`, …). The running
 // page knows only its OWN BUILD_LABEL, so the update prompt can't name
@@ -298,8 +333,8 @@ export default defineConfig({
         id: base,
         scope: base,
         start_url: base,
-        name: SITE_NAME,
-        short_name: SITE_NAME,
+        name: PWA_NAME,
+        short_name: PWA_SHORT_NAME,
         description: SITE_DESCRIPTION,
         theme_color: "#1f2933",
         background_color: "#1f2933",
@@ -327,6 +362,9 @@ export default defineConfig({
         // sharing this origin don't measure each other's bytes; the
         // download-progress tracker in `usePwaUpdate` opens it by this id.
         cacheId: CACHE_ID,
+        // Never let this slot's SW serve another slot's app shell via the
+        // navigation fallback (see NAVIGATE_FALLBACK_DENYLIST above).
+        navigateFallbackDenylist: NAVIGATE_FALLBACK_DENYLIST,
         // Precache the app shell: JS, CSS, fonts, icons, and the HTML
         // entry. Source maps stay on the network — they don't need to
         // be available offline.
