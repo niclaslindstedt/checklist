@@ -258,6 +258,18 @@ export function RefreshGlyph({ className }: IconProps) {
   );
 }
 
+/** A cloud with a magnifier — inspecting the cloud-sync status. */
+export function CloudSearchGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M10.5 3.5a7 7 0 0 0-6.5 11.4" />
+      <path d="M17.5 8h-1.79A7 7 0 0 0 13 4.07" />
+      <circle cx="15" cy="16" r="3.5" />
+      <path d="m18 19 2.5 2.5" />
+    </Svg>
+  );
+}
+
 export function SaveGlyph({ className }: IconProps) {
   return (
     <Svg className={className}>

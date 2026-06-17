@@ -192,6 +192,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "På en synk-backend läser ett nedåtdrag från listans topp om den senaste kopian — sättet att fånga upp en ändring du gjort på en annan enhet.",
     },
+    syncSleuth: {
+      name: "Synkdetektiv",
+      condition: "Öppna molnsynkdetaljerna från molnknappen i sidhuvudet.",
+      learnMore:
+        "Ett tryck på molnglyfen i sidhuvudet öppnar synkdetaljerna: vad backend gör och, när en sparning misslyckas, exakt varför — plus ett sätt att återansluta eller försöka igen utan att lämna listan.",
+    },
     trustButVerify: {
       name: "Lita men kontrollera",
       condition: "Utlös en manuell sparning.",

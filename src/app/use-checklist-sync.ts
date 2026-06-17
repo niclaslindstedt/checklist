@@ -86,6 +86,12 @@ export interface ChecklistSync {
   conflict: ConflictState | null;
   /** Coarse state of the last save, for the cloud-sync status glyph. */
   status: SaveStatus;
+  /**
+   * Human-readable reason the last save failed, captured from the thrown
+   * error so the cloud-sync details modal can show *what* went wrong (not
+   * just a red glyph). Only set while `status === "error"`; null otherwise.
+   */
+  statusDetail: string | null;
   /** Whether there are local edits not yet persisted to the backend. */
   dirty: boolean;
   /** Re-read the document from the active backend, replacing what's on screen. */
@@ -126,6 +132,7 @@ export function useChecklistSync(deps: {
 
   const [conflict, setConflict] = useState<ConflictState | null>(null);
   const [status, setStatus] = useState<SaveStatus>("idle");
+  const [statusDetail, setStatusDetail] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   // Flips true once the first async backend load resolves; reset on every
   // backend swap so the achievement watcher re-baselines against the new
@@ -178,6 +185,7 @@ export function useChecklistSync(deps: {
         } else {
           setDirty(false);
           setStatus("saved");
+          setStatusDetail(null);
         }
       })
       .catch((err: unknown) => {
@@ -186,6 +194,7 @@ export function useChecklistSync(deps: {
         if (err instanceof ConflictError) {
           log.warn("save: remote moved — surfacing conflict");
           setStatus("conflict");
+          setStatusDetail(null);
           setConflict({
             remote: withActiveList(parse(err.remote.text)),
             remoteRevision: err.remote.revision,
@@ -193,12 +202,17 @@ export function useChecklistSync(deps: {
         } else if (err instanceof AuthError) {
           log.error("save: auth error", err);
           setStatus("auth-error");
+          setStatusDetail(null);
         } else if (err instanceof RateLimitError) {
           log.warn("save: rate limited", err);
           setStatus("throttled");
+          setStatusDetail(null);
         } else {
           log.error("save failed", err);
           setStatus("error");
+          // Capture the failure reason verbatim so the details modal can
+          // show *why* the save failed instead of a bare "Sync failed".
+          setStatusDetail(err instanceof Error ? err.message : String(err));
         }
       });
   }, []);
@@ -257,6 +271,7 @@ export function useChecklistSync(deps: {
     revisionRef.current = undefined;
     setConflict(null);
     setStatus("idle");
+    setStatusDetail(null);
     setDirty(false);
     setLoaded(false);
     let cancelled = false;
@@ -293,6 +308,7 @@ export function useChecklistSync(deps: {
     revisionRef.current = stored?.revision;
     setConflict(null);
     setStatus("idle");
+    setStatusDetail(null);
     setDirty(false);
     const reloaded = withActiveList(parse(stored?.text));
     setDoc(reloaded);
@@ -331,6 +347,7 @@ export function useChecklistSync(deps: {
           resetHistory.current(current.remote);
           setDirty(false);
           setStatus("saved");
+          setStatusDetail(null);
         }
         return null;
       });
@@ -345,6 +362,7 @@ export function useChecklistSync(deps: {
     scheduleSave,
     conflict,
     status,
+    statusDetail,
     dirty,
     loaded,
     reload,

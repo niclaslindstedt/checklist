@@ -71,6 +71,8 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   resolveConflict: (keep: "local" | "remote") => void;
   /** Coarse state of the last save, for the cloud-sync status glyph. */
   status: SaveStatus;
+  /** Why the last save failed (set only while `status === "error"`). */
+  statusDetail: string | null;
   /** Whether there are local edits not yet persisted to the backend. */
   dirty: boolean;
   /** False until the backend's first load resolves — gates the achievement watcher. */
@@ -209,6 +211,7 @@ export function useChecklist(
       conflict: sync.conflict,
       resolveConflict: sync.resolveConflict,
       status: sync.status,
+      statusDetail: sync.statusDetail,
       dirty: sync.dirty,
       loaded: sync.loaded,
       saveNow: sync.saveNow,
@@ -228,6 +231,7 @@ export function useChecklist(
       sync.conflict,
       sync.resolveConflict,
       sync.status,
+      sync.statusDetail,
       sync.dirty,
       sync.loaded,
       sync.saveNow,

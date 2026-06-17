@@ -52,6 +52,7 @@ export function makeChecklistValue(
     conflict: null,
     resolveConflict: noop,
     status: "idle",
+    statusDetail: null,
     dirty: false,
     loaded: true,
     saveNow: noop,

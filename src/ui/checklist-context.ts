@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 
 import type { SaveStatus, UseChecklist } from "../app/use-checklist.ts";
+import type { BackendId } from "../storage/backend-preference.ts";
 
 // The checklist surface — the whole `useChecklist` return plus the
 // derived cloud-sync info — shared through context so the views read what
@@ -15,13 +16,29 @@ import type { SaveStatus, UseChecklist } from "../app/use-checklist.ts";
 // shape is imported type-only, so the runtime module graph stays
 // `app → ui`.
 
-/** Props the header's cloud-sync glyph needs (see `SyncStatus`). */
+/**
+ * What the header's cloud-sync glyph (see `SyncStatus`) and the details
+ * modal it opens (see `SyncDetailsModal`) need to render. Only present for
+ * a cloud-backed session — null for a local-only one.
+ */
 export type SyncInfo = {
+  /** The active cloud backend, used to build the provider path / web URL. */
+  backend: BackendId;
+  /** The active namespace's slug — its cloud folder is where files live. */
+  namespace: string;
   providerName: string;
   status: SaveStatus;
+  /** Why the last save failed; shown in the details modal. Null unless error. */
+  statusDetail: string | null;
   dirty: boolean;
   onSave: () => void;
   onOpenDetails: () => void;
+  /**
+   * Re-issue OAuth for the active cloud backend, shown as a "Reconnect"
+   * button while the session needs re-authorising. Null for backends with
+   * no reconnect gesture (the local folder reconnects from settings).
+   */
+  onReconnect: (() => Promise<void>) | null;
 };
 
 export type ChecklistContextValue = UseChecklist & {
