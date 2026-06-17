@@ -120,7 +120,7 @@ export function AddItemButton({
         className={`
           fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-20
           left-1/2
-          flex h-14 w-14 -translate-x-1/2 touch-none items-center justify-center gap-0
+          flex h-14 w-14 -translate-x-1/2 touch-none items-center justify-center gap-0 select-none
           rounded-full bg-accent text-3xl leading-none font-bold text-page-bg
           shadow-lg transition-all duration-200 active:scale-95
           sm:static sm:mx-auto sm:mt-3 sm:h-auto sm:w-auto sm:translate-x-0
@@ -135,16 +135,21 @@ export function AddItemButton({
         <span className="hidden sm:inline">{t("app.addItem")}</span>
       </button>
 
-      {/* The bulk-action row that replaces the (+) on long-press. Centred on
-          the same spot so it reads as the (+) morphing into its
-          alternatives; pressing either action transitions back to the (+). */}
+      {/* The bulk-action row that replaces the (+) on long-press: one rounded
+          bar split into two glyph-only half-circles — archive (blue) and
+          delete (red). Centred on the same spot so it reads as the (+)
+          morphing into its alternatives; pressing either transitions back. A
+          hairline gap shows the bar's backdrop between the halves so they read
+          as two distinct buttons. Non-selectable so the long-press never bares
+          a text/element selection on mobile. */}
       <div
         role="group"
         aria-label={t("app.moreActions")}
         aria-hidden={!expanded}
         className={`
           fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-[60]
-          flex -translate-x-1/2 items-center gap-3 transition-all duration-200
+          flex -translate-x-1/2 touch-none items-center gap-px overflow-hidden
+          rounded-full bg-page-bg/40 shadow-lg select-none transition-all duration-200
           ${expanded ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}
         `}
       >
@@ -154,13 +159,11 @@ export function AddItemButton({
           onClick={runArchive}
           aria-label={t("app.archiveFinished")}
           className="
-            flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm
-            font-medium text-page-bg shadow-lg transition-transform
-            active:scale-95 disabled:opacity-40
+            flex items-center justify-center bg-link px-8 py-4 text-page-bg
+            transition-[filter] active:brightness-90 disabled:opacity-40
           "
         >
-          <ArchiveIcon className="h-5 w-5" />
-          <span>{t("app.archiveFinished")}</span>
+          <ArchiveIcon className="h-6 w-6" />
         </button>
         <button
           type="button"
@@ -168,14 +171,12 @@ export function AddItemButton({
           onClick={handleDelete}
           aria-label={deleteLabel}
           className={`
-            flex items-center gap-2 rounded-full bg-danger px-4 py-3 text-sm
-            font-medium text-white shadow-lg transition-transform
-            active:scale-95 disabled:opacity-40
-            ${confirmingDelete ? "animate-pulse ring-2 ring-white/70" : ""}
+            flex items-center justify-center bg-danger px-8 py-4 text-white
+            transition-[filter] active:brightness-90 disabled:opacity-40
+            ${confirmingDelete ? "animate-pulse ring-2 ring-inset ring-white/80" : ""}
           `}
         >
-          <TrashIcon className="h-5 w-5" />
-          <span>{deleteLabel}</span>
+          <TrashIcon className="h-6 w-6" />
         </button>
       </div>
     </>
