@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# The /preview/ and /branch/ slots share this origin (see "Deployment
+# slots" in CLAUDE.md) but are not canonical — keep them out of the index.
+Disallow: /preview/
+Disallow: /branch/
+
+Sitemap: https://checklist.niclaslindstedt.se/sitemap.xml
