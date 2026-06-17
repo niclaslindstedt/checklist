@@ -95,4 +95,25 @@ describe("renderInlineMarkdown", () => {
     expect(inline("just text")).toBe("just text");
     expect(inline("<img src=x>")).toContain("&lt;img");
   });
+
+  it("renders a feature: link as a plain anchor-free button only with a handler", () => {
+    // Without a handler the `feature:` scheme isn't safe to navigate, so
+    // the link renders as inert literal text.
+    const inert = inline("[Learn more](feature:namespaces)");
+    expect(inert).not.toContain("<a");
+    expect(inert).not.toContain("<button");
+    expect(inert).toContain("[Learn more](feature:namespaces)");
+
+    // With a handler it becomes a button (no href to navigate away).
+    const wired = renderToStaticMarkup(
+      <>
+        {renderInlineMarkdown("[Learn more](feature:namespaces)", {
+          onOpenFeature: () => {},
+        })}
+      </>,
+    );
+    expect(wired).toContain("<button");
+    expect(wired).toContain(">Learn more</button>");
+    expect(wired).not.toContain("href");
+  });
 });

@@ -185,6 +185,7 @@ names. Honour these when naming a new file, key, or string.
 | **Service worker** / **app update** / **install** | `usePwaUpdate` (`src/pwa/usePwaUpdate.ts`); manifest + icons in `vite.config.ts`. [→](overview.md#service-worker--app-update) |
 | **Standalone-mobile detection** / **PWA on Android/iOS** | `isStandaloneMobile`, `useStandaloneMobile` (`src/pwa/standalone.ts`). [→](overview.md#standalone-mobile-detection) |
 | **Changelog** / **what's new**                    | `src/ui/changelog/ChangelogModal.tsx`, `src/ui/changelog/data.ts`, `parseChangelog` (`src/ui/changelog/parse.ts`). [→](overview.md#changelog--whats-new) |
+| **Feature doc** / **"Learn more"**                | `docs/features/<slug>.md`; loaded by `FEATURE_DOCS` (`src/ui/changelog/feature-docs.ts`); `feature:<slug>` links handled in `renderMarkdown.tsx`. [→](overview.md#feature-docs--learn-more) |
 | **Privacy page** / **privacy policy**             | `src/ui/PrivacyPage.tsx` (route `/privacy`). [→](overview.md#privacy-page)         |
 
 ## Workflows / verbs the user might say

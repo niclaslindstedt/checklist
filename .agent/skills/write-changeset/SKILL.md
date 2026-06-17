@@ -145,6 +145,7 @@ Body:
 ---
 type: Added
 title: Share links
+doc: namespaces
 ---
 
 One sentence users will read in the changelog.
@@ -159,13 +160,26 @@ Front-matter keys:
   `- **<title>** — <summary>`. A fragment with no `title:` renders as a
   bare one-line bullet (still accepted, but prefer a title for new
   features).
+- `doc:` (optional) — the slug of a feature doc at
+  `docs/features/<slug>.md`. The collator appends
+  `[Learn more](feature:<slug>)` to the bullet; the in-app changelog modal
+  opens that doc inline (with a back button). **Only reach for `doc:` on a
+  genuinely large feature** — one whose explanation runs to several
+  paragraphs. Most fragments are title + one sentence, no `doc:`.
 
 **Keep the body to one sentence.** The "What changed" line stays
 scannable. The body is markdown (the released `CHANGELOG.md` renders
 `**bold**`, `` `code` ``, links), so a key UI noun can be bolded, but
-resist turning the bullet into a paragraph. checklist has no separate
-feature-doc mechanism — there is no `doc:` key; put the one-sentence
-summary in the body and nothing more.
+resist turning the bullet into a paragraph. The long-form explanation of
+a big feature lives in its feature doc (`docs/features/<slug>.md`), not in
+the fragment.
+
+If a fragment needs a `doc:`, **create `docs/features/<slug>.md` in the
+same PR** — a leading `# Title` heading, then the long-form markdown.
+`import.meta.glob` bundles every doc into the app
+(`src/ui/changelog/feature-docs.ts`); a `doc:` slug with no matching file
+renders the bullet's link as an inert dead end. Feature docs are
+English-only, written in plain second-person user voice.
 
 `type:` — pick the one that matches the user-facing framing:
 
