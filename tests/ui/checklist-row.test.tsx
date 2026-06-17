@@ -124,10 +124,11 @@ describe("ChecklistRow swipe action layers", () => {
 });
 
 describe("ChecklistRow editing", () => {
-  it("enters edit mode on press and commits a title change on Enter", () => {
+  it("edits a note-less item straight away and commits the title on Enter", () => {
     const onEdit = vi.fn();
     renderRow({ onEdit });
 
+    // A note-less item has nothing to reveal, so a title tap edits at once.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const input = screen.getByLabelText("Edit item") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "Buy oat milk" } });
@@ -154,32 +155,47 @@ describe("ChecklistRow editing", () => {
     renderRow();
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const input = screen.getByLabelText("Edit item");
-    expect(screen.queryByRole("textbox", { name: /note/i })).toBeNull();
+    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
 
     fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
     expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
   });
 
-  it("the + glyph opens the editor straight onto the note field", () => {
+  it("adds a note from the editor's Add-note affordance", () => {
     renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
     expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
   });
 
-  it("renders an existing note as markdown when expanded", () => {
+  it("reveals a body on the first title tap, then edits on the second", () => {
+    const onEdit = vi.fn();
+    renderRow({ item: { ...item, notes: "**bold** note" }, onEdit });
+
+    // First tap reveals (renders markdown), it does not enter the editor.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    expect(screen.getByText("bold").tagName).toBe("STRONG");
+    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+
+    // Second tap on the title opens the editor with the body shown as text.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+  });
+
+  it("expands the body from the hint chevron", () => {
     renderRow({ item: { ...item, notes: "**bold** note" } });
-    // The note is collapsed by default — expand it.
     fireEvent.click(screen.getByRole("button", { name: "Show note" }));
-    const strong = screen.getByText("bold");
-    expect(strong.tagName).toBe("STRONG");
+    expect(screen.getByText("bold").tagName).toBe("STRONG");
   });
 
   it("commits a title + note together from the editor", () => {
     const onEdit = vi.fn();
     renderRow({ item: { ...item, notes: "old" }, onEdit });
 
-    // An item with a note opens the editor (press the title) with the body
-    // field already shown as plain text.
+    // Reveal, then a second title tap opens the editor with the body field
+    // already shown as plain text.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const note = screen.getByPlaceholderText(/markdown supported/i);
     fireEvent.change(note, { target: { value: "new body" } });

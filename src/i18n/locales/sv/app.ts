@@ -11,6 +11,7 @@ const app: AppCatalog = {
   archive: "Arkivera",
   delete: "Ta bort",
   editItem: "Redigera rad",
+  editNote: "Redigera anteckning",
   editTitlePlaceholder: "Radtext…",
   notePlaceholder: "Lägg till en anteckning… (markdown stöds)",
   addNote: "Lägg till en anteckning",
