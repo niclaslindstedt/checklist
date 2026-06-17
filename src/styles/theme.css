@@ -204,6 +204,27 @@ textarea {
   animation: drawer-backdrop-in 300ms ease-out;
 }
 
+/* Toast countdown ring. The coloured arc starts as a hidden full circle
+   (`stroke-dashoffset` == its circumference) and animates to a fully drawn
+   one over the toast's lifetime; the toast auto-dismisses the instant the
+   circle closes. `--toast-ring-circumference` and `--toast-ring-duration`
+   are set inline per toast (see `Toast.tsx`). `linear` keeps the sweep
+   reading as a clock; `forwards` holds the closed circle on the final
+   frame (and under reduce-motion, which zeroes the duration). */
+@keyframes toast-timer {
+  from {
+    stroke-dashoffset: var(--toast-ring-circumference);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.toast-timer-arc {
+  stroke-dashoffset: var(--toast-ring-circumference);
+  animation: toast-timer var(--toast-ring-duration) linear forwards;
+}
+
 /* Reduce-motion: when the Custom theme opts in, short-circuit every
    transition and animation. High specificity (the attribute selector +
    `!important`) so it wins over utility-class durations. */

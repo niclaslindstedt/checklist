@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { defaultSettings, saveSettings } from "../../../src/settings/store.ts";
@@ -85,6 +85,33 @@ describe("ToastProvider", () => {
     expect(screen.queryByText("suppressed")).toBeNull();
     // A dropped toast returns the sentinel id 0.
     expect(id).toBe(0);
+  });
+
+  it("dismisses immediately when the toast itself is clicked", () => {
+    const api = renderWithToasts();
+    act(() => {
+      api.current!.push({ message: "tap me", durationMs: 99_999 });
+    });
+    expect(screen.getByText("tap me")).toBeTruthy();
+    // Clicking anywhere on the toast (the click bubbles to the toast
+    // button) removes it without waiting for the duration to elapse.
+    act(() => {
+      fireEvent.click(screen.getByText("tap me"));
+    });
+    expect(screen.queryByText("tap me")).toBeNull();
+  });
+
+  it("renders a countdown ring whose sweep matches the duration", () => {
+    const api = renderWithToasts();
+    act(() => {
+      api.current!.push({ message: "timed", durationMs: 1234 });
+    });
+    const arc = document.querySelector(".toast-timer-arc");
+    expect(arc).toBeTruthy();
+    const ring = arc!.closest("svg");
+    expect(ring?.style.getPropertyValue("--toast-ring-duration")).toBe(
+      "1234ms",
+    );
   });
 
   it("marks error toasts as assertive alerts", () => {
