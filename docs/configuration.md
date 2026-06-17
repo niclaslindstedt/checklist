@@ -76,9 +76,17 @@ When two devices edit the same cloud document and a save collides, a
 A **namespace** is a named bucket holding its own checklist. You start in
 the **Default** namespace; the section at the top of the side menu lets
 you switch namespaces, and the **New namespace** entry opens a dialog to
-create, rename, or delete them. The set of namespaces is per device — it
-isn't stored inside any document — so each device (or family member)
-manages its own list.
+create, rename, or delete them.
+
+On a file-based backend (Local folder, Dropbox, Google Drive) your **list
+of namespaces travels with the backend**, the same way your settings do: it
+is stored in a `namespaces.json` file at the app-folder root (below). When
+you connect that backend on a **new device**, the device adopts the
+namespaces already in the cloud **and** uploads any it had locally — so
+nothing is dropped and your namespaces follow you across devices. Which
+namespace is currently *active* stays per-device — that's just a local
+cursor. On **This device** (no cloud) the list simply lives in this
+browser's `localStorage`.
 
 Each namespace lives in its own folder on the file-based backends
 (`<name>/` under your picked folder, Dropbox, or Google Drive), so you can
@@ -102,6 +110,7 @@ inside one:
 ```
 checklist.niclaslindstedt.se/   ← the app folder (Dropbox "Apps/" folder, Drive "checklist/", your picked folder)
 ├── settings.json               ← your app settings, shared by every namespace
+├── namespaces.json             ← your list of namespaces, so it follows you across devices
 ├── default/                    ← the Default namespace's checklists
 │   └── checklists/…
 └── family/                     ← another namespace's checklists

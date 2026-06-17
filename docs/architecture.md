@@ -119,15 +119,19 @@ only on iOS. It lives in the shared union so the native adapter satisfies the
 same contract — see [`native/README.md`](../native/README.md).
 
 **Namespaces.** Each adapter is scoped to a *namespace* — a named bucket
-holding its own document. The per-device registry of namespaces and the
-active selection live in `localStorage` (`src/storage/namespaces.ts`),
-and `useStorageBackend` builds the active adapter scoped to the active
-namespace, so switching namespace just swaps the adapter (the same seam
-the fake-data toggle and backend switch use). The local backend keys each
-namespace separately (`checklist:v1` for `default`, `checklist:v1:<slug>`
-otherwise); the file-based backends (local folder, Dropbox, Drive) give
-each namespace its own folder so a whole namespace folder can be shared
-with another account or opened in another tool.
+holding its own document. The registry is read synchronously from
+`localStorage` (`src/storage/namespaces.ts`) for first paint and adapter
+construction, but on a file backend the **list** is mirrored to
+`namespaces.json` at the app-folder root (see *Root namespace registry*
+below) so it travels with the synced/shared folder; only the **active**
+slug stays per-device. `useStorageBackend` builds the active adapter
+scoped to the active namespace, so switching namespace just swaps the
+adapter (the same seam the fake-data toggle and backend switch use). The
+local backend keys each namespace separately (`checklist:v1` for
+`default`, `checklist:v1:<slug>` otherwise); the file-based backends
+(local folder, Dropbox, Drive) give each namespace its own folder so a
+whole namespace folder can be shared with another account or opened in
+another tool.
 
 **Markdown file store.** The three file-based backends do *not* store one
 JSON blob; each namespace is a directory of individual markdown files,
@@ -161,6 +165,25 @@ stays plaintext even when the document is an encrypted envelope.
 `useSettings` reconciles against it (adopt-or-seed on mount, write-through
 on update) while keeping `localStorage` as the synchronous first-paint
 cache.
+
+**Root namespace registry.** The list of namespaces gets the same
+treatment as settings: it is mirrored to a single `namespaces.json` at the
+**app-folder root**, beside `settings.json`, so it follows the user across
+devices. The `NamespaceRegistryStore` seam
+(`src/storage/namespace-store.ts`) and `fileNamespaceStore` mirror the
+settings store; each file-based backend exports a `create*NamespaceStore`,
+and `useStorageBackend` exposes the active one as `namespaceStore` (null
+for the browser backend). When a file backend is (re)selected the hook
+**reconciles**: it loads `namespaces.json` and merges it with the device's
+list (`mergeNamespaceLists`) so the backend wins any shared slug while this
+device's local-only namespaces are kept, writes the merged list to
+`localStorage`, and pushes it back up when the device contributed
+namespaces the backend lacked (`hasLocalOnlyNamespaces`) — so connecting on
+a new device adopts the cloud's namespaces *and* uploads its own rather
+than dropping either. A missing remote file is seeded from the device. The
+create / rename / appearance / remove verbs also write-through to
+`namespaceStore`. The **active** namespace pointer is deliberately *not*
+synced — it's a per-device cursor.
 
 **Local folder backend.** `createFolderAdapter`
 (`src/storage/folder/index.ts`) implements a `FileStore` over the **File

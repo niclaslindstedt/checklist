@@ -722,6 +722,31 @@ of encryption: settings are app-wide and stay **plaintext JSON even when the
 document is encrypted**. `App` wires `useStorageBackend` before `useSettings`
 and threads `storage.settingsStore` into it.
 
+### Root namespace registry
+
+`src/storage/namespace-store.ts` — the `NamespaceRegistryStore` seam that
+persists the device's **list of namespaces** as a single `namespaces.json`
+(`NAMESPACES_FILE_NAME`) at the **app-folder root**, beside `settings.json`
+and the per-namespace folders. It is the namespace counterpart of the root
+settings file: `fileNamespaceStore` builds one over any root-scoped
+`FileStore`, and each file-based backend exports a `create*NamespaceStore`
+(`createFolderNamespaceStore`, `createDropboxNamespaceStore`,
+`createGdriveNamespaceStore`). `useStorageBackend` builds the active
+backend's store as `namespaceStore` (null for the browser backend, whose
+only namespace home is `localStorage`, and while a folder grant is
+unresolved) and runs a **reconcile** when a file backend is (re)selected:
+it loads the backend's `namespaces.json`, merges it with this device's list
+via `mergeNamespaceLists` (the backend wins any slug both sides know; this
+device's local-only namespaces are carried over), writes the result back to
+`localStorage`, and — when the device had local-only namespaces
+(`hasLocalOnlyNamespaces`) — pushes the merged list back up. A missing
+remote file is seeded from this device, so the first device to connect
+publishes its list. Every create / rename / appearance / remove verb also
+write-throughs to `namespaceStore`, the same way `useSettings` mirrors
+`settings.json`. Stays plaintext JSON even when the documents are
+encrypted (a namespace's name/icon isn't secret, and the list must be
+readable before the unlock gate renders).
+
 ### General tab
 
 `src/ui/settings/tabs/general.tsx` — the dev-mode toggle (which reveals
@@ -837,18 +862,24 @@ memory only — never persisted, lost on reload.
 
 ### Namespaces
 
-`src/storage/namespaces.ts` — the per-device registry of **namespaces**:
-named buckets that each hold their own checklist document. The registry
-(the list and the active slug) lives in `localStorage`, like the backend
-preference, because the namespaces a person sees are a property of their
-install, not of any one document. Every namespace has a `slug` (fixed at
-creation, folder-/key-safe) and an editable display `name`; rename only
-changes the name so data never has to move. The `default` namespace
-always exists and can't be removed. `namespaceLocalKey` /
-`namespaceCloudFolder` map a slug onto a concrete location: the default
-namespace keeps the legacy `checklist:v1` key locally, every namespace
-gets its own folder in the cloud (so a folder can be shared wholesale —
-the `family/` folder shared with relatives). The management UI is
+`src/storage/namespaces.ts` — the registry of **namespaces**: named
+buckets that each hold their own checklist document. `localStorage` is the
+synchronous home the registry is read from (first paint and adapter
+construction need the list before any network resolves), but on a file
+backend it is no longer the canonical store: the **list** of namespaces is
+mirrored to `namespaces.json` at the app-folder root (see the *Root
+namespace registry* entry) so it travels with the synced/shared folder and
+lands on every device that connects the backend — the namespace list now
+follows the user across devices the way `settings.json` does. The
+**active** slug stays per-device: which list you're looking at is a local
+cursor, not shared state. Every namespace has a `slug` (fixed at creation,
+folder-/key-safe) and an editable display `name`; rename only changes the
+name so data never has to move. The `default` namespace always exists and
+can't be removed. `namespaceLocalKey` / `namespaceCloudFolder` map a slug
+onto a concrete location: the default namespace keeps the legacy
+`checklist:v1` key locally, every namespace gets its own folder in the
+cloud (so a folder can be shared wholesale — the `family/` folder shared
+with relatives). The management UI is
 `NamespacesModal` (`src/ui/NamespacesModal.tsx`), reached from the cogwheel
 on the namespace section header at the top of the side menu — one button
 that opens the combined manage-and-create dialog (which is why it's a cog,
