@@ -5,14 +5,10 @@
 // race each other. Ported from the budget project's `oauth-pkce.ts`.
 
 import { createLogger } from "../dev/logger.ts";
+import { toBase64Url } from "../encoding/base64url.ts";
+import { readErrorBody } from "./http-utils.ts";
 
 const log = createLogger("oauth");
-
-function base64UrlEncode(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
 
 // 64 random bytes encoded as base64url — comfortably above the 43-
 // character minimum the spec requires and well below the 128-character
@@ -20,13 +16,13 @@ function base64UrlEncode(bytes: Uint8Array): string {
 export function randomVerifier(): string {
   const bytes = new Uint8Array(64);
   crypto.getRandomValues(bytes);
-  return base64UrlEncode(bytes);
+  return toBase64Url(bytes);
 }
 
 export async function challengeFor(verifier: string): Promise<string> {
   const data = new TextEncoder().encode(verifier);
   const digest = await crypto.subtle.digest("SHA-256", data);
-  return base64UrlEncode(new Uint8Array(digest));
+  return toBase64Url(new Uint8Array(digest));
 }
 
 // The OAuth app registration must list this exact URI. We derive it
@@ -169,7 +165,7 @@ export async function completeAuth(
   const ms = (performance.now() - start).toFixed(0);
   log.info(`${config.providerName}: token exchange → ${res.status} (${ms}ms)`);
   if (!res.ok) {
-    const body = await res.text().catch(() => "<unreadable>");
+    const body = await readErrorBody(res);
     log.error(`${config.providerName}: token exchange failed`, body);
     throw new Error(
       `${config.providerName} token exchange failed: ${res.status}`,
@@ -225,7 +221,7 @@ export async function refreshAccessToken(
   const ms = (performance.now() - start).toFixed(0);
   log.info(`${config.providerName}: refresh → ${res.status} (${ms}ms)`);
   if (!res.ok) {
-    const body = await res.text().catch(() => "<unreadable>");
+    const body = await readErrorBody(res);
     log.error(`${config.providerName}: refresh failed`, body);
     throw new Error(
       `${config.providerName} token refresh failed: ${res.status}`,

@@ -22,6 +22,7 @@ import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
+import { parseRetryAfterMs, readErrorBody } from "../http-utils.ts";
 
 const log = createLogger("gdrive");
 
@@ -70,14 +71,6 @@ function isDriveRateLimit(status: number, body: string): boolean {
   );
 }
 
-function driveRetryAfterMs(headers: Headers | undefined): number {
-  const headerSeconds = Number(headers?.get("Retry-After") ?? "");
-  const headerMs = Number.isFinite(headerSeconds)
-    ? Math.max(0, headerSeconds) * 1000
-    : 0;
-  return Math.max(headerMs, RATE_LIMIT_FALLBACK_MS);
-}
-
 function gdriveError(
   op: string,
   status: number,
@@ -88,7 +81,9 @@ function gdriveError(
   // session in `throttled` and resumes after a cooldown instead of going
   // red — mirrors the Dropbox adapter's 429 handling.
   if (isDriveRateLimit(status, body)) {
-    return new RateLimitError(driveRetryAfterMs(headers));
+    return new RateLimitError(
+      parseRetryAfterMs(headers, RATE_LIMIT_FALLBACK_MS),
+    );
   }
   const message = `Google Drive ${op} failed: ${status} ${body}`;
   return status === 401 ? new AuthError(message) : new Error(message);
@@ -155,7 +150,7 @@ function createGdriveFileStore(
     )}&spaces=drive&fields=files(id)`;
     const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
+      const body = await readErrorBody(res);
       throw gdriveError("search", res.status, body, res.headers);
     }
     const json = (await res.json()) as DriveListResponse;
@@ -184,7 +179,7 @@ function createGdriveFileStore(
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const detail = await res.text().catch(() => "<unreadable>");
+      const detail = await readErrorBody(res);
       throw gdriveError("folder create", res.status, detail, res.headers);
     }
     return ((await res.json()) as DriveFile).id;
@@ -242,7 +237,7 @@ function createGdriveFileStore(
       `&fields=files(id,name,mimeType,version)`;
     const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
-      const body = await res.text().catch(() => "<unreadable>");
+      const body = await readErrorBody(res);
       throw gdriveError("list", res.status, body, res.headers);
     }
     const files = ((await res.json()) as DriveListResponse).files ?? [];
@@ -289,7 +284,7 @@ function createGdriveFileStore(
       });
       if (res.status === 404) return null;
       if (!res.ok) {
-        const body = await res.text().catch(() => "<unreadable>");
+        const body = await readErrorBody(res);
         throw gdriveError("download", res.status, body, res.headers);
       }
       return res.text();
@@ -312,7 +307,7 @@ function createGdriveFileStore(
           },
         );
         if (!res.ok) {
-          const body = await res.text().catch(() => "<unreadable>");
+          const body = await readErrorBody(res);
           throw gdriveError("update", res.status, body, res.headers);
         }
         return;
@@ -328,7 +323,7 @@ function createGdriveFileStore(
         headers: authHeader(),
       });
       if (!res.ok && res.status !== 404) {
-        const body = await res.text().catch(() => "<unreadable>");
+        const body = await readErrorBody(res);
         throw gdriveError("delete", res.status, body, res.headers);
       }
     },
@@ -359,7 +354,7 @@ function createGdriveFileStore(
       },
     );
     if (!res.ok) {
-      const errBody = await res.text().catch(() => "<unreadable>");
+      const errBody = await readErrorBody(res);
       throw gdriveError("create", res.status, errBody, res.headers);
     }
   }
@@ -395,7 +390,7 @@ export async function deleteGdriveNamespace(
     { headers: auth },
   );
   if (!appRes.ok) {
-    const body = await appRes.text().catch(() => "<unreadable>");
+    const body = await readErrorBody(appRes);
     throw gdriveError(
       "namespace delete (app folder lookup)",
       appRes.status,
@@ -412,7 +407,7 @@ export async function deleteGdriveNamespace(
     { headers: auth },
   );
   if (!nsRes.ok) {
-    const body = await nsRes.text().catch(() => "<unreadable>");
+    const body = await readErrorBody(nsRes);
     throw gdriveError("namespace delete (folder lookup)", nsRes.status, body);
   }
   const nsId = ((await nsRes.json()) as DriveListResponse).files?.[0]?.id;
@@ -422,7 +417,7 @@ export async function deleteGdriveNamespace(
     headers: auth,
   });
   if (!delRes.ok && delRes.status !== 404) {
-    const body = await delRes.text().catch(() => "<unreadable>");
+    const body = await readErrorBody(delRes);
     throw gdriveError("namespace delete", delRes.status, body);
   }
 }

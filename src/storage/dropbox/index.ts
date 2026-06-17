@@ -22,6 +22,7 @@ import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
+import { parseRetryAfterMs, readErrorBody } from "../http-utils.ts";
 import {
   type OAuthConfig,
   type TokenResult,
@@ -223,7 +224,7 @@ function createAuthedFetch(
       if (fresh) res = await fetchImpl(url, build(fresh));
     }
     if (res.status === 401) {
-      const body = await res.text().catch(() => "<unreadable>");
+      const body = await readErrorBody(res);
       throw new AuthError(`Dropbox auth failed: 401 ${body}`);
     }
     return res;
@@ -259,7 +260,7 @@ function createDropboxFileStore(
     }));
     if (res.status === 409) return null; // path/not_found — empty folder
     if (!res.ok) {
-      const detail = await res.text().catch(() => "<unreadable>");
+      const detail = await readErrorBody(res);
       throw new Error(`Dropbox list_folder failed: ${res.status} ${detail}`);
     }
     return (await res.json()) as ListFolderResult;
@@ -299,7 +300,7 @@ function createDropboxFileStore(
       }));
       if (res.status === 409) return null;
       if (!res.ok) {
-        const detail = await res.text().catch(() => "<unreadable>");
+        const detail = await readErrorBody(res);
         throw new Error(`Dropbox download failed: ${res.status} ${detail}`);
       }
       return res.text();
@@ -320,14 +321,12 @@ function createDropboxFileStore(
         body: text,
       }));
       if (res.status === 429) {
-        const headerSeconds = Number(res.headers.get("Retry-After") ?? "");
-        const headerMs = Number.isFinite(headerSeconds)
-          ? Math.max(0, headerSeconds) * 1000
-          : 0;
-        throw new RateLimitError(Math.max(headerMs, RATE_LIMIT_FALLBACK_MS));
+        throw new RateLimitError(
+          parseRetryAfterMs(res.headers, RATE_LIMIT_FALLBACK_MS),
+        );
       }
       if (!res.ok) {
-        const detail = await res.text().catch(() => "<unreadable>");
+        const detail = await readErrorBody(res);
         throw new Error(`Dropbox upload failed: ${res.status} ${detail}`);
       }
     },
@@ -343,7 +342,7 @@ function createDropboxFileStore(
       }));
       if (res.status === 409) return; // already gone
       if (!res.ok) {
-        const detail = await res.text().catch(() => "<unreadable>");
+        const detail = await readErrorBody(res);
         throw new Error(`Dropbox delete failed: ${res.status} ${detail}`);
       }
     },
@@ -373,7 +372,7 @@ export async function deleteDropboxNamespace(
     return;
   }
   if (!res.ok) {
-    const body = await res.text().catch(() => "<unreadable>");
+    const body = await readErrorBody(res);
     log.error(`delete: failed ${res.status}`, body);
     throw new Error(`Dropbox delete failed: ${res.status} ${body}`);
   }
