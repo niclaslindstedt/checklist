@@ -76,6 +76,86 @@ describe("useChecklist save / undo / reload cycle", () => {
     expect(result.current.canRedo).toBe(false);
   });
 
+  it("serializes saves: edits during an in-flight save queue and drain without self-conflict", async () => {
+    // A revision-checking cloud adapter whose `save()` is held open until the
+    // test releases it, so edits can pile up while one write is in flight.
+    // It rejects any save whose `baseRevision` doesn't match the current
+    // server revision — exactly the check that makes a device collide with
+    // its own just-completed write when two saves run concurrently.
+    let serverText = serialize(emptySnapshot());
+    let serverRev = 1;
+    let conflicts = 0;
+    const release: Array<() => void> = [];
+    const adapter: StorageAdapter & {
+      flushOne: () => void;
+      inFlight: () => number;
+      conflicts: () => number;
+      stored: () => string;
+    } = {
+      id: "gdrive",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => ({
+        text: serverText,
+        revision: String(serverRev),
+      }),
+      save: (next: string, baseRevision?: string) =>
+        new Promise<StoredSnapshot>((resolve, reject) => {
+          release.push(() => {
+            if (baseRevision !== String(serverRev)) {
+              conflicts += 1;
+              reject(
+                new ConflictError({
+                  text: serverText,
+                  revision: String(serverRev),
+                }),
+              );
+              return;
+            }
+            serverText = next;
+            serverRev += 1;
+            resolve({ text: serverText, revision: String(serverRev) });
+          });
+        }),
+      saveDebounceMs: 0,
+      flushOne: () => release.shift()?.(),
+      inFlight: () => release.length,
+      conflicts: () => conflicts,
+      stored: () => serverText,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {}); // settle mount load — client bases on rev "1"
+
+    // First edit kicks off a save that stays in flight (unreleased).
+    act(() => result.current.addItem("a"));
+    expect(adapter.inFlight()).toBe(1);
+
+    // Two more edits arrive mid-flight. They must NOT start their own saves —
+    // they queue, and the later one supersedes the earlier.
+    act(() => result.current.addItem("b"));
+    act(() => result.current.addItem("c"));
+    expect(adapter.inFlight()).toBe(1);
+
+    // Release the first save. Its completion drains the queue in exactly one
+    // follow-up save (not two), based on the revision it just learned.
+    await act(async () => adapter.flushOne());
+    expect(adapter.inFlight()).toBe(1);
+
+    // Release the drain save. No self-conflict ever surfaced.
+    await act(async () => adapter.flushOne());
+    expect(adapter.inFlight()).toBe(0);
+    expect(adapter.conflicts()).toBe(0);
+    expect(result.current.conflict).toBeNull();
+    expect(result.current.status).toBe("saved");
+    expect(result.current.dirty).toBe(false);
+
+    // The drained write carried the full final snapshot — all three edits.
+    expect(
+      parse(adapter.stored()).checklists[0]!.items.map((i) => i.title),
+    ).toEqual(["a", "b", "c"]);
+  });
+
   it("surfaces a conflict and resolves it by adopting the remote", async () => {
     // The remote document another device will have pushed by the time the
     // local edit tries to save.

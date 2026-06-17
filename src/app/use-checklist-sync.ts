@@ -125,18 +125,52 @@ export function useChecklistSync(deps: {
   // `saveDebounceMs` window (0 ⇒ save immediately, right for localStorage).
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingDoc = useRef<Snapshot | null>(null);
+  // At most one write is in flight at a time. A second save started before
+  // the first resolves would base on a revision the in-flight write is about
+  // to bump, so the backend rejects the loser as a ConflictError — the
+  // device colliding with *itself* on a slow link. Instead we queue: edits
+  // pile up in `pendingDoc` (each a complete snapshot, so the newest covers
+  // every one before it) and drain in a single follow-up save once the
+  // in-flight write returns with a fresh revision. This is the budget
+  // project's serialized-save model.
+  const inFlight = useRef(false);
+  // Bumped whenever the on-screen document is replaced wholesale (backend
+  // swap, reload, conflict-adopt). An in-flight save captures the value at
+  // launch; if it no longer matches when the save resolves, the result
+  // describes a baseline that's gone — its revision and any queued follow-up
+  // are stale, so the completion handler bails instead of writing back.
+  const saveGeneration = useRef(0);
+  // Forward handle to `flushSave` (defined below): `performSave` calls it to
+  // drain a queued edit on completion, but `flushSave` is built on top of
+  // `performSave`, so the cycle is broken through a ref.
+  const flushSaveRef = useRef<() => void>(() => {});
 
   const performSave = useCallback((next: Snapshot, baseRevision?: string) => {
+    const generation = saveGeneration.current;
+    inFlight.current = true;
     setStatus("saving");
     void adapterRef.current
       .save(serialize(next), baseRevision)
       .then((stored) => {
+        inFlight.current = false;
+        // The document was swapped out from under this save (reload, backend
+        // change, conflict-adopt). Its revision and any queued follow-up
+        // belong to a baseline that no longer exists — drop them.
+        if (saveGeneration.current !== generation) return;
         revisionRef.current = stored.revision;
-        // Another edit may have arrived mid-flight; stay dirty if so.
-        if (pendingDoc.current === null) setDirty(false);
-        setStatus("saved");
+        // An edit queued while this save was in flight. Each queued edit is a
+        // full snapshot, so the latest supersedes every one before it — send
+        // only that, based on the revision we just got, never concurrently.
+        if (pendingDoc.current !== null) {
+          flushSaveRef.current();
+        } else {
+          setDirty(false);
+          setStatus("saved");
+        }
       })
       .catch((err: unknown) => {
+        inFlight.current = false;
+        if (saveGeneration.current !== generation) return;
         if (err instanceof ConflictError) {
           log.warn("save: remote moved — surfacing conflict");
           setStatus("conflict");
@@ -162,11 +196,18 @@ export function useChecklistSync(deps: {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
+    // One save in flight at a time (see `inFlight`). Leave the edit queued in
+    // `pendingDoc`; the outstanding save drains it when it resolves.
+    if (inFlight.current) return;
     const next = pendingDoc.current;
     if (next === null) return;
     pendingDoc.current = null;
     performSave(next, revisionRef.current);
   }, [performSave]);
+
+  useEffect(() => {
+    flushSaveRef.current = flushSave;
+  }, [flushSave]);
 
   const scheduleSave = useCallback(
     (next: Snapshot) => {
@@ -191,7 +232,15 @@ export function useChecklistSync(deps: {
   // an in-flight edit isn't dropped, and the concurrency token resets so
   // the first save against the new backend isn't rejected.
   useEffect(() => {
+    // Flush a queued edit to the *old* backend first (when nothing is in
+    // flight) so a debounced edit isn't dropped on the swap, then bump the
+    // generation so that save's write-back — and any save already in flight
+    // against the old backend — becomes a no-op rather than landing the old
+    // backend's bytes on the new one.
     flushSave();
+    saveGeneration.current += 1;
+    inFlight.current = false;
+    pendingDoc.current = null;
     adapterRef.current = active;
     revisionRef.current = undefined;
     setConflict(null);
@@ -221,6 +270,11 @@ export function useChecklistSync(deps: {
 
   const reload = useCallback(async () => {
     flushSave();
+    // The reloaded document is a fresh baseline; abandon any in-flight or
+    // queued save so its stale write-back can't clobber what we load.
+    saveGeneration.current += 1;
+    inFlight.current = false;
+    pendingDoc.current = null;
     const stored = await adapterRef.current.load();
     revisionRef.current = stored?.revision;
     setConflict(null);
@@ -249,7 +303,12 @@ export function useChecklistSync(deps: {
         } else {
           // Adopt the remote bytes as the new in-memory state and stamp
           // its revision so the next edit bases on it — no immediate
-          // write-back, so we don't bounce the conflict.
+          // write-back, so we don't bounce the conflict. The adopted remote
+          // is a fresh baseline, so abandon any queued save against the old
+          // one.
+          saveGeneration.current += 1;
+          inFlight.current = false;
+          pendingDoc.current = null;
           revisionRef.current = current.remoteRevision;
           setDoc(current.remote);
           // Adopting the remote document makes it the new baseline, so
