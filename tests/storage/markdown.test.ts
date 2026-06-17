@@ -116,6 +116,43 @@ describe("markdown codec", () => {
     expect(parseEntry("---\ntype: checklist\n---\n# x")).toBeNull();
   });
 
+  it("round-trips a multi-paragraph note (a blank line inside the note)", () => {
+    // A blank line within a note renders as the bare two-space indent; it
+    // must fold back into the note rather than orphaning everything after
+    // it. Regression for the dropped-second-paragraph bug.
+    const withNote: Checklist = {
+      version: 1,
+      id: "cl-note",
+      templateId: "",
+      name: "Notes",
+      items: [
+        { id: "1", title: "Item", checked: false, notes: "para1\n\npara2" },
+      ],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const parsed = parseEntry(checklistToMarkdown(withNote));
+    expect(parsed?.kind).toBe("checklist");
+    if (parsed?.kind === "checklist") {
+      expect(parsed.checklist.items[0]!.notes).toBe("para1\n\npara2");
+    }
+  });
+
+  it("imports a pasted multi-paragraph note unbroken", () => {
+    const items = parseItemsFromMarkdown(
+      "- [ ] Item\n  para1\n  \n  para2\n- [x] Next",
+    );
+    expect(items).toEqual([
+      {
+        title: "Item",
+        checked: false,
+        required: false,
+        notes: "para1\n\npara2",
+      },
+      { title: "Next", checked: true, required: false },
+    ]);
+  });
+
   describe("checklistBodyMarkdown", () => {
     it("renders the checklist without persistence frontmatter", () => {
       const body = checklistBodyMarkdown(checklist);

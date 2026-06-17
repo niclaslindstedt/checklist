@@ -321,9 +321,15 @@ function parseBody(body: string): {
     }
     const item = parseItemLine(line);
     if (item) {
-      // Gather indented continuation lines as notes.
+      // Gather indented continuation lines as notes. A line indented by
+      // two or more spaces is a continuation even when it holds nothing but
+      // that indent: a blank line *within* a multi-paragraph note renders
+      // as the bare indent (`"  "`), and it must fold back into the note
+      // rather than ending the scan and orphaning everything after it.
+      // Genuine separators between items are fully empty (zero-width), so
+      // they still terminate the gather.
       const noteLines: string[] = [];
-      while (i + 1 < lines.length && /^\s{2,}\S/.test(lines[i + 1]!)) {
+      while (i + 1 < lines.length && /^\s{2,}/.test(lines[i + 1]!)) {
         noteLines.push(lines[++i]!.replace(/^\s{2,}/, ""));
       }
       if (noteLines.length > 0) item.notes = noteLines.join("\n");

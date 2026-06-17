@@ -171,6 +171,38 @@ Refactor rules:
   --noEmit` — the typecheck is folded into lint; there is no
   separate `make typecheck`. Tests are Vitest only (`make test` is
   `vitest run`); there is no e2e / Playwright layer.
+- **Always evaluate the refactor for new tests, and leave coverage
+  better than you found it.** A refactor is the moment the code is
+  most malleable, so it's the cheapest time to close a coverage gap.
+  Before opening the PR, ask three questions of every seam you
+  touched and act on the answer in the **same** PR:
+  1. **Did the refactor expose previously-untestable logic?**
+     Extracting a pure helper, splitting a module, or introducing an
+     injectable seam (a passed-in `fetchImpl`, a clock, a storage
+     interface) almost always means a unit that was unreachable
+     before is now directly callable. Add the tests that the new
+     seam makes possible — that exposed testability is a deliverable
+     of the refactor, not a follow-up.
+  2. **Is the behaviour you're relocating covered?** A pure refactor
+     must not change behaviour, and the cheapest proof is a test that
+     passes both before and after. If the code you're about to move
+     has no test pinning its behaviour, **write that test first**
+     (against the pre-refactor code), confirm it's green, then
+     refactor under it. Untested code is not safe to move silently.
+  3. **Can you make the code more testable as part of the move?**
+     Prefer the seam that takes its dependencies as arguments over
+     the one that reaches for a global; prefer a pure function over
+     one that reads the clock or the DOM. Making code more testable
+     is itself a legitimate refactor goal — if a candidate is hard to
+     test because of how it's wired, rewiring it for testability
+     (then testing it) is the refactor.
+
+  Run a coverage pass (`npx vitest run --coverage`, installing
+  `@vitest/coverage-v8` if absent) over the files you touched and
+  confirm the numbers went up, not down. A refactor PR that leaves
+  coverage lower than it found it — because it moved logic out from
+  under the tests that were pinning it — is a regression, not a
+  cleanup.
 - **Smoke-test the storage hot path manually for storage-layer
   refactors.** The OAuth / cloud flows (Google Drive, Dropbox) have
   **no automated coverage**, so any refactor touching the
@@ -496,6 +528,16 @@ so it lands `no-changelog`.
   resist the urge to round up to 5 to make it feel urgent. The
   ratings are how the next agent decides what's worth their
   time; inflating them devalues the signal.
+- **Moving logic out from under its tests.** Splitting a file or
+  relocating a function can orphan the tests that were covering it,
+  or land the logic in a spot the existing tests no longer reach.
+  Re-point (or re-add) the tests in the same PR and confirm coverage
+  for the touched files didn't drop — a refactor that quietly lowers
+  coverage has traded a code smell for a worse one.
+- **Treating "add tests" as a separate follow-up PR.** When a
+  refactor exposes a newly-testable seam, the tests belong in the
+  refactor PR. Deferring them means the next sweep sees green CI over
+  untested code and assumes it's covered.
 
 ## Skill self-improvement
 
