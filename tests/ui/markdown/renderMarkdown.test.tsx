@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { renderMarkdown } from "../../../src/ui/markdown/renderMarkdown.tsx";
+import {
+  renderInlineMarkdown,
+  renderMarkdown,
+} from "../../../src/ui/markdown/renderMarkdown.tsx";
 
 // The renderer returns React nodes; flatten them to a static HTML string so
 // the assertions can read the structure it produced.
@@ -73,5 +76,23 @@ describe("renderMarkdown", () => {
 
   it("renders an empty body as nothing", () => {
     expect(html("")).toBe("");
+  });
+});
+
+describe("renderInlineMarkdown", () => {
+  const inline = (source: string): string =>
+    renderToStaticMarkup(<>{renderInlineMarkdown(source)}</>);
+
+  it("renders bold and inline code without a block wrapper", () => {
+    const out = inline("**In-app dialogs** — open the `/preview/` slot");
+    expect(out).toContain("In-app dialogs</strong>");
+    expect(out).toContain("/preview/</code>");
+    expect(out).not.toContain("<p");
+    expect(out).not.toContain("<li");
+  });
+
+  it("leaves plain text untouched and escapes raw HTML", () => {
+    expect(inline("just text")).toBe("just text");
+    expect(inline("<img src=x>")).toContain("&lt;img");
   });
 });

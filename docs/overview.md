@@ -1254,6 +1254,9 @@ from the header menu, listing every shipped release newest-first
 repo's `CHANGELOG.md`, inlined by Vite as a raw string
 (`src/ui/changelog/data.ts`) and parsed by the pure, DOM-free
 Keep-a-Changelog parser `parseChangelog` (`src/ui/changelog/parse.ts`).
+Each bullet's inline markdown (the **bold** lead-in, `code` spans) is
+rendered with `renderInlineMarkdown` from the item-note renderer
+(`src/ui/markdown/renderMarkdown.tsx`) rather than printed raw.
 
 ### Privacy page
 
