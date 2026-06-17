@@ -28,6 +28,9 @@ const settings: SettingsCatalog = {
     disableToasts: "Inaktivera aviseringar",
     disableToastsHint:
       "Sluta visa popup-aviseringar. Tipset ”ny version klar” visas fortfarande.",
+    disableAchievements: "Inaktivera bedrifter",
+    disableAchievementsHint:
+      "Sluta spåra bedrifter och dölj troféknappen. Bedrifter du redan låst upp behålls.",
   },
 
   lists: {

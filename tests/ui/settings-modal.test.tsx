@@ -96,6 +96,12 @@ describe("SettingsModal", () => {
     expect(onUpdate).toHaveBeenCalledWith("addItemPosition", "top");
   });
 
+  it("toggles disableAchievements from the General tab", () => {
+    const { onUpdate } = renderModal();
+    fireEvent.click(screen.getByLabelText("Disable achievements"));
+    expect(onUpdate).toHaveBeenCalledWith("disableAchievements", true);
+  });
+
   it("reveals the Developer and Logs tabs when developer mode is on", () => {
     renderModal();
     expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();

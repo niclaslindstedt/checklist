@@ -10,10 +10,17 @@ import { createContext, useContext } from "react";
 export type AchievementsContextValue = {
   /** Achievements unlocked since the list was last opened (badge count). */
   unseenCount: number;
+  /**
+   * Whether the achievements system is switched on (the inverse of the
+   * `disableAchievements` setting). When false the header trophy button hides
+   * itself — the feature's only entry point — so the whole system disappears.
+   */
+  enabled: boolean;
 };
 
 export const AchievementsContext = createContext<AchievementsContextValue>({
   unseenCount: 0,
+  enabled: true,
 });
 
 export function useAchievements(): AchievementsContextValue {

@@ -16,7 +16,7 @@ at the app-folder root so they travel with the synced/shared folder — see
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:gdrive:token`         | string                                | (unset)       | Google Drive access token from the GIS popup. Short-lived (~1h); the user reconnects when it expires. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
-| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) and `disableToasts` (default `false`). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. On a file-based backend this same blob is mirrored to `settings.json` at the app-folder root (below). |
+| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) `disableToasts` (default `false`), and `disableAchievements` (default `false`). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. On a file-based backend this same blob is mirrored to `settings.json` at the app-folder root (below). |
 | `checklist:settings:autoArchive` | `boolean`                             | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
 | `checklist:settings:locale`      | BCP-47 string                         | browser value | Override the formatting locale (does not change UI strings; this app is English-only for now). |
 
@@ -34,8 +34,12 @@ persist to `checklist:settings:v1`.
 
 The **Settings → General** tab holds the **Disable toasts** toggle —
 when on, the general pop-up notification stack is suppressed (the "new
-build ready" upgrade hint still appears). In the installed PWA on a
-phone / tablet it also holds the **Show menu button** toggle. Both
+build ready" upgrade hint still appears) — and the **Disable
+achievements** toggle, which switches the achievements system off: the
+watcher stops recording unlocks and raising celebratory toasts, and the
+header trophy button is hidden. Achievements already earned are kept, so
+turning the toggle back off resumes tracking. In the installed PWA on a
+phone / tablet it also holds the **Show menu button** toggle. These
 choices persist to `checklist:settings:v1`. List-behaviour preferences
 (**Add new items to**) live on the **Settings → Lists** tab.
 

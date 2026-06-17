@@ -752,7 +752,9 @@ readable before the unlock gate renders).
 `src/ui/settings/tabs/general.tsx` — the dev-mode toggle (which reveals
 the Developer and Logs tabs), the "Disable toasts" toggle that drives
 `disableToasts` (suppressing the general toast stack but not the upgrade
-hint), and, **only in the installed PWA on a phone / tablet**
+hint), the "Disable achievements" toggle that drives
+`disableAchievements` (switching the achievements system off — see
+**Achievements**), and, **only in the installed PWA on a phone / tablet**
 (`useStandaloneMobile`), the "Show menu button" toggle that drives
 `showMenuButton`. List-behaviour preferences moved out to the Lists tab.
 
@@ -831,6 +833,17 @@ four-tier browse of the whole catalog; when **lit** it instead opens the
 listing just the new unlocks, and closing that clears the unseen queue so
 the badge empties. Add or retire an achievement with the
 `update-achievements` skill.
+
+The whole system can be switched off from **Settings → General** via the
+**Disable achievements** toggle (`disableAchievements` on the synced
+`Settings`). When off, the watcher's `enabled` flag is false: both passes
+no-op — derived unlocks are skipped and the manual bus is
+drained-and-discarded so nothing queued mid-disable fires later — and the
+header `TrophyButton` (reading `enabled` from `AchievementsContext`)
+renders nothing, removing the only entry point into the modals. Earned
+progress in the `achievements` map is left untouched, and re-enabling
+re-establishes the baseline like a fresh load so the deltas produced
+while off are never backfilled.
 
 ## Storage and sync
 

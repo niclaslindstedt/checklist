@@ -42,6 +42,7 @@ describe("useAchievementWatcher", () => {
       snapshot: snapWith(), // seed: empty
       settings,
       loaded: false,
+      enabled: true,
       record: makeRecorder(settings),
       onUnlocked: (ids: string[]) => unlocked.push(...ids),
     };
@@ -65,6 +66,7 @@ describe("useAchievementWatcher", () => {
     const base = {
       settings,
       loaded: true as boolean,
+      enabled: true as boolean,
       record: makeRecorder(settings),
       onUnlocked: (ids: string[]) => unlocked.push(...ids),
     };
@@ -84,10 +86,60 @@ describe("useAchievementWatcher", () => {
       snapshot: snapWith(),
       settings,
       loaded: true as boolean,
+      enabled: true as boolean,
       record: makeRecorder(settings),
       onUnlocked: (ids: string[]) => unlocked.push(...ids),
     };
     renderHook((p) => useAchievementWatcher(p), { initialProps: props });
+    act(() => unlock("copyThat"));
+    expect(unlocked).toContain("copyThat");
+    expect(settings.achievements.copyThat).toBeDefined();
+  });
+
+  it("records nothing while disabled — derived edits and manual unlocks", () => {
+    const settings = defaultSettings();
+    const unlocked: string[] = [];
+    const base = {
+      settings,
+      loaded: true as boolean,
+      enabled: false as boolean,
+      record: makeRecorder(settings),
+      onUnlocked: (ids: string[]) => unlocked.push(...ids),
+    };
+    const { rerender } = renderHook((p) => useAchievementWatcher(p), {
+      initialProps: { ...base, snapshot: snapWith() },
+    });
+    // A derived-trigger edit (adding the first item) must not unlock while off.
+    act(() => rerender({ ...base, snapshot: snapWith("milk") }));
+    // A manual unlock fired while off must be discarded, not queued for later.
+    act(() => unlock("copyThat"));
+    expect(unlocked).toEqual([]);
+    expect(settings.achievements).toEqual({});
+  });
+
+  it("resumes forward-going on re-enable without backfilling the disabled gap", () => {
+    const settings = defaultSettings();
+    const unlocked: string[] = [];
+    const base = {
+      settings,
+      loaded: true as boolean,
+      record: makeRecorder(settings),
+      onUnlocked: (ids: string[]) => unlocked.push(...ids),
+    };
+    const { rerender } = renderHook((p) => useAchievementWatcher(p), {
+      initialProps: { ...base, enabled: false, snapshot: snapWith() },
+    });
+    // While disabled the user adds an item — no unlock.
+    act(() =>
+      rerender({ ...base, enabled: false, snapshot: snapWith("milk") }),
+    );
+    expect(unlocked).toEqual([]);
+    // Re-enabling only re-baselines: the existing item is "what they had", so
+    // firstSteps must NOT backfill from the gap.
+    act(() => rerender({ ...base, enabled: true, snapshot: snapWith("milk") }));
+    expect(unlocked).toEqual([]);
+    expect(settings.achievements).toEqual({});
+    // A gesture made after re-enabling counts as usual.
     act(() => unlock("copyThat"));
     expect(unlocked).toContain("copyThat");
     expect(settings.achievements.copyThat).toBeDefined();
