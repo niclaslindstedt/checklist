@@ -27,6 +27,7 @@ import {
 import { useT } from "../../../i18n";
 import type { Settings } from "../../../settings/types.ts";
 import type { UpdateSetting } from "../../../settings/useSettings.ts";
+import { SelectPicker, type SelectOption } from "../../form/index.ts";
 import { Field, Section, SegmentedRow, ToggleRow } from "../shared.tsx";
 
 function capitalise(s: string): string {
@@ -107,34 +108,32 @@ export function AppearanceTab({
 
       <Section title={t("settings.appearance.font")}>
         <Field label={t("settings.appearance.fontFamily")}>
-          <select
+          <SelectPicker<FontFamilyId>
             value={settings.fontFamily}
-            onChange={(e) =>
-              onUpdate("fontFamily", e.target.value as FontFamilyId)
-            }
-            aria-label={t("settings.appearance.fontFamily")}
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright hover:border-accent focus-visible:outline-none"
-          >
-            {FONT_FAMILIES.map((f) => (
-              <option key={f.id} value={f.id} style={{ fontFamily: f.stack }}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onUpdate("fontFamily", v)}
+            ariaLabel={t("settings.appearance.fontFamily")}
+            options={FONT_FAMILIES.map(
+              (f): SelectOption<FontFamilyId> => ({
+                value: f.id,
+                label: f.label,
+                labelStyle: { fontFamily: f.stack },
+              }),
+            )}
+          />
         </Field>
         <Field label={t("settings.appearance.textSize")}>
-          <select
+          <SelectPicker<number>
             value={settings.fontScale}
-            onChange={(e) => onUpdate("fontScale", Number(e.target.value))}
-            aria-label={t("settings.appearance.textSize")}
-            className="field-input cursor-pointer rounded border border-line bg-surface-2 px-2 py-1.5 text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
-          >
-            {FONT_SCALE_PRESETS.map((p) => (
-              <option key={p.scale} value={p.scale}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onUpdate("fontScale", v)}
+            ariaLabel={t("settings.appearance.textSize")}
+            triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
+            options={FONT_SCALE_PRESETS.map(
+              (p): SelectOption<number> => ({
+                value: p.scale,
+                label: p.label,
+              }),
+            )}
+          />
         </Field>
       </Section>
 

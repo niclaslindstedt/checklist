@@ -5,3 +5,4 @@
 export { Button, type ButtonVariant } from "./Button.tsx";
 export { Checkbox } from "./Checkbox.tsx";
 export { ClearableInput } from "./ClearableInput.tsx";
+export { SelectPicker, type SelectOption } from "./SelectPicker.tsx";
