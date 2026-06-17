@@ -53,6 +53,15 @@ export function Modal({
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const tokenRef = useRef<symbol>(Symbol("modal"));
 
+  // Hold the latest onClose in a ref so the focus/keydown effect can depend
+  // on `open` alone. Callers commonly pass an inline arrow (`onClose={() =>
+  // …}`) that is a fresh identity every render; keying the effect on it
+  // would tear down and re-run on every parent re-render, and the re-run
+  // calls `cardRef.current?.focus()` — stealing focus from whatever input
+  // the user is typing into and dismissing the soft keyboard on mobile.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
     const token = tokenRef.current;
@@ -66,7 +75,7 @@ export function Modal({
       // layer at a time rather than collapsing every open modal at once.
       if (modalStack[modalStack.length - 1] !== token) return;
       e.stopPropagation();
-      onClose();
+      onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
 
@@ -80,7 +89,7 @@ export function Modal({
       document.body.style.overflow = prevOverflow;
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
