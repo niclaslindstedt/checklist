@@ -5,7 +5,6 @@ import type { Widen } from "./_widen";
 
 const menu = {
   settings: "Settings",
-  achievements: "Achievements",
   changelog: "What's new",
   privacy: "Privacy policy",
   source: "View source",

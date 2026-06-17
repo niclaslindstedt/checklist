@@ -38,6 +38,7 @@ import { AchievementsContext } from "../ui/achievements/achievements-context.ts"
 import { useToast } from "../ui/toast/useToast.ts";
 import type { Notify } from "./notify.ts";
 import { AchievementsModalHost } from "./modals/AchievementsModalHost.tsx";
+import { AchievementsUnlockModalHost } from "./modals/AchievementsUnlockModalHost.tsx";
 import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
 import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
@@ -369,9 +370,10 @@ function AppShell() {
             onCreate={createNamespace}
             onRemove={removeNamespace}
           />
-          <AchievementsModalHost
+          <AchievementsModalHost settings={settings} />
+          <AchievementsUnlockModalHost
             settings={settings}
-            onClose={clearUnseenAchievements}
+            onClear={clearUnseenAchievements}
           />
           <ConflictResolutionModal
             open={checklist.conflict !== null}

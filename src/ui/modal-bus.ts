@@ -19,7 +19,8 @@ export type ModalCommand =
   | { kind: "settings"; tab?: "storage" }
   | { kind: "changelog" }
   | { kind: "namespaces" }
-  | { kind: "achievements" };
+  | { kind: "achievements" }
+  | { kind: "achievements-unlock" };
 
 export type ModalKind = ModalCommand["kind"];
 

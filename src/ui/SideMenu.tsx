@@ -28,7 +28,6 @@ import {
   UndoIcon,
 } from "./icons.tsx";
 import { useModalDispatch } from "./modal-bus.ts";
-import { TrophyGlyph } from "../achievements/glyphs.tsx";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 
 // The navigation drawer. On viewports narrower than the smallest iPad it
@@ -291,11 +290,6 @@ export function SideMenu({
           label={t("menu.privacy")}
           href={privacyUrl}
           onClick={close}
-        />
-        <MenuButton
-          icon={<TrophyGlyph className="h-5 w-5" />}
-          label={t("menu.achievements")}
-          onClick={() => pick(() => dispatch({ kind: "achievements" }))}
         />
         <MenuButton
           icon={<SparklesIcon className="h-5 w-5" />}

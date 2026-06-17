@@ -80,8 +80,8 @@ function ChecklistViewImpl() {
           <span className="text-sm text-muted tabular-nums">
             {checkedCount}/{items.length}
           </span>
-          <TrophyButton />
           <CopyButton checklist={activeList} />
+          <TrophyButton />
           {sync && (
             <SyncStatus
               providerName={sync.providerName}

@@ -667,14 +667,17 @@ Earned progress is the `achievements` map (id → unlock timestamp) and the
 (`src/settings/types.ts`), recorded via `unlockAchievements` and cleared
 via `clearUnseenAchievements` (`src/settings/useSettings.ts`); because it
 rides in `Settings`, progress travels with `settings.json` across
-devices. A fresh unlock raises a celebratory toast and increments the
+devices. A fresh unlock raises a celebratory toast and lights up the
 header **trophy button** (`TrophyButton`, beside the copy / sync glyphs),
-which reads the unseen count from `AchievementsContext`. Clicking the
-trophy — or the "Achievements" entry in the side menu — opens the
-**achievements modal** (`AchievementsModal`, via the
-`{ kind: "achievements" }` modal-bus command and `AchievementsModalHost`),
-a four-tier guided tour of the whole catalog; opening it clears the
-unseen queue so the badge empties. Add or retire an achievement with the
+which reads the unseen count from `AchievementsContext`. The button opens
+one of two modals, matching budget: when **quiet** (nothing unacknowledged)
+it opens the **achievements tour** (`AchievementsModal`, via the
+`{ kind: "achievements" }` command and `AchievementsModalHost`) — the
+four-tier browse of the whole catalog; when **lit** it instead opens the
+**unlock-notification modal** (`AchievementUnlockModal`, via
+`{ kind: "achievements-unlock" }` and `AchievementsUnlockModalHost`)
+listing just the new unlocks, and closing that clears the unseen queue so
+the badge empties. Add or retire an achievement with the
 `update-achievements` skill.
 
 ## Storage and sync
