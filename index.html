@@ -15,22 +15,40 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#1f2933" />
+    <!-- Per OSS_SPEC §11.3.2: theme-color matched to each rendered
+         background. Dark is the default shell; light is the light-theme bg. -->
+    <meta
+      name="theme-color"
+      content="#1f2933"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#fafafa"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <!-- Primary SEO. The description doubles as the social-card summary
          below, so keep the two in sync (and aligned with the PWA manifest
-         description in `vite.config.ts`). -->
+         description in `vite.config.ts`). Kept ≤ 160 chars per §11.3.2. -->
     <meta
       name="description"
-      content="A fast, local-first checklist PWA that works offline with no account or backend. Reusable templates, namespaces, markdown import/export, shareable links, and optional end-to-end-encrypted Google Drive or Dropbox sync."
+      content="A fast, local-first checklist PWA that works offline with no account. Reusable templates, shareable links, and optional encrypted Google Drive or Dropbox sync."
     />
     <meta
       name="keywords"
       content="checklist, todo, to-do list, task list, PWA, offline, local-first, templates, markdown, shareable list, Google Drive sync, Dropbox sync, encrypted, no account, free"
     />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
     <meta name="author" content="Niclas Lindstedt" />
     <meta name="application-name" content="checklist" />
     <link rel="canonical" href="https://checklist.niclaslindstedt.se/" />
+    <link
+      rel="sitemap"
+      type="application/xml"
+      href="https://checklist.niclaslindstedt.se/sitemap.xml"
+    />
 
     <!-- Open Graph (Facebook, LinkedIn, Slack, Discord, …) -->
     <meta property="og:type" content="website" />
