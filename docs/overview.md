@@ -438,15 +438,21 @@ polling live in `usePwaUpdate`.
 
 `src/ui/toast/Toast.tsx` (`ToastProvider`) plus
 `src/ui/toast/useToast.ts` (`useToast`, `ToastContext`) — the
-general-purpose notification stack pinned bottom-right. Variants
-(`info` / `success` / `warning` / `error`) carry a coloured left
-stripe keyed to the theme tokens; the visible stack is capped at three.
-`useToast().push()` adds one, `dismiss()` removes it. Mounted globally
-by `LanguageRoot` so any component can raise a toast. The General-tab
-**Disable toasts** setting (`disableToasts`) gates the whole stack:
-`push` reads the live setting and drops the toast (returning the
-sentinel id `0`) when it's on. The "new build ready" upgrade hint is a
-separate surface (`UpdateToast`) and is never suppressed by it.
+general-purpose notification stack pinned bottom-right. Each toast is a
+single button: clicking or pressing it anywhere dismisses it
+immediately, rather than waiting out its duration. A circular countdown
+ring at the far left (`ToastTimerRing`, animated by the `.toast-timer-arc`
+rule in `theme.css`) fills clockwise over the toast's lifetime and the
+toast auto-dismisses the instant the ring closes — the same `durationMs`
+drives both the CSS sweep and the dismiss timer. Variants
+(`info` / `success` / `warning` / `error`) colour the ring with the theme
+tokens; the visible stack is capped at three. `useToast().push()` adds
+one, `dismiss()` removes it. Mounted globally by `LanguageRoot` so any
+component can raise a toast. The General-tab **Disable toasts** setting
+(`disableToasts`) gates the whole stack: `push` reads the live setting and
+drops the toast (returning the sentinel id `0`) when it's on. The "new
+build ready" upgrade hint is a separate surface (`UpdateToast`) and is
+never suppressed by it.
 
 ### Action confirmation toast
 
