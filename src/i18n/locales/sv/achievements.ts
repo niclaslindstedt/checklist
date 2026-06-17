@@ -90,7 +90,7 @@ const achievements: AchievementsCatalog = {
       name: "Ordkonstnär",
       condition: "Redigera en rads text.",
       learnMore:
-        "Tryck på en rad för att redigera den på plats — rätta ett stavfel, formulera om, eller lägg till en markdown-text under titeln (Skift+Enter, eller “+” till vänster om raden). Anteckningen visas som markdown tills du öppnar den för redigering igen.",
+        "Tryck på en rad för att redigera den på plats — rätta ett stavfel, formulera om, eller lägg till en markdown-anteckning under titeln (Skift+Enter, eller “Lägg till en anteckning” i redigeraren). En anteckning visas som markdown; tryck på en rad för att visa den, tryck igen för att redigera.",
     },
     secondThoughts: {
       name: "Ångrar mig",

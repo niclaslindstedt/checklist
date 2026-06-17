@@ -8,12 +8,15 @@ import {
 
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
-import { ChevronDownIcon, PlusIcon } from "./icons.tsx";
+import { Checkbox } from "./form/index.ts";
+import { PlusIcon } from "./icons.tsx";
 
-// The in-place editor a checklist row swaps to when pressed. It edits an
-// item's text as **plain text** — the title on one line, an optional
-// markdown body beneath — so the raw markdown is what you see while typing;
-// the row renders it back as markdown once the edit commits.
+// The in-place editor a checklist row swaps to when pressed. It keeps the
+// row's checkbox so the line still reads as the same item, and edits its
+// text as **plain text** — the title on one line, an optional markdown body
+// beneath — so the raw markdown is what you see while typing; the row
+// renders it back as markdown once the edit commits. The whole row is tinted
+// (`bg-surface-2`, set by the parent) so it reads as the active edit.
 //
 // Commit / cancel mirror the add-item composer's feel:
 //   • Enter in the title commits; Shift+Enter reveals (and focuses) the
@@ -23,19 +26,21 @@ import { ChevronDownIcon, PlusIcon } from "./icons.tsx";
 //   • Blurring the whole editor commits whatever was typed, so an edit is
 //     never lost to a stray tap elsewhere.
 //
-// The "+" / chevron button is the second way in to the body: pressing the
-// "+" to the left of an item with no note opens straight into this editor
-// with the body field revealed (see `ChecklistRow`).
+// The "Add note" affordance beneath the title is the second way into the
+// body, alongside Shift+Enter.
 
 export function ChecklistRowEditor({
   item,
   onSubmit,
   onCancel,
+  onToggle,
   focusBody = false,
 }: {
   item: ChecklistItem;
   onSubmit: (fields: { title?: string; notes?: string }) => void;
   onCancel: () => void;
+  /** Toggle the item's checked state from the editor's checkbox. */
+  onToggle: () => void;
   /** Open with the body field shown and focused (the "add a note" path). */
   focusBody?: boolean;
 }) {
@@ -104,7 +109,7 @@ export function ChecklistRowEditor({
 
   const onBlur = (e: FocusEvent<HTMLDivElement>) => {
     // Commit only when focus leaves the editor entirely — moving between the
-    // title and body keeps the relatedTarget inside the container.
+    // title, body, and the add-note button keeps relatedTarget inside.
     if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
     submit();
   };
@@ -112,23 +117,16 @@ export function ChecklistRowEditor({
   return (
     <div
       onBlur={onBlur}
-      className="flex flex-col gap-2 px-[var(--density-row-px)] py-[var(--density-row-py)]"
+      className="flex flex-col gap-1.5 px-[var(--density-row-px)] py-[var(--density-row-py)]"
     >
-      <div className="flex min-h-11 items-center gap-3">
-        <button
-          type="button"
-          aria-label={bodyShown ? t("app.hideNote") : t("app.addNote")}
-          // Keep the press inside the editor so the blur-commit doesn't fire.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => (bodyShown ? setBodyShown(false) : revealBody())}
-          className="flex h-5 w-5 shrink-0 items-center justify-center text-muted hover:text-fg"
-        >
-          {bodyShown ? (
-            <ChevronDownIcon className="h-4 w-4" />
-          ) : (
-            <PlusIcon className="h-4 w-4" />
-          )}
-        </button>
+      <div
+        className={`flex items-center gap-3 ${bodyShown ? "min-h-7" : "min-h-11"}`}
+      >
+        <Checkbox
+          checked={item.checked}
+          onChange={onToggle}
+          ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
+        />
         <input
           ref={titleRef}
           value={title}
@@ -136,20 +134,31 @@ export function ChecklistRowEditor({
           onKeyDown={onTitleKey}
           placeholder={t("app.editTitlePlaceholder")}
           aria-label={t("app.editItem")}
-          className="min-w-0 flex-1 border-0 bg-transparent text-fg outline-none placeholder:text-muted"
+          className="min-w-0 flex-1 border-0 bg-transparent text-fg-bright outline-none placeholder:text-muted"
         />
       </div>
-      {bodyShown && (
+      {bodyShown ? (
         <textarea
           ref={bodyRef}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onKeyDown={onBodyKey}
-          rows={Math.min(8, Math.max(2, notes.split("\n").length))}
+          rows={Math.min(14, Math.max(5, notes.split("\n").length + 1))}
           placeholder={t("app.notePlaceholder")}
           aria-label={t("app.notePlaceholder")}
-          className="ml-8 resize-y rounded border border-line bg-surface-2 px-2 py-1 font-mono text-sm text-fg outline-none placeholder:text-muted"
+          className="resize-y rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
         />
+      ) : (
+        <button
+          type="button"
+          // Keep the press inside the editor so the blur-commit doesn't fire.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={revealBody}
+          className="ml-8 flex w-fit items-center gap-1 text-xs text-muted hover:text-fg"
+        >
+          <PlusIcon className="h-3.5 w-3.5" />
+          {t("app.addNote")}
+        </button>
       )}
     </div>
   );

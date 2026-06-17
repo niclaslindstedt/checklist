@@ -3,4 +3,4 @@ type: Added
 title: Edit item text and add markdown notes
 ---
 
-Press an item to edit its text in place, and give it a longer note beneath the title (Shift+Enter, or the "+" to the item's left) — notes support markdown and render as markdown until you open them for editing.
+Tap an item to edit its text in place, and give it a markdown note beneath the title (Shift+Enter on desktop, or "Add a note" in the editor) — a noted item shows a chevron you tap to reveal the rendered note, and tap again to edit.

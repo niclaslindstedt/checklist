@@ -1,4 +1,11 @@
-import { memo, useCallback, useState, type CSSProperties } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -6,7 +13,7 @@ import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
-import { ChevronDownIcon, GripIcon, PlusIcon } from "./icons.tsx";
+import { ChevronDownIcon, GripIcon } from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 
 // One checklist line. Two action layers sit behind a sliding foreground:
@@ -14,11 +21,15 @@ import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 // threshold), swiping left latches open to reveal the Delete button. A grip
 // handle on the trailing edge starts a vertical drag-to-reorder instead.
 //
-// Pressing the item's text swaps the foreground for an in-place editor
-// (`ChecklistRowEditor`): the title and an optional markdown body become
-// plain-text fields. An item that carries a body shows a chevron on its
-// leading edge that expands the body, rendered as markdown; an item with no
-// body shows a "+" there that opens the editor straight onto the note field.
+// Text editing follows a reveal-then-edit model:
+//   • An item with a body shows a chevron to the right of its title. Tapping
+//     the title (or the chevron) expands the body, rendered as markdown.
+//   • While expanded, tapping the title edits the **title**; tapping the body
+//     edits the **body**; tapping anywhere outside the row collapses it.
+//   • An item with no body goes straight into the editor on a title tap,
+//     where "Add note" / Shift+Enter adds one.
+// The editor (`ChecklistRowEditor`) shows the title and body as raw plain
+// text; the row renders the body back as markdown once the edit commits.
 //
 // The callbacks take the item id (rather than being pre-bound by the
 // parent) so the parent can pass referentially stable handlers; paired
@@ -53,6 +64,7 @@ function ChecklistRowImpl({
   const [editing, setEditing] = useState(false);
   const [editFocusBody, setEditFocusBody] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const rowRef = useRef<HTMLLIElement>(null);
   const hasBody = Boolean(item.notes);
 
   const enterEdit = useCallback((focusBody: boolean) => {
@@ -60,24 +72,47 @@ function ChecklistRowImpl({
     setEditing(true);
   }, []);
 
+  // Tapping the title: expand a collapsed body first (reveal), edit on the
+  // next tap. A note-less item has nothing to reveal, so it edits straight
+  // away.
+  const onTitleTap = useCallback(() => {
+    if (hasBody && !expanded) setExpanded(true);
+    else enterEdit(false);
+  }, [hasBody, expanded, enterEdit]);
+
   const submitEdit = useCallback(
     (fields: { title?: string; notes?: string }) => {
       onEdit(item.id, fields);
       setEditing(false);
+      // Leave the body revealed when it still has content, so the rendered
+      // result is visible right after editing; collapse a cleared note.
+      if (fields.notes !== undefined) setExpanded(Boolean(fields.notes.trim()));
     },
     [onEdit, item.id],
   );
 
+  // While the body is revealed, a tap anywhere outside the row collapses it.
+  useEffect(() => {
+    if (!expanded || editing) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rowRef.current?.contains(e.target as Node)) setExpanded(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [expanded, editing]);
+
   if (editing) {
     return (
       <li
+        ref={rowRef}
         data-reorder-id={item.id}
         style={style}
-        className="relative border-b border-line bg-page-bg"
+        className="relative border-b border-line bg-surface-2"
       >
         <ChecklistRowEditor
           item={item}
           focusBody={editFocusBody}
+          onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
           onCancel={() => setEditing(false)}
         />
@@ -87,6 +122,7 @@ function ChecklistRowImpl({
 
   return (
     <li
+      ref={rowRef}
       data-reorder-id={item.id}
       style={style}
       className="relative overflow-hidden border-b border-line"
@@ -130,30 +166,6 @@ function ChecklistRowImpl({
         } ${swipe.animating ? "transition-transform duration-200" : ""}`}
       >
         <div className="flex min-h-11 items-center gap-3">
-          {hasBody ? (
-            <button
-              type="button"
-              aria-expanded={expanded}
-              aria-label={expanded ? t("app.hideNote") : t("app.showNote")}
-              onClick={() => setExpanded((v) => !v)}
-              className="flex h-5 w-5 shrink-0 items-center justify-center text-muted hover:text-fg"
-            >
-              <ChevronDownIcon
-                className={`h-4 w-4 transition-transform ${
-                  expanded ? "" : "-rotate-90"
-                }`}
-              />
-            </button>
-          ) : (
-            <button
-              type="button"
-              aria-label={t("app.addNote")}
-              onClick={() => enterEdit(true)}
-              className="flex h-5 w-5 shrink-0 items-center justify-center text-muted/60 hover:text-fg"
-            >
-              <PlusIcon className="h-4 w-4" />
-            </button>
-          )}
           <Checkbox
             checked={item.checked}
             onChange={() => onToggle(item.id)}
@@ -161,14 +173,30 @@ function ChecklistRowImpl({
           />
           <button
             type="button"
-            onClick={() => enterEdit(false)}
+            onClick={onTitleTap}
             aria-label={t("app.editItem")}
+            aria-expanded={hasBody ? expanded : undefined}
             className={`min-w-0 flex-1 truncate text-left ${
               item.checked ? "text-muted line-through" : "text-fg"
             }`}
           >
             {item.title}
           </button>
+          {hasBody && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? t("app.hideNote") : t("app.showNote")}
+              aria-expanded={expanded}
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-muted hover:text-fg"
+            >
+              <ChevronDownIcon
+                className={`h-4 w-4 transition-transform ${
+                  expanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          )}
           <button
             type="button"
             aria-label={t("app.dragToReorder")}
@@ -180,7 +208,24 @@ function ChecklistRowImpl({
         </div>
 
         {hasBody && expanded && (
-          <div className="ml-8 pb-1 text-sm text-muted">
+          // Tapping the rendered body edits it (the second tap of the
+          // reveal-then-edit flow); a tap on a link inside it still follows
+          // the link rather than opening the editor.
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={t("app.editNote")}
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest("a")) enterEdit(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                enterEdit(true);
+              }
+            }}
+            className="-mt-1 ml-8 cursor-text pb-1 text-sm text-muted"
+          >
             {renderMarkdown(item.notes!)}
           </div>
         )}

@@ -97,7 +97,7 @@ const achievements = {
       name: "Wordsmith",
       condition: "Edit an item's text.",
       learnMore:
-        "Press an item to edit it in place — fix a typo, reword it, or add a markdown body beneath the title (Shift+Enter, or the “+” to the item's left). The note renders as markdown until you open it for editing again.",
+        "Press an item to edit it in place — fix a typo, reword it, or add a markdown note beneath the title (Shift+Enter, or “Add a note” in the editor). A note renders as markdown; tap an item to reveal it, tap again to edit.",
     },
     secondThoughts: {
       name: "Second Thoughts",

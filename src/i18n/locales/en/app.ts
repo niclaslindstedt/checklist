@@ -17,6 +17,7 @@ const app = {
   archive: "Archive",
   delete: "Delete",
   editItem: "Edit item",
+  editNote: "Edit note",
   editTitlePlaceholder: "Item text…",
   notePlaceholder: "Add a note… (markdown supported)",
   addNote: "Add a note",
