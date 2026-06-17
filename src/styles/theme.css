@@ -115,6 +115,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Treat the shell as a touch surface, not a document: suppress text
+   selection and the iOS long-press callout app-wide. Long-pressing the (+)
+   to fan out the bulk actions (see AddItemButton) otherwise also makes iOS
+   grab the item title under the gesture and raise its Copy / Look Up /
+   Translate menu, which fights the hold. Form controls re-enable selection
+   so editing an item's title and body still works. */
+#app {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 @media (min-width: 640px) {
   body {
     font-size: calc(14px * var(--app-font-scale));
