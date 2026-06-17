@@ -140,4 +140,18 @@ describe("validateSettings", () => {
       false,
     );
   });
+
+  it("enables achievements by default and honours an explicit boolean", () => {
+    expect(defaultSettings().disableAchievements).toBe(false);
+    expect(validateSettings({}).disableAchievements).toBe(false);
+    expect(
+      validateSettings({ disableAchievements: true }).disableAchievements,
+    ).toBe(true);
+  });
+
+  it("falls back to enabled achievements on a non-boolean value", () => {
+    expect(
+      validateSettings({ disableAchievements: "yes" }).disableAchievements,
+    ).toBe(false);
+  });
 });

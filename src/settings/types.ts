@@ -49,6 +49,13 @@ export type Settings = {
   // upgrade hint is a separate surface (`UpdateToast`) and is never
   // suppressed by this flag.
   disableToasts: boolean;
+  // Whether the achievements system is switched off. When on, the watcher
+  // stops recording unlocks and raising celebratory toasts, and the header
+  // trophy button is hidden. Already-earned achievements are preserved (the
+  // `achievements` map below is left untouched), so flipping the toggle back
+  // off resumes tracking forward-going without backfilling anything missed
+  // while it was disabled.
+  disableAchievements: boolean;
   // Earned achievements: a map of achievement `id` → unlock timestamp (ms
   // since epoch). Lives in the synced `Settings` (not the device-local dev
   // flags) so a user's progress travels with their settings.json across

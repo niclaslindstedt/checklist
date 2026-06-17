@@ -33,6 +33,9 @@ const settings = {
     disableToasts: "Disable toasts",
     disableToastsHint:
       "Stop showing pop-up notifications. The “new build ready” upgrade hint still appears.",
+    disableAchievements: "Disable achievements",
+    disableAchievementsHint:
+      "Stop tracking achievements and hide the trophy button. Achievements you’ve already earned are kept.",
   },
 
   lists: {

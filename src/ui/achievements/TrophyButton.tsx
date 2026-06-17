@@ -23,7 +23,10 @@ import { useAchievements } from "./achievements-context.ts";
 export function TrophyButton() {
   const t = useT();
   const dispatch = useModalDispatch();
-  const { unseenCount } = useAchievements();
+  const { unseenCount, enabled } = useAchievements();
+  // Achievements switched off (Settings → General): the trophy is the only way
+  // into the tour / unlock modals, so hiding it removes the feature wholesale.
+  if (!enabled) return null;
   const lit = unseenCount > 0;
   const label = lit
     ? unseenCount === 1

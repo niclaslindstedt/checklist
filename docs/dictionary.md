@@ -130,6 +130,7 @@ names. Honour these when naming a new file, key, or string.
 | **Unlock modal** / **achievement unlocked popup** / **new achievements** | `AchievementUnlockModal` (`src/ui/achievements/AchievementUnlockModal.tsx`); host `AchievementsUnlockModalHost` (`src/app/modals/AchievementsUnlockModalHost.tsx`); `{ kind: "achievements-unlock" }` on the modal bus. [→](overview.md#achievements) |
 | **Unlock an achievement** / **achievement watcher** / **unlock toast** | `useAchievementWatcher` (`src/achievements/useAchievementWatcher.ts`); `deriveUnlocks` (`src/achievements/derive.ts`); manual-unlock bus `unlock` (`src/achievements/bus.ts`); `unlockAchievements` / `clearUnseenAchievements`, `Settings.achievements` / `unseenAchievements` (`src/settings/`). [→](overview.md#achievements) |
 | **Achievement glyph** | inline SVGs in `src/achievements/glyphs.tsx` (`Glyph`). [→](overview.md#achievements) |
+| **Disable achievements** / **turn off achievements** / **hide the trophy** | `disableAchievements` (`src/settings/types.ts`); General-tab toggle (`src/ui/settings/tabs/general.tsx`); gates `useAchievementWatcher`'s `enabled` flag and `TrophyButton` visibility via `AchievementsContext`. [→](overview.md#achievements) |
 
 ## Storage and sync
 

@@ -21,6 +21,14 @@ export type AchievementWatcher = {
    */
   loaded: boolean;
   /**
+   * False when the user has switched achievements off (`disableAchievements`).
+   * Both passes no-op while disabled — no derived unlocks, and the manual bus
+   * is drained-and-discarded so nothing queued mid-disable fires on re-enable.
+   * Re-enabling re-establishes the baseline (like a fresh load) so the user's
+   * deltas only count forward-going, never as a retroactive backfill.
+   */
+  enabled: boolean;
+  /**
    * Record freshly-earned ids (idempotent per id), returning the ids that
    * were genuinely new — `useSettings().unlockAchievements`.
    */
@@ -45,6 +53,7 @@ export function useAchievementWatcher({
   snapshot,
   settings,
   loaded,
+  enabled,
   record,
   onUnlocked,
 }: AchievementWatcher): void {
@@ -71,8 +80,10 @@ export function useAchievementWatcher({
   useEffect(() => {
     if (!loaded) return;
     const consume = () => {
+      // Always drain first so a disabled watcher still empties the bus rather
+      // than letting unlocks pile up to fire the moment it's re-enabled.
       const ids = drain().filter((id) => ACHIEVEMENT_BY_ID.has(id));
-      if (ids.length === 0) return;
+      if (ids.length === 0 || !enabled) return;
       const newlyUnlocked = recordRef.current(ids);
       if (newlyUnlocked.length > 0) onUnlockedRef.current(newlyUnlocked);
     };
@@ -80,14 +91,17 @@ export function useAchievementWatcher({
     // fired during boot while data was still loading).
     consume();
     return subscribe(consume);
-  }, [loaded, settings.achievements]);
+  }, [loaded, enabled, settings.achievements]);
 
   // Derived-trigger pass on every state delta. While loading, keep prevRef
   // aligned with the current state so the first post-load comparison treats
   // the hydrated state as the baseline rather than the placeholder seed.
   useEffect(() => {
     const nextState: AchState = { snapshot, settings };
-    if (!loaded) {
+    // Treat "disabled" exactly like "not loaded": keep the baseline aligned
+    // with the live state and drop the loaded flag so re-enabling re-baselines
+    // and never backfills the deltas produced while it was off.
+    if (!loaded || !enabled) {
       prevRef.current = nextState;
       wasLoaded.current = false;
       return;
@@ -106,5 +120,5 @@ export function useAchievementWatcher({
     if (fresh.length === 0) return;
     const newlyUnlocked = recordRef.current(fresh);
     if (newlyUnlocked.length > 0) onUnlockedRef.current(newlyUnlocked);
-  }, [snapshot, settings, loaded]);
+  }, [snapshot, settings, loaded, enabled]);
 }

@@ -160,6 +160,7 @@ function AppShell() {
     snapshot: checklist.snapshot,
     settings,
     loaded: checklist.loaded,
+    enabled: !settings.disableAchievements,
     record: unlockAchievements,
     onUnlocked: onAchievementsUnlocked,
   });
@@ -329,8 +330,11 @@ function AppShell() {
   // checklist context (whose stability lets the memoised list skip settings
   // re-renders) so an unlock badges the button without reconciling the list.
   const achievementsValue = useMemo(
-    () => ({ unseenCount: settings.unseenAchievements.length }),
-    [settings.unseenAchievements.length],
+    () => ({
+      unseenCount: settings.unseenAchievements.length,
+      enabled: !settings.disableAchievements,
+    }),
+    [settings.unseenAchievements.length, settings.disableAchievements],
   );
 
   const navValue = useMemo<NavContextValue>(

@@ -49,6 +49,10 @@ export const DEFAULT_SHOW_MENU_BUTTON = true;
 // toast stack (but never the "new build ready" upgrade hint).
 export const DEFAULT_DISABLE_TOASTS = false;
 
+// The achievements system is on by default. The opt-out stops tracking and
+// hides the trophy button without discarding already-earned progress.
+export const DEFAULT_DISABLE_ACHIEVEMENTS = false;
+
 export function defaultSettings(): Settings {
   return {
     theme: DEFAULT_THEME,
@@ -59,6 +63,7 @@ export function defaultSettings(): Settings {
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
     disableToasts: DEFAULT_DISABLE_TOASTS,
+    disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements: {},
     unseenAchievements: [],
   };
@@ -183,6 +188,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.disableToasts === "boolean"
         ? raw.disableToasts
         : DEFAULT_DISABLE_TOASTS,
+    disableAchievements:
+      typeof raw.disableAchievements === "boolean"
+        ? raw.disableAchievements
+        : DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements,
     unseenAchievements: validUnseen(raw.unseenAchievements, achievements),
   };
