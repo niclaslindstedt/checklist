@@ -204,7 +204,7 @@ export default defineConfig({
         name: "checklist",
         short_name: "checklist",
         description:
-          "A local-first PWA checklist app with template and sharing support.",
+          "A fast, local-first checklist PWA that works offline with no account. Reusable templates, shareable links, and optional encrypted Google Drive or Dropbox sync.",
         theme_color: "#1f2933",
         background_color: "#1f2933",
         display: "standalone",

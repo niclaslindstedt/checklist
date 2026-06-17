@@ -15,12 +15,74 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#1f2933" />
+    <!-- Per OSS_SPEC §11.3.2: theme-color matched to each rendered
+         background. Dark is the default shell; light is the light-theme bg. -->
+    <meta
+      name="theme-color"
+      content="#1f2933"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#fafafa"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- Primary SEO. The description doubles as the social-card summary
+         below, so keep the two in sync (and aligned with the PWA manifest
+         description in `vite.config.ts`). Kept ≤ 160 chars per §11.3.2. -->
     <meta
       name="description"
-      content="A local-first PWA checklist app with template support and optional Google Drive / Dropbox sync."
+      content="A fast, local-first checklist PWA that works offline with no account. Reusable templates, shareable links, and optional encrypted Google Drive or Dropbox sync."
     />
+    <meta
+      name="keywords"
+      content="checklist, todo, to-do list, task list, PWA, offline, local-first, templates, markdown, shareable list, Google Drive sync, Dropbox sync, encrypted, no account, free"
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="author" content="Niclas Lindstedt" />
     <meta name="application-name" content="checklist" />
+    <link rel="canonical" href="https://checklist.niclaslindstedt.se/" />
+    <link
+      rel="sitemap"
+      type="application/xml"
+      href="https://checklist.niclaslindstedt.se/sitemap.xml"
+    />
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, Discord, …) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="checklist" />
+    <meta property="og:title" content="checklist — local-first checklist PWA" />
+    <meta
+      property="og:description"
+      content="A fast, local-first checklist PWA that works offline with no account. Reusable templates, shareable links, and optional end-to-end-encrypted Google Drive or Dropbox sync."
+    />
+    <meta property="og:url" content="https://checklist.niclaslindstedt.se/" />
+    <meta
+      property="og:image"
+      content="https://checklist.niclaslindstedt.se/pwa-512x512.png"
+    />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="checklist app icon" />
+    <meta property="og:locale" content="en" />
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="checklist — local-first checklist PWA"
+    />
+    <meta
+      name="twitter:description"
+      content="A fast, local-first checklist PWA that works offline with no account. Reusable templates, shareable links, and optional end-to-end-encrypted Google Drive or Dropbox sync."
+    />
+    <meta
+      name="twitter:image"
+      content="https://checklist.niclaslindstedt.se/pwa-512x512.png"
+    />
+    <meta name="twitter:image:alt" content="checklist app icon" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
@@ -35,7 +97,44 @@
       content="black-translucent"
     />
 
-    <title>checklist</title>
+    <title>checklist — local-first checklist & template PWA</title>
+
+    <!-- Structured data: lets search engines render a rich result for the
+         app. `offers` price 0 marks it free; `browserRequirements` keeps it
+         honest that this is a web/PWA app, not a native download. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "checklist",
+        "url": "https://checklist.niclaslindstedt.se/",
+        "description": "A fast, local-first checklist PWA that works offline with no account or backend. Reusable templates, namespaces, markdown import/export, shareable links, and optional end-to-end-encrypted Google Drive or Dropbox sync.",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires a modern browser with JavaScript enabled.",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Niclas Lindstedt"
+        },
+        "featureList": [
+          "Works offline as an installable PWA",
+          "Local-first storage with no account or backend",
+          "Reusable checklist templates",
+          "Namespaces for separate sets of checklists",
+          "Markdown import and export",
+          "Shareable lists via client-side URL fragments",
+          "Optional end-to-end-encrypted Google Drive or Dropbox sync",
+          "Undo/redo timeline",
+          "Themes, fonts, and adjustable text size"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
