@@ -1,0 +1,243 @@
+import type { AchievementsCatalog } from "../en/achievements";
+
+const achievements: AchievementsCatalog = {
+  button: {
+    open: "Bedrifter",
+    unseenOne: "1 ny bedrift",
+    unseenOther: "{n} nya bedrifter",
+  },
+  toast: {
+    unlockedOne: "Bedrift upplåst: {name}",
+    unlockedOther: "{n} bedrifter upplåsta!",
+  },
+  modal: {
+    title: "Bedrifter",
+    counter: "{unlocked} av {total} upplåsta · {earned} / {max} p",
+    intro:
+      "Varje funktion i appen är en bedrift. Gör saken en gång så låses den upp. Fyra nivåer, från att precis ha öppnat appen till att forma den helt efter ditt arbetssätt — välj den som passar dig härnäst.",
+    tierPoints: "· {earned} / {max} p",
+    learnMore: "Läs mer",
+    locked: "Låst",
+    tier: {
+      beginner: {
+        title: "Nybörjare",
+        subtitle: "Du har precis öppnat appen. Vad gör du?",
+      },
+      intermediate: {
+        title: "Van",
+        subtitle: "Du vill hålla ordning på fler än en lista.",
+      },
+      pro: {
+        title: "Proffs",
+        subtitle: "Synka den, håll den prydlig, ta den överallt.",
+      },
+      expert: {
+        title: "Expert",
+        subtitle: "Forma appen helt efter ditt arbetssätt.",
+      },
+    },
+  },
+  catalog: {
+    // ── Nybörjare ─────────────────────────────────────────────────────
+    firstSteps: {
+      name: "Första steget",
+      condition: "Lägg till din första post.",
+      learnMore:
+        "Tryck på lägg-till-knappen, skriv en uppgift, tryck Enter. Det är en checklisterad — kärnan som hela appen är byggd kring.",
+    },
+    checkItOff: {
+      name: "Bocka av",
+      condition: "Bocka av en post.",
+      learnMore:
+        "Tryck på en posts ruta för att markera den klar. Räknaren i sidhuvudet visar hur många av listans poster som är avbockade.",
+    },
+    noteToSelf: {
+      name: "Anteckning",
+      condition: "Lägg till en anteckning på en post.",
+      learnMore:
+        "En post kan bära en längre anteckning under titeln — detaljen du inte vill ha i rubriken men inte heller vill glömma.",
+    },
+    nonNegotiable: {
+      name: "Måste-ha",
+      condition: "Markera en post som obligatorisk.",
+      learnMore:
+        "Obligatoriska poster är de som en lista inte räknas som klar utan — de absolut nödvändiga.",
+    },
+    interiorDesigner: {
+      name: "Inredaren",
+      condition: "Byt till ett annat tema.",
+      learnMore:
+        "Inställningar → Utseende har One Dark, One Light, Dracula, Monokai, GitHub, Solarized med flera. Det egna temat i expertnivån staplas ovanpå.",
+    },
+    biggerPicture: {
+      name: "Större bild",
+      condition: "Ändra textstorleken.",
+      learnMore:
+        "Utseende-fliken skalar hela gränssnittet i fyra steg, från 90% till 125% — bra på en liten telefon eller en skärm långt borta.",
+    },
+    renamed: {
+      name: "Namnlapp",
+      condition: "Byt namn på en checklista.",
+      learnMore:
+        "Tryck på listans titel i sidhuvudet för att byta namn — en ny lista heter “Checklist” från början.",
+    },
+    secondThoughts: {
+      name: "Ångrar mig",
+      condition: "Ångra en åtgärd.",
+      learnMore:
+        "⌘Z (eller Ångra i sidomenyn) tar tillbaka den senaste ändringen. Varje redigering, bockning, arkivering och radering går att ångra — ångra är skyddsnätet.",
+    },
+    homeScreen: {
+      name: "Hemskärmen",
+      condition: "Installera appen på din enhet.",
+      learnMore:
+        "På iPhone / iPad i Safari: dela-menyn → Lägg till på hemskärmen. På Android och Chromium på datorn: installationstipset i adressfältet. Installerad körs appen i ett eget fönster utan webbläsarens ramar.",
+    },
+
+    // ── Van ───────────────────────────────────────────────────────────
+    listMaker: {
+      name: "Listbyggaren",
+      condition: "Ha fler än en checklista.",
+      learnMore:
+        "“+” på Checklistor-rubriken i sidomenyn lägger till en lista till. Var och en är fristående; växlaren visar varje listas återstående antal.",
+    },
+    archivist: {
+      name: "Arkivarien",
+      condition: "Arkivera en post.",
+      learnMore:
+        "Svep en post åt höger (eller använd dess meny) för att arkivera den — den faller ur den aktiva listan utan att förstöras. Arkivvyn återställer eller raderar arkiverade poster.",
+    },
+    comeback: {
+      name: "Comeback",
+      condition: "Återställ en post från arkivet.",
+      learnMore:
+        "Arkivvyn (längst ner i sidomenyn) listar allt du arkiverat, grupperat efter källista. Återställ sätter tillbaka posten där den kom ifrån.",
+    },
+    reshuffle: {
+      name: "Omflyttning",
+      condition: "Dra en post för att flytta om den.",
+      learnMore:
+        "Ta tag i en post i draghandtaget och släpp den någon annanstans i listan. Ordningen är din att bestämma — appen sorterar aldrig om bakom ryggen på dig.",
+    },
+    cleanSlate: {
+      name: "Rent bord",
+      condition: "Ta bort en checklista.",
+    },
+    copyThat: {
+      name: "Kopierat",
+      condition: "Kopiera en checklista till urklipp.",
+      learnMore:
+        "Kopieringsknappen lägger hela listan i urklipp som ren uppgiftslista i markdown (“- [ ]” / “- [x]”), redo att klistra in i valfri anteckningsapp eller meddelande.",
+    },
+    pasteList: {
+      name: "Klistra & kör",
+      condition: "Bygg en lista genom att klistra in markdown.",
+      learnMore:
+        "Klistra in en markdown-uppgiftslista i lägg-till-raden så landar varje “- [ ]” / “- [x]”-rad som en egen post — en hel checklista i ett klistra.",
+    },
+    topThis: {
+      name: "Högst upp",
+      condition: "Ändra var nya poster hamnar.",
+    },
+    menuMover: {
+      name: "Omplaceraren",
+      condition: "Dra den flytande menyknappen till en ny plats.",
+      learnMore:
+        "Den runda navigeringsknappen går att dra — parkera den på den kant och höjd som passar tummen. Dess viloplats kommer ihåg.",
+    },
+    fontFanatic: {
+      name: "Typsnittsnörd",
+      condition: "Byt typsnitt.",
+    },
+
+    // ── Proffs ────────────────────────────────────────────────────────
+    compartments: {
+      name: "Fack",
+      condition: "Skapa en namnrymd.",
+      learnMore:
+        "Namnrymder håller separata världar av listor sida vid sida — jobb och hem, till exempel — var och en sitt eget dokument. “+” på Namnrymd-rubriken skapar en.",
+    },
+    dressUp: {
+      name: "Klä upp",
+      condition: "Ge en namnrymd en ikon eller färg.",
+      learnMore:
+        "En namnrymd kan bära sin egen symbol och accentfärg; det valda märket pryder sidomenyn och favikonen i webbläsarfliken så att du skiljer dina världar åt vid en blick.",
+    },
+    localVault: {
+      name: "Lokalt valv",
+      condition: "Spara dina listor i en lokal mapp.",
+      learnMore:
+        "Mapp-backenden sparar varje lista som en vanlig markdown-fil i en mapp du väljer — läsbar, synkbar med dina egna verktyg, och helt din.",
+    },
+    cloudWalker: {
+      name: "Molnvandraren",
+      condition: "Anslut en molnlagring.",
+      learnMore:
+        "Dropbox eller Google Drive håller dina listor synkade mellan enheter. Inget konto här — du ansluter ditt eget moln, och appen pratar bara med det.",
+    },
+    freshPull: {
+      name: "Färskt drag",
+      condition: "Dra nedåt för att uppdatera.",
+      learnMore:
+        "På en synk-backend läser ett nedåtdrag från listans topp om den senaste kopian — sättet att fånga upp en ändring du gjort på en annan enhet.",
+    },
+    trustButVerify: {
+      name: "Lita men kontrollera",
+      condition: "Utlös en manuell sparning.",
+    },
+    peacemaker: {
+      name: "Fredsmäklaren",
+      condition: "Lös en synkkonflikt.",
+      learnMore:
+        "När två enheter ändrar samma lista innan de synkas frågar appen vilken kopia som vinner i stället för att tyst välja — du behåller din eller tar deras.",
+    },
+    quietLife: {
+      name: "Lugn och ro",
+      condition: "Tysta aviseringarna.",
+    },
+
+    // ── Expert ────────────────────────────────────────────────────────
+    paranoidMode: {
+      name: "Paranoialäge",
+      condition: "Kryptera dina data med en lösenfras.",
+      learnMore:
+        "Kryptering i vila förseglar dina listor bakom en lösenfras som bara hålls i minnet under sessionen. Tappar du lösenfrasen blir datan oläsbar — det är hela poängen.",
+    },
+    themeWizard: {
+      name: "Tematrollkarl",
+      condition: "Bygg ett helt eget tema.",
+      learnMore:
+        "Det egna temat blottar varje färgplats plus rundning, täthet och kantbredd — finjustera hela utseendet efter smak, utgånget från det förval du var på.",
+    },
+    stillness: {
+      name: "Stillhet",
+      condition: "Slå på reducerad rörelse.",
+    },
+    minimalist: {
+      name: "Minimalisten",
+      condition: "Dölj den flytande navigeringsknappen.",
+      learnMore:
+        "I den installerade appen på telefon eller surfplatta kan du dölja den runda knappen helt och öppna menyn med ett inåtsvep från kanten i stället — inget flyter över din lista.",
+    },
+    underTheHood: {
+      name: "Under huven",
+      condition: "Slå på utvecklarläge.",
+    },
+    holodeck: {
+      name: "Holodäck",
+      condition: "Ladda exempeldatan.",
+    },
+    polyglot: {
+      name: "Polyglott",
+      condition: "Byt appens språk.",
+    },
+    completionist: {
+      name: "Fullbordaren",
+      condition: "Lås upp alla andra bedrifter.",
+      learnMore:
+        "Du har hittat och använt varje funktion appen har — från första posten till en egendesignad, krypterad, molnsynkad uppsättning med flera namnrymder. Det finns inget kvar att upptäcka. Snyggt.",
+    },
+  },
+};
+
+export default achievements;

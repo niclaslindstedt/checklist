@@ -111,6 +111,17 @@ names. Honour these when naming a new file, key, or string.
 | **Appearance tab** / **theme tab**         | `src/ui/settings/tabs/appearance.tsx`. [→](overview.md#appearance--theme-tab)      |
 | **Theme** / **font** / **text size** / **custom theme** | `src/theme/themes.ts`, `src/theme/useTheme.ts`, `src/theme/fonts.ts`. [→](overview.md#theme-engine) |
 
+## Achievements
+
+| The user says…                          | Code                                                                                                       |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Achievements** / **trophies** / **unlockables** | `ACHIEVEMENTS`, `ACHIEVEMENT_BY_ID` (`src/achievements/catalog.ts`); barrel `src/achievements/index.ts`. [→](overview.md#achievements) |
+| **Achievement tiers** / **Beginner / Intermediate / Pro / Expert** / **points** | `AchievementTier`, `TIER_POINTS`, `TIER_ORDER` (`src/achievements/types.ts`). [→](overview.md#achievements) |
+| **Trophy button** / **achievements badge** / **the trophy** | `TrophyButton` (`src/ui/achievements/TrophyButton.tsx`); `AchievementsContext` (`src/ui/achievements/achievements-context.ts`). [→](overview.md#achievements) |
+| **Achievements modal** / **the achievements list** / **the tour** | `AchievementsModal` (`src/ui/achievements/AchievementsModal.tsx`); host `AchievementsModalHost` (`src/app/modals/AchievementsModalHost.tsx`); `{ kind: "achievements" }` on the modal bus. [→](overview.md#achievements) |
+| **Unlock an achievement** / **achievement watcher** / **unlock toast** | `useAchievementWatcher` (`src/achievements/useAchievementWatcher.ts`); `deriveUnlocks` (`src/achievements/derive.ts`); manual-unlock bus `unlock` (`src/achievements/bus.ts`); `unlockAchievements` / `clearUnseenAchievements`, `Settings.achievements` / `unseenAchievements` (`src/settings/`). [→](overview.md#achievements) |
+| **Achievement glyph** | inline SVGs in `src/achievements/glyphs.tsx` (`Glyph`). [→](overview.md#achievements) |
+
 ## Storage and sync
 
 | Term                                                  | Refers to                                                                          |

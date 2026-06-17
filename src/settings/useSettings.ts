@@ -27,6 +27,17 @@ export type UpdateSetting = <K extends keyof Settings>(
 export interface UseSettings {
   settings: Settings;
   update: UpdateSetting;
+  /**
+   * Record one or more freshly-earned achievements. Idempotent per id —
+   * an id already in `achievements` keeps its original timestamp and is
+   * not re-queued as unseen — so the achievement watcher can call this on
+   * every transition without drift. New ids land in both `achievements`
+   * (stamped now) and `unseenAchievements` (so the trophy button badges).
+   * Returns the ids that were genuinely new, for the unlock toast.
+   */
+  unlockAchievements: (ids: readonly string[]) => string[];
+  /** Clear the unseen-achievements queue (the trophy badge empties). */
+  clearUnseenAchievements: () => void;
 }
 
 export function useSettings(settingsStore?: SettingsStore | null): UseSettings {
@@ -65,22 +76,69 @@ export function useSettings(settingsStore?: SettingsStore | null): UseSettings {
     };
   }, [settingsStore]);
 
-  const update = useCallback<UpdateSetting>(
-    (key, value) => {
-      setSettings((prev) => {
-        const next = { ...prev, [key]: value };
-        saveSettings(next);
-        void Promise.resolve(settingsStore?.save(JSON.stringify(next))).catch(
-          () => {
-            // Best-effort: a failed backend write leaves the local cache,
-            // which the next reconcile or `update` re-pushes.
-          },
-        );
-        return next;
-      });
+  // Write a settings value through to both persistence layers. Shared by
+  // `update` and the achievement recorders so they all flush the same way.
+  const persist = useCallback(
+    (next: Settings) => {
+      saveSettings(next);
+      void Promise.resolve(settingsStore?.save(JSON.stringify(next))).catch(
+        () => {
+          // Best-effort: a failed backend write leaves the local cache,
+          // which the next reconcile or `update` re-pushes.
+        },
+      );
     },
     [settingsStore],
   );
 
-  return { settings, update };
+  const update = useCallback<UpdateSetting>(
+    (key, value) => {
+      setSettings((prev) => {
+        const next = { ...prev, [key]: value };
+        persist(next);
+        return next;
+      });
+    },
+    [persist],
+  );
+
+  const unlockAchievements = useCallback(
+    (ids: readonly string[]): string[] => {
+      // Compute the genuinely-new ids against the latest settings up front
+      // so the caller (the unlock toast) gets them synchronously; the
+      // functional update below re-checks to stay correct under batching.
+      const current = settingsRef.current.achievements;
+      const fresh = ids.filter((id) => current[id] === undefined);
+      if (fresh.length === 0) return [];
+      setSettings((prev) => {
+        const ts = Date.now();
+        const achievements = { ...prev.achievements };
+        const unseen = [...prev.unseenAchievements];
+        let changed = false;
+        for (const id of ids) {
+          if (achievements[id] !== undefined) continue;
+          achievements[id] = ts;
+          if (!unseen.includes(id)) unseen.push(id);
+          changed = true;
+        }
+        if (!changed) return prev;
+        const next = { ...prev, achievements, unseenAchievements: unseen };
+        persist(next);
+        return next;
+      });
+      return fresh;
+    },
+    [persist],
+  );
+
+  const clearUnseenAchievements = useCallback(() => {
+    setSettings((prev) => {
+      if (prev.unseenAchievements.length === 0) return prev;
+      const next = { ...prev, unseenAchievements: [] };
+      persist(next);
+      return next;
+    });
+  }, [persist]);
+
+  return { settings, update, unlockAchievements, clearUnseenAchievements };
 }

@@ -15,6 +15,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { MutableRefObject } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import {
   createChecklist,
   nextChecklistName,
@@ -115,6 +116,7 @@ export function useChecklistLists(deps: {
       const trimmed = name.trim();
       if (!trimmed) return;
       const prev = docRef.current;
+      unlock("renamed");
       // No toast: the header title updates in place.
       commit(
         {
@@ -142,6 +144,7 @@ export function useChecklistLists(deps: {
       const label = t("toast.listDeleted", { name });
       commit({ ...prev, checklists: remaining }, label);
       notify(label);
+      unlock("cleanSlate");
       // Removing the explicitly-selected list re-points the selection at the
       // first survivor; an unset selection already falls back to `[0]`.
       if (id === activeId) setActiveId(remaining[0]!.id);

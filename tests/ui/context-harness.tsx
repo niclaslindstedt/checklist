@@ -10,6 +10,7 @@ import {
   ChecklistContext,
   type ChecklistContextValue,
 } from "../../src/ui/checklist-context.ts";
+import { ModalBusProvider } from "../../src/ui/ModalBusProvider.tsx";
 import type { NavContextValue } from "../../src/ui/nav-context.ts";
 import { ToastProvider } from "../../src/ui/toast/Toast.tsx";
 
@@ -51,6 +52,7 @@ export function makeChecklistValue(
     resolveConflict: noop,
     status: "idle",
     dirty: false,
+    loaded: true,
     saveNow: noop,
     undo: noop,
     redo: noop,
@@ -87,9 +89,11 @@ export function renderWithChecklist(
 ) {
   return render(
     <ToastProvider>
-      <ChecklistContext.Provider value={makeChecklistValue(value)}>
-        {ui}
-      </ChecklistContext.Provider>
+      <ModalBusProvider>
+        <ChecklistContext.Provider value={makeChecklistValue(value)}>
+          {ui}
+        </ChecklistContext.Provider>
+      </ModalBusProvider>
     </ToastProvider>,
   );
 }

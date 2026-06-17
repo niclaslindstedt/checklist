@@ -59,7 +59,31 @@ export function defaultSettings(): Settings {
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
     disableToasts: DEFAULT_DISABLE_TOASTS,
+    achievements: {},
+    unseenAchievements: [],
   };
+}
+
+// Coerce a stored value into the achievements map: a plain object whose
+// values are finite numbers (unlock timestamps). Anything malformed is
+// dropped rather than throwing, so an older or hand-edited blob still loads.
+function validAchievements(v: unknown): Record<string, number> {
+  if (!isRecord(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [id, ts] of Object.entries(v)) {
+    if (typeof ts === "number" && Number.isFinite(ts)) out[id] = ts;
+  }
+  return out;
+}
+
+// Coerce a stored value into the unseen-achievements list: a string array
+// narrowed to ids that actually appear in the unlocked map (a stale unseen
+// id with no unlock can't be earned, so it's noise).
+function validUnseen(v: unknown, unlocked: Record<string, number>): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(
+    (id): id is string => typeof id === "string" && unlocked[id] !== undefined,
+  );
 }
 
 function validMenuButtonPosition(v: unknown): MenuButtonPosition {
@@ -135,6 +159,7 @@ function validFontScale(v: unknown): number {
 /** Coerce any stored value into a complete, valid `Settings`. */
 export function validateSettings(raw: unknown): Settings {
   if (!isRecord(raw)) return defaultSettings();
+  const achievements = validAchievements(raw.achievements);
   return {
     theme: oneOf<ThemePreset>(raw.theme, THEMES, DEFAULT_THEME),
     fontFamily: oneOf<FontFamilyId>(
@@ -158,6 +183,8 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.disableToasts === "boolean"
         ? raw.disableToasts
         : DEFAULT_DISABLE_TOASTS,
+    achievements,
+    unseenAchievements: validUnseen(raw.unseenAchievements, achievements),
   };
 }
 

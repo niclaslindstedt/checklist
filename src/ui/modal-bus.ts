@@ -18,7 +18,8 @@ import { createContext, useContext } from "react";
 export type ModalCommand =
   | { kind: "settings"; tab?: "storage" }
   | { kind: "changelog" }
-  | { kind: "namespaces" };
+  | { kind: "namespaces" }
+  | { kind: "achievements" };
 
 export type ModalKind = ModalCommand["kind"];
 

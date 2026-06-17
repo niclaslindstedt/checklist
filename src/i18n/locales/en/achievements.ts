@@ -1,0 +1,252 @@
+import type { Widen } from "./_widen";
+
+// Strings for the achievements feature — the header trophy button, the
+// unlock toast, the four-tier tour chrome, and the per-achievement catalog.
+// Mirrors the budget project's achievements namespace, scaled to the
+// checklist's catalog. The runtime reads `catalog.<id>.{name,condition,
+// learnMore}` by id (see `src/ui/achievements/AchievementsModal.tsx`); the
+// Swedish file mirrors this shape key-for-key.
+
+const achievements = {
+  button: {
+    open: "Achievements",
+    unseenOne: "1 new achievement",
+    unseenOther: "{n} new achievements",
+  },
+  toast: {
+    unlockedOne: "Achievement unlocked: {name}",
+    unlockedOther: "{n} achievements unlocked!",
+  },
+  modal: {
+    title: "Achievements",
+    counter: "{unlocked} of {total} unlocked · {earned} / {max} pts",
+    intro:
+      "Every feature in the app is an achievement. Do the thing once and it unlocks. Four tiers, from just opening the app to bending it to your workflow — pick whichever is next for you.",
+    tierPoints: "· {earned} / {max} pts",
+    learnMore: "Learn more",
+    locked: "Locked",
+    tier: {
+      beginner: {
+        title: "Beginner",
+        subtitle: "You just opened the app. What do you do?",
+      },
+      intermediate: {
+        title: "Intermediate",
+        subtitle: "You want to organise more than one list.",
+      },
+      pro: {
+        title: "Pro",
+        subtitle: "Make it sync, keep it tidy, take it everywhere.",
+      },
+      expert: {
+        title: "Expert",
+        subtitle: "Bend the app to your exact workflow.",
+      },
+    },
+  },
+  catalog: {
+    // ── Beginner ──────────────────────────────────────────────────────
+    firstSteps: {
+      name: "First Steps",
+      condition: "Add your first item.",
+      learnMore:
+        "Tap the add button, type a task, press Enter. That's a checklist item — the core loop the whole app is built around.",
+    },
+    checkItOff: {
+      name: "Check, Please",
+      condition: "Tick an item off.",
+      learnMore:
+        "Tap an item's box to mark it done. The header count tracks how many of the list's items are checked.",
+    },
+    noteToSelf: {
+      name: "Note to Self",
+      condition: "Add a note to an item.",
+      learnMore:
+        "An item can carry a longer note beneath its title — the detail you don't want in the headline but don't want to forget either.",
+    },
+    nonNegotiable: {
+      name: "Non-Negotiable",
+      condition: "Mark an item required.",
+      learnMore:
+        "Required items are the ones a list can't be considered done without — the don't-leave-without-it essentials.",
+    },
+    interiorDesigner: {
+      name: "Interior Designer",
+      condition: "Switch to a different theme.",
+      learnMore:
+        "Settings → Appearance carries One Dark, One Light, Dracula, Monokai, GitHub, Solarized, and more. The Custom theme in the Expert tier stacks on top.",
+    },
+    biggerPicture: {
+      name: "Bigger Picture",
+      condition: "Change the text size.",
+      learnMore:
+        "The Appearance tab scales the whole interface in four steps, from 90% to 125% — handy on a small phone or a far-away monitor.",
+    },
+    renamed: {
+      name: "Name Tag",
+      condition: "Rename a checklist.",
+      learnMore:
+        "Tap the list's title in the header to rename it — a fresh list starts life as plain “Checklist”.",
+    },
+    secondThoughts: {
+      name: "Second Thoughts",
+      condition: "Undo an action.",
+      learnMore:
+        "⌘Z (or the side-menu Undo) walks back the last change. Every edit, check, archive, and delete is reversible — undo is the safety net.",
+    },
+    homeScreen: {
+      name: "Home Screen",
+      condition: "Install the app on your device.",
+      learnMore:
+        "On iPhone / iPad in Safari: share-sheet → Add to Home Screen. On Android and desktop Chromium: the install hint in the address bar. Installed, the app runs in its own window with no browser chrome.",
+    },
+
+    // ── Intermediate ──────────────────────────────────────────────────
+    listMaker: {
+      name: "List Maker",
+      condition: "Keep more than one checklist.",
+      learnMore:
+        "The “+” on the side menu's Checklists heading adds another list. Each is independent; the switcher badges every list with its remaining count.",
+    },
+    archivist: {
+      name: "Archivist",
+      condition: "Archive an item.",
+      learnMore:
+        "Swipe an item right (or use its menu) to archive it — it drops out of the active list without being destroyed. The Archive view restores or deletes archived items.",
+    },
+    comeback: {
+      name: "Comeback",
+      condition: "Restore an item from the archive.",
+      learnMore:
+        "The Archive view (foot of the side menu) lists everything you've archived, grouped by source list. Restore puts an item back where it came from.",
+    },
+    reshuffle: {
+      name: "Reshuffle",
+      condition: "Drag an item to reorder it.",
+      learnMore:
+        "Grab an item by its drag handle and drop it elsewhere in the list. Order is yours to set — the app never re-sorts behind your back.",
+    },
+    cleanSlate: {
+      name: "Clean Slate",
+      condition: "Remove a checklist.",
+    },
+    copyThat: {
+      name: "Copy That",
+      condition: "Copy a checklist to the clipboard.",
+      learnMore:
+        "The copy button puts the whole list on the clipboard as plain task-list markdown (“- [ ]” / “- [x]”), ready to paste into any notes app or message.",
+    },
+    pasteList: {
+      name: "Paste & Go",
+      condition: "Build a list by pasting markdown.",
+      learnMore:
+        "Paste a markdown task list into the add-item row and every “- [ ]” / “- [x]” line lands as its own item — a whole checklist in one paste.",
+    },
+    topThis: {
+      name: "Top of the List",
+      condition: "Change where new items land.",
+    },
+    menuMover: {
+      name: "Rearranger",
+      condition: "Drag the floating menu button to a new spot.",
+      learnMore:
+        "The round navigation button is draggable — park it on whichever edge and height suits your thumb. Its resting spot is remembered.",
+    },
+    fontFanatic: {
+      name: "Font Fanatic",
+      condition: "Change the font family.",
+    },
+
+    // ── Pro ───────────────────────────────────────────────────────────
+    compartments: {
+      name: "Compartments",
+      condition: "Create a namespace.",
+      learnMore:
+        "Namespaces keep separate worlds of lists side by side — work and home, say — each its own document. The Namespace heading's “+” makes one.",
+    },
+    dressUp: {
+      name: "Dress Up",
+      condition: "Give a namespace an icon or colour.",
+      learnMore:
+        "A namespace can wear its own glyph and accent colour; the chosen mark badges the side menu and the browser-tab favicon so you can tell your worlds apart at a glance.",
+    },
+    localVault: {
+      name: "Local Vault",
+      condition: "Store your lists in a local folder.",
+      learnMore:
+        "The folder backend saves each list as a plain markdown file in a folder you pick — readable, syncable through your own tooling, and entirely yours.",
+    },
+    cloudWalker: {
+      name: "Cloud Walker",
+      condition: "Connect a cloud backend.",
+      learnMore:
+        "Dropbox or Google Drive keeps your lists in sync across devices. No account here — you connect your own cloud, and the app talks only to it.",
+    },
+    freshPull: {
+      name: "Fresh Pull",
+      condition: "Pull down to refresh.",
+      learnMore:
+        "On a sync backend, a downward pull from the top of the list re-reads the latest copy — the way to pick up an edit you made on another device.",
+    },
+    trustButVerify: {
+      name: "Trust, But Verify",
+      condition: "Trigger a manual save.",
+    },
+    peacemaker: {
+      name: "Peacemaker",
+      condition: "Resolve a sync conflict.",
+      learnMore:
+        "When two devices edit the same list before syncing, the app asks which copy wins rather than silently picking — you keep yours or take theirs.",
+    },
+    quietLife: {
+      name: "Quiet Life",
+      condition: "Silence the toast notifications.",
+    },
+
+    // ── Expert ────────────────────────────────────────────────────────
+    paranoidMode: {
+      name: "Paranoid Mode",
+      condition: "Encrypt your data with a passphrase.",
+      learnMore:
+        "At-rest encryption seals your lists behind a passphrase held only in memory for the session. Lose the passphrase and the data is unreadable — that's the point.",
+    },
+    themeWizard: {
+      name: "Theme Wizard",
+      condition: "Build a fully custom theme.",
+      learnMore:
+        "The Custom theme exposes every colour slot plus radius, density, and border weight — tune the whole look to taste, seeded from whichever preset you were on.",
+    },
+    stillness: {
+      name: "Stillness",
+      condition: "Turn on reduced motion.",
+    },
+    minimalist: {
+      name: "Minimalist",
+      condition: "Hide the floating navigation button.",
+      learnMore:
+        "In the installed PWA on a phone or tablet you can hide the round button entirely and open the menu with an inward edge swipe instead — nothing floating over your list.",
+    },
+    underTheHood: {
+      name: "Under the Hood",
+      condition: "Turn on developer mode.",
+    },
+    holodeck: {
+      name: "Holodeck",
+      condition: "Load the sample data set.",
+    },
+    polyglot: {
+      name: "Polyglot",
+      condition: "Switch the app's language.",
+    },
+    completionist: {
+      name: "Completionist",
+      condition: "Unlock every other achievement.",
+      learnMore:
+        "You found and used every feature the app has — from the first item to a custom-themed, encrypted, cloud-synced, multi-namespace setup. There's nothing left to discover. Nice.",
+    },
+  },
+} as const;
+
+export type AchievementsCatalog = Widen<typeof achievements>;
+
+export default achievements;

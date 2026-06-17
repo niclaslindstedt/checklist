@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import type { Checklist } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { checklistBodyMarkdown } from "../storage/markdown/codec.ts";
@@ -55,6 +56,7 @@ export function CopyButton({ checklist }: { checklist: Checklist }) {
       return;
     }
     toast.push({ kind: "success", message: t("app.copied") });
+    unlock("copyThat");
     setCopied(true);
     clearTimeout(resetTimer.current);
     resetTimer.current = setTimeout(() => setCopied(false), 1500);

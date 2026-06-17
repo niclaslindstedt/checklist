@@ -14,6 +14,8 @@
 
 import { useEffect, useState } from "react";
 
+import { unlock } from "../achievements/bus.ts";
+
 let active = false;
 const subscribers = new Set<() => void>();
 
@@ -30,6 +32,7 @@ function notify(): void {
 function setActiveGlobal(next: boolean): void {
   if (active === next) return;
   active = next;
+  if (next) unlock("holodeck");
   notify();
 }
 

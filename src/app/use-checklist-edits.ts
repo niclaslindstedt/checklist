@@ -13,6 +13,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { MutableRefObject } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import {
   addItem as addItemOp,
   addItems as addItemsOp,
@@ -164,6 +165,7 @@ export function useChecklistEdits(deps: {
       const label = t("toast.itemsImported", { count: items.length });
       commit(addItemsOp(listRef.current, items, now()), label);
       notify(label, "success");
+      unlock("pasteList");
       return items.length;
     },
     [commit, notify, t],
@@ -210,17 +212,20 @@ export function useChecklistEdits(deps: {
       const label = t("toast.itemRestored", { title: found.item.title });
       commit(setArchived(found.checklist, itemId, false, now()), label);
       notify(label, "success");
+      unlock("comeback");
     },
     [commit, findItem, notify, t],
   );
 
   const reorder = useCallback(
-    (itemId: string, toIndex: number) =>
+    (itemId: string, toIndex: number) => {
       // No toast: the row visibly lands at its new spot. Label feeds undo.
       commit(
         moveItemOp(listRef.current, itemId, toIndex, now()),
         t("toast.itemMoved", { title: titleOf(itemId) }),
-      ),
+      );
+      unlock("reshuffle");
+    },
     [commit, titleOf, t],
   );
 

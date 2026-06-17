@@ -6,6 +6,7 @@
 
 import type { Widen } from "./_widen";
 
+import achievements from "./achievements";
 import app from "./app";
 import changelog from "./changelog";
 import common from "./common";
@@ -18,6 +19,7 @@ import sync from "./sync";
 import toast from "./toast";
 
 export const en = {
+  achievements,
   app,
   changelog,
   common,

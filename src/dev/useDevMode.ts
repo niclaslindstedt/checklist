@@ -20,6 +20,7 @@
 
 import { useEffect, useState } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import { isCaptureEnabled, setCaptureEnabled } from "./logger.ts";
 
 const DEV_MODE_KEY = "checklist:dev:mode";
@@ -61,6 +62,7 @@ function setDevModeGlobal(next: boolean): void {
   if (devModeState !== next) {
     devModeState = next;
     writeBool(DEV_MODE_KEY, next);
+    if (next) unlock("underTheHood");
   }
   // Force capture off whenever dev mode flips off — otherwise logs would
   // keep landing in localStorage while the tabs are hidden.
