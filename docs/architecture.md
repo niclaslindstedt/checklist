@@ -198,6 +198,12 @@ the cloud adapter throws `ConflictError` carrying the remote bytes;
 `ConflictResolutionModal` lets the user keep their copy (re-save over the
 remote) or take the remote (adopt its bytes). Adapters also throw
 `AuthError` (re-auth needed) and `RateLimitError` (HTTP 429 cooldown).
+A `RateLimitError` parks the session in `throttled` and auto-resumes once
+the cooldown (the backend's `retryAfterMs`, floored against an
+exponential backoff curve and escalated per consecutive 429) elapses;
+any other save failure is retried with the same backoff up to a small
+budget before going red. The backoff curve and the retryable-error
+predicate live in the pure `src/storage/save-retry.ts`.
 
 **Status glyph.** For a cloud-backed session, `useChecklist` exposes a
 coarse `SaveStatus` (idle / saving / saved / error / conflict /

@@ -7,13 +7,14 @@
 // guarding. Driven through the public `useChecklist` composer against an
 // in-memory adapter.
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { addItem, createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot } from "../../src/domain/types.ts";
 import { useChecklist } from "../../src/app/use-checklist.ts";
 import {
   ConflictError,
+  RateLimitError,
   type StorageAdapter,
   type StoredSnapshot,
 } from "../../src/storage/adapter.ts";
@@ -212,5 +213,102 @@ describe("useChecklist save / undo / reload cycle", () => {
     expect(result.current.items.map((i) => i.title)).toEqual(["remote item"]);
     // Adopting the remote makes it the new baseline — history is reset.
     expect(result.current.canUndo).toBe(false);
+  });
+});
+
+describe("useChecklist throttle / transient-retry recovery", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("recovers from a rate limit by waiting out the cooldown and resuming", async () => {
+    vi.useFakeTimers();
+    // A cloud adapter that rate-limits the first save (with a short
+    // cooldown) then accepts the retry. Mirrors Dropbox returning 429 +
+    // Retry-After: the save must not surface a hard error — it goes
+    // `throttled`, waits, and resumes to `saved` on its own.
+    let serverText = serialize(emptySnapshot());
+    let serverRev = 1;
+    let attempts = 0;
+    const adapter: StorageAdapter = {
+      id: "dropbox",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => ({
+        text: serverText,
+        revision: String(serverRev),
+      }),
+      save: async (next: string) => {
+        attempts += 1;
+        if (attempts === 1) throw new RateLimitError(50);
+        serverText = next;
+        serverRev += 1;
+        return { text: serverText, revision: String(serverRev) };
+      },
+      saveDebounceMs: 0,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    act(() => result.current.addItem("a"));
+    // First save was rejected with a rate limit — the glyph goes orange,
+    // not red, and the edit stays dirty pending the resume. Advance by 0 to
+    // flush the rejection's microtasks without firing the cooldown timer.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.status).toBe("throttled");
+    expect(result.current.dirty).toBe(true);
+
+    // Advance past the cooldown floor (≥250ms backoff floor for the first
+    // 429). The resume timer fires, drains the queued edit, and the save
+    // lands cleanly.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(attempts).toBe(2);
+    expect(result.current.status).toBe("saved");
+    expect(result.current.dirty).toBe(false);
+    expect(parse(serverText).checklists[0]!.items.map((i) => i.title)).toEqual([
+      "a",
+    ]);
+  });
+
+  it("retries a transient backend hiccup before giving up, then surfaces error", async () => {
+    vi.useFakeTimers();
+    // A cloud adapter that throws a bare network error on every save — not
+    // one of the three typed signals, so the save path retries it with
+    // backoff up to the budget, keeping the glyph spinning, then surfaces
+    // a hard error.
+    let attempts = 0;
+    const adapter: StorageAdapter = {
+      id: "gdrive",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => null,
+      save: async () => {
+        attempts += 1;
+        throw new Error("Failed to fetch");
+      },
+      saveDebounceMs: 0,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    act(() => result.current.addItem("a"));
+    // Drain the full backoff curve (each step ≤ a couple seconds early on).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    // 1 initial attempt + MAX_TRANSIENT_SAVE_RETRIES retries.
+    expect(attempts).toBe(5);
+    expect(result.current.status).toBe("error");
+    expect(result.current.statusDetail).toBe("Failed to fetch");
   });
 });
