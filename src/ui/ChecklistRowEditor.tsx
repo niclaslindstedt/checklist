@@ -119,7 +119,9 @@ export function ChecklistRowEditor({
       onBlur={onBlur}
       className="flex flex-col gap-1.5 px-[var(--density-row-px)] py-[var(--density-row-py)]"
     >
-      <div className="flex min-h-11 items-center gap-3">
+      <div
+        className={`flex items-center gap-3 ${bodyShown ? "min-h-7" : "min-h-11"}`}
+      >
         <Checkbox
           checked={item.checked}
           onChange={onToggle}
@@ -144,7 +146,7 @@ export function ChecklistRowEditor({
           rows={Math.min(14, Math.max(5, notes.split("\n").length + 1))}
           placeholder={t("app.notePlaceholder")}
           aria-label={t("app.notePlaceholder")}
-          className="-ml-1 resize-y rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
+          className="resize-y rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
         />
       ) : (
         <button
