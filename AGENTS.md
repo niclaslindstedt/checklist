@@ -107,6 +107,7 @@ guessing — then record the answer so the next agent doesn't have to.
 | Example template     | `examples/<slug>.json` |
 | LLM prompt           | `prompts/<name>/<major>_<minor>_<patch>.md` (see `prompts/README.md`) |
 | Changelog entry      | `.changes/unreleased/<unix-ts>-<slug>.md` (see `Releases and changelog`) |
+| Feature doc (large feature's "Learn more") | `docs/features/<slug>.md` (see `Releases and changelog` → "Feature docs and Learn more") |
 
 ## Test conventions
 
@@ -137,6 +138,7 @@ user-facing settings            | `docs/configuration.md`, `README.md` Configura
 the build / deploy pipeline     | `README.md` Install/Quick start, `.github/workflows/pages.yml`
 a user-facing concept, component, or term (added, renamed, or a new word the user uses) | `docs/dictionary.md` (the term → file row) **and** `docs/overview.md` (the term's description) — both in the same PR. See "Resolving user vocabulary".
 a user-facing feature / workflow / surface (shipped or removed) | **Add (or retire) a matching achievement** in the same PR — see "Achievements". Every feature is also an unlockable trophy.
+a **large** user-facing feature (the changelog bullet links `[Learn more]`) | `docs/features/<slug>.md` in the same PR — keep it accurate to current behaviour. See "Releases and changelog" → "Feature docs and Learn more".
 
 ## Achievements
 
@@ -248,6 +250,7 @@ file in `.changes/unreleased/<unix-ts>-<slug>.md`:
 ---
 type: Added
 title: Custom domain
+doc: namespaces
 ---
 
 One sentence users will read in the changelog.
@@ -256,12 +259,47 @@ One sentence users will read in the changelog.
 `type:` is one of `Added | Changed | Fixed | Removed | Security |
 Deprecated` (Keep a Changelog). `title:` (optional, expected for
 `Added` / `Changed`) is a short noun phrase bolded at the head of the
-bullet; the body is a **one-sentence** summary. The timestamp prefix on
-the filename keeps the lexical sort deterministic so collation roughly
-mirrors commit order. The collator
+bullet; `doc:` (optional) is the slug of a feature doc (see below); the
+body is a **one-sentence** summary. The collator renders the bullet as
+`- **<title>** — <summary> [Learn more](feature:<doc>)`. The timestamp
+prefix on the filename keeps the lexical sort deterministic so collation
+roughly mirrors commit order. The collator
 (`scripts/release/collate-changelog.mjs`) validates the front-matter at
 release time — an unknown `type:`, a malformed front-matter line, or an
 empty body fails the run loudly.
+
+**Keep the bullet to one sentence.** The title + one-sentence summary
+shape is what keeps the in-app "What's new" modal scannable — if you
+catch yourself writing a second or third clause, the depth belongs in a
+feature doc, not the bullet.
+
+#### Feature docs and "Learn more"
+
+A **feature doc** is a long-form markdown file at
+`docs/features/<slug>.md` — a leading `# Title` heading, then the
+multi-paragraph explanation of one feature. The build inlines every doc
+into the bundle (`src/ui/changelog/feature-docs.ts`, via
+`import.meta.glob`), and a changelog bullet that carries
+`[Learn more](feature:<slug>)` opens the matching doc **in place** inside
+the changelog modal, with a back button — rendered by the same
+dependency-free markdown renderer (`src/ui/markdown/renderMarkdown.tsx`)
+that handles item notes. The `feature:<slug>` link scheme works in any
+markdown the modal renders, so a doc can cross-link sibling docs.
+
+**When to reach for a feature doc — and when not to.** Most fragments
+are just `title:` + one sentence with **no** `doc:`. Add a doc **only for
+a genuinely large, user-facing feature** — one whose honest explanation
+runs to several paragraphs or a "how it works" walkthrough (cloud sync,
+namespaces, achievements, the checklist gestures). A small setting, a
+visual tweak, or a bug fix does **not** get a doc; link an existing doc
+instead if the change extends a documented feature. When you do add
+`doc:`, **create `docs/features/<slug>.md` in the same PR** — a `doc:`
+slug with no matching file renders the link as an inert dead end. Feature
+docs are **English-only** (like the rendered CHANGELOG body); write them
+in plain second-person user voice with no implementation jargon, and
+shorten the bullet to one sentence once the depth has moved into the doc.
+`docs/` is in the changeset skip-list, so a docs-only feature-doc edit
+needs no fragment of its own.
 
 The `changeset` job in `ci.yml` enforces a fragment per PR. Pure
 refactors, CI / build / test tweaks, dependency bumps that don't change

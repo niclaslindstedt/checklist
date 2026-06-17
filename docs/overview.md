@@ -1256,7 +1256,26 @@ repo's `CHANGELOG.md`, inlined by Vite as a raw string
 Keep-a-Changelog parser `parseChangelog` (`src/ui/changelog/parse.ts`).
 Each bullet's inline markdown (the **bold** lead-in, `code` spans) is
 rendered with `renderInlineMarkdown` from the item-note renderer
-(`src/ui/markdown/renderMarkdown.tsx`) rather than printed raw.
+(`src/ui/markdown/renderMarkdown.tsx`) rather than printed raw. A bullet
+carrying a `[Learn more](feature:<slug>)` link drills into the matching
+feature doc in place (see "Feature docs / Learn more").
+
+### Feature docs / "Learn more"
+
+`docs/features/<slug>.md` — long-form, English-only markdown explaining
+one large feature. `src/ui/changelog/feature-docs.ts` inlines every doc
+into the bundle with `import.meta.glob` (mirroring how `data.ts` inlines
+`CHANGELOG.md` — the app has no backend to fetch them at runtime),
+splitting each into `{ slug, title, body }` via the pure `parseFeatureDoc`
+(the leading `# ` heading becomes the title). A changelog bullet links to
+one with `[Learn more](feature:<slug>)`; the collator
+(`scripts/release/collate-changelog.mjs`) emits that link from a
+fragment's `doc:` front-matter. The `feature:` link scheme is intercepted
+in `renderMarkdown.tsx` (the `onOpenFeature` option): instead of
+navigating, it calls back into `ChangelogModal`, which swaps the release
+list for the doc body (rendered with the block `renderMarkdown`) behind a
+back button. A slug with no bundled doc is ignored, so the link is inert
+rather than a dead end.
 
 ### Privacy page
 
