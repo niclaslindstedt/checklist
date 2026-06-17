@@ -112,6 +112,17 @@ function parseInline(text: string, keyBase: string): ReactNode[] {
   return out;
 }
 
+/**
+ * Render a single line of markdown as inline React nodes — **bold**,
+ * *italic*, `code`, ~~strikethrough~~, and [links](url) — without wrapping
+ * it in a block element. For one-liners that already sit inside a block the
+ * caller owns (a changelog `<li>`, a label), where {@link renderMarkdown}'s
+ * `<p>` wrappers would be unwanted.
+ */
+export function renderInlineMarkdown(source: string): ReactNode {
+  return parseInline(source, "i");
+}
+
 const BLANK = /^\s*$/;
 const FENCE = /^```/;
 const HEADING = /^(#{1,6})\s+(.*)$/;

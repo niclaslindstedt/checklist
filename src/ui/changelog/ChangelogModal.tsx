@@ -1,5 +1,6 @@
 import { useT } from "../../i18n";
 import { CloseIcon } from "../icons.tsx";
+import { renderInlineMarkdown } from "../markdown/renderMarkdown.tsx";
 import { Modal } from "../Modal.tsx";
 import { CHANGELOG } from "./data.ts";
 import type { ChangelogEntryType } from "./parse.ts";
@@ -73,7 +74,7 @@ export function ChangelogModal({ open, onClose }: Props) {
                     </p>
                     <ul className="ml-4 list-disc space-y-1 text-fg">
                       {section.items.map((item, i) => (
-                        <li key={i}>{item}</li>
+                        <li key={i}>{renderInlineMarkdown(item)}</li>
                       ))}
                     </ul>
                   </div>
