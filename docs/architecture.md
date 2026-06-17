@@ -260,6 +260,17 @@ the `emit-precache-manifest` plugin, read back out of the generated
 sharing one origin from measuring each other's bytes. The fill jumps to
 full and the toast appears when the `waiting` event fires.
 
+The three slots share one origin but stay isolated as separate
+installable apps. Each slot's manifest `id`/`scope`/`start_url` is its
+base path, its `name`/`short_name` carry a `(preview)` / `(branch)`
+suffix, and a `navigateFallbackDenylist` stops one slot's worker from
+answering navigations for another — without it the production worker
+(scope `/`) would serve the production app shell at `/preview/` and
+`/branch/`, so a PWA installed from a non-root slot would silently run
+production. The denylist matches both the slash-less (`/preview`) and
+trailing-slash (`/preview/`) spellings, since GitHub Pages 301-redirects
+the former but the worker intercepts before the network.
+
 `src/ui/hooks/usePullToRefresh.ts` adds a touch-only **pull-to-refresh**
 gesture: a damped downward drag from the top of the list, surfaced by
 `src/ui/PullToRefreshIndicator.tsx`, re-reads the active backend via
