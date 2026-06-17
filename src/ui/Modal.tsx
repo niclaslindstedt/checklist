@@ -10,29 +10,63 @@ import { APP_VIEWPORT_RECT } from "./appViewportRect.ts";
 // settings dialog needs (no portal — the app has a single root and no
 // competing stacking contexts).
 
+// A stack of the currently-open modals. Escape only dismisses the one on
+// top, so a confirmation dialog opened over another modal (the
+// `ConfirmDialog` raised from inside `NamespacesModal`, say) swallows the
+// Escape that closes it without also tearing down the modal underneath.
+// Backdrop clicks need no equivalent guard: the topmost modal's backdrop
+// covers the whole viewport, so a click can only ever reach it.
+const modalStack: symbol[] = [];
+
 type Props = {
   open: boolean;
   onClose: () => void;
   // id of the heading element that names the dialog (aria-labelledby).
   labelledBy: string;
+  // `"alertdialog"` for destructive confirmations (ConfirmDialog) so
+  // assistive tech announces them as an interruption rather than a plain
+  // dialog; defaults to `"dialog"`.
+  role?: "dialog" | "alertdialog";
+  // When true the modal renders as a compact centered card on every
+  // viewport size instead of filling the screen on mobile. Use it for
+  // short content that opens no soft keyboard — confirmations, pickers —
+  // where a full-screen sheet would leave a sea of dead space.
+  centered?: boolean;
+  // Tailwind max-width class for the card. Only meaningful with
+  // `centered` (the default full-screen shell caps its own width).
+  // Defaults to `max-w-md`.
+  size?: string;
   children: ReactNode;
 };
 
-export function Modal({ open, onClose, labelledBy, children }: Props) {
+export function Modal({
+  open,
+  onClose,
+  labelledBy,
+  role = "dialog",
+  centered = false,
+  size = "max-w-md",
+  children,
+}: Props) {
   const t = useT();
   const cardRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const tokenRef = useRef<symbol>(Symbol("modal"));
 
   useEffect(() => {
     if (!open) return;
+    const token = tokenRef.current;
+    modalStack.push(token);
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     cardRef.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
+      if (e.key !== "Escape") return;
+      // Only the modal on top of the stack reacts, so Escape peels one
+      // layer at a time rather than collapsing every open modal at once.
+      if (modalStack[modalStack.length - 1] !== token) return;
+      e.stopPropagation();
+      onClose();
     };
     document.addEventListener("keydown", onKey);
 
@@ -41,6 +75,8 @@ export function Modal({ open, onClose, labelledBy, children }: Props) {
 
     return () => {
       document.removeEventListener("keydown", onKey);
+      const i = modalStack.lastIndexOf(token);
+      if (i !== -1) modalStack.splice(i, 1);
       document.body.style.overflow = prevOverflow;
       previouslyFocused.current?.focus?.();
     };
@@ -52,11 +88,15 @@ export function Modal({ open, onClose, labelledBy, children }: Props) {
   // an interactive role (and a label) without piling event handlers onto
   // a non-interactive element; the dialog itself is a plain focusable
   // container layered above it.
+  const wrapperClass = centered
+    ? "fixed z-50 flex items-center justify-center p-4"
+    : "fixed z-50 flex items-stretch justify-center sm:items-center sm:p-4";
+  const cardClass = centered
+    ? `relative flex max-h-[85svh] w-full ${size} flex-col overflow-hidden rounded-lg border border-line bg-surface text-fg shadow-xl outline-none`
+    : "relative flex h-full w-full flex-col overflow-hidden bg-surface text-fg shadow-xl outline-none sm:h-[min(90svh,42rem)] sm:max-w-3xl sm:rounded-lg sm:border sm:border-line";
+
   return (
-    <div
-      className="fixed z-50 flex items-stretch justify-center sm:items-center sm:p-4"
-      style={APP_VIEWPORT_RECT}
-    >
+    <div className={wrapperClass} style={APP_VIEWPORT_RECT}>
       <button
         type="button"
         aria-label={t("common.close")}
@@ -66,22 +106,23 @@ export function Modal({ open, onClose, labelledBy, children }: Props) {
       />
       <div
         ref={cardRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className="relative flex h-full w-full flex-col overflow-hidden bg-surface text-fg shadow-xl outline-none sm:h-[min(90svh,42rem)] sm:max-w-3xl sm:rounded-lg sm:border sm:border-line"
+        className={cardClass}
       >
         {/* iOS PWA safe-area: the full-screen mobile layout reaches the top
             of the viewport, so reserve room for the status bar / Dynamic
             Island above the header. Coloured to match the modal headers
             (bg-surface-3) so it reads as an extension of the header bar.
-            Centered desktop cards clear the inset already, so it's hidden
-            from sm: up. */}
-        <div
-          aria-hidden="true"
-          className="h-[env(safe-area-inset-top)] shrink-0 bg-surface-3 sm:hidden"
-        />
+            Centered cards float clear of the inset, so they skip it. */}
+        {!centered && (
+          <div
+            aria-hidden="true"
+            className="h-[env(safe-area-inset-top)] shrink-0 bg-surface-3 sm:hidden"
+          />
+        )}
         {children}
       </div>
     </div>

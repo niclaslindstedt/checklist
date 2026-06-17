@@ -362,7 +362,31 @@ backdrop, a centred card, Escape / backdrop-click to close, body-scroll
 lock while open, and focus management (into the card on open, back to
 the trigger on close). No portal — the app has a single root with no
 competing stacking contexts. `SettingsModal`, `ChangelogModal`, and
-`ConflictResolutionModal` build on it.
+`ConflictResolutionModal` build on it. The default shell fills the
+screen on mobile and centres on desktop; pass `centered` for a compact
+card on every viewport (used by `ConfirmDialog`), `size` for its
+max-width, and `role="alertdialog"` for interruptive confirmations.
+
+A modal **stack** lets dialogs nest: each open `Modal` registers itself,
+and Escape only dismisses the one on top, so a `ConfirmDialog` raised
+from inside another modal closes itself without also tearing down the
+modal underneath. (Backdrop clicks need no equivalent guard — the
+topmost backdrop covers the viewport, so a click can only reach it.)
+
+### Confirmation dialog
+
+`src/ui/ConfirmDialog.tsx` — the in-app replacement for the browser's
+`window.confirm`: a compact centred `Modal` (`role="alertdialog"`) with
+a title, an optional description, and a Confirm / Cancel pair. `tone`
+`"danger"` paints the confirm button red and swaps the neutral
+question-mark title glyph (`HelpCircleIcon`) for a warning triangle
+(`AlertTriangleIcon`); `cancelLabel` defaults to the shared
+`common.cancel` string. Confirming paints a spinner in the button (a
+two-frame defer lets it show before a heavy handler such as deleting a
+namespace blocks paint) and blocks further dismissal while the action is
+in flight so it can't be double-fired. Dependency-free — the icons come
+from the inline `icons.tsx` set rather than `lucide-react`. The first
+caller is the namespace-delete affordance in `NamespacesModal`.
 
 ### Dropdown / custom select
 
@@ -822,7 +846,9 @@ the `family/` folder shared with relatives). The management UI is
 `NamespacesModal` (`src/ui/NamespacesModal.tsx`), reached from the cogwheel
 on the namespace section header at the top of the side menu — one button
 that opens the combined manage-and-create dialog (which is why it's a cog,
-not a `+`).
+not a `+`). Deleting a namespace from a row in that dialog opens an in-app
+`ConfirmDialog` (danger tone) rather than a browser `window.confirm`, since
+the removal wipes the namespace's data from the active backend.
 
 A namespace can also carry an **appearance**: an optional `glyph` (an icon
 name from `src/ui/glyphs.ts`) and an optional `color` (a CSS colour). The
