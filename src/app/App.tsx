@@ -7,6 +7,7 @@ import { LANGUAGE_EVENT } from "../i18n/language-preference.ts";
 import { useStandaloneMobile } from "../pwa/standalone.ts";
 import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
+import type { NamespaceAppearance } from "../storage/namespaces.ts";
 import { useStorageBackend } from "../storage/useStorageBackend.ts";
 import { useTheme } from "../theme/useTheme.ts";
 import { ArchiveView } from "../ui/ArchiveView.tsx";
@@ -193,8 +194,8 @@ function AppShell() {
   const { createNamespace: createNs, removeNamespace: removeNs } = storage;
   const namespaces = storage.namespaces;
   const createNamespace = useCallback(
-    (name: string) => {
-      createNs(name);
+    (name: string, appearance?: NamespaceAppearance) => {
+      createNs(name, appearance);
       push({
         message: t("toast.namespaceCreated", { name: name.trim() }),
         kind: "success",

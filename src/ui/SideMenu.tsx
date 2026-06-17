@@ -43,7 +43,8 @@ import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 // to make one active; a "+" on the Checklists heading adds a new one) with
 // the archive view at the foot of that same list, highlighting the active
 // list and current view. Selecting one navigates and closes the drawer.
-// The Namespace heading carries its own "+" to add a namespace. Pinned to
+// The Namespace heading carries a cogwheel that opens the combined
+// manage-and-create namespaces dialog. Pinned to
 // the bottom is what used to be the top-right
 // burger menu — settings, "what's new", and the project links (privacy,
 // source with the app version as a subtitle, optional donate), in inverted
@@ -150,7 +151,8 @@ export function SideMenu({
       <SectionHeader
         label={t("namespace.section")}
         onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
-        addLabel={t("namespace.newAction")}
+        addLabel={t("namespace.manage")}
+        addIcon={<CogIcon className="h-4 w-4" />}
       />
       {namespaces.map((ns) => {
         // A namespace that has picked an icon or a colour shows its own
@@ -386,21 +388,24 @@ export function SideMenu({
   );
 }
 
-// A section label with an optional "+" action pinned to its trailing
-// edge (used for the Namespace and Checklists headings, where the plus
-// adds a new namespace / checklist — replacing what used to be a full-
-// width "New …" row beneath the list). The first section omits the top
-// border; every later one draws one to separate it from the rows above.
+// A section label with an optional trailing action pinned to its trailing
+// edge. For Checklists the action is a "+" that adds a new list; for the
+// Namespace heading it's a cogwheel, because that action opens the full
+// manage-and-create dialog rather than adding one inline. The first section
+// omits the top border; every later one draws one to separate it from the
+// rows above.
 function SectionHeader({
   label,
   border = false,
   onAdd,
   addLabel,
+  addIcon = <PlusIcon className="h-4 w-4" />,
 }: {
   label: string;
   border?: boolean;
   onAdd?: () => void;
   addLabel?: string;
+  addIcon?: ReactNode;
 }) {
   return (
     <div
@@ -419,7 +424,7 @@ function SectionHeader({
           title={addLabel}
           className="-mr-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
         >
-          <PlusIcon className="h-4 w-4" />
+          {addIcon}
         </button>
       )}
     </div>

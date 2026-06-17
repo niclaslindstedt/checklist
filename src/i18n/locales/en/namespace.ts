@@ -31,7 +31,7 @@ const namespace = {
   appearance: "Appearance",
   colorLabel: "Colour",
   glyphLabel: "Icon",
-  glyphNone: "No icon",
+  glyphNone: "Folder (default)",
 } as const;
 
 export type NamespaceCatalog = Widen<typeof namespace>;

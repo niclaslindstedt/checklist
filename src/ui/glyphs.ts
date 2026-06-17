@@ -55,10 +55,13 @@ export const DEFAULT_NAMESPACE_GLYPH = "folder";
 /**
  * The glyphs offered in the namespace icon picker, in display order.
  * Derived from `GLYPH_PATHS` so the picker can never offer a name the
- * renderer can't draw.
+ * renderer can't draw. The default glyph (the folder) is omitted: the
+ * picker's leading "default" cell already stands for it, so listing it
+ * again would be a duplicate.
  */
-export const NAMESPACE_GLYPH_NAMES: readonly string[] =
-  Object.keys(GLYPH_PATHS);
+export const NAMESPACE_GLYPH_NAMES: readonly string[] = Object.keys(
+  GLYPH_PATHS,
+).filter((name) => name !== DEFAULT_NAMESPACE_GLYPH);
 
 /** Whether a string names a glyph this build knows how to draw. */
 export function isGlyphName(name: string | undefined): name is string {

@@ -140,7 +140,7 @@ export interface UseStorageBackend {
   /** Make a namespace active, swapping which document the app reads/writes. */
   switchNamespace: (slug: string) => void;
   /** Create a namespace from a display name and switch to it. */
-  createNamespace: (name: string) => void;
+  createNamespace: (name: string, appearance?: NamespaceAppearance) => void;
   /** Change a namespace's display name (its data stays put). */
   renameNamespace: (slug: string, name: string) => void;
   /**
@@ -577,14 +577,22 @@ export function useStorageBackend(): UseStorageBackend {
     setActiveNamespaceState(slug);
   }, []);
 
-  const createNamespace = useCallback((name: string) => {
-    const created = registryAddNamespace(name);
-    setNamespacesState(getNamespaces());
-    // Land the user in the namespace they just created.
-    setActiveNamespaceSlug(created.slug);
-    setActiveNamespaceState(created.slug);
-    unlockAchievement("compartments");
-  }, []);
+  const createNamespace = useCallback(
+    (name: string, appearance?: NamespaceAppearance) => {
+      const created = registryAddNamespace(name);
+      // Apply the icon / colour the user picked at creation time, if any,
+      // before reading the registry back into state.
+      if (appearance && (appearance.glyph || appearance.color)) {
+        registrySetNamespaceAppearance(created.slug, appearance);
+      }
+      setNamespacesState(getNamespaces());
+      // Land the user in the namespace they just created.
+      setActiveNamespaceSlug(created.slug);
+      setActiveNamespaceState(created.slug);
+      unlockAchievement("compartments");
+    },
+    [],
+  );
 
   const renameNamespace = useCallback((slug: string, name: string) => {
     registryRenameNamespace(slug, name);
