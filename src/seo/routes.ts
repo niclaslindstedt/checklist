@@ -166,13 +166,13 @@ export const PRIVACY_ROUTE: RouteSeo = {
   path: "/privacy/",
   title: `Privacy — ${SITE_NAME}`,
   description:
-    "How checklist handles your data: it stays in your browser's local " +
-    "storage — no backend, no account, no cookies, no analytics. Lists " +
-    "never leave your device.",
+    "checklist privacy: local-first by default — no account, no cookies, no " +
+    "analytics, no tracking. Optional Dropbox / Google Drive sync only when " +
+    "you connect it.",
   ogType: "article",
   sitemap: { changefreq: "monthly", priority: 0.5 },
   noscriptBody: noscript("Privacy policy — checklist", [
-    "checklist is a local-first checklist app served as a static site. It runs entirely in your browser: there is no backend, no account, no server-side sync, no cookies, and no analytics or tracking. Your lists never leave your device, and the project authors never receive them.",
+    "checklist is a local-first checklist app served as a static site. It runs entirely in your browser: there is no backend of our own, no account, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. You can optionally connect a cloud backend (Dropbox or Google Drive) to sync them across your own devices — only then are your lists sent to that one provider, at your explicit request. The project authors never receive them.",
     "The full privacy policy needs JavaScript to render. Enable JavaScript and reload, or read the source on GitHub.",
   ]),
   jsonLd: [
@@ -183,7 +183,7 @@ export const PRIVACY_ROUTE: RouteSeo = {
       url: absoluteUrl("/privacy/"),
       name: `Privacy — ${SITE_NAME}`,
       description:
-        "How checklist handles your data: local-first, no backend, no tracking.",
+        "How checklist handles your data: local-first, no tracking; optional cloud sync only when you connect it.",
       inLanguage: SITE_LANGUAGE,
       isPartOf: { "@id": `${SITE_URL}/#website` },
       about: { "@id": `${SITE_URL}/#app` },

@@ -1214,9 +1214,14 @@ Keep-a-Changelog parser `parseChangelog` (`src/ui/changelog/parse.ts`).
 ### Privacy page
 
 `src/ui/PrivacyPage.tsx` — the standalone privacy policy served at
-`/privacy`, stating the app is local-only with no backend, accounts,
-analytics, or tracking. Deliberately short and English-only (a legal
-page, not chrome).
+`/privacy`, stating the app is local-first with no backend of its own,
+accounts, analytics, or tracking. It also documents the optional storage
+backends: a local folder, Dropbox, and Google Drive send list data to a
+provider only when the user explicitly connects one, and the AES-GCM
+encryption option keeps the cloud copy ciphertext-only. Deliberately
+short and English-only (a legal page, not chrome). The SEO description
+and noscript fallback in `src/seo/routes.ts` (`PRIVACY_ROUTE`) mirror the
+same wording.
 
 ## Workflows / verbs the user might say
 
