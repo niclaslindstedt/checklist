@@ -54,11 +54,13 @@ roadmap selectively adopts — are:
 - **Per-feature locale and reducer modules** assembled at one barrel, so
   domains never touch each other's files.
 
-**Calibrate to size.** checklist is a small app (App.tsx is 170 lines, not
-budget's 1391-line shell; two top-level views; two modals). Adopt the
-*shape* of these patterns where the churn evidence justifies it — do not
-port budget's heavy machinery wholesale. A registry for two views is
-speculative; the prop-drilling and fat-hook smells are real today.
+**Calibrate to size.** checklist is a small app (App.tsx is ~416 lines, not
+budget's 1391-line shell; two top-level views; a handful of modals). Adopt
+the *shape* of these patterns where the churn evidence justifies it — do
+not port budget's heavy machinery wholesale. A registry for two views is
+speculative; the prop-drilling and fat-hook smells the earlier sweeps
+retired were real, and the storage-wiring hub the current sweep flags is
+real today.
 
 ## Severity rubric
 
@@ -84,214 +86,131 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-#### R7. Google Drive adapter never maps HTTP 429 to `RateLimitError`
+#### R1. `useStorageBackend.ts` is the largest file in the tree and wires every backend's lifecycle inline
 
-The `StorageBackend` error taxonomy includes `RateLimitError`
-(`src/storage/adapter.ts:120`), and the sync engine routes it to a
-user-visible `"throttled"` status (`src/app/use-checklist-sync.ts:149`).
-Dropbox honours the contract — it catches 429 and throws `RateLimitError`
-with a clamped `Retry-After` (`src/storage/dropbox/index.ts:409`). Google
-Drive (`src/storage/gdrive/index.ts`, 660 lines) has **zero** 429 handling:
-its `gdriveError` helper only special-cases 401 → `AuthError`
-(`gdrive/index.ts:88`), so a Drive 429 surfaces as a raw
-`Error("…save failed: 429")` the UI can't recognise. The `"throttled"`
-affordance exists but Drive can never reach it — a contract divergence
-between two interchangeable backends.
+`src/storage/useStorageBackend.ts` is **679 lines** — the largest source
+file in the repo. It is a single hook that wires all four backends
+(browser, folder, Dropbox, Google Drive) end to end: ~13 `useState` calls,
+the folder File-System-Access probe on boot, the Dropbox OAuth-redirect
+completion effect, the Dropbox/Drive token state, and the encryption
+wrapping that sits over all of them. Worse, the backend-selection branching
+is **duplicated**: the same `dropbox → gdrive → folder → fallback` if-chain
+is written twice, once to build the document `adapter` (~lines 303–344) and
+again to build the `settingsStore` (~lines 351–380), with parallel
+dependency arrays. Every new backend (or a tweak to an existing one)
+threads through both chains.
 
-**Plan.** Teach `gdriveError` (or the shared mapper R9 proposes) to
-translate 429 → `RateLimitError(retryAfterMs)`, reading the `Retry-After`
-header with the same 5s floor Dropbox uses. ~10 lines plus a unit test
-asserting a 429 response throws `RateLimitError`.
+**Plan.** Two seams, smallest first:
 
-**Risk.** Low code risk, but Drive's OAuth/save path has **no automated
-coverage** — exercise a real save against Google Drive after the change.
-Low probability in single-device use (Drive write quotas are high), which
-caps the severity below the 7–8 band. **Severity: 6.**
+1. **Easy partial (the duplicated branching).** Extract a single
+   `buildBackendAdapters(...)` that returns `{ adapter, settingsStore }` in
+   one pass, collapsing the two parallel if-chains. ~80 lines removed,
+   mechanical, low risk. Land this first.
+2. **Larger end state (the god hook).** Shard the per-backend lifecycle
+   into focused driver hooks (`useDropboxBackend()`, `useFolderBackend()`,
+   …) that each own their own state + effects, leaving the top-level hook a
+   thin router that selects among them. Multi-PR; keep the public hook
+   surface stable so `App` and the settings tabs don't move.
 
-#### R8. `gdrive/index.ts` is the largest file in the tree and inlines its OAuth setup
+**Risk.** The Dropbox redirect-completion effect, the folder-probe
+cancellation, and the encryption unlock gate must all keep their current
+ordering and cleanup. The OAuth/cloud paths have **no automated coverage**
+— smoke-test a real Dropbox and Google Drive connect/save after the move,
+plus the folder probe. **Severity: 6.** (Step 1 alone is a severity-4 easy
+win; the full driver split is the 6.)
 
-`src/storage/gdrive/index.ts` is **660 lines** — the largest source file
-in the repo, ~95 longer than the next (`themes.ts`, 565). Dropbox (509)
-stays smaller precisely because it delegates its OAuth primitives to the
-shared `src/storage/oauth-pkce.ts` (245); gdrive inlines its GIS (Google
-Identity Services) script-loading and token-client setup
-(~`gdrive/index.ts:511–660`) directly. The asymmetry makes it cheaper to
-bolt Drive-specific logic onto the already-large file than to push it back
-as a shared capability.
+#### R2. Google Drive adapter never maps HTTP 429 to `RateLimitError` — a contract divergence
 
-**Plan.** Extract the GIS OAuth setup into `src/storage/gdrive/oauth.ts`
-(mirroring how Dropbox leans on `oauth-pkce.ts`), leaving `index.ts` as the
-adapter factory. ~150 lines move; pure relocation, no behaviour change.
-Optionally lift the folder-hierarchy cache helpers into `gdrive/hierarchy.ts`
-as a second PR.
+The `StorageBackend` taxonomy includes `RateLimitError` (`adapter.ts`), and
+Dropbox honours it: it catches HTTP 429 and throws
+`RateLimitError(Math.max(headerMs, RATE_LIMIT_FALLBACK_MS))` off the
+`Retry-After` header (`src/storage/dropbox/index.ts:322–327`). Google Drive
+(`src/storage/gdrive/index.ts`, 519 lines) has **zero** 429 handling
+(`grep -n 429 src/storage/gdrive/index.ts` returns nothing): a Drive 429
+falls through `gdriveError(op, status, body)` and surfaces as a generic
+`Error`, so the user-visible `"throttled"` affordance the sync engine wires
+up can never be reached on Drive. Two interchangeable backends diverge on
+the same contract. The "read body / log / throw typed error" sequence is
+also hand-rolled per request site across both adapters (gdrive funnels
+through `gdriveError`; Dropbox throws inline), so the mapping logic is
+duplicated as well as divergent.
 
-**Risk.** Pure module relocation, but `tests/storage/gdrive.test.ts` is
-coupled to the current structure — keep the public factory signature stable.
-Smoke-test a real Drive connect/save after the move (no automated OAuth
-coverage). **Severity: 5.**
+**Plan.** Lift one shared `mapHttpError(res, { provider, op })` into
+`src/storage/adapter.ts` (or a sibling `http-error.ts`) owning the full
+taxonomy (401 → `AuthError`, 429 → `RateLimitError(retryAfterMs)` with the
+5s floor, else generic `Error`) plus the safe body read. Both adapters call
+it; the Drive 429 gap closes for free. The extraction is a pure refactor;
+note that the Drive side gains a *new* user-visible affordance (it can now
+report `"throttled"`), so that slice is a behaviour-correctness change, not
+pure relocation — split it out and ship it with a changeset if it lands
+separately from the extraction.
 
-#### R4. Top-level view switching is hardcoded in App and SideMenu
-
-Adding a top-level view (beyond `checklist` / `archive`) means editing the
-`View` union, App's conditional render block, and `SideMenu`'s inline nav
-list — three shared regions. budget's `SHEET_TYPE_REGISTRY` makes this a new
-descriptor file + one registry line.
-
-**Plan.** A small `VIEW_REGISTRY` of descriptors (`id`, `label`, `glyph`,
-`component`); App renders `registry[view].component`; SideMenu maps the
-registry to nav entries.
-
-**Risk.** Low, pure. **Leverage is latent** — there are only two views today,
-so this pays off only once a third is on the horizon. Land it *with* the PR
-that introduces a third view, not speculatively before. **Severity: 5.**
+**Risk.** Low code risk, but Drive's save path has **no automated coverage**
+— exercise a real Drive save (and confirm Dropbox 429 still maps, covered
+by `tests/storage/dropbox.test.ts`). Drive write quotas are high so the gap
+rarely bites in single-device use, which caps this below the 7–8 band.
+**Severity: 6.**
 
 ### Easy wins
 
-#### R5. i18n locale barrels are append-only in one spot
+#### R3. `icons.tsx` is a 613-line append-only barrel and a known churn hub
 
-`src/i18n/locales/en/index.ts` and `…/sv/index.ts` re-assemble per-namespace
-catalogs with a manual import + an entry in the exported object. Catalogs are
-already split per feature (good) — but adding a namespace still edits the same
-import block and object literal in both locale indexes, where parallel feature
-strings collide.
+`src/ui/icons.tsx` (**613 lines**, 32 exported icon functions) is one of
+the churn hubs in the table above (touched 8/30 commits): every feature
+that needs a glyph appends an export here. It has grown well past half the
+1000-line cap (§20.5 of `OSS_SPEC.md`) and keeps climbing.
 
-**Plan.** Auto-compose the catalog via `import.meta.glob` (eager) so a new
-`foo.ts` is picked up with no index edit. Keep the `Catalog` type derivation
-working (derive from the glob map). Mechanical, zero behaviour change.
+**Plan.** Split by theme into sibling files (`icons/cloud.tsx`,
+`icons/nav.tsx`, `icons/status.tsx`, `icons/action.tsx`) re-exported from
+`icons.tsx`, so a new glyph lands in a small family file rather than the
+shared barrel. The cloud family already shares a `CloudBase` helper, so it
+extracts cleanly first. Purely mechanical re-exports; update import sites or
+keep the barrel as a compatibility re-export to avoid churn elsewhere.
 
-**Risk.** Low; the type derivation needs care so `Widen<typeof en>` stays
-correct and `sv` is checked against it. **Severity: 4 (easy win).**
+**Risk.** Trivial; no logic. These are additive lines that *usually* merge
+cleanly, so the conflict cost is real but small — re-rate upward if the file
+nears the cap. **Severity: 4 (easy win).**
 
-#### R6. icons.tsx is a 475-line append-only barrel
+#### R4. `themes.ts` hand-writes nine 21-field palette literals
 
-`src/ui/icons.tsx` (475 lines, up from 401 at the last sweep) is touched in
-8/30 commits — every feature that needs a glyph appends an export here. It is
-approaching half the 1000-line cap.
+`src/theme/themes.ts` (565 lines) carries nine preset palettes
+(`DEFAULT_CUSTOM_THEME_COLORS_DARK`/`_LIGHT`/`_DRACULA`/`_MONOKAI`/
+`_GITHUB_DARK`/`_GITHUB_LIGHT`/`_SOLARIZED_LIGHT`/`_QUIET_LIGHT`/`_EXCEL`,
+~lines 211–398) as standalone 21-field record literals, then ties them
+together in the `PRESET_PALETTES` map. Adding a theme means a new ~20-line
+literal *plus* an entry in the map — two edit sites — and ~180 lines of the
+file is flat colour data.
 
-**Plan.** Lower priority: these are additive re-exports/inline SVGs that
-*usually* merge cleanly (distinct lines), so the conflict cost is real but
-small. If it grows, split by theme (nav icons, status icons, action icons)
-into sibling files re-exported from `icons.tsx`. Re-rate upward if the file
-nears the cap or conflicts recur.
+**Plan.** Move the palettes to a single data array (`[id, colors]` tuples)
+and derive both the named constants (where still referenced) and
+`PRESET_PALETTES` from it, so a new theme is one array entry. Pure data
+refactor; `customThemeSeed()` keeps its behaviour and its existing tests.
 
-**Risk.** Trivial; purely mechanical. **Severity: 3 (easy win, marginal).**
-
-#### R9. HTTP-error mapping is hand-rolled at every cloud request site
-
-The "read the body, log it, throw a typed error" sequence repeats ~13 times
-across the two cloud adapters: gdrive funnels through a local
-`gdriveError(op, status, body)` helper (10 call sites,
-`src/storage/gdrive/index.ts:88`) while Dropbox throws inline
-(`res.text().catch(…)` ×8). The two paths diverge — gdrive maps
-401 → `AuthError`, Dropbox additionally maps 429 → `RateLimitError` — which
-is exactly the seam R7 patches.
-
-**Plan.** Lift one shared `mapHttpError(res, { provider, op })` into
-`src/storage/adapter.ts` (or a sibling `http-error.ts`) that owns the full
-taxonomy (401 → `AuthError`, 429 → `RateLimitError`, else generic `Error`)
-plus the safe body read. Both adapters call it; R7 falls out for free.
-N = 13 call sites — a genuine helper extraction.
-
-**Risk.** Low; consolidation only. Land R7 and R9 together since they touch
-the same mapping. **Severity: 4 (easy win).**
-
-#### R10. `migrateLegacyDefault` is duplicated across the two cloud adapters
-
-Both cloud adapters carry a one-time legacy-document relocation with the same
-control flow — probe the pre-namespaces document, move it into the namespace
-folder, recover by re-reading the destination if a concurrent device won the
-race: `src/storage/gdrive/index.ts:217–247` and
-`src/storage/dropbox/index.ts:304–330`. The *shape* is identical; the API
-calls (Drive `addParents`/`removeParents` PATCH vs. Dropbox `move_v2`) differ.
-
-**Plan.** Extract a `migrateNamespaceLegacy(ops)` helper parameterised over a
-small `{ probe, move, retryRead }` interface each adapter satisfies, so the
-subtle race-recovery branch lives and is tested once.
-
-**Risk.** **Not a mechanical move** — designing the `ops` seam across two
-divergent APIs is real work, and there are only 2 call sites, so the
-abstraction may cost more than the duplication saves. Re-rate **upward** when
-a 3rd cloud backend (OneDrive/S3) makes it a 3-way copy; until then it's
-marginal. No automated cloud coverage — smoke-test both migrations.
-**Severity: 4.**
+**Risk.** Low; data-only. Palettes don't collide often, which keeps this
+marginal — land opportunistically while touching the file. **Severity: 3
+(easy win, marginal).**
 
 ## Landed
 
-- **R3. use-checklist.ts split into a thin composer + the persistence
-  engine** (2026-06). Step 2 of the fat-hook breakup: the debounced-save
-  plumbing (`performSave` / `flushSave` / `scheduleSave`), the `conflict` /
-  `status` / `dirty` state machine, `reload` / `saveNow` / `resolveConflict`,
-  the adapter-swap / unmount effects, and `withActiveList` moved to
-  `src/app/use-checklist-sync.ts` (`useChecklistSync`, 278 lines).
-  `use-checklist.ts` dropped 362 → 176 lines and is now a pure composer of
-  the sync engine, the undo timeline, and the edit verbs over the selectors
-  and the memoized public surface. The undo↔sync construction cycle (undo's
-  `setData` needs sync's `setDoc` / `scheduleSave`; sync's load / reload /
-  conflict-adopt paths need undo's `reset`) is broken by a `resetHistory`
-  ref the composer owns and points at `reset` once the timeline exists. The
-  public `useChecklist` shape is unchanged (`ConflictState` / `SaveStatus`
-  re-exported from the barrel), so App and the views don't move. Step 1
-  (2026-06) had already moved the six edit verbs to
-  `use-checklist-edits.ts`. The save plumbing had **no automated coverage**,
-  the flagged risk — landed alongside `tests/app/use-checklist-sync.test.ts`
-  covering the save/undo/reload cycle and a conflict-adopt round trip. The
-  fat-hook smell is now fully retired.
-
-- **R2. Prop-drilling replaced by two focused contexts (`ChecklistContext`,
-  `NavContext`)** (2026-06). `src/ui/checklist-context.ts` publishes the
-  whole `useChecklist` surface plus the derived `SyncInfo`;
-  `src/ui/nav-context.ts` publishes the drawer/view state and the
-  floating-button position. `ChecklistView` and `ArchiveView` became
-  prop-free, and `SideMenu` shed eleven props (open/toggle/close/current/
-  navigate/dragging from nav, archivedCount/undo/redo/canUndo/canRedo from
-  checklist) — only the storage-owned namespace trio stays a prop (a future
-  `StorageContext` could absorb it, but storage isn't a churn hub today).
-  App stops being the prop conduit: it memoises both context values, and
-  `useChecklist`'s return is now memoised too, so the `memo(ChecklistView)`
-  optimisation holds (and now also covers cloud sessions, where the fresh
-  `sync` object previously defeated it — `sync` is memoised). Both contexts
-  live in `ui/` (mirroring the modal bus) so the `ui` consumers stay
-  `ui → ui` at runtime; only the `UseChecklist` *type* is imported from
-  `app/` (erased). Landed in one PR per the "do high-risk refactors"
-  instruction, ~under the 500-line cap.
-
-- **R1. Modal open/close state moved off App.tsx onto a modal command-bus**
-  (2026-06). `src/ui/modal-bus.ts` (context + consumer hooks) and
-  `src/ui/ModalBusProvider.tsx` (the single-`active`-command provider)
-  decouple *who opens a modal* from *who owns its state*. App's three
-  `useState`-driven modals (settings + tab, changelog, namespaces — the
-  smell had grown past the two the original entry noted) became per-modal
-  host files under `src/app/modals/` that read `useModalState(kind)`;
-  `SideMenu` shed its `onOpenSettings` / `onOpenChangelog` /
-  `onManageNamespaces` props and now `dispatch`es commands directly. Both
-  plan steps landed in one PR (~under the 500-line cap). Pull-to-refresh's
-  modal gate reads `useAnyModalOpen()` instead of per-modal booleans. The
-  bus lives in `src/ui/` (not `src/app/`) so `SideMenu` consuming it stays
-  `ui → ui`, not a `ui → app` layering reversal.
+_None yet — roadmap reset 2026-06; history preserved in git._
 
 ## Investigated and skipped
 
-- **`.gitattributes merge=union` on barrels / lists.** Considered as a
-  zero-refactor mitigation, but union-merge concatenates both sides' lines
-  blindly — safe only for unordered append-only text, and dangerous for the
-  typed TS object literals and import blocks where our conflicts actually
-  live (it would produce duplicate keys / imports that compile-fail or
-  silently shadow). Out of scope for this roadmap (it's a tooling/process
-  change, not a code refactor); raise it in CONTRIBUTING if desired, scoped
-  to genuinely line-additive files only.
-- **Porting budget's full AppShell + lazy page hosts.** budget's shell is
-  ~1391 lines with lazy-loaded page hosts per feature. For a two-view app
-  that is over-engineering — the proportionate slice (R1 modal bus, R2
-  contexts) captures the conflict-resistance benefit without the machinery.
-  Revisit only if checklist grows several more top-level surfaces.
-- **Extracting Dropbox's `authedFetch` 401 → refresh → retry wrapper into
-  `oauth-pkce.ts`.** `oauth-pkce.ts` exports the token primitives (`startAuth`
-  / `completeAuth` / `refreshAccessToken`) but not the "on 401, refresh once,
-  retry" wrapper, which lives inline in Dropbox
-  (`src/storage/dropbox/index.ts:223–258`). Tempting to "complete" the shared
-  module — but Google Drive uses GIS tokens that **can't** be refreshed, so it
-  will never use the wrapper, and Dropbox is the only refresh-token backend
-  today. Extracting now is the speculative-abstraction anti-pattern the skill
-  warns against (a single caller). Land it **with** the PR that adds a second
-  refresh-token backend (Azure/OneDrive), not before — it would rate ~5 once a
-  second consumer exists, 1–2 today.
+- **Extracting Dropbox's `createAuthedFetch` 401 → refresh → retry wrapper
+  into `oauth-pkce.ts`.** Dropbox's authed-fetch wrapper
+  (`src/storage/dropbox/index.ts:172–231`) silently refreshes on 401 and
+  retries once. Tempting to "complete" the shared OAuth module by lifting
+  it — but Google Drive uses GIS popup tokens that **cannot** be refreshed,
+  so it will never use the wrapper, and Dropbox is the only refresh-token
+  backend today. Extracting now is the speculative-abstraction anti-pattern
+  (a single caller). Land it **with** the PR that adds a second
+  refresh-token backend (Azure/OneDrive/S3), not before — it would rate ~5
+  once a second consumer exists, 1–2 today.
+- **App.tsx modal-host / context-provider nesting and SideMenu row-styling
+  duplication.** The current sweep examined `App.tsx`'s nested
+  provider+modal-host return (~lines 362–414) and the three near-identical
+  menu-row components in `SideMenu.tsx` (`NavItem` / `MenuButton` /
+  `MenuLink`). Both are readability/cosmetic only (rated <3): the nesting
+  has no bad logic and both files sit well under the size cap. Not added —
+  re-surface only if `App.tsx` grows another wave of modals or the menu-row
+  styling system starts diverging.
