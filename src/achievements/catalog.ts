@@ -228,6 +228,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "springClean",
+    tier: "intermediate",
+    glyph: ArchiveGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "cleanSweep",
+    tier: "intermediate",
+    glyph: TrashGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "copyThat",
     tier: "intermediate",
     glyph: CopyGlyph,

@@ -17,6 +17,8 @@ import { unlock } from "../achievements/bus.ts";
 import {
   addItem as addItemOp,
   addItems as addItemsOp,
+  archiveChecked as archiveCheckedOp,
+  deleteChecked as deleteCheckedOp,
   deleteItem as deleteItemOp,
   editItem as editItemOp,
   moveItem as moveItemOp,
@@ -51,6 +53,16 @@ export interface ChecklistEdits {
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
   archive: (itemId: string) => void;
+  /**
+   * Archive every finished (checked) item in the active list in one sweep —
+   * the bulk action behind the add-button's long-press menu.
+   */
+  archiveFinished: () => void;
+  /**
+   * Permanently delete every finished (checked) item in the active list in
+   * one sweep — the destructive bulk action behind the long-press menu.
+   */
+  deleteFinished: () => void;
   /** Restore an archived item back into the list it came from. */
   unarchive: (itemId: string) => void;
   /** Move a visible item to a new position among the active items. */
@@ -240,6 +252,33 @@ export function useChecklistEdits(deps: {
     [commit, notify, titleOf, t],
   );
 
+  // Count the finished (checked, still-active) items the bulk verbs act on,
+  // so they can no-op silently when there's nothing to sweep and feed the
+  // count into the toast otherwise.
+  const finishedCount = useCallback(
+    () =>
+      listRef.current.items.filter((it) => it.checked && !it.archived).length,
+    [],
+  );
+
+  const archiveFinished = useCallback(() => {
+    const count = finishedCount();
+    if (count === 0) return;
+    const label = t("toast.itemsArchived", { count });
+    commit(archiveCheckedOp(listRef.current, now()), label);
+    notify(label);
+    unlock("springClean");
+  }, [commit, finishedCount, notify, t]);
+
+  const deleteFinished = useCallback(() => {
+    const count = finishedCount();
+    if (count === 0) return;
+    const label = t("toast.itemsDeleted", { count });
+    commit(deleteCheckedOp(listRef.current, now()), label);
+    notify(label);
+    unlock("cleanSweep");
+  }, [commit, finishedCount, notify, t]);
+
   const unarchive = useCallback(
     (itemId: string) => {
       const found = findItem(itemId);
@@ -272,6 +311,8 @@ export function useChecklistEdits(deps: {
       toggle,
       remove,
       archive,
+      archiveFinished,
+      deleteFinished,
       unarchive,
       reorder,
       addItemPosition,
@@ -283,6 +324,8 @@ export function useChecklistEdits(deps: {
       toggle,
       remove,
       archive,
+      archiveFinished,
+      deleteFinished,
       unarchive,
       reorder,
       addItemPosition,

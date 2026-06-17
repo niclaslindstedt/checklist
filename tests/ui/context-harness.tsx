@@ -45,6 +45,8 @@ export function makeChecklistValue(
     toggle: noop,
     remove: noop,
     archive: noop,
+    archiveFinished: noop,
+    deleteFinished: noop,
     unarchive: noop,
     reorder: noop,
     addItemPosition: "bottom",

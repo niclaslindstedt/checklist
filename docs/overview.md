@@ -132,9 +132,24 @@ strikethrough, and links. It backs the expanded body in a checklist row.
 `src/ui/AddItemButton.tsx` — the "add item" affordance. On small
 viewports it's a circular floating action button centred at the bottom
 of the screen; from the `sm` breakpoint up it relaxes into a normal,
-clearly-styled accent button pinned under the list. Tapping it opens the
+clearly-styled accent button pinned under the list. A plain tap opens the
 inline composer (`AddItemForm`) rather than adding an item directly.
 `ChecklistView` hides the button while the composer is open.
+
+**Long-pressing** the button (held past ~450 ms) fans it out into a
+floating row of bulk actions centred on the same spot — the (+) shrinks
+and fades as the row scales in, so it reads as the button morphing into
+its alternatives. The row carries two buttons: **Archive finished** and
+**Delete finished**, both acting on every finished (checked, still-active)
+item at once via `archiveFinished` / `deleteFinished` (see [Archive /
+delete finished](#archive--delete-finished)). Delete is destructive, so it
+arms on the first tap (the button switches to a pulsing confirm label) and
+only commits on a confirming second tap — the same two-tap guard a
+namespace deletion uses. Running either action, tapping outside (a
+`DismissBackdrop`), or pressing Escape transitions straight back to the
+(+). The bulk buttons are disabled when nothing is finished. The long-press
+gesture is the only entry point, so the actions stay invisible until
+deliberately summoned.
 
 ### Add-item form
 
@@ -560,6 +575,19 @@ archives; Restore in the archive view unarchives. Because the archive
 spans every list, the restore / delete verbs (`useChecklistEdits`)
 resolve the owning checklist from the document rather than the active
 list.
+
+### Archive / delete finished
+
+`archiveChecked` / `deleteChecked` (`src/domain/checklists.ts`) — the bulk
+counterparts to `setArchived` / `deleteItem`: each sweeps **every finished
+(checked, still-active) item** in one pass, leaving archived items
+untouched. Both no-op (return the same checklist, so they never write) when
+nothing is finished. The edit verbs `archiveFinished` / `deleteFinished`
+(`src/app/use-checklist-edits.ts`) wrap them, raise an "Archived / Deleted
+{count} finished" toast, record one undoable step, and fire the
+`springClean` / `cleanSweep` achievements. They're reached from the
+add-button's long-press action row (see [Add-item
+button](#add-item-button)).
 
 ### Reorder item
 

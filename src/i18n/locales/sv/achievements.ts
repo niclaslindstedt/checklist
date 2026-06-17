@@ -134,6 +134,18 @@ const achievements: AchievementsCatalog = {
       name: "Rent bord",
       condition: "Ta bort en checklista.",
     },
+    springClean: {
+      name: "Storstädning",
+      condition: "Arkivera alla avklarade poster på en gång.",
+      learnMore:
+        "Håll inne lägg-till-knappen (+) för att fälla ut massåtgärderna och tryck på Arkivera avklarade — varje avbockad post hamnar i arkivet på en gång.",
+    },
+    cleanSweep: {
+      name: "Rensa rubbet",
+      condition: "Ta bort alla avklarade poster på en gång.",
+      learnMore:
+        "Håll inne lägg-till-knappen (+) och tryck på Ta bort avklarade — ett bekräftande andra tryck rensar permanent varje avbockad post från listan på en gång.",
+    },
     copyThat: {
       name: "Kopierat",
       condition: "Kopiera en checklista till urklipp.",

@@ -88,6 +88,7 @@ names. Honour these when naming a new file, key, or string.
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
 | **Delete item**                                   | `deleteItem` (`src/domain/checklists.ts`). [→](overview.md#delete-item)                            |
 | **Archive / unarchive item**                      | `setArchived`, `activeItems`, `archivedItems`, `archivedByChecklist` (`src/domain/checklists.ts`). [→](overview.md#archive--unarchive-item) |
+| **Archive finished** / **delete finished** / **bulk actions** / **clear checked** / **long-press the plus** | `archiveChecked`, `deleteChecked` (`src/domain/checklists.ts`); `archiveFinished`, `deleteFinished` (`src/app/use-checklist-edits.ts`); the long-press action row in `src/ui/AddItemButton.tsx`. [→](overview.md#archive--delete-finished) |
 | **Reorder item** / **drag to reorder**            | `moveItem` (`src/domain/checklists.ts`); `useListReorder`. [→](overview.md#reorder-item)           |
 | **Progress** / **completion** / **checked count** | `progress`, `isComplete` (`src/domain/checklists.ts`). [→](overview.md#progress--completion)       |
 
@@ -192,6 +193,7 @@ names. Honour these when naming a new file, key, or string.
 | **Edit an item / its body**       | press the row → `ChecklistRowEditor` → `editItem`. [→](overview.md#edit-item)      |
 | **Delete an item**                | swipe-left → `deleteItem`. [→](overview.md#delete-an-item)                         |
 | **Archive an item**               | swipe-right → `setArchived(…, true)`. [→](overview.md#archive-an-item)             |
+| **Archive / delete finished items** | long-press the add (+) button → `archiveFinished` / `deleteFinished`. [→](overview.md#archive--delete-finished) |
 | **Restore an item**               | archive view → `setArchived(…, false)`. [→](overview.md#restore-an-item)          |
 | **Reorder items**                 | grip drag → `useListReorder` → `moveItem`. [→](overview.md#reorder-items)          |
 | **Remove a checklist**            | side-menu swipe-left → trash → `removeChecklist`. [→](overview.md#remove-a-checklist) |

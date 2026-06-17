@@ -141,6 +141,18 @@ const achievements = {
       name: "Clean Slate",
       condition: "Remove a checklist.",
     },
+    springClean: {
+      name: "Spring Clean",
+      condition: "Archive every finished item at once.",
+      learnMore:
+        "Long-press the add (+) button to fan out the bulk actions, then tap Archive finished — every checked item drops into the archive in one sweep.",
+    },
+    cleanSweep: {
+      name: "Clean Sweep",
+      condition: "Delete every finished item at once.",
+      learnMore:
+        "Long-press the add (+) button and tap Delete finished — a confirming second tap permanently clears every checked item from the list in one go.",
+    },
     copyThat: {
       name: "Copy That",
       condition: "Copy a checklist to the clipboard.",
