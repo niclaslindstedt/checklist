@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  act,
   cleanup,
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 
 import { NamespacesModal } from "../../src/ui/NamespacesModal.tsx";
@@ -89,22 +89,22 @@ describe("NamespacesModal", () => {
     expect(onRename).toHaveBeenCalledWith("family", "Relatives");
   });
 
-  it("deletes a namespace after confirmation, and never offers to delete default", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("deletes a namespace after confirming in the dialog, and never offers to delete default", async () => {
     const { onRemove } = renderModal();
     const deletes = screen.getAllByLabelText("Delete namespace");
     // Only the non-default namespace exposes a delete affordance.
     expect(deletes).toHaveLength(1);
-    await act(async () => {
-      fireEvent.click(deletes[0]!);
-    });
-    expect(onRemove).toHaveBeenCalledTimes(1);
+    // The trash button arms the custom confirmation modal rather than the
+    // browser's native `window.confirm`.
+    fireEvent.click(deletes[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(onRemove).toHaveBeenCalledTimes(1));
   });
 
-  it("does not delete when confirmation is declined", () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
+  it("does not delete when the confirmation dialog is cancelled", () => {
     const { onRemove } = renderModal();
     fireEvent.click(screen.getByLabelText("Delete namespace"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onRemove).not.toHaveBeenCalled();
   });
 

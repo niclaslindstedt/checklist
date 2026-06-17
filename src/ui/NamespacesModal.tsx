@@ -7,6 +7,7 @@ import {
   type NamespaceAppearance,
 } from "../storage/namespaces.ts";
 import { ColorPalette } from "./ColorPalette.tsx";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Button, ClearableInput } from "./form/index.ts";
 import { GlyphGrid } from "./GlyphGrid.tsx";
 import { NAMESPACE_GLYPH_NAMES } from "./glyphs.ts";
@@ -186,6 +187,7 @@ function NamespaceRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(namespace.name);
   const [busy, setBusy] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const submitRename = (e: FormEvent) => {
     e.preventDefault();
@@ -207,16 +209,12 @@ function NamespaceRow({
 
   const confirmRemove = async () => {
     if (busy) return;
-    if (
-      !window.confirm(t("namespace.deleteConfirm", { name: namespace.name }))
-    ) {
-      return;
-    }
     setBusy(true);
     try {
       await onRemove();
     } finally {
       setBusy(false);
+      setConfirmingRemove(false);
     }
   };
 
@@ -320,7 +318,7 @@ function NamespaceRow({
       {!isDefault && (
         <button
           type="button"
-          onClick={() => void confirmRemove()}
+          onClick={() => setConfirmingRemove(true)}
           disabled={busy}
           aria-label={t("namespace.deleteAction")}
           className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded text-muted hover:bg-danger/15 hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
@@ -328,6 +326,15 @@ function NamespaceRow({
           <TrashIcon className="h-4 w-4" />
         </button>
       )}
+      <ConfirmDialog
+        open={confirmingRemove}
+        title={t("namespace.deleteAction")}
+        description={t("namespace.deleteConfirm", { name: namespace.name })}
+        confirmLabel={t("namespace.delete")}
+        tone="danger"
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => setConfirmingRemove(false)}
+      />
     </li>
   );
 }
