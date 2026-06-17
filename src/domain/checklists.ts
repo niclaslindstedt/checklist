@@ -166,6 +166,42 @@ export function deleteItem(
   };
 }
 
+/**
+ * Archive every finished (checked) item still in the active list in one
+ * sweep — the bulk counterpart to `setArchived`. Archived items are left
+ * untouched (they're already out of the active list). A no-op (nothing
+ * checked and active) returns the same checklist, so it never writes.
+ */
+export function archiveChecked(checklist: Checklist, now: string): Checklist {
+  if (!checklist.items.some((it) => it.checked && !it.archived)) {
+    return checklist;
+  }
+  return {
+    ...checklist,
+    items: checklist.items.map((it) =>
+      it.checked && !it.archived ? { ...it, archived: true } : it,
+    ),
+    updatedAt: now,
+  };
+}
+
+/**
+ * Permanently remove every finished (checked) item from the active list in
+ * one sweep — the bulk counterpart to `deleteItem`. Archived items are kept
+ * (they've left the active list already). A no-op returns the same
+ * checklist untouched.
+ */
+export function deleteChecked(checklist: Checklist, now: string): Checklist {
+  if (!checklist.items.some((it) => it.checked && !it.archived)) {
+    return checklist;
+  }
+  return {
+    ...checklist,
+    items: checklist.items.filter((it) => !(it.checked && !it.archived)),
+    updatedAt: now,
+  };
+}
+
 /** Mark an item archived (hidden) or active again, without destroying it. */
 export function setArchived(
   checklist: Checklist,

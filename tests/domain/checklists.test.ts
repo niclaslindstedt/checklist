@@ -3,9 +3,11 @@ import {
   activeItems,
   addItem,
   addItems,
+  archiveChecked,
   archivedByChecklist,
   archivedItems,
   createChecklist,
+  deleteChecked,
   deleteItem,
   editItem,
   instantiate,
@@ -181,6 +183,36 @@ describe("free-standing checklist item operations", () => {
     it("returns the same checklist when the id is unknown", () => {
       expect(editItem(seeded, "nope", { title: "X" }, LATER)).toBe(seeded);
     });
+  });
+
+  it("archives every finished item in one sweep, leaving the rest active", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW);
+    c = addItem(c, { id: "i3", title: "C" }, NOW);
+    c = toggleItem(c, "i1", NOW); // finished
+    c = toggleItem(c, "i3", NOW); // finished
+    const swept = archiveChecked(c, NOW);
+    expect(archivedItems(swept).map((it) => it.id)).toEqual(["i1", "i3"]);
+    expect(activeItems(swept).map((it) => it.id)).toEqual(["i2"]);
+  });
+
+  it("is a no-op (same reference) when nothing finished is active", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW);
+    c = toggleItem(c, "i1", NOW);
+    c = setArchived(c, "i1", true, NOW); // checked but already archived
+    expect(archiveChecked(c, NOW)).toBe(c);
+    expect(deleteChecked(c, NOW)).toBe(c);
+  });
+
+  it("deletes every finished item in one sweep, keeping archived ones", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW);
+    c = addItem(c, { id: "i3", title: "C" }, NOW);
+    c = toggleItem(c, "i1", NOW); // finished
+    c = setArchived(c, "i2", true, NOW); // archived, untouched
+    const swept = deleteChecked(c, NOW);
+    expect(swept.items.map((it) => it.id)).toEqual(["i2", "i3"]);
   });
 
   it("counts progress over active items only, ignoring archived ones", () => {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { ChecklistView } from "../../src/ui/ChecklistView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
 import type { Checklist, ChecklistItem } from "../../src/domain/types.ts";
@@ -94,6 +94,58 @@ describe("ChecklistView", () => {
     fireEvent.change(input, { target: { value: "Packing" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(renameChecklist).toHaveBeenCalledWith("list-0", "Packing");
+  });
+
+  describe("bulk actions (long-press the add button)", () => {
+    it("keeps the bulk actions out of reach until a long-press", () => {
+      renderView({ checkedCount: 1 });
+      expect(
+        screen.queryByRole("button", { name: "Archive finished" }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Delete finished" }),
+      ).toBeNull();
+    });
+
+    it("fans out and archives finished items on long-press", () => {
+      vi.useFakeTimers();
+      try {
+        const archiveFinished = vi.fn();
+        renderView({ checkedCount: 1, archiveFinished });
+        fireEvent.pointerDown(screen.getByRole("button", { name: "Add item" }));
+        act(() => {
+          vi.advanceTimersByTime(450);
+        });
+        fireEvent.click(
+          screen.getByRole("button", { name: "Archive finished" }),
+        );
+        expect(archiveFinished).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("requires a confirming second tap before deleting finished items", () => {
+      vi.useFakeTimers();
+      try {
+        const deleteFinished = vi.fn();
+        renderView({ checkedCount: 1, deleteFinished });
+        fireEvent.pointerDown(screen.getByRole("button", { name: "Add item" }));
+        act(() => {
+          vi.advanceTimersByTime(450);
+        });
+        // First tap only arms the confirm state — nothing is deleted yet.
+        fireEvent.click(
+          screen.getByRole("button", { name: "Delete finished" }),
+        );
+        expect(deleteFinished).not.toHaveBeenCalled();
+        // The button now reads the confirm label; tapping it commits.
+        fireEvent.click(screen.getByRole("button", { name: "Tap to confirm" }));
+        expect(deleteFinished).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe("copy to clipboard", () => {

@@ -38,6 +38,8 @@ function ChecklistViewImpl() {
     toggle,
     remove,
     archive,
+    archiveFinished,
+    deleteFinished,
     reorder,
     sync,
     checklists,
@@ -123,7 +125,14 @@ function ChecklistViewImpl() {
         {addItemPosition === "bottom" && draftRow}
       </div>
 
-      {!drafting && <AddItemButton onActivate={startDraft} />}
+      {!drafting && (
+        <AddItemButton
+          onActivate={startDraft}
+          onArchiveFinished={archiveFinished}
+          onDeleteFinished={deleteFinished}
+          finishedCount={checkedCount}
+        />
+      )}
     </div>
   );
 }
