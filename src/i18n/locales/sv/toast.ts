@@ -4,6 +4,7 @@ const toast: ToastCatalog = {
   region: "Aviseringar",
   dismiss: "Stäng",
   itemAdded: "La till ”{title}”",
+  itemEdited: "Redigerade ”{title}”",
   itemChecked: "Bockade av ”{title}”",
   itemUnchecked: "Bockade ur ”{title}”",
   itemDeleted: "Tog bort ”{title}”",

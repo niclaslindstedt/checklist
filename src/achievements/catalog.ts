@@ -157,6 +157,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "wordsmith",
+    tier: "beginner",
+    glyph: TypeGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "secondThoughts",
     tier: "beginner",
     glyph: UndoGlyph,

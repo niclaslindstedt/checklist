@@ -7,6 +7,7 @@ import {
   archivedItems,
   createChecklist,
   deleteItem,
+  editItem,
   instantiate,
   isComplete,
   moveItem,
@@ -137,6 +138,49 @@ describe("free-standing checklist item operations", () => {
   it("deletes an item entirely", () => {
     const withItem = addItem(base, { id: "i1", title: "A" }, NOW);
     expect(deleteItem(withItem, "i1", NOW).items).toHaveLength(0);
+  });
+
+  describe("editItem", () => {
+    const LATER = "2026-02-02T00:00:00.000Z";
+    const seeded = addItem(base, { id: "i1", title: "A" }, NOW);
+
+    it("edits the title, trimming it and bumping updatedAt", () => {
+      const next = editItem(seeded, "i1", { title: "  Buy milk  " }, LATER);
+      expect(next.items[0]!.title).toBe("Buy milk");
+      expect(next.updatedAt).toBe(LATER);
+    });
+
+    it("sets a trimmed notes body without touching the title", () => {
+      const next = editItem(seeded, "i1", { notes: "  see receipt\n" }, LATER);
+      expect(next.items[0]!.title).toBe("A");
+      expect(next.items[0]!.notes).toBe("see receipt");
+    });
+
+    it("drops the notes key when the body is cleared to empty", () => {
+      const noted = editItem(seeded, "i1", { notes: "keep" }, NOW);
+      const cleared = editItem(noted, "i1", { notes: "   " }, LATER);
+      expect("notes" in cleared.items[0]!).toBe(false);
+    });
+
+    it("leaves an untouched field alone (title-only edit keeps the note)", () => {
+      const noted = editItem(seeded, "i1", { notes: "remember" }, NOW);
+      const next = editItem(noted, "i1", { title: "B" }, LATER);
+      expect(next.items[0]!.notes).toBe("remember");
+    });
+
+    it("ignores a blank title rather than emptying the headline", () => {
+      const next = editItem(seeded, "i1", { title: "   " }, LATER);
+      expect(next.items[0]!.title).toBe("A");
+    });
+
+    it("is a no-op (same reference, no updatedAt bump) when nothing changes", () => {
+      const next = editItem(seeded, "i1", { title: "A" }, LATER);
+      expect(next).toBe(seeded);
+    });
+
+    it("returns the same checklist when the id is unknown", () => {
+      expect(editItem(seeded, "nope", { title: "X" }, LATER)).toBe(seeded);
+    });
   });
 
   it("counts progress over active items only, ignoring archived ones", () => {
