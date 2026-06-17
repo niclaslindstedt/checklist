@@ -50,6 +50,20 @@ export function AddItemButton({
   const longPressed = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The (+) element and the id of the pointer currently pressing it. On a
+  // touchscreen the browser sets *implicit pointer capture* to the pointerdown
+  // target — the (+). Once the long-press fans the menu out we must hand that
+  // capture back, or the (+) (now `pointer-events-none`) keeps swallowing the
+  // pointerup that ends the gesture and the bulk buttons under the finger
+  // never see it — they "do nothing" on iOS. See `expandMenu`.
+  const plusRef = useRef<HTMLButtonElement>(null);
+  const pointerId = useRef<number | null>(null);
+
+  // A bulk button just handled the gesture on `pointerup`; swallow the
+  // synthetic `click` that trails it so the action doesn't fire twice (which
+  // would, for delete, arm *and* commit in one tap).
+  const pointerHandled = useRef(false);
+
   const clearTimer = useCallback(() => {
     if (timer.current) {
       clearTimeout(timer.current);
@@ -64,14 +78,32 @@ export function AddItemButton({
 
   useEscapeKey(expanded, collapse);
 
-  const startPress = useCallback(() => {
-    if (expanded) return;
-    longPressed.current = false;
-    timer.current = setTimeout(() => {
-      longPressed.current = true;
-      setExpanded(true);
-    }, LONG_PRESS_MS);
-  }, [expanded]);
+  // Fan the menu out and release the (+)'s implicit pointer capture so the
+  // pointerup (whether the finger lifts in place or slides onto a button)
+  // lands on the bulk button under it rather than the hidden (+).
+  const expandMenu = useCallback(() => {
+    longPressed.current = true;
+    setExpanded(true);
+    const el = plusRef.current;
+    const id = pointerId.current;
+    if (el && id !== null && el.hasPointerCapture?.(id)) {
+      el.releasePointerCapture(id);
+    }
+  }, []);
+
+  const startPress = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (expanded) return;
+      pointerId.current = e.pointerId;
+      longPressed.current = false;
+      // Clear any stale flag from a prior cycle (e.g. an archive that
+      // collapsed before its trailing click arrived) so it can't swallow a
+      // later keyboard / mouse activation.
+      pointerHandled.current = false;
+      timer.current = setTimeout(expandMenu, LONG_PRESS_MS);
+    },
+    [expanded, expandMenu],
+  );
 
   const handleClick = useCallback(() => {
     clearTimer();
@@ -89,7 +121,7 @@ export function AddItemButton({
 
   // First tap arms the confirm state; the second commits. Mirrors the
   // two-tap namespace deletion — a bulk destroy warrants the extra beat.
-  const handleDelete = useCallback(() => {
+  const runDelete = useCallback(() => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
       return;
@@ -97,6 +129,28 @@ export function AddItemButton({
     onDeleteFinished();
     collapse();
   }, [confirmingDelete, onDeleteFinished, collapse]);
+
+  // Activate on `pointerup` — the reliable signal on iOS for a button that
+  // only appears mid-gesture — and mark the gesture handled so the trailing
+  // synthetic `click` is dropped. The `click` path stays as the keyboard /
+  // mouse fallback (Enter / Space fire no pointer events).
+  const onActionPointerUp = useCallback(
+    (run: () => void) => () => {
+      pointerHandled.current = true;
+      run();
+    },
+    [],
+  );
+  const onActionClick = useCallback(
+    (run: () => void) => () => {
+      if (pointerHandled.current) {
+        pointerHandled.current = false;
+        return;
+      }
+      run();
+    },
+    [],
+  );
 
   const noneFinished = finishedCount === 0;
   const deleteLabel = confirmingDelete
@@ -108,6 +162,7 @@ export function AddItemButton({
       {expanded && <DismissBackdrop onDismiss={collapse} />}
 
       <button
+        ref={plusRef}
         type="button"
         onClick={handleClick}
         onPointerDown={startPress}
@@ -156,7 +211,8 @@ export function AddItemButton({
         <button
           type="button"
           disabled={!expanded || noneFinished}
-          onClick={runArchive}
+          onPointerUp={onActionPointerUp(runArchive)}
+          onClick={onActionClick(runArchive)}
           aria-label={t("app.archiveFinished")}
           className="
             flex items-center justify-center bg-link px-8 py-4 text-page-bg
@@ -168,7 +224,8 @@ export function AddItemButton({
         <button
           type="button"
           disabled={!expanded || noneFinished}
-          onClick={handleDelete}
+          onPointerUp={onActionPointerUp(runDelete)}
+          onClick={onActionClick(runDelete)}
           aria-label={deleteLabel}
           className={`
             flex items-center justify-center bg-danger px-8 py-4 text-white
