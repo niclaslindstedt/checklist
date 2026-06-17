@@ -12,6 +12,17 @@ changelog").
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-17
+
+### Changed
+
+- **In-app confirmation dialogs** — Destructive confirmations (such as deleting a namespace) now open a themed in-app dialog instead of the browser's native confirmation popup.
+
+### Fixed
+
+- **Long-press the (+) on iOS** — Suppressed text selection and the iOS long-press callout on the list so holding the add button to fan out the bulk actions no longer pops up the system Copy / Look Up / Translate menu.
+- **Preview/branch PWA isolation** — Installing the app from the `/preview/` or `/branch/` slot now runs that slot's build instead of silently falling through to production, and each installs as its own distinctly named home-screen app.
+
 ## [1.0.0] - 2026-06-17
 
 ### Added
