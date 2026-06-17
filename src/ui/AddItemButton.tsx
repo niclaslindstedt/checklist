@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useT } from "../i18n";
 import { DismissBackdrop } from "./DismissBackdrop.tsx";
@@ -196,46 +197,57 @@ export function AddItemButton({
           morphing into its alternatives; pressing either transitions back. A
           hairline gap shows the bar's backdrop between the halves so they read
           as two distinct buttons. Non-selectable so the long-press never bares
-          a text/element selection on mobile. */}
-      <div
-        role="group"
-        aria-label={t("app.moreActions")}
-        aria-hidden={!expanded}
-        className={`
-          fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-[60]
-          flex -translate-x-1/2 touch-none items-center gap-px overflow-hidden
-          rounded-full bg-page-bg/40 shadow-lg select-none transition-all duration-200
-          ${expanded ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}
-        `}
-      >
-        <button
-          type="button"
-          disabled={!expanded || noneFinished}
-          onPointerUp={onActionPointerUp(runArchive)}
-          onClick={onActionClick(runArchive)}
-          aria-label={t("app.archiveFinished")}
-          className="
+          a text/element selection on mobile.
+
+          Portalled to `document.body` so it sits in the same root stacking
+          context as `DismissBackdrop` (which portals there too). The backdrop
+          is a body-level `z-[55]`; left nested in the view, this `z-[60]` bar
+          gets painted *under* it — on iOS every tap then hits the invisible
+          backdrop and just dismisses, so the buttons appear to do nothing.
+          `FloatingPanel` portals its panel + backdrop together for the same
+          reason. */}
+      {createPortal(
+        <div
+          role="group"
+          aria-label={t("app.moreActions")}
+          aria-hidden={!expanded}
+          className={`
+            fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-[60]
+            flex -translate-x-1/2 touch-none items-center gap-px overflow-hidden
+            rounded-full bg-page-bg/40 shadow-lg select-none transition-all duration-200
+            ${expanded ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}
+          `}
+        >
+          <button
+            type="button"
+            disabled={!expanded || noneFinished}
+            onPointerUp={onActionPointerUp(runArchive)}
+            onClick={onActionClick(runArchive)}
+            aria-label={t("app.archiveFinished")}
+            className="
             flex items-center justify-center bg-link px-8 py-4 text-page-bg
             transition-[filter] active:brightness-90 disabled:opacity-40
           "
-        >
-          <ArchiveIcon className="h-6 w-6" />
-        </button>
-        <button
-          type="button"
-          disabled={!expanded || noneFinished}
-          onPointerUp={onActionPointerUp(runDelete)}
-          onClick={onActionClick(runDelete)}
-          aria-label={deleteLabel}
-          className={`
+          >
+            <ArchiveIcon className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            disabled={!expanded || noneFinished}
+            onPointerUp={onActionPointerUp(runDelete)}
+            onClick={onActionClick(runDelete)}
+            aria-label={deleteLabel}
+            className={`
             flex items-center justify-center bg-danger px-8 py-4 text-white
             transition-[filter] active:brightness-90 disabled:opacity-40
             ${confirmingDelete ? "animate-pulse ring-2 ring-inset ring-white/80" : ""}
           `}
-        >
-          <TrashIcon className="h-6 w-6" />
-        </button>
-      </div>
+          >
+            <TrashIcon className="h-6 w-6" />
+          </button>
+        </div>,
+        document.body,
+      )}
     </>
   );
 }
