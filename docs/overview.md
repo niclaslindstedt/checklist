@@ -970,7 +970,12 @@ caching the nested folder ids Drive needs — and hands it to the markdown
 file store, so each list is a markdown file under
 `checklist/<namespace>/checklists/` (`deleteGdriveNamespace` removes the
 folder). The GIS script is lazy-loaded only when the user connects.
-`isGdriveConfigured()` gates the connect button.
+`isGdriveConfigured()` gates the connect button. A 401 surfaces as
+`AuthError`; a rate limit — which Drive signals mostly as **403** with a
+`userRateLimitExceeded` / `rateLimitExceeded` reason (and sometimes a bare
+429), not Dropbox's clean 429 — surfaces as `RateLimitError` so the same
+throttle-and-resume path engages. A genuine 403 permission error stays a
+plain error.
 
 ### iCloud backend (iOS)
 
@@ -1052,6 +1057,32 @@ A `saveGeneration` counter, bumped whenever the document is replaced
 wholesale (backend swap, reload, conflict-adopt), lets a save that
 resolves against a vanished baseline drop its result instead of writing
 it back.
+
+A failed save doesn't immediately go red. The retry policy lives in the
+pure, unit-testable `src/storage/save-retry.ts` (`backoffDelayMs`,
+`isRetryableSaveError`, `MAX_TRANSIENT_SAVE_RETRIES`); the sync engine
+owns the timers:
+
+- **Rate limit (`RateLimitError`, HTTP 429).** The status flips to
+  `throttled` (orange glyph, not red), the failed snapshot is re-queued,
+  and a resume timer is armed for the backend's `retryAfterMs` *floored*
+  against the equal-jitter backoff curve and *escalated per consecutive
+  429*, so a server returning a tiny (or zero) cooldown can't pull the
+  app into a tight resend loop. There is deliberately **no budget** —
+  giving up on a rate limit would stop autosave, which is worse than
+  waiting — so the throttle path keeps retrying until a save lands. Edits
+  made during the cooldown coalesce into the single resume save.
+- **Transient hiccup (any other error — 5xx, raw network failure).** The
+  status stays `saving` while the save is re-queued and retried with the
+  same backoff curve up to `MAX_TRANSIENT_SAVE_RETRIES` times; only after
+  the budget is exhausted does it surface a hard `error` with the
+  captured reason.
+
+`ConflictError` and `AuthError` keep their dedicated handling and are
+never retried this way. The consecutive-throttle and transient-retry
+counters reset to zero the moment a save succeeds, and the armed resume
+timer is cancelled on backend swap, reload, and unmount so it can never
+fire into a fresh baseline.
 
 ### Reload / pull-to-refresh
 

@@ -17,7 +17,7 @@
 // Ported and pared from the budget project's `gdrive-adapter.ts`.
 
 import { createLogger } from "../../dev/logger.ts";
-import { AuthError, type StorageAdapter } from "../adapter.ts";
+import { AuthError, RateLimitError, type StorageAdapter } from "../adapter.ts";
 import { createDirectoryAdapter } from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
@@ -49,9 +49,47 @@ const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 
 const SAVE_DEBOUNCE_MS = 1000;
 
+// Floor for the cooldown after Drive rate-limits a request, used when the
+// response carries no usable `Retry-After`. Drive usually omits the header
+// and just asks clients to back off exponentially, so the sync engine's
+// backoff curve does most of the work; this is only a sane lower bound.
+const RATE_LIMIT_FALLBACK_MS = 5000;
+
 export type FetchImpl = typeof fetch;
 
-function gdriveError(op: string, status: number, body: string): Error {
+// Unlike Dropbox's clean 429, Google Drive signals a rate limit mostly as
+// HTTP 403 with a structured `reason` in the JSON body — disambiguating a
+// throttle from a genuine permission error. A bare 429 counts too. A 403
+// quota-exhaustion (`dailyLimitExceeded`) is deliberately NOT treated as a
+// transient throttle: that's a hard cap, not a "retry shortly" signal.
+function isDriveRateLimit(status: number, body: string): boolean {
+  if (status === 429) return true;
+  if (status !== 403) return false;
+  return (
+    body.includes("userRateLimitExceeded") || body.includes("rateLimitExceeded")
+  );
+}
+
+function driveRetryAfterMs(headers: Headers | undefined): number {
+  const headerSeconds = Number(headers?.get("Retry-After") ?? "");
+  const headerMs = Number.isFinite(headerSeconds)
+    ? Math.max(0, headerSeconds) * 1000
+    : 0;
+  return Math.max(headerMs, RATE_LIMIT_FALLBACK_MS);
+}
+
+function gdriveError(
+  op: string,
+  status: number,
+  body: string,
+  headers?: Headers,
+): Error {
+  // Map a rate limit to the typed signal so the sync engine parks the
+  // session in `throttled` and resumes after a cooldown instead of going
+  // red — mirrors the Dropbox adapter's 429 handling.
+  if (isDriveRateLimit(status, body)) {
+    return new RateLimitError(driveRetryAfterMs(headers));
+  }
   const message = `Google Drive ${op} failed: ${status} ${body}`;
   return status === 401 ? new AuthError(message) : new Error(message);
 }
@@ -118,7 +156,7 @@ function createGdriveFileStore(
     const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw gdriveError("search", res.status, body);
+      throw gdriveError("search", res.status, body, res.headers);
     }
     const json = (await res.json()) as DriveListResponse;
     return json.files?.[0]?.id ?? null;
@@ -147,7 +185,7 @@ function createGdriveFileStore(
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "<unreadable>");
-      throw gdriveError("folder create", res.status, detail);
+      throw gdriveError("folder create", res.status, detail, res.headers);
     }
     return ((await res.json()) as DriveFile).id;
   }
@@ -205,7 +243,7 @@ function createGdriveFileStore(
     const res = await fetchImpl(url, { headers: authHeader() });
     if (!res.ok) {
       const body = await res.text().catch(() => "<unreadable>");
-      throw gdriveError("list", res.status, body);
+      throw gdriveError("list", res.status, body, res.headers);
     }
     const files = ((await res.json()) as DriveListResponse).files ?? [];
     for (const file of files) {
@@ -252,7 +290,7 @@ function createGdriveFileStore(
       if (res.status === 404) return null;
       if (!res.ok) {
         const body = await res.text().catch(() => "<unreadable>");
-        throw gdriveError("download", res.status, body);
+        throw gdriveError("download", res.status, body, res.headers);
       }
       return res.text();
     },
@@ -275,7 +313,7 @@ function createGdriveFileStore(
         );
         if (!res.ok) {
           const body = await res.text().catch(() => "<unreadable>");
-          throw gdriveError("update", res.status, body);
+          throw gdriveError("update", res.status, body, res.headers);
         }
         return;
       }
@@ -291,7 +329,7 @@ function createGdriveFileStore(
       });
       if (!res.ok && res.status !== 404) {
         const body = await res.text().catch(() => "<unreadable>");
-        throw gdriveError("delete", res.status, body);
+        throw gdriveError("delete", res.status, body, res.headers);
       }
     },
   };
@@ -322,7 +360,7 @@ function createGdriveFileStore(
     );
     if (!res.ok) {
       const errBody = await res.text().catch(() => "<unreadable>");
-      throw gdriveError("create", res.status, errBody);
+      throw gdriveError("create", res.status, errBody, res.headers);
     }
   }
 }

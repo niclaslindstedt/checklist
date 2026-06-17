@@ -26,6 +26,11 @@ import {
   RateLimitError,
   type StorageAdapter,
 } from "../storage/adapter.ts";
+import {
+  backoffDelayMs,
+  isRetryableSaveError,
+  MAX_TRANSIENT_SAVE_RETRIES,
+} from "../storage/save-retry.ts";
 import { parse, serialize } from "../storage/serialize.ts";
 import { newId, now } from "./side-effects.ts";
 
@@ -163,59 +168,133 @@ export function useChecklistSync(deps: {
   // drain a queued edit on completion, but `flushSave` is built on top of
   // `performSave`, so the cycle is broken through a ref.
   const flushSaveRef = useRef<() => void>(() => {});
+  // A scheduled re-save during a cooldown: either a rate-limit throttle
+  // (HTTP 429) waiting out the backend's `Retry-After`, or a transient
+  // backend hiccup backing off before another attempt. Non-null means a
+  // cooldown is in progress — `flushSave` refuses to start a fresh write
+  // while it's armed so edits coalesce into the one resume instead of
+  // hammering the backend. Cleared on backend swap, reload, and unmount.
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Count of back-to-back rate limits (HTTP 429) with no successful save
+  // in between. Drives the backoff floor on the throttle path so a server
+  // that keeps returning a tiny `retryAfterMs` escalates the cooldown
+  // instead of letting us resend on a tight loop. Reset to 0 the moment a
+  // save lands.
+  const consecutiveThrottles = useRef(0);
+  // Count of consecutive transient (non-typed) save failures. Bounds the
+  // automatic retry curve: after `MAX_TRANSIENT_SAVE_RETRIES` the save
+  // path gives up and surfaces a hard `error`. Reset to 0 on success.
+  const transientRetries = useRef(0);
 
-  const performSave = useCallback((next: Snapshot, baseRevision?: string) => {
+  // Schedule a resume `waitMs` from now after a save backed off (rate
+  // limit or transient hiccup). Re-queues the failed snapshot — unless a
+  // newer edit already superseded it in `pendingDoc` — so the resume has
+  // bytes to push, then arms the cooldown timer. The timer captures the
+  // save generation at arm time and bails if the document was swapped
+  // wholesale (backend change, reload, conflict-adopt) before it fired,
+  // so a stale resume can't write the old baseline onto the new one.
+  const armResave = useCallback((failedDoc: Snapshot, waitMs: number) => {
+    if (pendingDoc.current === null) pendingDoc.current = failedDoc;
+    if (retryTimer.current !== null) clearTimeout(retryTimer.current);
     const generation = saveGeneration.current;
-    inFlight.current = true;
-    setStatus("saving");
-    void adapterRef.current
-      .save(serialize(next), baseRevision)
-      .then((stored) => {
-        inFlight.current = false;
-        // The document was swapped out from under this save (reload, backend
-        // change, conflict-adopt). Its revision and any queued follow-up
-        // belong to a baseline that no longer exists — drop them.
-        if (saveGeneration.current !== generation) return;
-        revisionRef.current = stored.revision;
-        // An edit queued while this save was in flight. Each queued edit is a
-        // full snapshot, so the latest supersedes every one before it — send
-        // only that, based on the revision we just got, never concurrently.
-        if (pendingDoc.current !== null) {
-          flushSaveRef.current();
-        } else {
-          setDirty(false);
-          setStatus("saved");
-          setStatusDetail(null);
-        }
-      })
-      .catch((err: unknown) => {
-        inFlight.current = false;
-        if (saveGeneration.current !== generation) return;
-        if (err instanceof ConflictError) {
-          log.warn("save: remote moved — surfacing conflict");
-          setStatus("conflict");
-          setStatusDetail(null);
-          setConflict({
-            remote: withActiveList(parse(err.remote.text)),
-            remoteRevision: err.remote.revision,
-          });
-        } else if (err instanceof AuthError) {
-          log.error("save: auth error", err);
-          setStatus("auth-error");
-          setStatusDetail(null);
-        } else if (err instanceof RateLimitError) {
-          log.warn("save: rate limited", err);
-          setStatus("throttled");
-          setStatusDetail(null);
-        } else {
-          log.error("save failed", err);
-          setStatus("error");
-          // Capture the failure reason verbatim so the details modal can
-          // show *why* the save failed instead of a bare "Sync failed".
-          setStatusDetail(err instanceof Error ? err.message : String(err));
-        }
-      });
+    retryTimer.current = setTimeout(() => {
+      retryTimer.current = null;
+      if (saveGeneration.current !== generation) return;
+      flushSaveRef.current();
+    }, waitMs);
   }, []);
+
+  const performSave = useCallback(
+    (next: Snapshot, baseRevision?: string) => {
+      const generation = saveGeneration.current;
+      inFlight.current = true;
+      setStatus("saving");
+      void adapterRef.current
+        .save(serialize(next), baseRevision)
+        .then((stored) => {
+          inFlight.current = false;
+          // The document was swapped out from under this save (reload, backend
+          // change, conflict-adopt). Its revision and any queued follow-up
+          // belong to a baseline that no longer exists — drop them.
+          if (saveGeneration.current !== generation) return;
+          // A save landed — clear the backoff escalation so a future failure
+          // (throttle or transient) starts its curve from scratch.
+          consecutiveThrottles.current = 0;
+          transientRetries.current = 0;
+          revisionRef.current = stored.revision;
+          // An edit queued while this save was in flight. Each queued edit is a
+          // full snapshot, so the latest supersedes every one before it — send
+          // only that, based on the revision we just got, never concurrently.
+          if (pendingDoc.current !== null) {
+            flushSaveRef.current();
+          } else {
+            setDirty(false);
+            setStatus("saved");
+            setStatusDetail(null);
+          }
+        })
+        .catch((err: unknown) => {
+          inFlight.current = false;
+          if (saveGeneration.current !== generation) return;
+          if (err instanceof ConflictError) {
+            log.warn("save: remote moved — surfacing conflict");
+            setStatus("conflict");
+            setStatusDetail(null);
+            setConflict({
+              remote: withActiveList(parse(err.remote.text)),
+              remoteRevision: err.remote.revision,
+            });
+          } else if (err instanceof AuthError) {
+            log.error("save: auth error", err);
+            setStatus("auth-error");
+            setStatusDetail(null);
+          } else if (err instanceof RateLimitError) {
+            // Soft pause: re-queue this snapshot and schedule a resume once
+            // the cooldown elapses, so whatever the user edits during the
+            // wait coalesces into a single full-document save. The backend's
+            // `retryAfterMs` is floored against the backoff curve and
+            // escalated per consecutive 429, so a server returning a tiny
+            // (or zero) cooldown can't pull us into a tight resend loop. No
+            // budget here on purpose: giving up on a rate limit would
+            // surface a red error and stop autosave, which is worse than
+            // continuing to wait.
+            const floorMs = backoffDelayMs(consecutiveThrottles.current);
+            consecutiveThrottles.current += 1;
+            const waitMs = Math.max(err.retryAfterMs, floorMs);
+            log.warn(
+              `save throttled — retryAfter=${err.retryAfterMs}ms floor=${floorMs}ms resume in ${waitMs}ms`,
+            );
+            setStatus("throttled");
+            setStatusDetail(null);
+            armResave(next, waitMs);
+          } else if (
+            isRetryableSaveError(err) &&
+            transientRetries.current < MAX_TRANSIENT_SAVE_RETRIES
+          ) {
+            // Transient backend hiccup (5xx, raw network error): re-queue
+            // and back off rather than immediately surfacing a red error.
+            // Status stays `saving` across attempts so the glyph keeps
+            // spinning. After `MAX_TRANSIENT_SAVE_RETRIES` we fall through
+            // to the hard-error branch below.
+            const waitMs = backoffDelayMs(transientRetries.current);
+            transientRetries.current += 1;
+            log.warn(
+              `save failed — retrying in ${waitMs}ms (attempt ${transientRetries.current}/${MAX_TRANSIENT_SAVE_RETRIES})`,
+              err,
+            );
+            armResave(next, waitMs);
+          } else {
+            log.error("save failed", err);
+            transientRetries.current = 0;
+            setStatus("error");
+            // Capture the failure reason verbatim so the details modal can
+            // show *why* the save failed instead of a bare "Sync failed".
+            setStatusDetail(err instanceof Error ? err.message : String(err));
+          }
+        });
+    },
+    [armResave],
+  );
 
   const flushSave = useCallback(() => {
     if (saveTimer.current !== null) {
@@ -225,6 +304,11 @@ export function useChecklistSync(deps: {
     // One save in flight at a time (see `inFlight`). Leave the edit queued in
     // `pendingDoc`; the outstanding save drains it when it resolves.
     if (inFlight.current) return;
+    // A cooldown (rate-limit throttle or transient backoff) is in
+    // progress — don't start a fresh write that would just be rejected
+    // again. The edit stays queued in `pendingDoc`; the armed resume
+    // timer drains it (and any newer edit) when the cooldown elapses.
+    if (retryTimer.current !== null) return;
     const next = pendingDoc.current;
     if (next === null) return;
     pendingDoc.current = null;
@@ -258,6 +342,16 @@ export function useChecklistSync(deps: {
   // an in-flight edit isn't dropped, and the concurrency token resets so
   // the first save against the new backend isn't rejected.
   useEffect(() => {
+    // Cancel any armed cooldown so it can't fire into the new backend, and
+    // reset the backoff escalation — the new backend starts with a clean
+    // slate. Cleared before `flushSave` so a queued edit gets one last push
+    // to the old backend rather than being blocked by the cooldown guard.
+    if (retryTimer.current !== null) {
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
+    consecutiveThrottles.current = 0;
+    transientRetries.current = 0;
     // Flush a queued edit to the *old* backend first (when nothing is in
     // flight) so a debounced edit isn't dropped on the swap, then bump the
     // generation so that save's write-back — and any save already in flight
@@ -290,14 +384,28 @@ export function useChecklistSync(deps: {
     };
   }, [active, flushSave, resetHistory]);
 
-  // Flush any pending save on unmount so a debounced edit isn't lost.
+  // Flush any pending save on unmount so a debounced edit isn't lost, and
+  // cancel any armed cooldown so the resume timer can't fire after teardown.
   useEffect(() => {
     return () => {
+      if (retryTimer.current !== null) {
+        clearTimeout(retryTimer.current);
+        retryTimer.current = null;
+      }
       flushSave();
     };
   }, [flushSave]);
 
   const reload = useCallback(async () => {
+    // Cancel any armed cooldown and reset the backoff escalation — the
+    // reloaded document is a fresh baseline, so a pending throttle/retry
+    // resume against the old baseline must not fire.
+    if (retryTimer.current !== null) {
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
+    consecutiveThrottles.current = 0;
+    transientRetries.current = 0;
     flushSave();
     // The reloaded document is a fresh baseline; abandon any in-flight or
     // queued save so its stale write-back can't clobber what we load.

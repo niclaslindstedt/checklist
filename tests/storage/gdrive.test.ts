@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
-import { ConflictError } from "../../src/storage/adapter.ts";
+import { ConflictError, RateLimitError } from "../../src/storage/adapter.ts";
 import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
 import {
@@ -232,5 +232,57 @@ describe("gdrive adapter (markdown file store)", () => {
       "checklists",
       "work",
     ]);
+  });
+
+  // A fetch stub that answers every call with one chosen response — enough
+  // to trip the rate-limit mapping on the first request a save makes (the
+  // app-folder search).
+  function alwaysRespond(res: Response): typeof fetch {
+    return (async () => res) as unknown as typeof fetch;
+  }
+
+  it("maps a 403 userRateLimitExceeded to a RateLimitError", async () => {
+    const body = JSON.stringify({
+      error: { code: 403, errors: [{ reason: "userRateLimitExceeded" }] },
+    });
+    const adapter = createGdriveAdapter(
+      "token",
+      alwaysRespond(json(403, body)),
+    );
+    await expect(adapter.save(serialize(snapshot))).rejects.toBeInstanceOf(
+      RateLimitError,
+    );
+  });
+
+  it("maps a bare 429 to a RateLimitError and honours Retry-After", async () => {
+    const res = {
+      status: 429,
+      ok: false,
+      headers: new Headers({ "Retry-After": "12" }),
+      async text() {
+        return "Too Many Requests";
+      },
+      async json() {
+        return {};
+      },
+    } as unknown as Response;
+    const adapter = createGdriveAdapter("token", alwaysRespond(res));
+    await expect(adapter.save(serialize(snapshot))).rejects.toMatchObject({
+      name: "RateLimitError",
+      retryAfterMs: 12_000,
+    });
+  });
+
+  it("leaves a genuine 403 permission error as a non-throttle Error", async () => {
+    const body = JSON.stringify({
+      error: { code: 403, errors: [{ reason: "insufficientPermissions" }] },
+    });
+    const adapter = createGdriveAdapter(
+      "token",
+      alwaysRespond(json(403, body)),
+    );
+    const err = await adapter.save(serialize(snapshot)).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(RateLimitError);
   });
 });
