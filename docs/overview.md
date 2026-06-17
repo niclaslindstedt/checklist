@@ -801,6 +801,20 @@ The `SaveStatus` union (`idle` / `saving` / `saved` / `error` /
 `dirty` tracks unsaved edits; `saveNow` flushes the debounced save
 immediately.
 
+Saves are **serialized**: at most one write is in flight against the
+backend at a time. An edit that arrives while a save is in flight
+doesn't start its own write — it queues in `pendingDoc`, and because
+every save serialises the *whole* document, the newest queued snapshot
+covers every one before it, so the in-flight save drains the queue in a
+single follow-up write (based on the revision it just learned) when it
+returns. Without this a second save would base on a revision the first
+is about to bump and the backend would reject it as a `ConflictError` —
+the device colliding with its *own* just-completed write on a slow link.
+A `saveGeneration` counter, bumped whenever the document is replaced
+wholesale (backend swap, reload, conflict-adopt), lets a save that
+resolves against a vanished baseline drop its result instead of writing
+it back.
+
 ### Reload / pull-to-refresh
 
 `useChecklist.reload` re-reads the active backend and replaces what's on
@@ -812,8 +826,12 @@ screen); the visual is `PullToRefreshIndicator`.
 
 ### Conflict resolution
 
-When a save loses a race with another device, the adapter throws
-`ConflictError` and the hook turns it into a `ConflictState`.
+A conflict here means a genuine **cross-device** divergence — another
+device pushed a newer revision between this device's last load and its
+save. (A device can no longer conflict with itself: saves are serialized
+so a mid-flight edit queues rather than racing the in-flight write — see
+"Sync status / save state".) When a save loses that race, the adapter
+throws `ConflictError` and the hook turns it into a `ConflictState`.
 `ConflictResolutionModal` (`src/ui/ConflictResolutionModal.tsx`) is the
 non-dismissable prompt: it summarises the local and remote documents
 side by side and makes the user pick. "Keep mine" re-saves this
