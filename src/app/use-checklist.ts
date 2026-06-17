@@ -12,6 +12,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import {
   activeItems,
   type ArchivedGroup,
@@ -72,6 +73,8 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   status: SaveStatus;
   /** Whether there are local edits not yet persisted to the backend. */
   dirty: boolean;
+  /** False until the backend's first load resolves — gates the achievement watcher. */
+  loaded: boolean;
   /** Flush any debounced save immediately (the "save now" affordance). */
   saveNow: () => void;
   /** Revert the last edit, restoring the prior document (incl. deletions). */
@@ -139,7 +142,10 @@ export function useChecklist(
   // them *what* just came back (or went away again).
   const undo = useCallback(() => {
     const label = undoTimeline();
-    if (label) notify(t("toast.undone", { action: label }));
+    if (label) {
+      unlock("secondThoughts");
+      notify(t("toast.undone", { action: label }));
+    }
   }, [undoTimeline, notify, t]);
 
   const redo = useCallback(() => {
@@ -204,6 +210,7 @@ export function useChecklist(
       resolveConflict: sync.resolveConflict,
       status: sync.status,
       dirty: sync.dirty,
+      loaded: sync.loaded,
       saveNow: sync.saveNow,
       undo,
       redo,
@@ -222,6 +229,7 @@ export function useChecklist(
       sync.resolveConflict,
       sync.status,
       sync.dirty,
+      sync.loaded,
       sync.saveNow,
       undo,
       redo,

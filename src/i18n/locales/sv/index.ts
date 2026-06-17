@@ -4,6 +4,7 @@
 
 import type { Catalog } from "../en/index";
 
+import achievements from "./achievements";
 import app from "./app";
 import changelog from "./changelog";
 import common from "./common";
@@ -16,6 +17,7 @@ import sync from "./sync";
 import toast from "./toast";
 
 export const sv: Catalog = {
+  achievements,
   app,
   changelog,
   common,

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { unlock, useAchievementWatcher } from "../achievements/index.ts";
 import { useDevSeed } from "../dev/useDevSeed.ts";
-import { useT } from "../i18n";
+import { useT, type MessageKey } from "../i18n";
+import { LANGUAGE_EVENT } from "../i18n/language-preference.ts";
 import { useStandaloneMobile } from "../pwa/standalone.ts";
 import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
@@ -31,8 +33,10 @@ import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
 import { ModalBusProvider } from "../ui/ModalBusProvider.tsx";
 import { useAnyModalOpen, useModalDispatch } from "../ui/modal-bus.ts";
+import { AchievementsContext } from "../ui/achievements/achievements-context.ts";
 import { useToast } from "../ui/toast/useToast.ts";
 import type { Notify } from "./notify.ts";
+import { AchievementsModalHost } from "./modals/AchievementsModalHost.tsx";
 import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
 import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
@@ -64,7 +68,8 @@ function AppShell() {
   // settings because it provides the root settings store the appearance
   // settings reconcile against (`settings.json` at the app-folder root).
   const storage = useStorageBackend();
-  const { settings, update } = useSettings(storage.settingsStore);
+  const { settings, update, unlockAchievements, clearUnseenAchievements } =
+    useSettings(storage.settingsStore);
   useTheme(settings);
   useViewportHeight();
 
@@ -128,6 +133,58 @@ function AppShell() {
     settings.addItemPosition,
     notify,
   );
+
+  // Achievements. The watcher records derived unlocks (first item, theme
+  // change, …) off every document / settings transition and drains the
+  // manual-unlock bus (cloud connect, copy, undo, …); a fresh unlock raises
+  // a celebratory toast and badges the header trophy via `AchievementsContext`.
+  const onAchievementsUnlocked = useCallback(
+    (ids: string[]) => {
+      const message =
+        ids.length === 1
+          ? t("achievements.toast.unlockedOne", {
+              name: t(`achievements.catalog.${ids[0]}.name` as MessageKey),
+            })
+          : t("achievements.toast.unlockedOther", { n: String(ids.length) });
+      push({ message, kind: "success" });
+    },
+    [push, t],
+  );
+  useAchievementWatcher({
+    snapshot: checklist.snapshot,
+    settings,
+    loaded: checklist.loaded,
+    record: unlockAchievements,
+    onUnlocked: onAchievementsUnlocked,
+  });
+
+  // `homeScreen`: fired once when the app is running as an installed PWA
+  // (standalone display mode, or iOS's `navigator.standalone`). The bus
+  // dedupes, so the every-mount fire only ever records the unlock once.
+  useEffect(() => {
+    const standalone =
+      (typeof window !== "undefined" &&
+        window.matchMedia?.("(display-mode: standalone)").matches === true) ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    if (standalone) unlock("homeScreen");
+  }, []);
+
+  // `polyglot`: fired when the active language changes (the picker dispatches
+  // `LANGUAGE_EVENT`; language preference lives outside `Settings`, so this
+  // can't be a derived trigger).
+  useEffect(() => {
+    const onLang = () => unlock("polyglot");
+    window.addEventListener(LANGUAGE_EVENT, onLang);
+    return () => window.removeEventListener(LANGUAGE_EVENT, onLang);
+  }, []);
+
+  // `freshPull`: a pull-to-refresh re-reads the backend. Wrap the reload so
+  // the gesture records the unlock; the underlying `reload` is unchanged.
+  const { reload } = checklist;
+  const refresh = useCallback(() => {
+    unlock("freshPull");
+    return reload();
+  }, [reload]);
 
   // Namespace create / delete live in the storage layer (which must not
   // reach into the UI), so the toast is raised here where both the
@@ -212,7 +269,7 @@ function AppShell() {
   // active backend (see `useChecklist.reload`). Gated off while a modal
   // owns the screen, and while the floating menu button is being dragged —
   // dragging it downward would otherwise arm a refresh at the same time.
-  const ptr = usePullToRefresh(checklist.reload, {
+  const ptr = usePullToRefresh(refresh, {
     enabled:
       !anyModalOpen && !menuOpen && !menuButtonDragging && view === "checklist",
   });
@@ -243,6 +300,14 @@ function AppShell() {
     () => ({ ...checklist, sync, logoSrc }),
     [checklist, sync, logoSrc],
   );
+  // Just the unseen count for the header trophy badge — kept off the
+  // checklist context (whose stability lets the memoised list skip settings
+  // re-renders) so an unlock badges the button without reconciling the list.
+  const achievementsValue = useMemo(
+    () => ({ unseenCount: settings.unseenAchievements.length }),
+    [settings.unseenAchievements.length],
+  );
+
   const navValue = useMemo<NavContextValue>(
     () => ({
       open: menuOpen,
@@ -272,43 +337,52 @@ function AppShell() {
   return (
     <NavContext.Provider value={navValue}>
       <ChecklistContext.Provider value={checklistValue}>
-        <PullToRefreshIndicator
-          state={ptr.state}
-          pullDistance={ptr.pullDistance}
-        />
-        {/* A flex row so the pinned sidebar docks beside the content. When
+        <AchievementsContext.Provider value={achievementsValue}>
+          <PullToRefreshIndicator
+            state={ptr.state}
+            pullDistance={ptr.pullDistance}
+          />
+          {/* A flex row so the pinned sidebar docks beside the content. When
             the menu isn't pinned, SideMenu renders only `position: fixed`
             layers (the floating button and the overlay drawer), which sit
             outside the flex flow — so the view keeps the full width. */}
-        <div className="flex h-full">
-          <SideMenu
-            namespaces={storage.namespaces}
-            activeNamespace={storage.activeNamespace}
-            onSwitchNamespace={storage.switchNamespace}
-            onRemoveNamespace={removeNamespace}
+          <div className="flex h-full">
+            <SideMenu
+              namespaces={storage.namespaces}
+              activeNamespace={storage.activeNamespace}
+              onSwitchNamespace={storage.switchNamespace}
+              onRemoveNamespace={removeNamespace}
+            />
+            <main className="relative h-full min-w-0 flex-1">
+              {view === "archive" ? <ArchiveView /> : <ChecklistView />}
+            </main>
+          </div>
+          <SettingsModalHost
+            settings={settings}
+            onUpdate={update}
+            storage={storage}
           />
-          <main className="relative h-full min-w-0 flex-1">
-            {view === "archive" ? <ArchiveView /> : <ChecklistView />}
-          </main>
-        </div>
-        <SettingsModalHost
-          settings={settings}
-          onUpdate={update}
-          storage={storage}
-        />
-        <ChangelogModalHost />
-        <NamespacesModalHost
-          storage={storage}
-          onCreate={createNamespace}
-          onRemove={removeNamespace}
-        />
-        <ConflictResolutionModal
-          open={checklist.conflict !== null}
-          local={checklist.snapshot}
-          remote={checklist.conflict?.remote ?? checklist.snapshot}
-          onResolve={checklist.resolveConflict}
-        />
-        <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
+          <ChangelogModalHost />
+          <NamespacesModalHost
+            storage={storage}
+            onCreate={createNamespace}
+            onRemove={removeNamespace}
+          />
+          <AchievementsModalHost
+            settings={settings}
+            onClose={clearUnseenAchievements}
+          />
+          <ConflictResolutionModal
+            open={checklist.conflict !== null}
+            local={checklist.snapshot}
+            remote={checklist.conflict?.remote ?? checklist.snapshot}
+            onResolve={(keep) => {
+              unlock("peacemaker");
+              checklist.resolveConflict(keep);
+            }}
+          />
+          <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
+        </AchievementsContext.Provider>
       </ChecklistContext.Provider>
     </NavContext.Provider>
   );

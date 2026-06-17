@@ -25,11 +25,12 @@ The registry is the single source of truth for which sync skills exist in this r
 | `update-docs`     | `docs/*.md` vs. source of truth                                                                             | §11.1                     | 2 |
 | `update-readme`   | `README.md` vs. current public surface                                                                      | §3                        | 3 |
 | `update-prompts`  | `prompts/**` vs. code and embedded sources                                                                  | §13.5                     | 4 |
+| `update-achievements` | The achievements catalog (`src/achievements/catalog.ts` + `src/i18n/locales/{en,sv}/achievements.ts`) vs. the current user-facing feature surface | §21.6 | 5 |
 
 Run order matters:
 
 - `sync-oss-spec` runs **first** so every downstream skill sees the current spec — it may overwrite the local `OSS_SPEC.md` with the upstream copy, which downstream skills then read.
-- The per-artifact skills (`update-docs`, `update-readme`, `update-prompts`) run afterwards in dependency order: a skill that reads files another skill rewrites must run *after* that other skill. This project has no CLI, so there is no `update-manpages` skill — do not add one without first adding a `man/` tree.
+- The per-artifact skills (`update-docs`, `update-readme`, `update-prompts`, `update-achievements`) run afterwards in dependency order: a skill that reads files another skill rewrites must run *after* that other skill. This project has no CLI, so there is no `update-manpages` skill — do not add one without first adding a `man/` tree.
 
 ## Discovery process
 

@@ -606,6 +606,50 @@ and the inline custom-theme overrides), and `src/theme/fonts.ts`
 the others lazy-load). CSS tokens live in `src/styles/theme.css` and
 `src/styles/palettes.css`.
 
+## Achievements
+
+Every user-facing feature is also an unlockable **achievement**, ported
+from the budget project and scaled to the checklist. Achievements are
+sorted into four **tiers** that mirror how far the user has grown into
+the app — **Beginner → Intermediate → Pro → Expert** — worth 10 / 25 /
+50 / 100 points respectively (`TIER_POINTS`). The full catalog is
+`ACHIEVEMENTS` in `src/achievements/catalog.ts`; each entry carries a
+stable write-once `id`, its `tier`, an inline-SVG `glyph` (from
+`src/achievements/glyphs.tsx` — the app ships no `lucide-react`), an
+optional `hasLearnMore` flag, and an unlock `trigger`. Display strings
+(`name` / `condition` / optional `learnMore`) live under
+`achievements.catalog.<id>` in both `src/i18n/locales/en/achievements.ts`
+and `src/i18n/locales/sv/achievements.ts`.
+
+A trigger is either **`derived`** — a predicate over `(prev, next)` of
+the combined `{ snapshot, settings }` `AchState` that flips false→true,
+used whenever the feature mutates the persisted document or the synced
+settings (first item, first checked item, theme change, reduced motion,
+…) — or **`manual`**, fired by a `unlock("<id>")` call at the chokepoint
+that observes the gesture (cloud connect, clipboard copy, undo, install,
+language switch, developer mode). `useAchievementWatcher`
+(`src/achievements/useAchievementWatcher.ts`), mounted once in `App`,
+runs the derived pass (`deriveUnlocks`, `src/achievements/derive.ts`) on
+every transition and drains the in-memory manual-unlock bus
+(`src/achievements/bus.ts`). It is gated on the sync engine's `loaded`
+flag so loading a saved document never backfills unlocks — only deltas
+the user actively produces count.
+
+Earned progress is the `achievements` map (id → unlock timestamp) and the
+`unseenAchievements` queue on the synced `Settings`
+(`src/settings/types.ts`), recorded via `unlockAchievements` and cleared
+via `clearUnseenAchievements` (`src/settings/useSettings.ts`); because it
+rides in `Settings`, progress travels with `settings.json` across
+devices. A fresh unlock raises a celebratory toast and increments the
+header **trophy button** (`TrophyButton`, beside the copy / sync glyphs),
+which reads the unseen count from `AchievementsContext`. Clicking the
+trophy — or the "Achievements" entry in the side menu — opens the
+**achievements modal** (`AchievementsModal`, via the
+`{ kind: "achievements" }` modal-bus command and `AchievementsModalHost`),
+a four-tier guided tour of the whole catalog; opening it clears the
+unseen queue so the badge empties. Add or retire an achievement with the
+`update-achievements` skill.
+
 ## Storage and sync
 
 ### Storage adapter

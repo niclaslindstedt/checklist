@@ -49,4 +49,15 @@ export type Settings = {
   // upgrade hint is a separate surface (`UpdateToast`) and is never
   // suppressed by this flag.
   disableToasts: boolean;
+  // Earned achievements: a map of achievement `id` → unlock timestamp (ms
+  // since epoch). Lives in the synced `Settings` (not the device-local dev
+  // flags) so a user's progress travels with their settings.json across
+  // devices, exactly as the budget project keeps it in user data. Write-
+  // once per id: re-recording an unlock is a no-op so timestamps don't
+  // drift. See `src/achievements/`.
+  achievements: Record<string, number>;
+  // Achievements unlocked since the user last opened the achievements list.
+  // Drives the trophy button's "new" badge; cleared to empty when the list
+  // modal is opened. A subset of the keys in `achievements`.
+  unseenAchievements: string[];
 };

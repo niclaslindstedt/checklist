@@ -13,6 +13,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+// Aliased: this hook already exposes an encryption `unlock` verb, so the
+// achievement bus's `unlock` comes in under a distinct name.
+import { unlock as unlockAchievement } from "../achievements/bus.ts";
 import { createLogger } from "../dev/logger.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import {
@@ -282,6 +285,7 @@ export function useStorageBackend(): UseStorageBackend {
         }
         persistBackend("dropbox");
         setBackendState("dropbox");
+        unlockAchievement("cloudWalker");
       } catch (err) {
         log.error("boot: Dropbox OAuth completion failed", err);
       } finally {
@@ -439,6 +443,7 @@ export function useStorageBackend(): UseStorageBackend {
     setFolderReconnectNeeded(false);
     setFolderHandleLoaded(true);
     setBackendState("folder");
+    unlockAchievement("localVault");
   }, [activeNamespace, adapter, wrapForActive]);
 
   // Re-confirm the OS grant on the already-stored handle. `requestPermission`
@@ -490,7 +495,8 @@ export function useStorageBackend(): UseStorageBackend {
   }, [folderHandle, activeNamespace, wrapForActive]);
 
   const connectDropbox = useCallback(() => {
-    // Redirects away; completion runs in the boot effect above.
+    // Redirects away; completion (and the `cloudWalker` unlock) runs in the
+    // boot effect above — a unlock queued here wouldn't survive the redirect.
     void import("./dropbox/index.ts").then((m) => m.startDropboxAuth());
   }, []);
 
@@ -509,6 +515,7 @@ export function useStorageBackend(): UseStorageBackend {
     setGdriveTokenState(token);
     persistBackend("gdrive");
     setBackendState("gdrive");
+    unlockAchievement("cloudWalker");
   }, []);
 
   const disconnectGdrive = useCallback(() => {
@@ -532,6 +539,7 @@ export function useStorageBackend(): UseStorageBackend {
       persistEncryption("encrypted");
       setEncryptionState("encrypted");
       setPassword(next);
+      unlockAchievement("paranoidMode");
     },
     [inner],
   );
@@ -575,6 +583,7 @@ export function useStorageBackend(): UseStorageBackend {
     // Land the user in the namespace they just created.
     setActiveNamespaceSlug(created.slug);
     setActiveNamespaceState(created.slug);
+    unlockAchievement("compartments");
   }, []);
 
   const renameNamespace = useCallback((slug: string, name: string) => {
@@ -586,6 +595,8 @@ export function useStorageBackend(): UseStorageBackend {
     (slug: string, patch: NamespaceAppearance) => {
       registrySetNamespaceAppearance(slug, patch);
       setNamespacesState(getNamespaces());
+      // Only count picking an icon / colour, not clearing one back to plain.
+      if (patch.glyph || patch.color) unlockAchievement("dressUp");
     },
     [],
   );

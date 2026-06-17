@@ -7,6 +7,7 @@ import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
+import { TrophyButton } from "./achievements/TrophyButton.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 
@@ -79,6 +80,7 @@ function ChecklistViewImpl() {
           <span className="text-sm text-muted tabular-nums">
             {checkedCount}/{items.length}
           </span>
+          <TrophyButton />
           <CopyButton checklist={activeList} />
           {sync && (
             <SyncStatus

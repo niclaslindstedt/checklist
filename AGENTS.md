@@ -101,6 +101,7 @@ guessing — then record the answer so the next agent doesn't have to.
 | New UI surface       | `src/ui/...` |
 | New domain rule      | `src/domain/...` |
 | New storage backend  | `src/storage/<provider>/...` |
+| New achievement      | `src/achievements/catalog.ts` (+ glyph in `glyphs.tsx`) **and** `src/i18n/locales/{en,sv}/achievements.ts` (see "Achievements") |
 | Tests                | `tests/...` (mirror the `src/` path) |
 | Docs update          | `docs/...` |
 | Example template     | `examples/<slug>.json` |
@@ -128,6 +129,49 @@ the share URL format            | `docs/architecture.md`, `README.md` Usage
 user-facing settings            | `docs/configuration.md`, `README.md` Configuration
 the build / deploy pipeline     | `README.md` Install/Quick start, `.github/workflows/pages.yml`
 a user-facing concept, component, or term (added, renamed, or a new word the user uses) | `docs/dictionary.md` (the term → file row) **and** `docs/overview.md` (the term's description) — both in the same PR. See "Resolving user vocabulary".
+a user-facing feature / workflow / surface (shipped or removed) | **Add (or retire) a matching achievement** in the same PR — see "Achievements". Every feature is also an unlockable trophy.
+
+## Achievements
+
+The app ships an **achievements** system, ported from the budget project:
+every user-facing feature is also an unlockable trophy, sorted into four
+tiers that mirror how far the user has grown into the app —
+**Beginner → Intermediate → Pro → Expert**. The trophy button in the
+checklist header (and the "Achievements" entry in the side menu) opens a
+guided tour of the whole catalog; a fresh unlock raises a toast and badges
+the button until the list is opened.
+
+It lives in three places that must stay in lockstep:
+
+- **The catalog** — `src/achievements/catalog.ts`: each entry's `id`
+  (stable, write-once), `tier`, `glyph`, optional `hasLearnMore` flag, and
+  unlock `trigger`. Glyphs are inline SVGs in
+  `src/achievements/glyphs.tsx` (the app stays dependency-free — no
+  `lucide-react`). No display strings here.
+- **The i18n strings** — `achievements.catalog.<id>.{name,condition,
+  learnMore?}` in **both** `src/i18n/locales/en/achievements.ts` and
+  `src/i18n/locales/sv/achievements.ts`. The Swedish file is typed against
+  the English one, so a missing key is a compile error; the catalog test
+  (`tests/achievements/catalog.test.ts`) also checks parity.
+- **The renderer** — `src/ui/achievements/AchievementsModal.tsx` reads the
+  catalog by `id` and pulls strings via `t()`. New entries appear
+  automatically without touching it.
+
+A trigger is either **`derived`** — a predicate over `(prev, next)` of the
+combined `{ snapshot, settings }` state that flips false→true (use this
+whenever the feature mutates the persisted document or the synced
+settings) — or **`manual`**, fired by calling `unlock("<id>")` from the
+chokepoint that observes the gesture (cloud connect, clipboard copy, undo,
+install, language switch). The watcher
+(`src/achievements/useAchievementWatcher.ts`) runs the derived pass on
+every transition and drains the manual-unlock bus
+(`src/achievements/bus.ts`). **Every `manual` entry must have a wired
+`unlock("<id>")` call** — the catalog test fails otherwise.
+
+When adding an achievement, use the **`update-achievements`** skill: it
+picks the tier, phrases the copy (English **and** Swedish), wires the
+trigger, and adds the test. Progress lives in the synced
+`Settings.achievements` map, so it travels with the user across devices.
 
 ## Parity / cross-cutting rules
 
@@ -258,6 +302,7 @@ Per §21 of `OSS_SPEC.md`, this repo ships agent skills for keeping drift-prone 
 | `update-docs`    | After any change to the `StorageBackend` interface, user-facing settings, or share-URL format. |
 | `update-readme`  | After any change to install/build commands, the user-visible feature set, or the hosted URL. |
 | `update-prompts` | After any change to an LLM prompt's source of truth. |
+| `update-achievements` | After shipping (or removing) a user-facing feature — keep the achievements catalog and its English/Swedish copy in sync with the feature surface. |
 
 Each skill has a `SKILL.md` (the playbook) and a `.last-updated` file (the baseline commit hash). Run a skill by loading its `SKILL.md` and following the discovery process and update checklist. The skill rewrites `.last-updated` at the end of a successful run, and improves itself in place when it discovers new mapping entries. The `maintenance` skill owns a **Registry** table listing every `update-*` skill — add a row whenever you create a new sync skill.
 

@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import { createLogger } from "../dev/logger.ts";
 import { createChecklist } from "../domain/checklists.ts";
 import type { Snapshot } from "../domain/types.ts";
@@ -68,6 +69,13 @@ export function withActiveList(snapshot: Snapshot): Snapshot {
 export interface ChecklistSync {
   /** The full in-memory document. */
   doc: Snapshot;
+  /**
+   * False until the active backend's first async load has resolved (and
+   * again briefly across a backend swap). Gates the achievement watcher so
+   * loading a saved document never backfills unlocks — only edits made after
+   * the load count. See `src/achievements/useAchievementWatcher.ts`.
+   */
+  loaded: boolean;
   /** Latest document, readable from async callbacks without re-subscribing. */
   docRef: MutableRefObject<Snapshot>;
   /** Swap the visible document for an immediate re-render. */
@@ -119,6 +127,10 @@ export function useChecklistSync(deps: {
   const [conflict, setConflict] = useState<ConflictState | null>(null);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [dirty, setDirty] = useState(false);
+  // Flips true once the first async backend load resolves; reset on every
+  // backend swap so the achievement watcher re-baselines against the new
+  // document instead of treating the swap as a burst of fresh unlocks.
+  const [loaded, setLoaded] = useState(false);
 
   // Debounced-save plumbing. `pendingDoc` holds the latest unsaved
   // document; the timer coalesces a burst of edits into one write per
@@ -246,15 +258,17 @@ export function useChecklistSync(deps: {
     setConflict(null);
     setStatus("idle");
     setDirty(false);
+    setLoaded(false);
     let cancelled = false;
     void active.load().then((stored) => {
       if (cancelled) return;
       revisionRef.current = stored?.revision;
-      const loaded = withActiveList(parse(stored?.text));
-      setDoc(loaded);
+      const loadedDoc = withActiveList(parse(stored?.text));
+      setDoc(loadedDoc);
       // The freshly-loaded document is a new baseline — drop the old
       // backend's undo history so "undo" can't jump to a vanished state.
-      resetHistory.current(loaded);
+      resetHistory.current(loadedDoc);
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
@@ -288,6 +302,7 @@ export function useChecklistSync(deps: {
   // Push any debounced edit to the backend immediately — the "save now"
   // action on the cloud-sync glyph when there are unsaved changes.
   const saveNow = useCallback(() => {
+    unlock("trustButVerify");
     flushSave();
   }, [flushSave]);
 
@@ -331,6 +346,7 @@ export function useChecklistSync(deps: {
     conflict,
     status,
     dirty,
+    loaded,
     reload,
     saveNow,
     resolveConflict,

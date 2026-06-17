@@ -63,4 +63,42 @@ describe("useSettings", () => {
       JSON.parse(localStorage.getItem("checklist:settings:v1")!).fontScale,
     ).toBe(1.25);
   });
+
+  it("records achievements idempotently and queues them as unseen", () => {
+    const { result } = renderHook(() => useSettings(null));
+    let fresh: string[] = [];
+    act(() => {
+      fresh = result.current.unlockAchievements(["firstSteps", "checkItOff"]);
+    });
+    expect(fresh).toEqual(["firstSteps", "checkItOff"]);
+    expect(Object.keys(result.current.settings.achievements).sort()).toEqual([
+      "checkItOff",
+      "firstSteps",
+    ]);
+    expect(result.current.settings.unseenAchievements).toEqual([
+      "firstSteps",
+      "checkItOff",
+    ]);
+
+    // Re-recording one of them is a no-op: no new "fresh" id, no re-queue.
+    let again: string[] = ["x"];
+    act(() => {
+      again = result.current.unlockAchievements(["firstSteps"]);
+    });
+    expect(again).toEqual([]);
+    expect(result.current.settings.unseenAchievements).toEqual([
+      "firstSteps",
+      "checkItOff",
+    ]);
+  });
+
+  it("clears the unseen queue without forgetting the unlocks", () => {
+    const { result } = renderHook(() => useSettings(null));
+    act(() => {
+      result.current.unlockAchievements(["firstSteps"]);
+    });
+    act(() => result.current.clearUnseenAchievements());
+    expect(result.current.settings.unseenAchievements).toEqual([]);
+    expect(result.current.settings.achievements.firstSteps).toBeDefined();
+  });
 });
