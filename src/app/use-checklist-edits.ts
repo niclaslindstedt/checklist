@@ -18,6 +18,7 @@ import {
   addItem as addItemOp,
   addItems as addItemsOp,
   deleteItem as deleteItemOp,
+  editItem as editItemOp,
   moveItem as moveItemOp,
   setArchived,
   toggleItem as toggleItemOp,
@@ -38,6 +39,15 @@ export interface ChecklistEdits {
    * composer uses to tell a checklist paste from ordinary text.
    */
   importItems: (markdown: string) => number;
+  /**
+   * Edit an existing item's text in place — its `title`, its `notes` body,
+   * or both. Only the fields supplied are touched; an empty `notes` clears
+   * the body. A no-op edit is dropped without writing.
+   */
+  editItem: (
+    itemId: string,
+    fields: { title?: string; notes?: string },
+  ) => void;
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
   archive: (itemId: string) => void;
@@ -171,6 +181,31 @@ export function useChecklistEdits(deps: {
     [commit, notify, t],
   );
 
+  const editItem = useCallback(
+    (itemId: string, fields: { title?: string; notes?: string }) => {
+      const before = listRef.current.items.find((it) => it.id === itemId);
+      if (!before) return;
+      const next = editItemOp(listRef.current, itemId, fields, now());
+      // A no-op edit returns the same list — nothing changed, so don't
+      // write or record an empty step on the undo timeline.
+      if (next === listRef.current) return;
+      const title =
+        next.items.find((it) => it.id === itemId)?.title ?? before.title;
+      // No toast: the edited row updates in place. The label still feeds undo.
+      commit(next, t("toast.itemEdited", { title }));
+      // Renaming an item's headline is the "Wordsmith" trophy; adding a note
+      // body unlocks "Note to Self" through its derived predicate.
+      if (
+        fields.title !== undefined &&
+        fields.title.trim() &&
+        fields.title.trim() !== before.title
+      ) {
+        unlock("wordsmith");
+      }
+    },
+    [commit, t],
+  );
+
   const toggle = useCallback(
     (itemId: string) => {
       const title = titleOf(itemId);
@@ -233,6 +268,7 @@ export function useChecklistEdits(deps: {
     () => ({
       addItem,
       importItems,
+      editItem,
       toggle,
       remove,
       archive,
@@ -243,6 +279,7 @@ export function useChecklistEdits(deps: {
     [
       addItem,
       importItems,
+      editItem,
       toggle,
       remove,
       archive,

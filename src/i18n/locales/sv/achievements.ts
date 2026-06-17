@@ -86,6 +86,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Tryck på listans titel i sidhuvudet för att byta namn — en ny lista heter “Checklist” från början.",
     },
+    wordsmith: {
+      name: "Ordkonstnär",
+      condition: "Redigera en rads text.",
+      learnMore:
+        "Tryck på en rad för att redigera den på plats — rätta ett stavfel, formulera om, eller lägg till en markdown-text under titeln (Skift+Enter, eller “+” till vänster om raden). Anteckningen visas som markdown tills du öppnar den för redigering igen.",
+    },
     secondThoughts: {
       name: "Ångrar mig",
       condition: "Ångra en åtgärd.",

@@ -93,6 +93,12 @@ const achievements = {
       learnMore:
         "Tap the list's title in the header to rename it — a fresh list starts life as plain “Checklist”.",
     },
+    wordsmith: {
+      name: "Wordsmith",
+      condition: "Edit an item's text.",
+      learnMore:
+        "Press an item to edit it in place — fix a typo, reword it, or add a markdown body beneath the title (Shift+Enter, or the “+” to the item's left). The note renders as markdown until you open it for editing again.",
+    },
     secondThoughts: {
       name: "Second Thoughts",
       condition: "Undo an action.",

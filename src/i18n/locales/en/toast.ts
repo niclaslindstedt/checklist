@@ -11,6 +11,7 @@ const toast = {
   region: "Notifications",
   dismiss: "Dismiss",
   itemAdded: "Added “{title}”",
+  itemEdited: "Edited “{title}”",
   itemChecked: "Checked “{title}”",
   itemUnchecked: "Unchecked “{title}”",
   itemDeleted: "Deleted “{title}”",

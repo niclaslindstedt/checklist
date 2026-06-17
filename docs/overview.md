@@ -69,16 +69,61 @@ everything `SyncStatus` needs — provider name, save status, dirty flag,
 
 `src/ui/ChecklistRow.tsx` — one item line, with a three-layer
 swipe-to-reveal interaction driven by `useRowSwipe`. The foreground
-holds a `Checkbox`, the title (struck through when checked), and a grip
-handle for vertical reordering. Swiping **left** latches open a Delete
-button (two-step, so a delete is never a single flick); swiping
-**right** archives the row (hidden, not destroyed). The two action
-layers are gated on the swipe direction (`swipe.offset`'s sign): the
-left-aligned Archive strip is visible only while sliding right, the
-right-aligned Delete button only while sliding left. That gating matters
-for the archive slide-off — the foreground travels the full row width to
-the right, so without it the trailing-edge Delete button would be bared
-as the row clears the screen on its way to the archive.
+holds a leading note glyph, a `Checkbox`, the title (struck through when
+checked), and a grip handle for vertical reordering. Swiping **left**
+latches open a Delete button (two-step, so a delete is never a single
+flick); swiping **right** archives the row (hidden, not destroyed). The
+two action layers are gated on the swipe direction (`swipe.offset`'s
+sign): the left-aligned Archive strip is visible only while sliding
+right, the right-aligned Delete button only while sliding left. That
+gating matters for the archive slide-off — the foreground travels the
+full row width to the right, so without it the trailing-edge Delete
+button would be bared as the row clears the screen on its way to the
+archive.
+
+**Editing the text.** Pressing the title swaps the foreground for the
+in-place editor (`ChecklistRowEditor`, see [Edit item](#edit-item)),
+which edits the title and an optional markdown **body** (`notes`) as
+plain text. The leading glyph is the second way in: an item that already
+carries a body shows a chevron there that expands the body **rendered as
+markdown** (via `renderMarkdown`, see [Markdown renderer](#markdown-renderer));
+an item with no body shows a faint "+" that opens the editor straight
+onto the note field. So a note reads as markdown until you open it for
+editing, where it shows as raw plain text. Pressing the title button is
+swallowed after a swipe (the `useRowSwipe` `onClickCapture` guard), so a
+drag never accidentally drops into edit mode.
+
+### Edit item
+
+`src/ui/ChecklistRowEditor.tsx` — the in-place editor a row swaps to.
+The title is one input, the body an optional `<textarea>` beneath it,
+both plain text. Enter in the title commits; **Shift+Enter** reveals (and
+focuses) the body field so a note can be added without leaving the
+keyboard — the same field the leading "+" opens. ⌘/Ctrl+Enter commits
+from the body (a bare Enter is a newline there); Escape cancels; blurring
+the whole editor commits whatever was typed (a `done` ref guards against
+a blur that trails an Escape firing a second outcome). The verb behind it
+is `editItem` (`src/domain/checklists.ts` → `use-checklist-edits.ts`):
+only the supplied fields are touched, the title is trimmed (a blank title
+is ignored so an item always keeps a headline), the body is trimmed and
+an emptied body drops the `notes` key, and a no-op edit is dropped
+without writing. A title change unlocks the **Wordsmith** achievement;
+adding a body unlocks **Note to Self** through its derived predicate.
+
+### Markdown renderer
+
+`src/ui/markdown/renderMarkdown.tsx` — a tiny, dependency-free renderer
+that turns a markdown string into React nodes. The app inlines its icons
+rather than pull in lucide, and likewise renders the small markdown
+subset an item body needs itself instead of adding `marked` /
+`react-markdown`. It returns React elements — never a raw HTML string fed
+to `dangerouslySetInnerHTML` — so it is **XSS-safe by construction**: any
+markup a user types lands as literal text, and link targets are
+scheme-checked (`http(s)`, `mailto`, relative; `javascript:` / `data:`
+fall back to inert text) before becoming an `href`. Supported: headings
+(demoted two levels, capped at h6), unordered / ordered lists,
+blockquotes, fenced code blocks, and inline bold, italic, `code`,
+strikethrough, and links. It backs the expanded body in a checklist row.
 
 ### Add-item button
 

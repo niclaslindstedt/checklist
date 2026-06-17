@@ -34,6 +34,7 @@ function ChecklistViewImpl() {
     checkedCount,
     addItem,
     importItems,
+    editItem,
     toggle,
     remove,
     archive,
@@ -111,6 +112,7 @@ function ChecklistViewImpl() {
                 onToggle={toggle}
                 onArchive={archive}
                 onDelete={remove}
+                onEdit={editItem}
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}
                 style={reorderCtl.rowStyle(item.id)}

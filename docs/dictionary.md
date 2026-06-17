@@ -51,6 +51,9 @@ names. Honour these when naming a new file, key, or string.
 | **App shell** / **root**                               | `src/app/App.tsx`. [→](overview.md#app-shell)                                                            |
 | **Checklist view** / **the list** / **main screen**    | `src/ui/ChecklistView.tsx`; `SyncInfo`, `useChecklistContext` (`src/ui/checklist-context.ts`). [→](overview.md#checklist-view) |
 | **Checklist row** / **item row** / **row**             | `src/ui/ChecklistRow.tsx`. [→](overview.md#checklist-row)                                                |
+| **Edit item** / **edit mode** / **change checklist text** / **press to edit** | `src/ui/ChecklistRowEditor.tsx`; `editItem` (`src/domain/checklists.ts`, `src/app/use-checklist-edits.ts`). [→](overview.md#edit-item) |
+| **Item body** / **note** / **notes** / **add more text** | `notes` on `Item` (`src/domain/types.ts`); editor in `src/ui/ChecklistRowEditor.tsx`. [→](overview.md#edit-item) |
+| **Markdown renderer** / **render markdown** / **markdown body** | `renderMarkdown` (`src/ui/markdown/renderMarkdown.tsx`). [→](overview.md#markdown-renderer) |
 | **Add-item button** / **floating add button** / **the + button** | `src/ui/AddItemButton.tsx`. [→](overview.md#add-item-button)                                   |
 | **Add-item form** / **composer** / **draft row**       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
@@ -79,6 +82,7 @@ names. Honour these when naming a new file, key, or string.
 | **Checklist switcher** / **multiple checklists** / **switch checklist** / **add checklist** / **rename checklist** / **remove checklist** | `useChecklistLists` (`src/app/use-checklist-lists.ts`); `nextChecklistName`, `renameChecklist`, `createChecklist` (`src/domain/checklists.ts`); the checklists section in `src/ui/SideMenu.tsx`. [→](overview.md#checklist-switcher--multiple-checklists) |
 | **use-checklist hook** / **app state**            | `useChecklist`, `UseChecklist` (`src/app/use-checklist.ts`). [→](overview.md#use-checklist-hook)   |
 | **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
+| **Edit item** / **change item text** / **edit a note** | `editItem` (`src/domain/checklists.ts`); verb in `src/app/use-checklist-edits.ts`. [→](overview.md#edit-item) |
 | **Import items** / **paste a checklist** / **paste to import** | `importItems` (`src/app/use-checklist-edits.ts`); `parseItemsFromMarkdown` (`src/storage/markdown/codec.ts`); `addItems` (`src/domain/checklists.ts`). [→](overview.md#import-items--paste-a-checklist) |
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
 | **Delete item**                                   | `deleteItem` (`src/domain/checklists.ts`). [→](overview.md#delete-item)                            |
@@ -184,6 +188,7 @@ names. Honour these when naming a new file, key, or string.
 | --------------------------------- | --------------------------------------------------------------------------------- |
 | **Add an item**                   | `AddItemButton` → inline `AddItemForm` → `addItem`. [→](overview.md#add-an-item)   |
 | **Check / uncheck an item**       | row checkbox → `toggleItem`. [→](overview.md#check--uncheck-an-item)               |
+| **Edit an item / its body**       | press the row → `ChecklistRowEditor` → `editItem`. [→](overview.md#edit-item)      |
 | **Delete an item**                | swipe-left → `deleteItem`. [→](overview.md#delete-an-item)                         |
 | **Archive an item**               | swipe-right → `setArchived(…, true)`. [→](overview.md#archive-an-item)             |
 | **Restore an item**               | archive view → `setArchived(…, false)`. [→](overview.md#restore-an-item)          |

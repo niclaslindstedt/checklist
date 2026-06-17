@@ -108,6 +108,51 @@ export function addItems(
   };
 }
 
+/**
+ * Edit an existing item's text in place — its `title` and/or its `notes`
+ * body. Only the fields present in `fields` are touched, so editing the
+ * title never disturbs the note and vice versa. The title is trimmed and a
+ * blank title is ignored (an item always keeps a non-empty headline); the
+ * notes body is trimmed too, and a now-empty body drops the `notes` key
+ * entirely rather than persisting an empty string. A no-op edit (nothing
+ * actually changed) returns the same checklist untouched, so it never bumps
+ * `updatedAt` or triggers a write.
+ */
+export function editItem(
+  checklist: Checklist,
+  itemId: string,
+  fields: { title?: string; notes?: string },
+  now: string,
+): Checklist {
+  let changed = false;
+  const items = checklist.items.map((it) => {
+    if (it.id !== itemId) return it;
+    const next: ChecklistItem = { ...it };
+    if (fields.title !== undefined) {
+      const title = fields.title.trim();
+      if (title && title !== it.title) {
+        next.title = title;
+        changed = true;
+      }
+    }
+    if (fields.notes !== undefined) {
+      const notes = fields.notes.trim();
+      if (notes) {
+        if (notes !== it.notes) {
+          next.notes = notes;
+          changed = true;
+        }
+      } else if (it.notes !== undefined) {
+        delete next.notes;
+        changed = true;
+      }
+    }
+    return next;
+  });
+  if (!changed) return checklist;
+  return { ...checklist, items, updatedAt: now };
+}
+
 /** Permanently remove an item from the list. */
 export function deleteItem(
   checklist: Checklist,

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
 import { ChecklistRow } from "../../src/ui/ChecklistRow.tsx";
@@ -30,6 +36,7 @@ function renderRow(over: Partial<Parameters<typeof ChecklistRow>[0]> = {}) {
         onToggle={noop}
         onArchive={noop}
         onDelete={noop}
+        onEdit={noop}
         dragHandleProps={dragHandleProps}
         dragging={false}
         {...over}
@@ -38,12 +45,12 @@ function renderRow(over: Partial<Parameters<typeof ChecklistRow>[0]> = {}) {
   );
 }
 
-// The sliding foreground is the element carrying the swipe handlers; it's
-// the row's checkbox's nearest [touch-action] ancestor. Grab it by walking
-// up from the title span.
+// The sliding foreground is the element carrying the swipe handlers (the
+// [touch-action] flex-col wrapper). The title button sits inside an inner
+// flex row, so walk up two levels from it.
 function foreground(): HTMLElement {
   const title = screen.getByText("Buy milk");
-  return title.parentElement as HTMLElement;
+  return title.parentElement!.parentElement as HTMLElement;
 }
 
 // jsdom doesn't implement pointer capture; stub the calls the hook makes.
@@ -113,5 +120,74 @@ describe("ChecklistRow swipe action layers", () => {
     // ...and the Archive strip is hidden in that direction.
     const archiveLayer = screen.getByText("Archive") as HTMLElement;
     expect(archiveLayer.className).toContain("invisible");
+  });
+});
+
+describe("ChecklistRow editing", () => {
+  it("enters edit mode on press and commits a title change on Enter", () => {
+    const onEdit = vi.fn();
+    renderRow({ onEdit });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+  });
+
+  it("cancels on Escape without committing", () => {
+    const onEdit = vi.fn();
+    renderRow({ onEdit });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Changed" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(onEdit).not.toHaveBeenCalled();
+    // Back to view mode — the title is a button again.
+    expect(screen.getByRole("button", { name: "Edit item" })).toBeTruthy();
+  });
+
+  it("reveals the body field on Shift+Enter", () => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item");
+    expect(screen.queryByRole("textbox", { name: /note/i })).toBeNull();
+
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+  });
+
+  it("the + glyph opens the editor straight onto the note field", () => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
+    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+  });
+
+  it("renders an existing note as markdown when expanded", () => {
+    renderRow({ item: { ...item, notes: "**bold** note" } });
+    // The note is collapsed by default — expand it.
+    fireEvent.click(screen.getByRole("button", { name: "Show note" }));
+    const strong = screen.getByText("bold");
+    expect(strong.tagName).toBe("STRONG");
+  });
+
+  it("commits a title + note together from the editor", () => {
+    const onEdit = vi.fn();
+    renderRow({ item: { ...item, notes: "old" }, onEdit });
+
+    // An item with a note opens the editor (press the title) with the body
+    // field already shown as plain text.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const note = screen.getByPlaceholderText(/markdown supported/i);
+    fireEvent.change(note, { target: { value: "new body" } });
+    fireEvent.keyDown(note, { key: "Enter", ctrlKey: true });
+
+    expect(onEdit).toHaveBeenCalledWith("i1", {
+      title: "Buy milk",
+      notes: "new body",
+    });
   });
 });
