@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 
 import { BUILD_LABEL } from "../build-env.ts";
 import { useT } from "../i18n";
+import { REPO_URL } from "../seo/siteConfig.ts";
 import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,
@@ -62,7 +63,7 @@ import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 // a second confirming tap. The default namespace and the last remaining
 // checklist are never removable, so they render as plain rows.
 
-const SOURCE_URL = "https://github.com/niclaslindstedt/checklist";
+const SOURCE_URL = REPO_URL;
 
 type Props = {
   /** Namespaces known on this device (default first). */

@@ -5,6 +5,22 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig, type Plugin } from "vitest/config";
+import {
+  HOME_ROUTE,
+  PRIVACY_ROUTE,
+  ROUTES,
+  type RouteSeo,
+  renderHeadSeo,
+  renderLlmsTxt,
+  renderRobotsTxt,
+  renderSitemap,
+  resolveNoscriptBody,
+} from "./src/seo/routes";
+import {
+  SITE_DESCRIPTION,
+  SITE_LANGUAGE,
+  SITE_NAME,
+} from "./src/seo/siteConfig";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.
@@ -73,11 +89,63 @@ function emitVersionJson(): Plugin {
   };
 }
 
+// Splice a route's SEO into the HEAD_SEO / NOSCRIPT marker blocks of an
+// `index.html` string and re-emit the markers so a later pass (the privacy
+// alias) can splice again. The single source of truth for the copy is
+// `src/seo/routes.ts`. Throws loudly if the markers were dropped from
+// `index.html` rather than silently shipping a route with no <head> SEO.
+const HEAD_SEO_RE =
+  /<!-- HEAD_SEO_START[\s\S]*?-->[\s\S]*?<!-- HEAD_SEO_END -->/;
+const NOSCRIPT_RE =
+  /<!-- NOSCRIPT_START[\s\S]*?-->[\s\S]*?<!-- NOSCRIPT_END -->/;
+
+function spliceRouteSeo(html: string, route: RouteSeo): string {
+  if (!HEAD_SEO_RE.test(html)) {
+    throw new Error(
+      "checklist-seo: HEAD_SEO markers missing from index.html — cannot " +
+        "inject per-route <head> SEO. Did index.html drop the " +
+        "<!-- HEAD_SEO_START --> / <!-- HEAD_SEO_END --> pair?",
+    );
+  }
+  if (!NOSCRIPT_RE.test(html)) {
+    throw new Error(
+      "checklist-seo: NOSCRIPT markers missing from index.html — cannot " +
+        "inject the per-route fallback body.",
+    );
+  }
+  const head =
+    `<!-- HEAD_SEO_START (${route.path}) -->\n    ` +
+    renderHeadSeo(route) +
+    `\n    <!-- HEAD_SEO_END -->`;
+  const noscript =
+    `<!-- NOSCRIPT_START (${route.path}) -->\n        ` +
+    resolveNoscriptBody(route) +
+    `\n        <!-- NOSCRIPT_END -->`;
+  return html.replace(HEAD_SEO_RE, head).replace(NOSCRIPT_RE, noscript);
+}
+
+// Fill the homepage's HEAD_SEO / NOSCRIPT blocks from `HOME_ROUTE`. Runs in
+// `transformIndexHtml` so the meta is present in both the dev server and the
+// production build — `index.html` itself carries only empty markers, so the
+// SEO copy never duplicates across `index.html` and `src/seo/`.
+function injectHomeSeo(): Plugin {
+  return {
+    name: "inject-home-seo",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) => spliceRouteSeo(html, HOME_ROUTE),
+    },
+  };
+}
+
 // Mirror the built `index.html` to `privacy/index.html` so GitHub Pages
 // serves the SPA from the clean URL `/privacy/` (and `/preview/privacy/`,
 // …). The app's `main.tsx` reads `location.pathname` and mounts the
 // privacy page there; the copied HTML loads the same hashed asset URLs
-// (they are origin-absolute), so no rewrite is needed. Runs late so the
+// (they are origin-absolute), so no rewrite is needed. The HEAD_SEO /
+// NOSCRIPT blocks (filled with the homepage payload by `injectHomeSeo`) are
+// re-spliced with `PRIVACY_ROUTE` so the alias gets its own title, canonical,
+// and fallback body instead of inheriting the homepage's. Runs late so the
 // PWA plugin's manifest-link injection is already baked into the source.
 function emitPrivacyAlias(): Plugin {
   return {
@@ -90,9 +158,38 @@ function emitPrivacyAlias(): Plugin {
         this.emitFile({
           type: "asset",
           fileName: "privacy/index.html",
-          source: index.source,
+          source: spliceRouteSeo(String(index.source), PRIVACY_ROUTE),
         });
       }
+    },
+  };
+}
+
+// Emit the site-wide discovery files (§11.3.6) from the same `src/seo/`
+// source of truth as the head injector: sitemap.xml + llms.txt list every
+// route, robots.txt advertises the sitemap and keeps the non-canonical
+// deploy slots out of the index. Emitted via the bundle so they land in the
+// slot root alongside `index.html`.
+function emitSeoDiscoveryFiles(): Plugin {
+  return {
+    name: "emit-seo-discovery-files",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "sitemap.xml",
+        source: renderSitemap(ROUTES),
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "robots.txt",
+        source: renderRobotsTxt(),
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "llms.txt",
+        source: renderLlmsTxt(ROUTES),
+      });
     },
   };
 }
@@ -201,15 +298,14 @@ export default defineConfig({
         id: base,
         scope: base,
         start_url: base,
-        name: "checklist",
-        short_name: "checklist",
-        description:
-          "A fast, local-first checklist PWA that works offline with no account. Reusable templates, shareable links, and optional encrypted Google Drive or Dropbox sync.",
+        name: SITE_NAME,
+        short_name: SITE_NAME,
+        description: SITE_DESCRIPTION,
         theme_color: "#1f2933",
         background_color: "#1f2933",
         display: "standalone",
         orientation: "any",
-        lang: "en",
+        lang: SITE_LANGUAGE,
         categories: ["productivity", "utilities"],
         // Generated by `make icons` from `public/favicon.svg`; see
         // `pwa-assets.config.ts`. Keep this list in sync with the PNGs
@@ -260,8 +356,10 @@ export default defineConfig({
         ],
       },
     }),
+    injectHomeSeo(),
     emitVersionJson(),
     emitPrivacyAlias(),
+    emitSeoDiscoveryFiles(),
     emitPrecacheManifest(),
   ],
   define: {
