@@ -42,6 +42,7 @@ import { AchievementsUnlockModalHost } from "./modals/AchievementsUnlockModalHos
 import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
 import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
+import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
@@ -117,10 +118,13 @@ function AppShell() {
 
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
   // appearance settings (which share this component) change.
-  const openStorageSettings = useCallback(
-    () => dispatch({ kind: "settings", tab: "storage" }),
-    [dispatch],
-  );
+  // The header cloud glyph opens the sync-details modal (not storage
+  // settings) so a failed save surfaces *what* and *why* it broke. Opening
+  // it is the `syncSleuth` unlock — the user looked under the cloud's hood.
+  const openSyncDetails = useCallback(() => {
+    unlock("syncSleuth");
+    dispatch({ kind: "sync-details" });
+  }, [dispatch]);
 
   // A fresh seed adapter whenever fake data is toggled on (so each enable
   // starts from a pristine sample) overrides the real backend for the
@@ -241,10 +245,24 @@ function AppShell() {
   // Memoised so the published `ChecklistContext` value stays stable across
   // renders that don't touch the sync state (it is the stable `null` for a
   // local session, and only changes with the save status for a cloud one).
+  // Re-issue OAuth for the active cloud backend — wired to the details
+  // modal's "Reconnect" button when a session lapses. The folder backend
+  // has no OAuth gesture (it reconnects from settings), so it's null.
+  const { connectDropbox, connectGdrive } = storage;
+  const onReconnect = useMemo<(() => Promise<void>) | null>(() => {
+    if (storage.backend === "dropbox") {
+      return async () => connectDropbox();
+    }
+    if (storage.backend === "gdrive") return connectGdrive;
+    return null;
+  }, [storage.backend, connectDropbox, connectGdrive]);
+
   const sync = useMemo<SyncInfo | null>(
     () =>
       cloudBacked
         ? {
+            backend: storage.backend,
+            namespace: storage.activeNamespace,
             providerName:
               storage.backend === "dropbox"
                 ? "Dropbox"
@@ -252,18 +270,23 @@ function AppShell() {
                   ? "Google Drive"
                   : "Local folder",
             status: checklist.status,
+            statusDetail: checklist.statusDetail,
             dirty: checklist.dirty,
             onSave: checklist.saveNow,
-            onOpenDetails: openStorageSettings,
+            onOpenDetails: openSyncDetails,
+            onReconnect,
           }
         : null,
     [
       cloudBacked,
       storage.backend,
+      storage.activeNamespace,
       checklist.status,
+      checklist.statusDetail,
       checklist.dirty,
       checklist.saveNow,
-      openStorageSettings,
+      openSyncDetails,
+      onReconnect,
     ],
   );
 
@@ -365,6 +388,7 @@ function AppShell() {
             storage={storage}
           />
           <ChangelogModalHost />
+          <SyncDetailsModalHost />
           <NamespacesModalHost
             storage={storage}
             onCreate={createNamespace}

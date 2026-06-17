@@ -181,6 +181,15 @@ export function CloudAlertIcon({ className }: IconProps) {
   );
 }
 
+/** A plain cloud — the cloud-sync details modal's title glyph. */
+export function CloudIcon({ className }: IconProps) {
+  return (
+    <CloudBase className={className}>
+      <path d={CLOUD_ARC} />
+    </CloudBase>
+  );
+}
+
 /** Struck-through cloud — offline / disconnected. */
 export function CloudOffIcon({ className }: IconProps) {
   return (
@@ -189,6 +198,49 @@ export function CloudOffIcon({ className }: IconProps) {
       <path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193" />
       <path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07" />
     </CloudBase>
+  );
+}
+
+/** A circular pair of arrows — retry a failed save / reconnect. */
+export function RefreshIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
+  );
+}
+
+/** A box with an out-pointing arrow — opens the backend in a new tab. */
+export function ExternalLinkIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M15 3h6v6" />
+      <path d="M10 14 21 3" />
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    </svg>
   );
 }
 

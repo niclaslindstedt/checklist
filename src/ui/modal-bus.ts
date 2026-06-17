@@ -20,7 +20,8 @@ export type ModalCommand =
   | { kind: "changelog" }
   | { kind: "namespaces" }
   | { kind: "achievements" }
-  | { kind: "achievements-unlock" };
+  | { kind: "achievements-unlock" }
+  | { kind: "sync-details" };
 
 export type ModalKind = ModalCommand["kind"];
 

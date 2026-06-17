@@ -62,8 +62,10 @@ landing position (`addItemPosition`) and hides the button while it's
 open. The view is prop-free:
 it reads its items and actions from `useChecklistContext`
 (`src/ui/checklist-context.ts`). The `SyncInfo` type defined there carries
-everything `SyncStatus` needs — provider name, save status, dirty flag,
-`onSave`, `onOpenDetails` — and is null for the local backend.
+everything `SyncStatus` and the cloud-sync details modal need — backend,
+namespace, provider name, save status, failure detail, dirty flag,
+`onSave`, `onOpenDetails`, `onReconnect` — and is null for the local
+backend.
 
 ### Checklist row
 
@@ -266,10 +268,27 @@ cloud-sync state: an upload glyph with an accent ring when there are
 unsaved edits, a spinner while saving, a green cloud-check when synced,
 and a coloured cloud-alert for the conflict / auth / throttle / error
 states. Tapping the upload glyph saves now (`onSave`); any other state
-opens storage settings (`onOpenDetails`). Rendered only when a real
-cloud backend is active — `App` passes a non-null `SyncInfo` only for
-Dropbox / Google Drive, never for the local backend or while fake data
-overrides the adapter.
+opens the cloud-sync details modal (`onOpenDetails`, see "Cloud sync
+modal"). Rendered only when a real cloud backend is active — `App` passes
+a non-null `SyncInfo` only for Dropbox / Google Drive / the local folder,
+never for the browser backend or while fake data overrides the adapter.
+
+### Cloud sync modal
+
+`src/ui/SyncDetailsModal.tsx` (hosted by
+`src/app/modals/SyncDetailsModalHost.tsx`, opened by the bus command
+`{ kind: "sync-details" }`) — the dialog the header cloud glyph opens.
+Ported from the budget project's `SyncDetailsModal`, it spells out what
+the sync is doing and, when a save failed, **why**: the `error` state
+shows the failure reason captured verbatim into `statusDetail` (set in
+`use-checklist-sync.ts` from the thrown error's `message`), so a broken
+save is no longer a silent red icon. It also offers a Reconnect button on
+`auth-error` (wired to `SyncInfo.onReconnect`, which re-issues OAuth for
+Dropbox / Google Drive), a Save now / Try again button, the provider name
+and file location, and an "Open in <provider>" link out to the backend's
+web UI (omitted for the local folder, which has no URL). The provider
+path / URL are derived from `SyncInfo.backend` + `namespace` via the
+backends' web-URL helpers (`dropboxWebUrl`, `gdriveWebUrl`).
 
 ### Modal
 

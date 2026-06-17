@@ -193,6 +193,12 @@ const achievements = {
       learnMore:
         "On a sync backend, a downward pull from the top of the list re-reads the latest copy — the way to pick up an edit you made on another device.",
     },
+    syncSleuth: {
+      name: "Sync Sleuth",
+      condition: "Open the cloud sync details from the header cloud button.",
+      learnMore:
+        "Tapping the header cloud glyph opens the sync details: what the backend is doing and, when a save fails, exactly why — plus a way to reconnect or retry without leaving the list.",
+    },
     trustButVerify: {
       name: "Trust, But Verify",
       condition: "Trigger a manual save.",
