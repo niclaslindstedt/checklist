@@ -137,6 +137,45 @@ describe("ChecklistRow editing", () => {
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
   });
 
+  it("opens a fresh draft after committing a title on Enter", () => {
+    const onEdit = vi.fn();
+    const onAddAfter = vi.fn();
+    renderRow({ onEdit, onAddAfter });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+    expect(onAddAfter).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not chain a draft when Shift+Enter reveals the body", () => {
+    const onAddAfter = vi.fn();
+    renderRow({ onAddAfter });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item");
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(onAddAfter).not.toHaveBeenCalled();
+  });
+
+  it("commits on blur without chaining a draft", () => {
+    const onEdit = vi.fn();
+    const onAddAfter = vi.fn();
+    renderRow({ onEdit, onAddAfter });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    fireEvent.blur(input);
+
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+    expect(onAddAfter).not.toHaveBeenCalled();
+  });
+
   it("cancels on Escape without committing", () => {
     const onEdit = vi.fn();
     renderRow({ onEdit });

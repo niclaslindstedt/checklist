@@ -42,6 +42,8 @@ type Props = {
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, fields: { title?: string; notes?: string }) => void;
+  /** Open a fresh add-item draft — fired when Enter commits a title edit. */
+  onAddAfter?: () => void;
   dragHandleProps: DragHandleProps;
   dragging: boolean;
   style?: CSSProperties;
@@ -53,6 +55,7 @@ function ChecklistRowImpl({
   onArchive,
   onDelete,
   onEdit,
+  onAddAfter,
   dragHandleProps,
   dragging,
   style,
@@ -114,6 +117,7 @@ function ChecklistRowImpl({
           focusBody={editFocusBody}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
+          onAddAfter={onAddAfter}
           onCancel={() => setEditing(false)}
         />
       </li>

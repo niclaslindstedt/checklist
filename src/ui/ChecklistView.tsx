@@ -116,6 +116,7 @@ function ChecklistViewImpl() {
                 onArchive={archive}
                 onDelete={remove}
                 onEdit={editItem}
+                onAddAfter={startDraft}
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}
                 style={reorderCtl.rowStyle(item.id)}
