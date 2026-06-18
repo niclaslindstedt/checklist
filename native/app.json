@@ -7,7 +7,9 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "checklist",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0f1115"
     },
@@ -19,7 +21,11 @@
       }
     },
     "android": {
-      "package": "se.niclaslindstedt.checklist"
+      "package": "se.niclaslindstedt.checklist",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1f2933"
+      }
     },
     "web": {
       "bundler": "metro"
