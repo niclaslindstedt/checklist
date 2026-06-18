@@ -2,7 +2,7 @@
 
 A local-first PWA checklist app built with React, TypeScript, and
 Tailwind. Keep a quiet, monospaced checklist — add items, check them
-off, swipe to archive or delete — share lists as URLs or JSON, and — if
+off, swipe to archive or delete — copy a list to share it, and — if
 you want — sync them to **your own** Google Drive or Dropbox. Hosted on
 GitHub Pages; talks to no other servers.
 
@@ -30,9 +30,11 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   custom theme, four fonts, and an adjustable text size.
 - **Reusable templates.** Define a checklist once and stamp out as
   many instances as you need. *(Data model in place; UI on the roadmap.)*
-- **Shareable lists.** Export a checklist as a URL or JSON blob; anyone
-  with the link can import it in one click. The payload travels in the
-  URL fragment, so it is never sent to a server.
+- **Copy & paste lists.** Copy the whole active checklist to your
+  clipboard from the header — plain `- [ ]` / `- [x]` task markdown,
+  checked items still checked — and paste text straight into a list to
+  add items. *(Sharing a list as a URL whose `#` fragment carries the
+  payload: codec in place, UI on the roadmap.)*
 - **Local folder + markdown files.** Point the app at a folder on your
   device (**Settings → Storage → Local folder**) and every list is saved
   there as its own markdown file — standard `- [ ]` / `- [x]` task syntax
@@ -116,15 +118,17 @@ code is shared.
    **left** to reveal Delete, or **right** to archive it (archived items
    are hidden but kept).
 
-The features below are part of the roadmap — the data model and module
-boundaries are in place, the UI is not all wired up yet:
+3. **Sync across devices (optional).** Connect Google Drive or Dropbox
+   from **Settings → Storage**, or point the app at a local folder; your
+   lists then travel with you. See
+   [Configuration](docs/configuration.md).
 
-3. **Templates & sharing.** Stamp checklists out of reusable templates,
-   and share a checklist as a URL whose `#` fragment carries the gzipped
-   JSON (never sent to a server).
-4. **Sync (optional).** Choose Google Drive or Dropbox as a storage
-   backend and authorize via OAuth, mirroring changes to a provider
-   app-folder.
+The feature below is still on the roadmap — the data model and module
+boundaries are in place, but the UI is not wired up yet:
+
+4. **Templates & URL sharing.** Stamp checklists out of reusable
+   templates, and share a checklist as a URL whose `#` fragment carries
+   the gzipped JSON (never sent to a server).
 
 ## Configuration
 
@@ -145,11 +149,6 @@ The header menu (top-right) also links to the
 [privacy policy](https://checklist.niclaslindstedt.se/privacy), the
 in-app changelog, and the source on GitHub, and is where the
 **Settings** dialog now opens from.
-
-## Examples
-
-See [`examples/`](examples/) for sample template JSON you can import
-via **Settings → Import**.
 
 ## Troubleshooting
 
