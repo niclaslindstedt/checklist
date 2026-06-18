@@ -16,7 +16,7 @@ a single line you act on directly, with no chrome to hunt through.
 3. **Reorder.** Drag a row by its **grip handle** and drop it where you want;
    the new order sticks.
 4. **Delete.** Swipe a row **left** to uncover a `Delete` button, then tap it.
-   Mistakes are recoverable — see [undo](feature:undo-redo).
+   Mistakes are recoverable — undo and redo step back through your edits.
 5. **Archive.** Swipe a row **right** and it slides off into the
    [archive](feature:archive), kept safe rather than destroyed.
 

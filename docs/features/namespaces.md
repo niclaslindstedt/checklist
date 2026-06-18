@@ -19,7 +19,7 @@ it, without handing them anything in the rest of your namespaces.
 2. While creating it, **pick an icon and a colour**. Both are optional and
    independent — a colour on its own still tints the default folder icon.
 3. Switch between namespaces from the same menu; the one you're in is the only
-   set of [checklists](feature:multiple-checklists) you see.
+   set of checklists you see.
 4. Change a namespace's icon or colour later from its row, and the change
    applies immediately.
 

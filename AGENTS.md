@@ -286,20 +286,43 @@ dependency-free markdown renderer (`src/ui/markdown/renderMarkdown.tsx`)
 that handles item notes. The `feature:<slug>` link scheme works in any
 markdown the modal renders, so a doc can cross-link sibling docs.
 
-**When to reach for a feature doc — and when not to.** Most fragments
-are just `title:` + one sentence with **no** `doc:`. Add a doc **only for
-a genuinely large, user-facing feature** — one whose honest explanation
-runs to several paragraphs or a "how it works" walkthrough (cloud sync,
-namespaces, achievements, the checklist gestures). A small setting, a
-visual tweak, or a bug fix does **not** get a doc; link an existing doc
-instead if the change extends a documented feature. When you do add
-`doc:`, **create `docs/features/<slug>.md` in the same PR** — a `doc:`
-slug with no matching file renders the link as an inert dead end. Feature
-docs are **English-only** (like the rendered CHANGELOG body); write them
-in plain second-person user voice with no implementation jargon, and
-shorten the bullet to one sentence once the depth has moved into the doc.
-`docs/` is in the changeset skip-list, so a docs-only feature-doc edit
-needs no fragment of its own.
+**A feature doc exists only to back a changelog "Learn more" link.** It
+is **not** general product documentation, a manual, or a home for design
+notes — that lives in `docs/overview.md`, `docs/architecture.md`, and the
+rest of `docs/`. A feature doc is the long-form half of one changelog
+bullet, and nothing reads it except the "What's new" modal. If you find
+yourself wanting to document something that no changelog bullet links to,
+it does not belong here.
+
+**Reach for one sparingly — big features only.** Most fragments are just
+`title:` + one sentence with **no** `doc:`. Add a doc **only when the
+feature genuinely cannot be summarized in about two sentences** — one
+whose honest explanation runs to several paragraphs or a real "how it
+works" walkthrough (cloud sync, namespaces, achievements, themes, the
+checklist gestures, the archive, navigation, local-folder sync). A small
+setting, a visual tweak, a secondary facet of a larger feature, or a bug
+fix does **not** get a doc. If the change extends an already-documented
+big feature, fold a line into that feature's existing doc rather than
+adding a link — but only that feature's primary changelog bullet carries
+the `[Learn more]`; the facet bullets stay link-free.
+
+**One doc per feature, one feature per doc — never shared.** Every
+`[Learn more]` link points at a doc about **only that feature**, and every
+doc is linked from **exactly one** changelog bullet. Do not point two
+bullets at the same `doc:` slug (a facet bullet must not borrow its
+parent's doc), and do not let one doc sprawl across several unrelated
+features. A doc may *cross-link* a sibling feature's doc with
+`[label](feature:<slug>)`, but its own subject stays singular. When you
+retire a feature, delete its doc and drop the link in the same PR so no
+orphan doc or dead `feature:` link is left behind.
+
+When you do add `doc:`, **create `docs/features/<slug>.md` in the same
+PR** — a `doc:` slug with no matching file renders the link as an inert
+dead end. Feature docs are **English-only** (like the rendered CHANGELOG
+body); write them in plain second-person user voice with no implementation
+jargon, and shorten the bullet to one sentence once the depth has moved
+into the doc. `docs/` is in the changeset skip-list, so a docs-only
+feature-doc edit needs no fragment of its own.
 
 The `changeset` job in `ci.yml` enforces a fragment per PR. Pure
 refactors, CI / build / test tweaks, dependency bumps that don't change

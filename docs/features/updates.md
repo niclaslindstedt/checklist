@@ -19,16 +19,3 @@ hands you the choice of when to switch over.
 
 Because the update is staged and only applied on your tap, you upgrade at
 a moment of your choosing rather than mid-task.
-
-## Pull to refresh
-
-On touch devices there is a second, separate gesture: **pull down from the
-top of the list** and `checklist` reloads your list from storage. A small
-pill slides down from the top edge to track the pull and confirm the
-refresh.
-
-This is most useful when you sync across devices — see
-[Cloud sync](feature:cloud-sync) and [Local folder](feature:local-folder).
-Pulling to refresh re-reads the stored copy, so an edit you made on another
-device shows up here. (This is about your data, not the app version; the
-download-fill above is what tells you a new build has arrived.)
