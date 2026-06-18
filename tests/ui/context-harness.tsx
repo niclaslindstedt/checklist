@@ -39,7 +39,7 @@ export function makeChecklistValue(
     addChecklist: noop,
     renameChecklist: noop,
     removeChecklist: noop,
-    addItem: noop,
+    addItem: () => null,
     importItems: () => 0,
     editItem: noop,
     toggle: noop,

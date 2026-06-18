@@ -200,6 +200,26 @@ describe("ChecklistRow editing", () => {
     expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
   });
 
+  it("opens straight into the body editor when autoEditBody is set", () => {
+    // The composer sets this on the row it just created with Shift+Enter so
+    // a fresh item flows on into editing its note.
+    const onAutoEditConsumed = vi.fn();
+    renderRow({ autoEditBody: true, onAutoEditConsumed });
+
+    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+    // The flag is consumed once so it doesn't re-open on a later render.
+    expect(onAutoEditConsumed).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores autoEditBody when notes are disabled", () => {
+    const onAutoEditConsumed = vi.fn();
+    renderRow({ autoEditBody: true, notesDisabled: true, onAutoEditConsumed });
+
+    // Nothing to edit with notes off — the row stays in view mode.
+    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(onAutoEditConsumed).not.toHaveBeenCalled();
+  });
+
   it("adds a note from the editor's Add-note affordance", () => {
     renderRow();
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
