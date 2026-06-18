@@ -418,6 +418,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "bareBones",
+    tier: "expert",
+    glyph: NoteGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.disableItemNotes],
+      predicate: (prev, next) =>
+        !prev.settings.disableItemNotes && next.settings.disableItemNotes,
+    },
+  },
+  {
     id: "underTheHood",
     tier: "expert",
     glyph: CodeGlyph,

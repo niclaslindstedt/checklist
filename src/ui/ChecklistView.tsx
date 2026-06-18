@@ -48,6 +48,7 @@ function ChecklistViewImpl() {
     renameChecklist,
     addItemPosition,
     logoSrc,
+    disableItemNotes,
   } = useChecklistContext();
   const reorderCtl = useListReorder(reorder);
   const t = useT();
@@ -117,6 +118,7 @@ function ChecklistViewImpl() {
                 onDelete={remove}
                 onEdit={editItem}
                 onAddAfter={startDraft}
+                notesDisabled={disableItemNotes}
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}
                 style={reorderCtl.rowStyle(item.id)}

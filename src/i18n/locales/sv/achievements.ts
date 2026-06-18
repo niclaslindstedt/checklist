@@ -254,6 +254,10 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "I den installerade appen på telefon eller surfplatta kan du dölja den runda knappen helt och öppna menyn med ett inåtsvep från kanten i stället — inget flyter över din lista.",
     },
+    bareBones: {
+      name: "Skalbenen",
+      condition: "Stäng av anteckningar.",
+    },
     underTheHood: {
       name: "Under huven",
       condition: "Slå på utvecklarläge.",

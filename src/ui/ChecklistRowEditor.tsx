@@ -39,6 +39,7 @@ export function ChecklistRowEditor({
   onToggle,
   onAddAfter,
   focusBody = false,
+  notesDisabled = false,
 }: {
   item: ChecklistItem;
   onSubmit: (fields: { title?: string; notes?: string }) => void;
@@ -53,11 +54,19 @@ export function ChecklistRowEditor({
   onAddAfter?: () => void;
   /** Open with the body field shown and focused (the "add a note" path). */
   focusBody?: boolean;
+  /**
+   * When set, item notes are switched off: the editor edits the title only,
+   * hiding the body field and the "Add note" affordance and turning
+   * Shift+Enter into a plain commit. Any stored note is left untouched.
+   */
+  notesDisabled?: boolean;
 }) {
   const t = useT();
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes ?? "");
-  const [bodyShown, setBodyShown] = useState(focusBody || Boolean(item.notes));
+  const [bodyShown, setBodyShown] = useState(
+    !notesDisabled && (focusBody || Boolean(item.notes)),
+  );
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   // Guards the commit/cancel paths so a blur that trails an Escape (the
@@ -65,7 +74,7 @@ export function ChecklistRowEditor({
   const done = useRef(false);
 
   useEffect(() => {
-    if (focusBody) {
+    if (focusBody && !notesDisabled) {
       bodyRef.current?.focus();
       return;
     }
@@ -73,7 +82,7 @@ export function ChecklistRowEditor({
     el?.focus();
     const len = el?.value.length ?? 0;
     el?.setSelectionRange(len, len);
-  }, [focusBody]);
+  }, [focusBody, notesDisabled]);
 
   const submit = (addAfter = false) => {
     if (done.current) return;
@@ -101,7 +110,10 @@ export function ChecklistRowEditor({
   const onTitleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (e.shiftKey) revealBody();
+      // Shift+Enter reveals the note field, unless notes are switched off —
+      // then there's nothing to reveal, so it commits and chains a fresh
+      // draft like a bare Enter.
+      if (e.shiftKey && !notesDisabled) revealBody();
       else submit(true);
     } else if (e.key === "Escape") {
       e.preventDefault();
@@ -161,16 +173,20 @@ export function ChecklistRowEditor({
           className="resize-y rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
         />
       ) : (
-        <button
-          type="button"
-          // Keep the press inside the editor so the blur-commit doesn't fire.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={revealBody}
-          className="ml-8 flex w-fit items-center gap-1 text-xs text-muted hover:text-fg"
-        >
-          <PlusIcon className="h-3.5 w-3.5" />
-          {t("app.addNote")}
-        </button>
+        // With notes switched off there's no "Add note" path — the editor is
+        // title-only.
+        !notesDisabled && (
+          <button
+            type="button"
+            // Keep the press inside the editor so the blur-commit doesn't fire.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={revealBody}
+            className="ml-8 flex w-fit items-center gap-1 text-xs text-muted hover:text-fg"
+          >
+            <PlusIcon className="h-3.5 w-3.5" />
+            {t("app.addNote")}
+          </button>
+        )
       )}
     </div>
   );

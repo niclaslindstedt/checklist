@@ -228,6 +228,50 @@ describe("ChecklistRow editing", () => {
     expect(screen.getByText("bold").tagName).toBe("STRONG");
   });
 
+  it("renders title-only with notes disabled — no chevron, no rendered body", () => {
+    renderRow({
+      item: { ...item, notes: "**bold** note" },
+      notesDisabled: true,
+    });
+
+    // The expand chevron is gone and the body never renders.
+    expect(screen.queryByRole("button", { name: "Show note" })).toBeNull();
+    expect(screen.queryByText("bold")).toBeNull();
+
+    // A title tap edits straight away rather than revealing the body.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    expect(screen.getByLabelText("Edit item")).toBeTruthy();
+    expect(screen.queryByText("bold")).toBeNull();
+  });
+
+  it("hides the note field and affordances in the editor with notes disabled", () => {
+    renderRow({ notesDisabled: true });
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+
+    // No "Add a note" button, and Shift+Enter commits instead of revealing.
+    expect(screen.queryByRole("button", { name: "Add a note" })).toBeNull();
+    const input = screen.getByLabelText("Edit item");
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+  });
+
+  it("preserves an existing note when editing the title with notes disabled", () => {
+    const onEdit = vi.fn();
+    renderRow({
+      item: { ...item, notes: "keep me" },
+      onEdit,
+      notesDisabled: true,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    // Only the title is sent — the note is untouched in the document.
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+  });
+
   it("commits a title + note together from the editor", () => {
     const onEdit = vi.fn();
     renderRow({ item: { ...item, notes: "old" }, onEdit });

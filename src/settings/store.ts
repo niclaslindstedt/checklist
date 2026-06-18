@@ -49,6 +49,11 @@ export const DEFAULT_SHOW_MENU_BUTTON = true;
 // toast stack (but never the "new build ready" upgrade hint).
 export const DEFAULT_DISABLE_TOASTS = false;
 
+// Item notes (the markdown body beneath a title) are enabled by default.
+// The opt-out hides and disables them, leaving title-only items, without
+// destroying any notes already written.
+export const DEFAULT_DISABLE_ITEM_NOTES = false;
+
 // The achievements system is on by default. The opt-out stops tracking and
 // hides the trophy button without discarding already-earned progress.
 export const DEFAULT_DISABLE_ACHIEVEMENTS = false;
@@ -63,6 +68,7 @@ export function defaultSettings(): Settings {
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
     disableToasts: DEFAULT_DISABLE_TOASTS,
+    disableItemNotes: DEFAULT_DISABLE_ITEM_NOTES,
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements: {},
     unseenAchievements: [],
@@ -188,6 +194,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.disableToasts === "boolean"
         ? raw.disableToasts
         : DEFAULT_DISABLE_TOASTS,
+    disableItemNotes:
+      typeof raw.disableItemNotes === "boolean"
+        ? raw.disableItemNotes
+        : DEFAULT_DISABLE_ITEM_NOTES,
     disableAchievements:
       typeof raw.disableAchievements === "boolean"
         ? raw.disableAchievements

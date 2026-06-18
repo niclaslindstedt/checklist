@@ -354,8 +354,13 @@ function AppShell() {
   // and `sync` is the stable `null` for a local session — so the memoised
   // `ChecklistView` / `ArchiveView` skip re-rendering on those.
   const checklistValue = useMemo<ChecklistContextValue>(
-    () => ({ ...checklist, sync, logoSrc }),
-    [checklist, sync, logoSrc],
+    () => ({
+      ...checklist,
+      sync,
+      logoSrc,
+      disableItemNotes: settings.disableItemNotes,
+    }),
+    [checklist, sync, logoSrc, settings.disableItemNotes],
   );
   // Just the unseen count for the header trophy badge — kept off the
   // checklist context (whose stability lets the memoised list skip settings

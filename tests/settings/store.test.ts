@@ -141,6 +141,20 @@ describe("validateSettings", () => {
     );
   });
 
+  it("enables item notes by default and honours an explicit boolean", () => {
+    expect(defaultSettings().disableItemNotes).toBe(false);
+    expect(validateSettings({}).disableItemNotes).toBe(false);
+    expect(validateSettings({ disableItemNotes: true }).disableItemNotes).toBe(
+      true,
+    );
+  });
+
+  it("falls back to enabled item notes on a non-boolean value", () => {
+    expect(validateSettings({ disableItemNotes: "yes" }).disableItemNotes).toBe(
+      false,
+    );
+  });
+
   it("enables achievements by default and honours an explicit boolean", () => {
     expect(defaultSettings().disableAchievements).toBe(false);
     expect(validateSettings({}).disableAchievements).toBe(false);

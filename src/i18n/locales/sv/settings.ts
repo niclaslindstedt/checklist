@@ -40,6 +40,9 @@ const settings: SettingsCatalog = {
       "Var en ny post hamnar när du lägger till den i en lista.",
     addItemTop: "Överst",
     addItemBottom: "Nederst",
+    disableItemNotes: "Inaktivera anteckningar",
+    disableItemNotesHint:
+      "Gör poster till enbart titel – dölj anteckningstexten och redigeraren ”Lägg till anteckning”. Anteckningar du redan skrivit behålls, bara dolda.",
   },
 
   developer: {

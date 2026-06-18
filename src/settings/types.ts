@@ -49,6 +49,13 @@ export type Settings = {
   // upgrade hint is a separate surface (`UpdateToast`) and is never
   // suppressed by this flag.
   disableToasts: boolean;
+  // Whether item notes (the markdown body beneath an item's title) are
+  // switched off across the checklist. When on, the row hides the expand
+  // chevron and never renders a body, and the in-place editor drops the
+  // "Add note" affordance and the Shift+Enter reveal — items become
+  // title-only. Existing notes are preserved in the document (just not
+  // shown or editable), so flipping the toggle back off brings them back.
+  disableItemNotes: boolean;
   // Whether the achievements system is switched off. When on, the watcher
   // stops recording unlocks and raising celebratory toasts, and the header
   // trophy button is hidden. Already-earned achievements are preserved (the

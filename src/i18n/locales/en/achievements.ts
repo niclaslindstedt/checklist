@@ -261,6 +261,10 @@ const achievements = {
       learnMore:
         "In the installed PWA on a phone or tablet you can hide the round button entirely and open the menu with an inward edge swipe instead — nothing floating over your list.",
     },
+    bareBones: {
+      name: "Bare Bones",
+      condition: "Switch item notes off.",
+    },
     underTheHood: {
       name: "Under the Hood",
       condition: "Turn on developer mode.",
