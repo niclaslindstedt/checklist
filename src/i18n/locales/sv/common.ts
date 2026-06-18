@@ -3,6 +3,8 @@ import type { CommonCatalog } from "../en/common";
 const common: CommonCatalog = {
   close: "Stäng",
   cancel: "Avbryt",
+  save: "Spara",
+  resetToDefaults: "Återställ till standard",
   dismiss: "Stäng",
   back: "Tillbaka",
 };

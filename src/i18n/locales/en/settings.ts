@@ -9,7 +9,7 @@ const settings = {
   title: "Settings",
   close: "Close settings",
   sections: "Settings sections",
-  done: "Done",
+  chooseSection: "Choose section",
 
   tab: {
     general: "General",

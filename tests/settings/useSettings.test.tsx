@@ -64,6 +64,28 @@ describe("useSettings", () => {
     ).toBe(1.25);
   });
 
+  it("commits a whole document through replace, preserving untouched fields", () => {
+    const { result } = renderHook(() => useSettings(null));
+    act(() => {
+      result.current.unlockAchievements(["firstSteps"]);
+    });
+    // The settings dialog flushes its draft via `replace`; the producer can
+    // keep the fields it doesn't own (here: the achievements map).
+    act(() =>
+      result.current.replace((prev) => ({
+        ...prev,
+        theme: "monokai",
+        fontScale: 1.25,
+      })),
+    );
+    expect(result.current.settings.theme).toBe("monokai");
+    expect(result.current.settings.fontScale).toBe(1.25);
+    expect(result.current.settings.achievements.firstSteps).toBeDefined();
+    expect(
+      JSON.parse(localStorage.getItem("checklist:settings:v1")!).theme,
+    ).toBe("monokai");
+  });
+
   it("records achievements idempotently and queues them as unseen", () => {
     const { result } = renderHook(() => useSettings(null));
     let fresh: string[] = [];

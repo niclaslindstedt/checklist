@@ -1,7 +1,10 @@
-// React state for the appearance `Settings`. Apply-immediately model:
-// every `update` writes through to storage and re-renders, so the theme
-// engine (which reads the live settings) previews the change at once —
-// there's no separate draft / save / cancel channel to keep in sync.
+// React state for the appearance `Settings`. Every `update` (one key) and
+// `replace` (a whole document) writes through to storage and re-renders, so
+// the theme engine that reads these settings reflects the change at once.
+// The settings dialog edits a local draft and previews it through a separate
+// channel (`onPreviewAppearance` in `App`), flushing the draft here via
+// `replace` only when the user hits Save — so the store stays the single
+// source of truth and a cancel just drops the draft.
 //
 // Two persistence layers sit behind it:
 //   - localStorage (always): the synchronous first-paint cache, so the
@@ -27,6 +30,15 @@ export type UpdateSetting = <K extends keyof Settings>(
 export interface UseSettings {
   settings: Settings;
   update: UpdateSetting;
+  /**
+   * Commit a whole settings document in one write. Takes a producer over
+   * the latest settings so the caller can merge its edits while preserving
+   * fields it doesn't own (the achievements map, the menu-button position).
+   * Used by the settings dialog's Save button, which edits a local draft
+   * and flushes it here on confirm rather than writing through per
+   * keystroke.
+   */
+  replace: (producer: (prev: Settings) => Settings) => void;
   /**
    * Record one or more freshly-earned achievements. Idempotent per id —
    * an id already in `achievements` keeps its original timestamp and is
@@ -102,6 +114,17 @@ export function useSettings(settingsStore?: SettingsStore | null): UseSettings {
     [persist],
   );
 
+  const replace = useCallback(
+    (producer: (prev: Settings) => Settings) => {
+      setSettings((prev) => {
+        const next = producer(prev);
+        persist(next);
+        return next;
+      });
+    },
+    [persist],
+  );
+
   const unlockAchievements = useCallback(
     (ids: readonly string[]): string[] => {
       // Compute the genuinely-new ids against the latest settings up front
@@ -140,5 +163,11 @@ export function useSettings(settingsStore?: SettingsStore | null): UseSettings {
     });
   }, [persist]);
 
-  return { settings, update, unlockAchievements, clearUnseenAchievements };
+  return {
+    settings,
+    update,
+    replace,
+    unlockAchievements,
+    clearUnseenAchievements,
+  };
 }
