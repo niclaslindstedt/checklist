@@ -125,7 +125,7 @@ describe("ChecklistView", () => {
       }
     });
 
-    it("requires a confirming second tap before deleting finished items", () => {
+    it("deletes finished items on the first tap (undo covers the mistake)", () => {
       vi.useFakeTimers();
       try {
         const deleteFinished = vi.fn();
@@ -134,13 +134,10 @@ describe("ChecklistView", () => {
         act(() => {
           vi.advanceTimersByTime(450);
         });
-        // First tap only arms the confirm state — nothing is deleted yet.
+        // A single tap deletes straight away — no confirm step.
         fireEvent.click(
           screen.getByRole("button", { name: "Delete finished" }),
         );
-        expect(deleteFinished).not.toHaveBeenCalled();
-        // The button now reads the confirm label; tapping it commits.
-        fireEvent.click(screen.getByRole("button", { name: "Tap to confirm" }));
         expect(deleteFinished).toHaveBeenCalledTimes(1);
       } finally {
         vi.useRealTimers();
@@ -170,11 +167,9 @@ describe("ChecklistView", () => {
     });
 
     // A real tap fires pointerup *and* a trailing synthetic click on the same
-    // button. The delete button stays put (arming, not collapsing), so a tap
-    // that counted twice would arm *and* commit in one go — the trailing
-    // click must be swallowed, leaving the destroy gated behind a real second
-    // tap.
-    it("requires a real second tap to confirm delete across pointerup+click", () => {
+    // button. Only the pointerup should count — the trailing click is
+    // swallowed so one physical tap deletes exactly once.
+    it("deletes exactly once across a pointerup+click tap", () => {
       vi.useFakeTimers();
       try {
         const deleteFinished = vi.fn();
@@ -183,13 +178,10 @@ describe("ChecklistView", () => {
         act(() => {
           vi.advanceTimersByTime(450);
         });
-        // One physical tap = pointerup + trailing click; this only arms.
+        // One physical tap = pointerup + trailing click; deletes just once.
         const del = screen.getByRole("button", { name: "Delete finished" });
         fireEvent.pointerUp(del);
         fireEvent.click(del);
-        expect(deleteFinished).not.toHaveBeenCalled();
-        // A genuine second tap commits.
-        fireEvent.pointerUp(screen.getByRole("button", { name: "Tap to confirm" }));
         expect(deleteFinished).toHaveBeenCalledTimes(1);
       } finally {
         vi.useRealTimers();

@@ -151,7 +151,7 @@ const achievements = {
       name: "Clean Sweep",
       condition: "Delete every finished item at once.",
       learnMore:
-        "Long-press the add (+) button and tap Delete finished — a confirming second tap permanently clears every checked item from the list in one go.",
+        "Long-press the add (+) button and tap Delete finished — one tap clears every checked item from the list in one go, and undo brings them back if you slipped.",
     },
     copyThat: {
       name: "Copy That",

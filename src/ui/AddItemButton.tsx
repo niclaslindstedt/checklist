@@ -16,10 +16,9 @@ import { ArchiveIcon, TrashIcon } from "./icons.tsx";
 // Long-pressing the button fans it out into a floating row of bulk actions
 // — archive every finished (checked) item, or delete them. The (+) shrinks
 // and fades as the action row scales in over the same spot, so it reads as
-// the button morphing into its alternatives. Deleting is destructive, so it
-// arms on the first tap and only commits on a confirming second tap. Either
-// action (and an outside tap or Escape) transitions straight back to the
-// (+).
+// the button morphing into its alternatives. Deleting fires on the first tap
+// — there's no confirm step, since the delete is undoable. Either action
+// (and an outside tap or Escape) transitions straight back to the (+).
 //
 // The horizontal centre is `left: 50%` on the *layout* viewport, matching
 // the shell, which is also pinned full-width to the layout viewport (see
@@ -44,7 +43,6 @@ export function AddItemButton({
 }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Set the moment the hold crosses the long-press threshold so the trailing
   // click that ends the press doesn't also open the composer.
@@ -61,8 +59,7 @@ export function AddItemButton({
   const pointerId = useRef<number | null>(null);
 
   // A bulk button just handled the gesture on `pointerup`; swallow the
-  // synthetic `click` that trails it so the action doesn't fire twice (which
-  // would, for delete, arm *and* commit in one tap).
+  // synthetic `click` that trails it so the action doesn't fire twice.
   const pointerHandled = useRef(false);
 
   const clearTimer = useCallback(() => {
@@ -74,7 +71,6 @@ export function AddItemButton({
 
   const collapse = useCallback(() => {
     setExpanded(false);
-    setConfirmingDelete(false);
   }, []);
 
   useEscapeKey(expanded, collapse);
@@ -120,16 +116,11 @@ export function AddItemButton({
     collapse();
   }, [onArchiveFinished, collapse]);
 
-  // First tap arms the confirm state; the second commits. Mirrors the
-  // two-tap namespace deletion — a bulk destroy warrants the extra beat.
+  // Deletes straight away — the sweep is undoable, so no confirm beat.
   const runDelete = useCallback(() => {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
     onDeleteFinished();
     collapse();
-  }, [confirmingDelete, onDeleteFinished, collapse]);
+  }, [onDeleteFinished, collapse]);
 
   // Activate on `pointerup` — the reliable signal on iOS for a button that
   // only appears mid-gesture — and mark the gesture handled so the trailing
@@ -154,9 +145,6 @@ export function AddItemButton({
   );
 
   const noneFinished = finishedCount === 0;
-  const deleteLabel = confirmingDelete
-    ? t("app.confirmDeleteFinished")
-    : t("app.deleteFinished");
 
   return (
     <>
@@ -236,12 +224,11 @@ export function AddItemButton({
             disabled={!expanded || noneFinished}
             onPointerUp={onActionPointerUp(runDelete)}
             onClick={onActionClick(runDelete)}
-            aria-label={deleteLabel}
-            className={`
+            aria-label={t("app.deleteFinished")}
+            className="
             flex items-center justify-center bg-danger px-8 py-4 text-white
             transition-[filter] active:brightness-90 disabled:opacity-40
-            ${confirmingDelete ? "animate-pulse ring-2 ring-inset ring-white/80" : ""}
-          `}
+          "
           >
             <TrashIcon className="h-6 w-6" />
           </button>

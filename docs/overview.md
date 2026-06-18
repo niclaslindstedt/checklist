@@ -147,10 +147,9 @@ and fades as the row scales in, so it reads as the button morphing into
 its alternatives. The row carries two buttons: **Archive finished** and
 **Delete finished**, both acting on every finished (checked, still-active)
 item at once via `archiveFinished` / `deleteFinished` (see [Archive /
-delete finished](#archive--delete-finished)). Delete is destructive, so it
-arms on the first tap (the button switches to a pulsing confirm label) and
-only commits on a confirming second tap — the same two-tap guard a
-namespace deletion uses. Running either action, tapping outside (a
+delete finished](#archive--delete-finished)). Both fire on the first tap;
+the delete carries no confirm step, since the sweep is undoable. Running
+either action, tapping outside (a
 `DismissBackdrop`), or pressing Escape transitions straight back to the
 (+). The bulk buttons are disabled when nothing is finished. The long-press
 gesture is the only entry point, so the actions stay invisible until
