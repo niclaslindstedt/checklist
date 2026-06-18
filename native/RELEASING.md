@@ -12,8 +12,8 @@ Both store identities are already wired in [`app.json`](app.json):
 - Android `android.package` — `se.niclaslindstedt.checklist`
 
 Build/submit profiles live in [`eas.json`](eas.json). Icons and the splash
-image live in [`assets/`](assets) (bootstrapped from the web app's PWA
-artwork — see "Artwork" below).
+image live in [`assets/`](assets), rendered at 1024×1024 from the web app's
+source mark (`../public/favicon.svg`) — see "Artwork" below.
 
 > **License note.** The project is `PolyForm-Noncommercial-1.0.0`. Keep both
 > listings **free** and non-commercial — no paid app, no in-app purchases, no
@@ -47,18 +47,22 @@ automatically — `eas.json` sets `appVersionSource: "remote"` and the
 `production` profile has `autoIncrement: true`, so EAS increments the iOS
 build number and Android `versionCode` on every production build.
 
-## 2. Artwork (do this before the first real submission)
+## 2. Artwork
 
-The committed icons in `assets/` are bootstrapped by copying the web app's
-512×512 PWA PNGs, so builds aren't the default Expo icon. **Before a public
-release, replace them with crisp 1024×1024 exports** rendered from the source
-`../public/favicon.svg`:
+The committed icons in `assets/` are 1024×1024 PNGs rendered from the web
+app's source mark (`../public/favicon.svg`) by
+[`../scripts/gen-native-icons.mjs`](../scripts/gen-native-icons.mjs) — no
+third-party image tooling required (`node scripts/gen-native-icons.mjs` from
+the repo root regenerates them):
 
-- `assets/icon.png` — 1024×1024, no transparency (Apple rejects alpha in the
+- `assets/icon.png` — full-bleed mark, opaque RGB (Apple rejects alpha in the
   marketing icon).
-- `assets/adaptive-icon.png` — 1024×1024 foreground with safe-zone padding
-  (Android masks it to a circle/squircle).
-- `assets/splash.png` — centered logo on `#0f1115`.
+- `assets/adaptive-icon.png` — mark padded into the Android safe zone over the
+  `#1f2933` theme background.
+- `assets/splash.png` — centered mark on `#0f1115`.
+
+If the brand mark in `favicon.svg` changes, re-run the script to keep these in
+sync.
 
 ## 3. Build
 
