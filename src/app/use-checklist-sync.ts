@@ -286,6 +286,12 @@ export function useChecklistSync(deps: {
           } else {
             log.error("save failed", err);
             transientRetries.current = 0;
+            // Re-queue the failed snapshot (unless a newer edit already
+            // superseded it) so the "Try again" affordance has bytes to push.
+            // `flushSave` consumed `pendingDoc` before this write started, and
+            // a hard error arms no resume timer — without this, a manual retry
+            // finds an empty queue and silently no-ops.
+            if (pendingDoc.current === null) pendingDoc.current = next;
             setStatus("error");
             // Capture the failure reason verbatim so the details modal can
             // show *why* the save failed instead of a bare "Sync failed".
