@@ -680,17 +680,37 @@ roadmap.
 `src/ui/settings/SettingsModal.tsx` — the tabbed settings dialog opened
 from the header menu (or the sync glyph, which deep-links to the Storage
 tab via `initialTab`). Tabs (`TabId`): General, Lists, Theme (appearance),
-Storage, and — only when dev mode is on — Developer and Logs. Tab
-labels come from i18n. Built on `Modal`.
+Storage, and — only when dev mode is on — Developer and Logs. Each tab
+carries an inline-SVG marker glyph (`TAB_ICONS`). On desktop the tabs sit in
+a labelled left rail (a WAI-ARIA tablist with roving tabindex + arrow-key
+navigation); on mobile that rail collapses into a header burger button —
+the burger plus the active tab's icon and label form one toggle that opens
+the section list in a `FloatingPanel`. Tab labels come from i18n. Built on
+`Modal`. Mirrors the budget project's settings chrome.
+
+The settings the dialog owns (theme, font, list behaviour, the General
+toggles) are edited against a local **draft** and committed only on **Save**;
+**Cancel** drops the draft and **Reset to defaults** rewrites the owned
+fields of the draft (leaving the achievements map and the menu-button
+position the dialog doesn't edit). While the dialog is open it streams the
+live draft up through `onPreviewAppearance` so the theme engine previews
+appearance edits before they're saved (see "Settings store"); the
+device-local controls (developer mode, log capture, fake data) and the
+storage connections still apply immediately — they don't live in the
+persisted `Settings` document the draft snapshots.
 
 ### Settings store
 
 `src/settings/store.ts` + `src/settings/useSettings.ts` — the persisted
 appearance `Settings` (theme preset, font family, font scale, the
 custom-theme overrides, `addItemPosition`, `menuButtonPosition`,
-`showMenuButton`, `disableToasts`), kept in `localStorage` under `checklist:settings:v1`. `useSettings` is
-apply-immediately: every `update(key, value)` writes through and
-re-renders so the theme engine previews the change at once. `store.ts`
+`showMenuButton`, `disableToasts`), kept in `localStorage` under `checklist:settings:v1`. `useSettings`
+exposes `update(key, value)` (one field) and `replace(producer)` (a whole
+document in one write); both write through and re-render so the theme engine
+follows at once. The settings dialog edits a local draft and flushes it via
+`replace` on Save, previewing appearance edits live through a separate
+channel (`App`'s `appearancePreview` → `useTheme`) so the store stays the
+single source of truth and a cancel just drops the draft. `store.ts`
 is defensive on read — a missing or corrupt field falls back to its
 default rather than throwing. Note the `Settings` type deliberately
 excludes the device-local dev flags (those live under `src/dev/`).

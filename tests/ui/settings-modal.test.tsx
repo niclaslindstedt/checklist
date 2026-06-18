@@ -63,7 +63,8 @@ function renderModal(
     open: true,
     onClose: vi.fn(),
     settings: defaultSettings(),
-    onUpdate: vi.fn(),
+    onSave: vi.fn(),
+    onPreviewAppearance: vi.fn(),
     storage: makeStorageStub(),
     ...overrides,
   };
@@ -81,25 +82,75 @@ describe("SettingsModal", () => {
     expect(screen.queryByRole("tab", { name: "Logs" })).toBeNull();
   });
 
-  it("updates the theme when a variant is picked on the Theme tab", () => {
-    const { onUpdate } = renderModal();
+  it("commits a picked theme variant only on Save", () => {
+    const { onSave } = renderModal();
     fireEvent.click(screen.getByRole("tab", { name: "Theme" }));
     // The variant row lists the dark-family presets; pick Dracula.
     fireEvent.click(screen.getByRole("radio", { name: "Dracula" }));
-    expect(onUpdate).toHaveBeenCalledWith("theme", "dracula");
+    // Editing the draft does not write through.
+    expect(onSave).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ theme: "dracula" }),
+    );
   });
 
-  it("updates addItemPosition from the Lists tab", () => {
-    const { onUpdate } = renderModal();
+  it("commits addItemPosition from the Lists tab on Save", () => {
+    const { onSave } = renderModal();
     fireEvent.click(screen.getByRole("tab", { name: "Lists" }));
     fireEvent.click(screen.getByRole("radio", { name: "Top" }));
-    expect(onUpdate).toHaveBeenCalledWith("addItemPosition", "top");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ addItemPosition: "top" }),
+    );
   });
 
-  it("toggles disableAchievements from the General tab", () => {
-    const { onUpdate } = renderModal();
+  it("commits a disableAchievements toggle from the General tab on Save", () => {
+    const { onSave } = renderModal();
     fireEvent.click(screen.getByLabelText("Disable achievements"));
-    expect(onUpdate).toHaveBeenCalledWith("disableAchievements", true);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ disableAchievements: true }),
+    );
+  });
+
+  it("discards edits and never saves when Cancel is pressed", () => {
+    const { onSave, onClose } = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "Lists" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Top" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("previews appearance edits live, before saving", () => {
+    const onPreviewAppearance = vi.fn();
+    renderModal({ onPreviewAppearance });
+    fireEvent.click(screen.getByRole("tab", { name: "Theme" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Dracula" }));
+    // The most recent preview carries the draft theme so the engine can
+    // project it onto `<html>` before the user commits.
+    const last = onPreviewAppearance.mock.calls.at(-1)?.[0];
+    expect(last).toMatchObject({ theme: "dracula" });
+  });
+
+  it("clears the appearance preview when the dialog closes", () => {
+    const onPreviewAppearance = vi.fn();
+    const props = renderModal({ onPreviewAppearance });
+    onPreviewAppearance.mockClear();
+    props.rerender(<SettingsModal {...props} open={false} />);
+    expect(onPreviewAppearance).toHaveBeenCalledWith(null);
+  });
+
+  it("resets the owned fields to defaults from the footer", () => {
+    const { onSave } = renderModal({
+      settings: { ...defaultSettings(), addItemPosition: "top" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ addItemPosition: "bottom" }),
+    );
   });
 
   it("reveals the Developer and Logs tabs when developer mode is on", () => {
@@ -122,8 +173,8 @@ describe("SettingsModal", () => {
         .getAttribute("aria-selected"),
     ).toBe("true");
     // Close and reopen the same dialog instance with no initialTab: the
-    // chrome-skipping refactor keeps `activeTab` on the always-mounted
-    // SettingsModal, so the last-used tab survives the round trip.
+    // always-mounted SettingsModal keeps `activeTab`, so the last-used tab
+    // survives the round trip.
     props.rerender(<SettingsModal {...props} open={false} />);
     props.rerender(<SettingsModal {...props} open={true} />);
     expect(

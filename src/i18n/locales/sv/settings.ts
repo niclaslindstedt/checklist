@@ -4,7 +4,7 @@ const settings: SettingsCatalog = {
   title: "Inställningar",
   close: "Stäng inställningar",
   sections: "Inställningssektioner",
-  done: "Klar",
+  chooseSection: "Välj sektion",
 
   tab: {
     general: "Allmänt",

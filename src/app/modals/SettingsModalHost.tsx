@@ -1,5 +1,4 @@
 import type { Settings } from "../../settings/types.ts";
-import type { UpdateSetting } from "../../settings/useSettings.ts";
 import type { UseStorageBackend } from "../../storage/useStorageBackend.ts";
 import { SettingsModal } from "../../ui/settings/SettingsModal.tsx";
 import { useModalState } from "../../ui/modal-bus.ts";
@@ -10,18 +9,29 @@ import { useModalState } from "../../ui/modal-bus.ts";
 
 type Props = {
   settings: Settings;
-  onUpdate: UpdateSetting;
+  // Commit the dialog's edited draft. The producer preserves the fields the
+  // dialog doesn't own (achievements, menu-button position).
+  onSave: (draft: Settings) => void;
+  // Stream the dialog's live appearance draft up to the theme engine so the
+  // user sees their pick before saving; `null` reasserts the persisted look.
+  onPreviewAppearance: (preview: Settings | null) => void;
   storage: UseStorageBackend;
 };
 
-export function SettingsModalHost({ settings, onUpdate, storage }: Props) {
+export function SettingsModalHost({
+  settings,
+  onSave,
+  onPreviewAppearance,
+  storage,
+}: Props) {
   const { command, close } = useModalState("settings");
   return (
     <SettingsModal
       open={command !== null}
       onClose={close}
       settings={settings}
-      onUpdate={onUpdate}
+      onSave={onSave}
+      onPreviewAppearance={onPreviewAppearance}
       storage={storage}
       initialTab={command?.tab}
     />

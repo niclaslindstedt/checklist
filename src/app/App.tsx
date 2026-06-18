@@ -5,6 +5,7 @@ import { useDevSeed } from "../dev/useDevSeed.ts";
 import { useT, type MessageKey } from "../i18n";
 import { LANGUAGE_EVENT } from "../i18n/language-preference.ts";
 import { useStandaloneMobile } from "../pwa/standalone.ts";
+import type { Settings } from "../settings/types.ts";
 import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";
 import type { NamespaceAppearance } from "../storage/namespaces.ts";
@@ -52,8 +53,10 @@ import { useChecklist } from "./use-checklist.ts";
 // view state; the views and `SideMenu` read what they need rather than
 // taking it as props. The modal bus owns each dialog's open/close state
 // (see `modal-bus.tsx`); buttons `dispatch` a command and a host opens the
-// matching modal, so the shell carries no per-modal state. Appearance
-// settings apply immediately through `useTheme`. When the developer "Fake
+// matching modal, so the shell carries no per-modal state. The settings
+// dialog edits a draft and commits it on Save (`saveSettingsDraft`); while
+// it's open it streams the draft up as `appearancePreview` so `useTheme`
+// previews appearance edits before they're saved. When the developer "Fake
 // data" toggle is on, the active backend is swapped for an ephemeral
 // in-memory seed adapter so `useChecklist` reloads a sample document
 // without touching real data.
@@ -71,10 +74,36 @@ function AppShell() {
   // settings because it provides the root settings store the appearance
   // settings reconcile against (`settings.json` at the app-folder root).
   const storage = useStorageBackend();
-  const { settings, update, unlockAchievements, clearUnseenAchievements } =
-    useSettings(storage.settingsStore);
-  useTheme(settings);
+  const {
+    settings,
+    update,
+    replace,
+    unlockAchievements,
+    clearUnseenAchievements,
+  } = useSettings(storage.settingsStore);
+  // Live appearance preview from the open settings dialog. While the dialog
+  // streams a draft up, the theme engine projects it instead of the persisted
+  // settings so the user sees their pick before saving; `null` (dialog closed
+  // or cancelled) reasserts the stored look.
+  const [appearancePreview, setAppearancePreview] = useState<Settings | null>(
+    null,
+  );
+  useTheme(appearancePreview ?? settings);
   useViewportHeight();
+
+  // Commit the settings dialog's draft on Save, preserving the fields the
+  // dialog doesn't edit (the achievements map and the menu-button position).
+  const saveSettingsDraft = useCallback(
+    (draft: Settings) => {
+      replace((prev) => ({
+        ...draft,
+        menuButtonPosition: prev.menuButtonPosition,
+        achievements: prev.achievements,
+        unseenAchievements: prev.unseenAchievements,
+      }));
+    },
+    [replace],
+  );
 
   const t = useT();
   const { push } = useToast();
@@ -388,7 +417,8 @@ function AppShell() {
           </div>
           <SettingsModalHost
             settings={settings}
-            onUpdate={update}
+            onSave={saveSettingsDraft}
+            onPreviewAppearance={setAppearancePreview}
             storage={storage}
           />
           <ChangelogModalHost />
