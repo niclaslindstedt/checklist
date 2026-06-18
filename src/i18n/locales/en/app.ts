@@ -26,7 +26,6 @@ const app = {
   moreActions: "More actions",
   archiveFinished: "Archive finished",
   deleteFinished: "Delete finished",
-  confirmDeleteFinished: "Tap to confirm",
   dragToReorder: "Drag to reorder",
   openSettings: "Open settings",
   copyChecklist: "Copy checklist as markdown",

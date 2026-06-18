@@ -144,7 +144,7 @@ const achievements: AchievementsCatalog = {
       name: "Rensa rubbet",
       condition: "Ta bort alla avklarade poster på en gång.",
       learnMore:
-        "Håll inne lägg-till-knappen (+) och tryck på Ta bort avklarade — ett bekräftande andra tryck rensar permanent varje avbockad post från listan på en gång.",
+        "Håll inne lägg-till-knappen (+) och tryck på Ta bort avklarade — ett tryck rensar varje avbockad post från listan på en gång, och ångra tar tillbaka dem om du råkade fel.",
     },
     copyThat: {
       name: "Kopierat",

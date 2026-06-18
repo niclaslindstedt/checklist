@@ -12,9 +12,8 @@ small half-circle bar of bulk actions, then morphs back the moment you're done.
    checked item to the [archive](feature:archive) in one pass — kept, not
    destroyed.
 3. **Delete everything finished.** Tap the **red** action to clear every
-   checked item for good. Because it's destructive, the first tap only **arms**
-   it — the button switches to a pulsing confirm label — and a second,
-   confirming tap commits the delete.
+   checked item in one pass. A single tap does it — there's no confirm step,
+   because the sweep is [undoable](feature:undo-redo) if you didn't mean it.
 
 Both actions touch only **finished** items (checked and still in the list), so
 anything you haven't ticked stays put. The buttons are dimmed and inert when

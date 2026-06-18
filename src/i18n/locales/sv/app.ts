@@ -20,7 +20,6 @@ const app: AppCatalog = {
   moreActions: "Fler åtgärder",
   archiveFinished: "Arkivera avklarade",
   deleteFinished: "Ta bort avklarade",
-  confirmDeleteFinished: "Tryck för att bekräfta",
   dragToReorder: "Dra för att ändra ordning",
   openSettings: "Öppna inställningar",
   copyChecklist: "Kopiera checklista som markdown",
