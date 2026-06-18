@@ -1,13 +1,15 @@
 # Bulk actions on finished items
 
 When a list is mostly ticked off, clearing it one row at a time is tedious. The
-floating **+** button hides a second job: **long-press** it and it fans out a
-small half-circle bar of bulk actions, then morphs back the moment you're done.
+**+** button hides a second job: **long-press** it and it fans out a small row
+of bulk actions over the same spot, then morphs back the moment you're done.
 
 ## How it works
 
 1. **Long-press the `+` button.** Hold it for about half a second. The `+`
-   shrinks and fades as a curved glyph bar scales in around the same spot.
+   shrinks and fades as the bulk-action row scales in around the same spot —
+   a rounded glyph bar on a phone, or two flat buttons that match the add
+   button on a wider screen.
 2. **Archive everything finished.** Tap the **blue** action to send every
    checked item to the [archive](feature:archive) in one pass — kept, not
    destroyed.
