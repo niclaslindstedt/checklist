@@ -311,4 +311,58 @@ describe("useChecklist throttle / transient-retry recovery", () => {
     expect(result.current.status).toBe("error");
     expect(result.current.statusDetail).toBe("Failed to fetch");
   });
+
+  it("retries a hard-errored save when the user invokes saveNow", async () => {
+    vi.useFakeTimers();
+    // A cloud adapter that hard-fails every save until the test flips
+    // `healthy` true, then accepts. After the backoff budget is spent the
+    // save surfaces a red error; the "Try again" affordance (saveNow) must
+    // re-push the still-unsaved snapshot rather than silently no-op because
+    // the failed write left nothing queued.
+    let serverText = serialize(emptySnapshot());
+    let serverRev = 1;
+    let healthy = false;
+    const adapter: StorageAdapter = {
+      id: "gdrive",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => ({
+        text: serverText,
+        revision: String(serverRev),
+      }),
+      save: async (next: string) => {
+        if (!healthy) throw new Error("Failed to fetch");
+        serverText = next;
+        serverRev += 1;
+        return { text: serverText, revision: String(serverRev) };
+      },
+      saveDebounceMs: 0,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    act(() => result.current.addItem("a"));
+    // Drain the full backoff curve — the save ends up hard-errored.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.dirty).toBe(true);
+
+    // The backend recovers. Clicking "Try again" must actually re-push the
+    // queued snapshot and land it — not just fire and no-op.
+    healthy = true;
+    await act(async () => {
+      result.current.saveNow();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.status).toBe("saved");
+    expect(result.current.dirty).toBe(false);
+    expect(parse(serverText).checklists[0]!.items.map((i) => i.title)).toEqual([
+      "a",
+    ]);
+  });
 });
