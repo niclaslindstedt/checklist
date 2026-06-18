@@ -40,6 +40,38 @@ describe("ChangelogModal feature-doc drill-down", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("opens a doc at its top and restores the list scroll on Back", () => {
+    render(<ChangelogModal open onClose={noop} />);
+
+    // The release list is the scroll container holding the Learn-more
+    // buttons; pretend the reader scrolled down to a lower bullet.
+    const [learnMore] = screen.getAllByRole("button", { name: "Learn more" });
+    const listScroll = learnMore!.closest("div.overflow-y-auto") as HTMLElement;
+    Object.defineProperty(listScroll, "scrollTop", {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    listScroll.scrollTop = 240;
+
+    fireEvent.click(learnMore!);
+
+    // The doc opens in its own fresh scroll container, at the top.
+    const back = screen.getByRole("button", { name: "Back" });
+    const docScroll = document.querySelector(
+      "div.overflow-y-auto",
+    ) as HTMLElement;
+    expect(docScroll).not.toBe(listScroll);
+    expect(docScroll.scrollTop).toBe(0);
+
+    // Back returns to the release list at the position the reader left.
+    fireEvent.click(back);
+    const restored = screen
+      .getAllByRole("button", { name: "Learn more" })[0]!
+      .closest("div.overflow-y-auto") as HTMLElement;
+    expect(restored.scrollTop).toBe(240);
+  });
+
   it("does not render when closed", () => {
     const { container } = render(
       <ChangelogModal open={false} onClose={noop} />,

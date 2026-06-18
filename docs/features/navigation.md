@@ -10,8 +10,8 @@ On phones the menu lives behind a **floating button**. Drag it and it
 tracks your finger precisely, then **snaps to the nearest side of the
 screen** and glides into place when you let go. It **remembers where you
 left it**, so it stays on the edge you prefer across visits. Dragging it
-downward will not accidentally trigger a [pull-to-refresh](feature:updates),
-and when the on-screen keyboard is up the button stays **above the
+downward will not accidentally trigger a pull-to-refresh, and when the
+on-screen keyboard is up the button stays **above the
 keyboard** where you can still reach it, instead of disappearing behind it.
 
 Press the button and the menu slides in from whichever edge the button

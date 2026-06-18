@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useT } from "../../i18n";
 import { ArrowLeftIcon, CloseIcon } from "../icons.tsx";
@@ -41,15 +41,44 @@ export function ChangelogModal({ open, onClose }: Props) {
   // a dead end.
   const [docSlug, setDocSlug] = useState<string | null>(null);
 
+  // The two views key their scroll containers apart (see the `key` props
+  // below), so each is a fresh DOM node that starts at the top. We want a
+  // doc to open at its top but Back to land on the exact release-list
+  // position the reader left — so stash the list's scrollTop on the way
+  // in and restore it on the way back.
+  const listScrollRef = useRef(0);
+  const listDivRef = useRef<HTMLDivElement>(null);
+  const docDivRef = useRef<HTMLDivElement>(null);
+
   // Drop back to the release list whenever the modal reopens, so a later
-  // open doesn't inherit the previous session's drill-down.
+  // open doesn't inherit the previous session's drill-down or scroll.
   useEffect(() => {
-    if (open) setDocSlug(null);
+    if (open) {
+      setDocSlug(null);
+      listScrollRef.current = 0;
+    }
   }, [open]);
 
   const openFeature = (slug: string) => {
-    if (FEATURE_DOCS[slug]) setDocSlug(slug);
+    if (!FEATURE_DOCS[slug]) return;
+    // Remember where the list was before swapping it for the doc. When
+    // cross-linking doc→doc the list is already unmounted, so keep the
+    // saved value rather than clobbering it with 0.
+    listScrollRef.current =
+      listDivRef.current?.scrollTop ?? listScrollRef.current;
+    setDocSlug(slug);
   };
+
+  // Land a freshly-opened doc at its top; restore the release list to its
+  // saved position when Back returns to it. `useLayoutEffect` runs before
+  // paint, so neither jump flickers.
+  useLayoutEffect(() => {
+    if (docSlug) {
+      if (docDivRef.current) docDivRef.current.scrollTop = 0;
+    } else if (listDivRef.current) {
+      listDivRef.current.scrollTop = listScrollRef.current;
+    }
+  }, [docSlug]);
 
   const activeDoc = docSlug ? FEATURE_DOCS[docSlug] : undefined;
 
@@ -81,7 +110,14 @@ export function ChangelogModal({ open, onClose }: Props) {
           </button>
         </header>
 
-        <div className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 text-sm leading-relaxed text-fg">
+        {/* Key by slug so opening a doc (or cross-linking to a sibling)
+            mounts a fresh scroll container, landing at the top instead of
+            inheriting the release list's scroll position. */}
+        <div
+          key={`doc-${docSlug}`}
+          ref={docDivRef}
+          className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 text-sm leading-relaxed text-fg"
+        >
           {renderMarkdown(activeDoc.body, { onOpenFeature: openFeature })}
         </div>
       </Modal>
@@ -107,7 +143,11 @@ export function ChangelogModal({ open, onClose }: Props) {
         </button>
       </header>
 
-      <div className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 text-sm">
+      <div
+        key="list"
+        ref={listDivRef}
+        className="flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 text-sm"
+      >
         {CHANGELOG.length === 0 ? (
           <p className="py-8 text-center text-muted">{t("changelog.empty")}</p>
         ) : (
