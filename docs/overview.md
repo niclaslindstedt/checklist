@@ -1082,6 +1082,31 @@ no passphrase is held (fresh load / reload), `UnlockGate`
 (`src/ui/UnlockGate.tsx`) is the full-screen gate that blocks the app
 until the user supplies the passphrase.
 
+### Offline cache / local copy
+
+`src/storage/cache/index.ts` (`withLocalCache`) wraps the cloud adapters
+(Dropbox, Google Drive) so the document can be unlocked, read, and edited
+with no connection — on a plane, in a tunnel. It mirrors every successful
+load / save into this device's `localStorage` (keyed by
+`localCacheKey(backend, namespace)`), and on a raw network failure serves
+the cached bytes instead, marked `offline: true`; it never masks the
+typed signals (`Auth` / `Conflict` / `RateLimit`), which keep their
+upstream handling. It sits **below** `withEncryption`
+(`cloudAdapter → withLocalCache → withEncryption → app`), so the cache
+holds the encrypted envelope when encryption is on (never plaintext) and
+the canonical JSON when it isn't — and because it is the `inner` the
+unlock gate verifies the passphrase against, **unlocking works offline**
+against the cached envelope. An offline save stashes the attempted bytes
+locally (on the last good revision) and re-throws, so the sync engine
+keeps the edit queued; its `online` listener re-flushes the queue when
+connectivity returns. `useChecklist.offline` drives the header's
+struck-through cloud glyph (`CloudOffIcon`) and the sync-details modal so
+a stale local copy never reads as "synced". When the backend is
+unreachable **and** nothing is cached yet (a brand-new device offline),
+the load throws `OfflineUnavailableError`, which `UnlockGate` maps to a
+"you're offline" message instead of the misleading "wrong passphrase".
+Opening the lists while offline unlocks the **Off the Grid** achievement.
+
 ### OAuth (PKCE)
 
 `src/storage/oauth-pkce.ts` — the shared, stateless OAuth 2.0 PKCE

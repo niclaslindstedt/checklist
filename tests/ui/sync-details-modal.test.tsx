@@ -24,6 +24,7 @@ function renderModal(
     status: "idle" as SaveStatus,
     statusDetail: null as string | null,
     dirty: false,
+    offline: false,
     onSaveNow: vi.fn(),
     onReconnect: vi.fn(async () => {}),
     onClose: vi.fn(),
@@ -82,5 +83,13 @@ describe("SyncDetailsModal", () => {
   it("shows no web link for the local folder backend", () => {
     renderModal({ backend: "folder", providerName: "Local folder" });
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("explains the offline local-copy state instead of implying a sync", () => {
+    renderModal({ status: "saved", offline: true });
+    expect(screen.getByText("Offline")).toBeTruthy();
+    expect(screen.getByText(/copy saved on this device/i)).toBeTruthy();
+    // The "synced" heading must not show while offline.
+    expect(screen.queryByText("Synced to Dropbox")).toBeNull();
   });
 });

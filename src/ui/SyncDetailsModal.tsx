@@ -14,6 +14,7 @@ import {
   CloudAlertIcon,
   CloudCheckIcon,
   CloudIcon,
+  CloudOffIcon,
   CloseIcon,
   CloudUploadIcon,
   ExternalLinkIcon,
@@ -38,6 +39,8 @@ type Props = {
   status: SaveStatus;
   statusDetail: string | null;
   dirty: boolean;
+  /** True when the backend is unreachable and we're on the on-device copy. */
+  offline: boolean;
   onSaveNow: () => void;
   // Re-issue OAuth for the active cloud backend. Resolves on success and
   // throws on failure so the inline button can spin while the popup /
@@ -88,9 +91,20 @@ function statusView(
   status: SaveStatus,
   statusDetail: string | null,
   dirty: boolean,
+  offline: boolean,
   providerName: string,
   t: TFunction,
 ): StatusView {
+  // Offline takes precedence (see `SyncStatus`): explain that the user is on
+  // a local copy that re-syncs on reconnect, rather than implying a sync.
+  if (offline) {
+    return {
+      Icon: CloudOffIcon,
+      label: t("sync.offlineHeading"),
+      tone: "flag",
+      detail: t("sync.offlineDetail", { name: providerName }),
+    };
+  }
   switch (status) {
     case "saving":
       return {
@@ -172,6 +186,7 @@ export function SyncDetailsModal({
   status,
   statusDetail,
   dirty,
+  offline,
   onSaveNow,
   onReconnect,
   onClose,
@@ -194,7 +209,14 @@ export function SyncDetailsModal({
   }, [status]);
 
   const view = providerView(backend, namespace);
-  const state = statusView(status, statusDetail, dirty, providerName, t);
+  const state = statusView(
+    status,
+    statusDetail,
+    dirty,
+    offline,
+    providerName,
+    t,
+  );
   const busy = status === "saving";
   const showReconnect = status === "auth-error" && onReconnect !== null;
 

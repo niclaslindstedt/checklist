@@ -27,6 +27,7 @@ src/
     markdown/     # Snapshot <-> per-list markdown codec
     directory-adapter.ts # shared markdown file store over a FileStore
     encrypting/   # AES-GCM wrapper layered over any adapter
+    cache/        # offline mirror for cloud adapters (withLocalCache)
     migrations.ts # forward-only version chain for stored bytes
   theme/      # theme engine (useTheme) + preset/font data
   styles/     # Tailwind theme tokens + per-theme palettes
@@ -214,6 +215,26 @@ up in localStorage or a cloud folder. The passphrase is held only in
 memory for the session; after a reload the app is "locked" until the
 user re-enters it (the `UnlockGate`). Receipts of plaintext-at-rest pass
 through untouched so toggling encryption never strands a document.
+
+**Offline cache.** `withLocalCache` (`src/storage/cache/`) wraps the cloud
+adapters (Dropbox, Google Drive) and mirrors every successful load / save
+into this device's `localStorage`, keyed per backend and namespace. When a
+request fails with a raw network error (airplane mode, a dead tunnel) it
+serves the cached bytes instead, flagged `offline: true` on the
+`StoredSnapshot`; the typed signals (`Auth` / `Conflict` / `RateLimit`)
+are never masked. It sits *below* `withEncryption`
+(`cloudAdapter → withLocalCache → withEncryption → app`), so the cache
+holds the encrypted envelope when encryption is on and the plaintext JSON
+when it isn't — and because it is the `inner` the unlock gate verifies
+against, unlocking works offline against the cached envelope. An offline
+save stashes the attempted bytes locally (on the last good revision) and
+re-throws so the sync engine keeps the edit queued; the engine's `online`
+listener re-flushes it when connectivity returns. `useChecklist.offline`
+surfaces the state to the header glyph (`CloudOffIcon`) so a stale local
+copy never reads as "synced". When the backend is unreachable *and*
+nothing is cached (a brand-new device offline), the load throws
+`OfflineUnavailableError` so the unlock gate says "you're offline" rather
+than the misleading "wrong passphrase".
 
 **Conflict resolution.** When a save loses a race with another device,
 the cloud adapter throws `ConflictError` carrying the remote bytes;

@@ -21,6 +21,7 @@ const sync = {
   throttled: "Slow down — the backend is rate-limiting saves",
   reauthRequired: "Reconnect needed — tap to fix",
   syncConflict: "Sync conflict — tap to resolve",
+  offline: "Offline — editing a local copy",
 
   // Cloud-sync details modal — opened from the header cloud button. It
   // spells out *what* the sync is doing and, when something went wrong,
@@ -51,6 +52,9 @@ const sync = {
     "Another device saved a newer version. Open the list to pick which copy to keep.",
   pendingHeading: "Waiting to sync",
   pendingDetail: "Your latest edits aren't saved to {name} yet.",
+  offlineHeading: "Offline",
+  offlineDetail:
+    "Can't reach {name} right now, so you're working on the copy saved on this device. Any changes are kept locally and sync automatically when you're back online.",
 } as const;
 
 export type SyncCatalog = Widen<typeof sync>;

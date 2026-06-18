@@ -14,6 +14,7 @@ function renderStatus(
     providerName: "Dropbox",
     status: "idle" as SaveStatus,
     dirty: false,
+    offline: false,
     onSave: vi.fn(),
     onOpenDetails: vi.fn(),
     ...overrides,
@@ -61,5 +62,20 @@ describe("SyncStatus", () => {
     expect(
       screen.getByRole("button", { name: /Reconnect needed/ }),
     ).toBeTruthy();
+  });
+
+  it("shows an offline glyph instead of a synced one when on the local copy", () => {
+    // Offline must win over an otherwise "synced" idle state so a stale
+    // local copy never reads as in-sync with the cloud.
+    const { onOpenDetails } = renderStatus({
+      status: "saved",
+      offline: true,
+    });
+    expect(
+      screen.queryByRole("button", { name: /Synced to Dropbox/ }),
+    ).toBeNull();
+    const btn = screen.getByRole("button", { name: /Offline/i });
+    fireEvent.click(btn);
+    expect(onOpenDetails).toHaveBeenCalledOnce();
   });
 });

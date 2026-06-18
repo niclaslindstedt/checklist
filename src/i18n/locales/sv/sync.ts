@@ -17,6 +17,7 @@ const sync: SyncCatalog = {
   throttled: "Ta det lugnt — backend begränsar sparningar",
   reauthRequired: "Återanslutning krävs — tryck för att åtgärda",
   syncConflict: "Synkkonflikt — tryck för att lösa",
+  offline: "Offline — redigerar en lokal kopia",
 
   cloudSync: "Molnsynk",
   status: "Status",
@@ -42,6 +43,9 @@ const sync: SyncCatalog = {
     "En annan enhet sparade en nyare version. Öppna listan för att välja vilken kopia du vill behålla.",
   pendingHeading: "Väntar på synk",
   pendingDetail: "Dina senaste ändringar är inte sparade till {name} ännu.",
+  offlineHeading: "Offline",
+  offlineDetail:
+    "Kan inte nå {name} just nu, så du arbetar med kopian som är sparad på den här enheten. Ändringar behålls lokalt och synkas automatiskt när du är online igen.",
 };
 
 export default sync;

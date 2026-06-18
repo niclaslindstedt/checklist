@@ -6,6 +6,8 @@ You can lock your lists down at the same time. Turn on **encryption** with a pas
 
 Because two devices can edit the same list at once, the app watches for collisions. When one happens, a **conflict** dialog asks which copy to keep; nothing is merged behind your back.
 
+Losing your connection doesn't lock you out, either. A cloud backend keeps a copy of your lists on the device you're using, so on a plane or in a tunnel you can still open the app, read your lists, check things off, and add new items — your changes are kept on the device and sync back up automatically when you're online again. This holds with encryption on: the on-device copy is the same scrambled bundle that's in your cloud, so unlocking offline just checks your passphrase against it (the only time the first unlock needs a connection is on a brand-new device that has never cached anything — and the unlock screen says so rather than blaming your passphrase). While you're offline the header cloud icon shows a **struck-through cloud**, and tapping it explains that you're on the local copy until the connection returns.
+
 ## How it works
 
 1. Go to **Settings → Storage** and choose **Google Drive** or **Dropbox**. Sign in through the provider's own screen.

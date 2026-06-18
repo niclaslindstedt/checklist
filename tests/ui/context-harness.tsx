@@ -56,6 +56,7 @@ export function makeChecklistValue(
     status: "idle",
     statusDetail: null,
     dirty: false,
+    offline: false,
     loaded: true,
     saveNow: noop,
     undo: noop,

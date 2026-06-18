@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { useT } from "../i18n";
+import { OfflineUnavailableError } from "../storage/cache/index.ts";
 import { Button, ClearableInput } from "./form/index.ts";
 import { ShieldIcon } from "./icons.tsx";
 import { Modal } from "./Modal.tsx";
@@ -32,8 +33,15 @@ export function UnlockGate({ open, onUnlock }: Props) {
     try {
       await onUnlock(password);
       setPassword("");
-    } catch {
-      setError(t("settings.storage.unlockWrong"));
+    } catch (err) {
+      // Distinguish "can't reach your cloud and there's no offline copy yet"
+      // from a genuinely wrong passphrase, so the gate stops blaming the
+      // passphrase when the real problem is the network.
+      setError(
+        err instanceof OfflineUnavailableError
+          ? t("settings.storage.unlockOffline")
+          : t("settings.storage.unlockWrong"),
+      );
     } finally {
       setBusy(false);
     }
