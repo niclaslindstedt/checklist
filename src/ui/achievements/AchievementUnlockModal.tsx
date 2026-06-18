@@ -9,6 +9,8 @@ import { Modal } from "../Modal.tsx";
 // four-tier tour. Closing it (X, backdrop, or "Awesome!") clears the unseen
 // queue so the trophy returns to its quiet state. Adapted from budget's
 // `AchievementUnlockModal` to the checklist's flat `Modal` and inline glyphs.
+// Renders as a compact centered card (not the full-screen mobile sheet): the
+// list of fresh unlocks is short and opens no soft keyboard.
 
 type Props = {
   open: boolean;
@@ -28,7 +30,12 @@ export function AchievementUnlockModal({ open, unseenIds, onClose }: Props) {
       : t("achievements.unlockModal.titleOther", { n: String(items.length) });
 
   return (
-    <Modal open={open} onClose={onClose} labelledBy="achievement-unlock-title">
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="achievement-unlock-title"
+      centered
+    >
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3">
         <h2
           id="achievement-unlock-title"
