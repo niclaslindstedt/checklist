@@ -55,6 +55,12 @@ export type ChecklistContextValue = UseChecklist & {
    * browser-tab favicon is pointed at the same source (see `App`).
    */
   logoSrc: string;
+  /**
+   * When true, the user has switched item notes off (Settings → Lists):
+   * rows render title-only and the in-place editor hides its note field.
+   * A presentational flag, mirrored from the synced `Settings`.
+   */
+  disableItemNotes: boolean;
 };
 
 export const ChecklistContext = createContext<ChecklistContextValue | null>(

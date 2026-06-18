@@ -715,7 +715,7 @@ persisted `Settings` document the draft snapshots.
 `src/settings/store.ts` + `src/settings/useSettings.ts` — the persisted
 appearance `Settings` (theme preset, font family, font scale, the
 custom-theme overrides, `addItemPosition`, `menuButtonPosition`,
-`showMenuButton`, `disableToasts`), kept in `localStorage` under `checklist:settings:v1`. `useSettings`
+`showMenuButton`, `disableToasts`, `disableItemNotes`), kept in `localStorage` under `checklist:settings:v1`. `useSettings`
 exposes `update(key, value)` (one field) and `replace(producer)` (a whole
 document in one write); both write through and re-render so the theme engine
 follows at once. The settings dialog edits a local draft and flushes it via
@@ -790,9 +790,24 @@ hint), the "Disable achievements" toggle that drives
 
 ### Lists tab
 
-`src/ui/settings/tabs/lists.tsx` — list-behaviour preferences, currently
-the "add new items at top / bottom" choice that drives `addItemPosition`
-(moved here from the General tab).
+`src/ui/settings/tabs/lists.tsx` — list-behaviour preferences: the "add
+new items at top / bottom" choice that drives `addItemPosition` (moved
+here from the General tab), and the **Disable item notes** toggle
+(`disableItemNotes`).
+
+### Disable item notes
+
+The **Disable item notes** toggle on the Lists tab
+(`disableItemNotes` on the synced `Settings`) switches the markdown body
+beneath an item's title off across the checklist — items become
+title-only. The flag rides the checklist context (`disableItemNotes` on
+`ChecklistContextValue`, set by `App` from the settings) to every
+`ChecklistRow`, which then treats the item as bodyless: the expand
+chevron and the rendered markdown never show, and the in-place
+`ChecklistRowEditor` drops its note textarea, the "Add note" affordance,
+and the Shift+Enter reveal so editing only touches the title. Notes
+already written stay in the document untouched — flipping the toggle back
+off brings them back. Unlocks the **Bare Bones** achievement.
 
 ### Appearance / theme tab
 

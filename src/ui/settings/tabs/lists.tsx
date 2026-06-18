@@ -1,7 +1,7 @@
 import { useT } from "../../../i18n";
 import type { Settings } from "../../../settings/types.ts";
 import type { UpdateSetting } from "../../../settings/useSettings.ts";
-import { Field, SegmentedRow, Section } from "../shared.tsx";
+import { Field, SegmentedRow, Section, ToggleRow } from "../shared.tsx";
 
 // List-behaviour preferences — where a newly added item lands, and any
 // other per-list settings that govern the checklist view rather than the
@@ -30,6 +30,12 @@ export function ListsTab({
       <p className="text-xs text-muted">
         {t("settings.lists.addItemPositionHint")}
       </p>
+      <ToggleRow
+        label={t("settings.lists.disableItemNotes")}
+        hint={t("settings.lists.disableItemNotesHint")}
+        checked={settings.disableItemNotes}
+        onChange={(next) => onUpdate("disableItemNotes", next)}
+      />
     </Section>
   );
 }

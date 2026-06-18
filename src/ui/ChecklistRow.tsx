@@ -31,6 +31,11 @@ import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 // The editor (`ChecklistRowEditor`) shows the title and body as raw plain
 // text; the row renders the body back as markdown once the edit commits.
 //
+// When the user switches item notes off (Settings → Lists, `notesDisabled`),
+// the row is title-only: the chevron and rendered body never appear and the
+// editor drops its note field. Any note already on the item is left in the
+// document untouched, so flipping the setting back on reveals it again.
+//
 // The callbacks take the item id (rather than being pre-bound by the
 // parent) so the parent can pass referentially stable handlers; paired
 // with the `memo` wrapper below, that means an edit re-renders only the
@@ -44,6 +49,8 @@ type Props = {
   onEdit: (id: string, fields: { title?: string; notes?: string }) => void;
   /** Open a fresh add-item draft — fired when Enter commits a title edit. */
   onAddAfter?: () => void;
+  /** When set, item notes are switched off — render the row title-only. */
+  notesDisabled?: boolean;
   dragHandleProps: DragHandleProps;
   dragging: boolean;
   style?: CSSProperties;
@@ -56,6 +63,7 @@ function ChecklistRowImpl({
   onDelete,
   onEdit,
   onAddAfter,
+  notesDisabled = false,
   dragHandleProps,
   dragging,
   style,
@@ -68,7 +76,9 @@ function ChecklistRowImpl({
   const [editFocusBody, setEditFocusBody] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
-  const hasBody = Boolean(item.notes);
+  // Notes switched off collapses the row to title-only: ignore any stored
+  // body so the chevron, reveal, and rendered markdown never show.
+  const hasBody = Boolean(item.notes) && !notesDisabled;
 
   const enterEdit = useCallback((focusBody: boolean) => {
     setEditFocusBody(focusBody);
@@ -115,6 +125,7 @@ function ChecklistRowImpl({
         <ChecklistRowEditor
           item={item}
           focusBody={editFocusBody}
+          notesDisabled={notesDisabled}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
           onAddAfter={onAddAfter}

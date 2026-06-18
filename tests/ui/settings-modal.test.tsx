@@ -105,6 +105,16 @@ describe("SettingsModal", () => {
     );
   });
 
+  it("commits a disableItemNotes toggle from the Lists tab on Save", () => {
+    const { onSave } = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "Lists" }));
+    fireEvent.click(screen.getByLabelText("Disable item notes"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ disableItemNotes: true }),
+    );
+  });
+
   it("commits a disableAchievements toggle from the General tab on Save", () => {
     const { onSave } = renderModal();
     fireEvent.click(screen.getByLabelText("Disable achievements"));
