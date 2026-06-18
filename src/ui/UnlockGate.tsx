@@ -40,7 +40,7 @@ export function UnlockGate({ open, onUnlock }: Props) {
   };
 
   return (
-    <Modal open={open} onClose={() => {}} labelledBy="unlock-title">
+    <Modal open={open} onClose={() => {}} labelledBy="unlock-title" centered>
       <form onSubmit={submit} className="flex flex-1 flex-col">
         <header className="flex shrink-0 items-center gap-2 border-b border-line bg-surface-3 px-4 py-3">
           <ShieldIcon className="h-5 w-5 text-accent" />
