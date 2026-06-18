@@ -42,6 +42,19 @@ describe("ChecklistView", () => {
     expect(addItem).toHaveBeenCalledWith("New thing");
   });
 
+  it("opens a fresh composer after committing an item edit with Enter", () => {
+    const editItem = vi.fn();
+    renderView({ editItem });
+    // Edit the existing item, then press Enter in the title.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const titleInput = screen.getByLabelText("Edit item");
+    fireEvent.change(titleInput, { target: { value: "Buy oat milk" } });
+    fireEvent.keyDown(titleInput, { key: "Enter" });
+    expect(editItem).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+    // The add-item draft is now open, focused and ready for the next item.
+    expect(screen.getByLabelText("Add item")).toBeTruthy();
+  });
+
   it("commits the typed text when the composer loses focus", () => {
     const addItem = vi.fn();
     renderView({ items: [], addItem });

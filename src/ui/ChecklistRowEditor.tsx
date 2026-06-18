@@ -19,8 +19,11 @@ import { PlusIcon } from "./icons.tsx";
 // (`bg-surface-2`, set by the parent) so it reads as the active edit.
 //
 // Commit / cancel mirror the add-item composer's feel:
-//   • Enter in the title commits; Shift+Enter reveals (and focuses) the
-//     body field so you can flesh the item out without leaving the keyboard.
+//   • Enter in the title commits and immediately opens a fresh draft row
+//     (`onAddAfter`) — same as tapping the add button — so several items
+//     can be jotted in a row without leaving the keyboard.
+//   • Shift+Enter reveals (and focuses) the body field so you can flesh the
+//     item out instead of starting a new one.
 //   • ⌘/Ctrl+Enter commits from the body (a bare Enter is a newline there).
 //   • Escape cancels, leaving the item untouched.
 //   • Blurring the whole editor commits whatever was typed, so an edit is
@@ -34,6 +37,7 @@ export function ChecklistRowEditor({
   onSubmit,
   onCancel,
   onToggle,
+  onAddAfter,
   focusBody = false,
 }: {
   item: ChecklistItem;
@@ -41,6 +45,12 @@ export function ChecklistRowEditor({
   onCancel: () => void;
   /** Toggle the item's checked state from the editor's checkbox. */
   onToggle: () => void;
+  /**
+   * Open a fresh add-item draft after committing — wired to Enter in the
+   * title so finishing one item flows straight into the next, like tapping
+   * the add button.
+   */
+  onAddAfter?: () => void;
   /** Open with the body field shown and focused (the "add a note" path). */
   focusBody?: boolean;
 }) {
@@ -65,7 +75,7 @@ export function ChecklistRowEditor({
     el?.setSelectionRange(len, len);
   }, [focusBody]);
 
-  const submit = () => {
+  const submit = (addAfter = false) => {
     if (done.current) return;
     done.current = true;
     const fields: { title?: string; notes?: string } = { title };
@@ -73,6 +83,8 @@ export function ChecklistRowEditor({
     // title never wipes a body the user didn't touch.
     if (bodyShown) fields.notes = notes;
     onSubmit(fields);
+    // Enter chains straight into a new draft row; blur / ⌘-Enter just commit.
+    if (addAfter) onAddAfter?.();
   };
 
   const cancel = () => {
@@ -90,7 +102,7 @@ export function ChecklistRowEditor({
     if (e.key === "Enter") {
       e.preventDefault();
       if (e.shiftKey) revealBody();
-      else submit();
+      else submit(true);
     } else if (e.key === "Escape") {
       e.preventDefault();
       cancel();

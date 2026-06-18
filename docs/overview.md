@@ -103,9 +103,12 @@ raw plain text. The title tap is swallowed after a swipe (the
 keeps the row's `Checkbox` so the line still reads as the same item (and
 the whole row is tinted `bg-surface-2` to signal the active edit); the
 title is one input, the body an optional `<textarea>` beneath it, both
-plain text. Enter in the title commits; **Shift+Enter** (or the "Add a
-note" affordance shown when there's no body yet) reveals and focuses the
-body field so a note can be added without leaving the keyboard. ⌘/Ctrl+Enter
+plain text. Enter in the title commits and immediately opens a fresh
+add-item draft (`onAddAfter`, wired to the view's `startDraft`) so one
+item flows straight into the next — the same draft row the add button
+opens. **Shift+Enter** (or the "Add a note" affordance shown when there's
+no body yet) reveals and focuses the body field so a note can be added
+without leaving the keyboard instead of starting a new item. ⌘/Ctrl+Enter
 commits from the body (a bare Enter is a newline there); Escape cancels;
 blurring the whole editor commits whatever was typed (a `done` ref guards
 against a blur that trails an Escape firing a second outcome). The verb
