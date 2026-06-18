@@ -20,11 +20,14 @@ import { ArchiveIcon, TrashIcon } from "./icons.tsx";
 // — there's no confirm step, since the delete is undoable. Either action
 // (and an outside tap or Escape) transitions straight back to the (+).
 //
-// The horizontal centre is `left: 50%` on the *layout* viewport, matching
-// the shell, which is also pinned full-width to the layout viewport (see
-// `useViewportHeight`). The visual-viewport width isn't tracked anymore:
-// mirroring its fractional width pushed the fixed shell a sub-pixel past the
-// edge and let iOS pan sideways, so every layer now stays on the layout box.
+// On mobile both layers are `fixed` bottom-centre and the bulk row reads as
+// the FAB morphing in place. On desktop the (+) is `sm:static`, in-flow and
+// centred inside the `max-w-2xl` content column — which the pinned sidebar
+// offsets sideways from the layout viewport. So we don't hard-code the bulk
+// row's centre; we measure the (+)'s box the instant we fan out and centre
+// the portalled row on it. That keeps the two aligned in every layout — FAB,
+// desktop, and either side the sidebar docks on — instead of the row drifting
+// toward the sidebar when it was pinned to `left: 50%` of the layout box.
 
 // How long the (+) must be held before the bulk-action row fans out.
 const LONG_PRESS_MS = 450;
@@ -43,6 +46,11 @@ export function AddItemButton({
 }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
+
+  // The viewport-space centre of the (+) at the moment it fanned out. The
+  // portalled bulk row centres on this so it overlays the button it replaced
+  // rather than the layout viewport (which the pinned sidebar shifts off).
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
 
   // Set the moment the hold crosses the long-press threshold so the trailing
   // click that ends the press doesn't also open the composer.
@@ -80,8 +88,14 @@ export function AddItemButton({
   // lands on the bulk button under it rather than the hidden (+).
   const expandMenu = useCallback(() => {
     longPressed.current = true;
-    setExpanded(true);
     const el = plusRef.current;
+    // Measure before the re-render scales the (+) to zero — capture its full
+    // box so the bulk row centres on where the button actually sits.
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setAnchor({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    }
+    setExpanded(true);
     const id = pointerId.current;
     if (el && id !== null && el.hasPointerCapture?.(id)) {
       el.releasePointerCapture(id);
@@ -179,13 +193,19 @@ export function AddItemButton({
         <span className="hidden sm:inline">{t("app.addItem")}</span>
       </button>
 
-      {/* The bulk-action row that replaces the (+) on long-press: one rounded
-          bar split into two glyph-only half-circles — archive (blue) and
-          delete (red). Centred on the same spot so it reads as the (+)
-          morphing into its alternatives; pressing either transitions back. A
+      {/* The bulk-action row that replaces the (+) on long-press: archive
+          (blue) and delete (red). On mobile it's one rounded bar split into
+          two glyph-only half-circles, sized to match the circular FAB; a
           hairline gap shows the bar's backdrop between the halves so they read
-          as two distinct buttons. Non-selectable so the long-press never bares
+          as two distinct buttons. From `sm` up it relaxes to mirror the (+)'s
+          desktop form — two free-standing `rounded-md` buttons tinted in their
+          action colour (instead of a loud solid pill that clashes with the
+          flat accent add button). Non-selectable so the long-press never bares
           a text/element selection on mobile.
+
+          Centred on the (+)'s measured box (see `anchor`) so it overlays the
+          button it replaced — on desktop the pinned sidebar offsets that from
+          the layout viewport, so a hard-coded `left: 50%` drifted sideways.
 
           Portalled to `document.body` so it sits in the same root stacking
           context as `DismissBackdrop` (which portals there too). The backdrop
@@ -199,10 +219,14 @@ export function AddItemButton({
           role="group"
           aria-label={t("app.moreActions")}
           aria-hidden={!expanded}
+          style={
+            anchor ? { left: `${anchor.x}px`, top: `${anchor.y}px` } : undefined
+          }
           className={`
-            fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-[60]
-            flex -translate-x-1/2 touch-none items-center gap-px overflow-hidden
-            rounded-full bg-page-bg/40 shadow-lg select-none transition-all duration-200
+            fixed z-[60] flex -translate-x-1/2 touch-none items-center gap-px overflow-hidden
+            rounded-full bg-page-bg/40 shadow-lg transition-all duration-200 select-none
+            sm:gap-2 sm:overflow-visible sm:rounded-none sm:bg-transparent sm:shadow-none
+            ${anchor ? "-translate-y-1/2" : "bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2"}
             ${expanded ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}
           `}
         >
@@ -213,9 +237,10 @@ export function AddItemButton({
             onClick={onActionClick(runArchive)}
             aria-label={t("app.archiveFinished")}
             className="
-            flex items-center justify-center bg-link px-8 py-4 text-page-bg
-            transition-[filter] active:brightness-90 disabled:opacity-40
-          "
+              flex items-center justify-center bg-link px-8 py-4 text-page-bg
+              transition-[filter,background-color] active:brightness-90 disabled:opacity-40
+              sm:rounded-md sm:bg-link/10 sm:px-4 sm:py-2 sm:text-link sm:hover:bg-link/20
+            "
           >
             <ArchiveIcon className="h-6 w-6" />
           </button>
@@ -226,9 +251,10 @@ export function AddItemButton({
             onClick={onActionClick(runDelete)}
             aria-label={t("app.deleteFinished")}
             className="
-            flex items-center justify-center bg-danger px-8 py-4 text-white
-            transition-[filter] active:brightness-90 disabled:opacity-40
-          "
+              flex items-center justify-center bg-danger px-8 py-4 text-white
+              transition-[filter,background-color] active:brightness-90 disabled:opacity-40
+              sm:rounded-md sm:bg-danger/10 sm:px-4 sm:py-2 sm:text-danger sm:hover:bg-danger/20
+            "
           >
             <TrashIcon className="h-6 w-6" />
           </button>

@@ -144,7 +144,15 @@ inline composer (`AddItemForm`) rather than adding an item directly.
 **Long-pressing** the button (held past ~450 ms) fans it out into a
 floating row of bulk actions centred on the same spot — the (+) shrinks
 and fades as the row scales in, so it reads as the button morphing into
-its alternatives. The row carries two buttons: **Archive finished** and
+its alternatives. On mobile the row is a single rounded bar split into two
+glyph half-circles, sized to the FAB; from the `sm` breakpoint up it
+relaxes to mirror the add button's desktop form — two free-standing
+`rounded-md` buttons tinted in their action colour rather than a solid
+pill. The row is portalled to `document.body` (to clear the
+`DismissBackdrop`'s stacking context) and centred on the (+)'s *measured*
+box rather than a hard-coded `left: 50%`, so it tracks the in-flow desktop
+button even when the pinned sidebar offsets the content column. The row
+carries two buttons: **Archive finished** and
 **Delete finished**, both acting on every finished (checked, still-active)
 item at once via `archiveFinished` / `deleteFinished` (see [Archive /
 delete finished](#archive--delete-finished)). Both fire on the first tap;
