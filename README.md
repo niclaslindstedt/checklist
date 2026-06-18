@@ -150,6 +150,28 @@ The header menu (top-right) also links to the
 in-app changelog, and the source on GitHub, and is where the
 **Settings** dialog now opens from.
 
+## Homepage / showcase page
+
+A standalone showcase page lives at
+**<https://checklist.niclaslindstedt.se/home>** (and `/preview/home`,
+`/branch/home` under the preview / branch slots). It is a no-login page
+that introduces the app, describes what it does, and explains why the app
+requests access to your data — it serves as the **app homepage linked from
+the Google OAuth consent screen**, which Google requires to describe the
+app's functionality and the purpose of its data access without a login.
+
+It is built like the privacy page: `src/ui/ShowcasePage.tsx` rendered via
+the path switch in `src/app/main.tsx`, emitted to `dist/home/index.html`
+by the `emit-showcase-alias` plugin in `vite.config.ts`, with SEO copy in
+`SHOWCASE_ROUTE` (`src/seo/routes.ts`).
+
+> **Maintainers:** keep this page in sync with the app. Whenever you add,
+> remove, or change a user-facing feature — or change what data the app
+> accesses or which OAuth scope it requests — update the showcase's feature
+> list and data-use copy in the **same PR** so it keeps accurately and
+> transparently describing the app (Google holds the homepage to that
+> standard). See "The `/home` showcase page" in [AGENTS.md](AGENTS.md).
+
 ## Troubleshooting
 
 Common failure modes — quota exceeded errors, refused OAuth popups,

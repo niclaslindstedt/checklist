@@ -9,6 +9,7 @@ import {
   HOME_ROUTE,
   PRIVACY_ROUTE,
   ROUTES,
+  SHOWCASE_ROUTE,
   type RouteSeo,
   renderHeadSeo,
   renderLlmsTxt,
@@ -194,6 +195,32 @@ function emitPrivacyAlias(): Plugin {
           type: "asset",
           fileName: "privacy/index.html",
           source: spliceRouteSeo(String(index.source), PRIVACY_ROUTE),
+        });
+      }
+    },
+  };
+}
+
+// Mirror the built `index.html` to `home/index.html` so GitHub Pages serves
+// the SPA from the clean URL `/home/` (and `/preview/home/`, …). The app's
+// `main.tsx` reads `location.pathname` and mounts the showcase page there;
+// the copied HTML loads the same origin-absolute hashed asset URLs, so no
+// rewrite is needed. The HEAD_SEO / NOSCRIPT blocks are re-spliced with
+// `SHOWCASE_ROUTE` so the alias gets its own title, canonical, and fallback
+// body instead of inheriting the homepage's. Runs late so the PWA plugin's
+// manifest-link injection is already baked into the source.
+function emitShowcaseAlias(): Plugin {
+  return {
+    name: "emit-showcase-alias",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle) {
+      const index = bundle["index.html"];
+      if (index && index.type === "asset") {
+        this.emitFile({
+          type: "asset",
+          fileName: "home/index.html",
+          source: spliceRouteSeo(String(index.source), SHOWCASE_ROUTE),
         });
       }
     },
@@ -396,6 +423,7 @@ export default defineConfig({
     }),
     injectHomeSeo(),
     emitVersionJson(),
+    emitShowcaseAlias(),
     emitPrivacyAlias(),
     emitSeoDiscoveryFiles(),
     emitPrecacheManifest(),

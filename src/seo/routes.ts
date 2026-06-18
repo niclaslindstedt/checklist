@@ -5,7 +5,7 @@
 // the HEAD_SEO_START / HEAD_SEO_END markers) is filled from `HOME_ROUTE`,
 // and `dist/privacy/index.html` is spliced from `PRIVACY_ROUTE`. Add a new
 // route here and wire its alias in `vite.config.ts` to extend.
-// Mirrors budget's `src/seo/routes.ts`, trimmed to checklist's two routes.
+// Mirrors budget's `src/seo/routes.ts`, trimmed to checklist's routes.
 
 import {
   AUTHOR,
@@ -209,7 +209,62 @@ export const PRIVACY_ROUTE: RouteSeo = {
   ],
 };
 
-export const ROUTES: readonly RouteSeo[] = [HOME_ROUTE, PRIVACY_ROUTE];
+// The `/home` showcase: a no-login marketing page that identifies the app,
+// describes what it does, and explains why it requests Google Drive / Dropbox
+// access — the page linked as the "app homepage" on the OAuth consent screen.
+// Served from `dist/home/index.html` by the `emit-showcase-alias` plugin in
+// `vite.config.ts`; `main.tsx` mounts `ShowcasePage` for the `/home` path.
+export const SHOWCASE_ROUTE: RouteSeo = {
+  path: "/home/",
+  title: "checklist — what it does & why it asks for access",
+  description:
+    "What checklist does, where your data lives, and why it requests Google " +
+    "Drive or Dropbox access — only when you turn on optional cloud sync.",
+  ogType: "website",
+  sitemap: { changefreq: "monthly", priority: 0.8 },
+  noscriptBody: noscript("checklist — a local-first checklist PWA", [
+    "checklist is a fast, local-first checklist and template app that runs entirely in your browser, works offline, and needs no account. By default your lists are stored only on your device and never leave it. You can optionally turn on cloud sync, at which point — and only then — the app asks for access to an app-specific folder in your Google Drive or Dropbox, purely to save and load your own lists across your devices.",
+    "This page needs JavaScript to render fully. Enable JavaScript and reload.",
+  ]),
+  jsonLd: [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": `${absoluteUrl("/home/")}#page`,
+      url: absoluteUrl("/home/"),
+      name: `About ${SITE_NAME}`,
+      description:
+        "What checklist does, where your data lives, and why it requests Google Drive or Dropbox access only when you enable optional cloud sync.",
+      inLanguage: SITE_LANGUAGE,
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#app` },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: `${SITE_URL}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "About",
+          item: absoluteUrl("/home/"),
+        },
+      ],
+    },
+  ],
+};
+
+export const ROUTES: readonly RouteSeo[] = [
+  HOME_ROUTE,
+  SHOWCASE_ROUTE,
+  PRIVACY_ROUTE,
+];
 
 // --- <head> renderer -------------------------------------------------------
 // Renders the route-specific <head> payload (everything between the
