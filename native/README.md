@@ -2,8 +2,9 @@
 
 A React Native (Expo) front-end for **checklist**, sharing the entire
 platform-agnostic core with the web PWA. This is a separate Expo project that
-lives alongside the web app; **deploying / building it for the stores is a
-later problem** — today it runs in Expo Go and the simulators.
+lives alongside the web app; today it runs in Expo Go and the simulators, and
+[`RELEASING.md`](RELEASING.md) is the step-by-step for building and submitting
+it to the App Store and Google Play via EAS.
 
 ## How it reuses the web app
 
