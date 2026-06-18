@@ -20,15 +20,3 @@ the same on every device. They are fully keyboard-navigable: open one and
 use the **arrow keys** (or **Home** / **End**) to move the highlight,
 **Enter** or **Space** to choose, and **Escape** to close without changing
 anything. The current value carries a check mark.
-
-## Developer mode
-
-The **General** tab hides a **developer mode** toggle. Turn it on and two
-extra tabs appear: **Developer** and **Logs**.
-
-**Logs** captures what the app is doing into an in-app log you can filter
-by level and copy out — handy when something misbehaves and you want to
-report it. **Developer** lets you load **sample data**: a couple of example
-templates and a checklist to play with, kept entirely separate from your
-real lists so nothing you care about is touched. Reload the app and you
-drop straight back to your own data.
