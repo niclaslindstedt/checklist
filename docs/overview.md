@@ -1359,6 +1359,23 @@ short and English-only (a legal page, not chrome). The SEO description
 and noscript fallback in `src/seo/routes.ts` (`PRIVACY_ROUTE`) mirror the
 same wording.
 
+### Showcase page
+
+`src/ui/ShowcasePage.tsx` — the standalone showcase / homepage served at
+`/home` (and `/preview/home`, `/branch/home`). It is a no-login marketing
+page that identifies the app, describes what it does, explains why the app
+requests Google Drive / Dropbox access (the narrow app-folder scope, only
+when the user turns on cloud sync), and links to the privacy policy — the
+page linked as the "app homepage" on the Google OAuth consent screen, which
+Google requires to describe the app's functionality and data use without a
+login. Built exactly like the privacy page: mounted by the path switch in
+`src/app/main.tsx`, emitted to `dist/home/index.html` by the
+`emit-showcase-alias` plugin in `vite.config.ts`, with SEO copy, sitemap
+entry, and noscript fallback in `SHOWCASE_ROUTE` (`src/seo/routes.ts`).
+English-only by design. **Keep its feature list and data-use copy in sync
+with the app** whenever a feature or a data-access path changes — see "The
+`/home` showcase page" in `AGENTS.md`.
+
 ## Workflows / verbs the user might say
 
 ### Add an item

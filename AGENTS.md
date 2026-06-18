@@ -138,7 +138,41 @@ user-facing settings            | `docs/configuration.md`, `README.md` Configura
 the build / deploy pipeline     | `README.md` Install/Quick start, `.github/workflows/pages.yml`
 a user-facing concept, component, or term (added, renamed, or a new word the user uses) | `docs/dictionary.md` (the term → file row) **and** `docs/overview.md` (the term's description) — both in the same PR. See "Resolving user vocabulary".
 a user-facing feature / workflow / surface (shipped or removed) | **Add (or retire) a matching achievement** in the same PR — see "Achievements". Every feature is also an unlockable trophy.
+a user-facing feature, capability, or data-access behaviour | The **`/home` showcase page** (`src/ui/ShowcasePage.tsx`) and `SHOWCASE_ROUTE` in `src/seo/routes.ts` — keep its feature list and data-use copy accurate in the same PR. See "The `/home` showcase page".
 a **large** user-facing feature (the changelog bullet links `[Learn more]`) | `docs/features/<slug>.md` in the same PR — keep it accurate to current behaviour. See "Releases and changelog" → "Feature docs and Learn more".
+
+## The `/home` showcase page
+
+The app serves a standalone **showcase homepage** at `/home`
+(`/preview/home`, `/branch/home` under the other slots) — a no-login
+marketing page that doubles as the **app homepage linked from the Google
+OAuth consent screen**. Google's verification requires that homepage to
+identify the app, fully describe its functionality, explain with
+transparency why the app requests user data, and link to the privacy
+policy — all visible without logging in. It is built exactly like the
+privacy page: `src/ui/ShowcasePage.tsx` is a self-contained React view (no
+app state, English-only), mounted by the path switch in `src/app/main.tsx`
+and emitted to `dist/home/index.html` by the `emit-showcase-alias` plugin
+in `vite.config.ts`. Its `<head>` SEO, sitemap entry, and `<noscript>`
+fallback come from `SHOWCASE_ROUTE` in `src/seo/routes.ts`.
+
+**Keep it in sync with the product.** Because Google holds us to "fully
+describe your app's functionality" and "explain the purpose for which your
+app requests user data", the showcase must not drift from what the app
+actually does:
+
+- **Ship or remove a user-facing feature** → add or drop the matching
+  bullet in the "What you can do with it" list in `ShowcasePage.tsx`.
+- **Change what data the app accesses, which provider, or the OAuth
+  scope** (Google Drive / Dropbox, app-folder vs. broader) → update the
+  "Why the app asks for access to your data" section so the stated purpose
+  and scope stay exact. This copy and the privacy policy must agree.
+- **Rename the app, change the hosted domain, or restructure storage** →
+  reflect it in both the page body and `SHOWCASE_ROUTE`'s title/description
+  (the SEO test caps the title at 70 and the description at 160 chars).
+
+Treat the showcase page as part of the same change that touches a feature
+or a data-access path, never as a follow-up.
 
 ## Achievements
 
