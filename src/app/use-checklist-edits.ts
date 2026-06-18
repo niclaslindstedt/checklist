@@ -33,7 +33,13 @@ import type { Notify } from "./notify.ts";
 import { newId, now } from "./side-effects.ts";
 
 export interface ChecklistEdits {
-  addItem: (title: string) => void;
+  /**
+   * Add an item to the active list. Returns the new item's id so a caller
+   * can act on the freshly-created row — the composer uses it to jump
+   * straight into editing the new item's body (Shift+Enter). Returns null
+   * when the title was blank, so nothing was added.
+   */
+  addItem: (title: string) => string | null;
   /**
    * Import a pasted markdown checklist as fresh items appended to the
    * active list (existing items are kept). Returns how many items were
@@ -153,19 +159,21 @@ export function useChecklistEdits(deps: {
   );
 
   const addItem = useCallback(
-    (title: string) => {
+    (title: string): string | null => {
       const trimmed = title.trim();
-      if (!trimmed) return;
+      if (!trimmed) return null;
+      const id = newId();
       // No toast: the new row appears in place, so the result is visible.
       commit(
         addItemOp(
           listRef.current,
-          { id: newId(), title: trimmed },
+          { id, title: trimmed },
           now(),
           addItemPositionRef.current,
         ),
         t("toast.itemAdded", { title: trimmed }),
       );
+      return id;
     },
     [commit, t],
   );

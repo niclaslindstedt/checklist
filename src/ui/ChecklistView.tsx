@@ -61,8 +61,30 @@ function ChecklistViewImpl() {
   const [drafting, setDrafting] = useState(false);
   const startDraft = useCallback(() => setDrafting(true), []);
   const closeDraft = useCallback(() => setDrafting(false), []);
+
+  // When the composer adds an item via Shift+Enter, it hands the new row's
+  // id here so that row opens straight into its body editor. The row clears
+  // the flag once it's consumed it, so it fires exactly once.
+  const [editBodyOfId, setEditBodyOfId] = useState<string | null>(null);
+  const clearEditBody = useCallback(() => setEditBodyOfId(null), []);
+  const addItemAndEditBody = useCallback(
+    (title: string) => {
+      const id = addItem(title);
+      if (id) setEditBodyOfId(id);
+      // Close the composer — focus moves to the new row's body field.
+      setDrafting(false);
+    },
+    [addItem],
+  );
+
   const draftRow = drafting ? (
-    <AddItemForm onAdd={addItem} onImport={importItems} onClose={closeDraft} />
+    <AddItemForm
+      onAdd={addItem}
+      onAddWithBody={addItemAndEditBody}
+      onImport={importItems}
+      onClose={closeDraft}
+      notesDisabled={disableItemNotes}
+    />
   ) : null;
 
   return (
@@ -118,6 +140,8 @@ function ChecklistViewImpl() {
                 onDelete={remove}
                 onEdit={editItem}
                 onAddAfter={startDraft}
+                autoEditBody={item.id === editBodyOfId}
+                onAutoEditConsumed={clearEditBody}
                 notesDisabled={disableItemNotes}
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}

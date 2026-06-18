@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { useT } from "../i18n";
 import { ClearableInput } from "./form/index.ts";
@@ -9,9 +9,13 @@ import { ClearableInput } from "./form/index.ts";
 // grabs focus so the soft keyboard comes straight up.
 //
 // Submitting (Enter) adds the item and clears the field while keeping
-// focus, so several can be jotted in a row. Blurring commits whatever was
-// typed and closes; blurring an empty field just closes — an empty draft
-// is never added, so the list never persists a blank item.
+// focus, so several can be jotted in a row. Shift+Enter instead adds the
+// item and jumps straight into editing its body — mirroring the in-row
+// editor, where Shift+Enter on the title reveals the note field — so a
+// thought that needs more than a one-line title flows on without re-tapping
+// the new row. Blurring commits whatever was typed and closes; blurring an
+// empty field just closes — an empty draft is never added, so the list
+// never persists a blank item.
 //
 // Paste a markdown checklist (one or many `- [ ]` / `- [x]` / `- ` lines)
 // into the field and it's imported as fresh items instead of landing as
@@ -21,31 +25,66 @@ import { ClearableInput } from "./form/index.ts";
 
 export function AddItemForm({
   onAdd,
+  onAddWithBody,
   onImport,
   onClose,
+  notesDisabled = false,
 }: {
   onAdd: (title: string) => void;
+  /**
+   * Shift+Enter: add the item and immediately open its body for editing.
+   * No-op equivalent to `onAdd` when item notes are switched off.
+   */
+  onAddWithBody: (title: string) => void;
   onImport: (markdown: string) => number;
   onClose: () => void;
+  /** When set, item notes are off — Shift+Enter falls back to a plain add. */
+  notesDisabled?: boolean;
 }) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  // Set when a commit has already fired (Shift+Enter, which closes the
+  // composer) so the trailing blur doesn't add the same item a second time.
+  const committed = useRef(false);
   const t = useT();
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  const addAndContinue = () => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    onAdd(trimmed);
+    setValue("");
+    inputRef.current?.focus();
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    // Own the Enter key outright so the native form submit never double-fires
+    // alongside this handler — `onSubmit` stays only as a non-keyboard path.
+    e.preventDefault();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    // Shift+Enter adds the item and hands off to editing its body; with notes
+    // switched off there's no body to edit, so it falls through to a plain add.
+    if (e.shiftKey && !notesDisabled) {
+      committed.current = true;
+      onAddWithBody(trimmed);
+    } else {
+      onAdd(trimmed);
+      setValue("");
+      inputRef.current?.focus();
+    }
+  };
+
   return (
     <form
       className="flex min-h-11 items-center gap-3 border-b border-line px-[var(--density-row-px)] py-[var(--density-row-py)]"
       onSubmit={(e) => {
         e.preventDefault();
-        const trimmed = value.trim();
-        if (!trimmed) return;
-        onAdd(trimmed);
-        setValue("");
-        inputRef.current?.focus();
+        addAndContinue();
       }}
     >
       {/* Sized to match the checkbox in `ChecklistRow` (h-5 w-5) so the
@@ -61,6 +100,7 @@ export function AddItemForm({
         ref={inputRef}
         value={value}
         onValueChange={setValue}
+        onKeyDown={onKeyDown}
         onPaste={(e) => {
           const text = e.clipboardData.getData("text");
           // Hand the paste to the importer; a non-zero count means it was a
@@ -73,6 +113,9 @@ export function AddItemForm({
           }
         }}
         onBlur={() => {
+          // Shift+Enter already committed and is closing the composer; don't
+          // let the blur it triggers add the item again.
+          if (committed.current) return;
           const trimmed = value.trim();
           if (trimmed) onAdd(trimmed);
           onClose();

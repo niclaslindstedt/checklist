@@ -49,6 +49,15 @@ type Props = {
   onEdit: (id: string, fields: { title?: string; notes?: string }) => void;
   /** Open a fresh add-item draft — fired when Enter commits a title edit. */
   onAddAfter?: () => void;
+  /**
+   * Open this row straight into its body editor as soon as it mounts — the
+   * composer sets it on the row it just created via Shift+Enter so a new
+   * item flows on into editing its note. Cleared through `onAutoEditConsumed`
+   * once acted on, so it fires exactly once.
+   */
+  autoEditBody?: boolean;
+  /** Tell the parent the auto body-edit has been consumed; clears the flag. */
+  onAutoEditConsumed?: () => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
   dragHandleProps: DragHandleProps;
@@ -63,6 +72,8 @@ function ChecklistRowImpl({
   onDelete,
   onEdit,
   onAddAfter,
+  autoEditBody = false,
+  onAutoEditConsumed,
   notesDisabled = false,
   dragHandleProps,
   dragging,
@@ -84,6 +95,16 @@ function ChecklistRowImpl({
     setEditFocusBody(focusBody);
     setEditing(true);
   }, []);
+
+  // The composer just created this item with Shift+Enter and wants it opened
+  // straight into its body editor. Honour it once, then tell the parent it's
+  // been consumed so it doesn't re-open on a later render. Notes-off has no
+  // body to edit, so it's ignored there.
+  useEffect(() => {
+    if (!autoEditBody || notesDisabled) return;
+    enterEdit(true);
+    onAutoEditConsumed?.();
+  }, [autoEditBody, notesDisabled, enterEdit, onAutoEditConsumed]);
 
   // Tapping the title: expand a collapsed body first (reveal), edit on the
   // next tap. A note-less item has nothing to reveal, so it edits straight

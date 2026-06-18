@@ -173,9 +173,16 @@ deliberately summoned.
 real `ChecklistRow` so the spot reads as the item being created — and
 grabs focus so the soft keyboard comes straight up. Enter adds the item,
 clears the field, and keeps focus so the user can type item after item
-without re-tapping — a plain-text-editor feel. Blurring commits whatever
-was typed and closes; blurring an empty field just closes, so a blank
-item is never created or persisted. Where the new item lands (top or
+without re-tapping — a plain-text-editor feel. **Shift+Enter** instead
+adds the item and jumps straight into editing its body — mirroring the
+in-row editor, where Shift+Enter on a title reveals the note field — so a
+thought that needs more than a one-line title flows on without re-tapping
+the new row; the composer hands the new item's id to its row (via
+`addItem`'s return and `autoEditBody` on `ChecklistRow`), which opens its
+body editor focused and ready. With item notes switched off there's no
+body to edit, so Shift+Enter falls back to a plain add. Blurring commits
+whatever was typed and closes; blurring an empty field just closes, so a
+blank item is never created or persisted. Where the new item lands (top or
 bottom) follows the `addItemPosition` setting, surfaced on the checklist
 surface for the view to place the draft row.
 

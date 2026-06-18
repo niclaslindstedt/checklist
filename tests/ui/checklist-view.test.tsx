@@ -42,6 +42,38 @@ describe("ChecklistView", () => {
     expect(addItem).toHaveBeenCalledWith("New thing");
   });
 
+  it("adds the item and opens its body editor on Shift+Enter in the composer", () => {
+    // addItem returns the new row's id; the view hands that to the row so it
+    // opens straight into its body editor. Seed the item so that row exists.
+    const addItem = vi.fn().mockReturnValue("i1");
+    renderView({ items, addItem });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "Buy milk" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    // The item is added exactly once (the closing composer's blur must not
+    // re-add it), and the new row's note field is open and ready.
+    expect(addItem).toHaveBeenCalledTimes(1);
+    expect(addItem).toHaveBeenCalledWith("Buy milk");
+    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+  });
+
+  it("falls back to a plain add on Shift+Enter when notes are disabled", () => {
+    const addItem = vi.fn().mockReturnValue("i1");
+    renderView({ items: [], addItem, disableItemNotes: true });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "New thing" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    // No body to edit — Shift+Enter behaves like Enter, keeping the composer
+    // open for the next item rather than opening a note field.
+    expect(addItem).toHaveBeenCalledWith("New thing");
+    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.getByLabelText("Add item")).toBeTruthy();
+  });
+
   it("opens a fresh composer after committing an item edit with Enter", () => {
     const editItem = vi.fn();
     renderView({ editItem });
