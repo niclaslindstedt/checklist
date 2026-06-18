@@ -5,6 +5,7 @@ import type { SaveStatus } from "../app/use-checklist.ts";
 import {
   CloudAlertIcon,
   CloudCheckIcon,
+  CloudOffIcon,
   CloudUploadIcon,
   SpinnerIcon,
 } from "./icons.tsx";
@@ -23,6 +24,8 @@ type Props = {
   providerName: string;
   status: SaveStatus;
   dirty: boolean;
+  /** True when the backend is unreachable and we're on the on-device copy. */
+  offline: boolean;
   onSave: () => void;
   onOpenDetails: () => void;
 };
@@ -40,9 +43,21 @@ type View = {
 function viewFor(
   status: SaveStatus,
   dirty: boolean,
+  offline: boolean,
   providerName: string,
   t: TFunction,
 ): View {
+  // Offline takes precedence: a stale local copy must never read as
+  // "synced". The other states (conflict, auth-error) need a live backend
+  // response to arise, so they can't co-occur with being offline.
+  if (offline) {
+    return {
+      Icon: CloudOffIcon,
+      label: t("sync.offline"),
+      tone: "flag",
+      action: "open",
+    };
+  }
   switch (status) {
     case "saving":
       return {
@@ -111,11 +126,12 @@ export function SyncStatus({
   providerName,
   status,
   dirty,
+  offline,
   onSave,
   onOpenDetails,
 }: Props) {
   const t = useT();
-  const view = viewFor(status, dirty, providerName, t);
+  const view = viewFor(status, dirty, offline, providerName, t);
   const busy = status === "saving";
   const onClick = view.action === "save" ? onSave : onOpenDetails;
   return (

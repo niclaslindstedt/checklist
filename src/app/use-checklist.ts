@@ -75,6 +75,12 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   statusDetail: string | null;
   /** Whether there are local edits not yet persisted to the backend. */
   dirty: boolean;
+  /**
+   * True when the active (cloud) backend is unreachable and the document on
+   * screen is the on-device cache — the user is editing a local copy that
+   * re-syncs when the network returns. Always false for the local backends.
+   */
+  offline: boolean;
   /** False until the backend's first load resolves — gates the achievement watcher. */
   loaded: boolean;
   /** Flush any debounced save immediately (the "save now" affordance). */
@@ -213,6 +219,7 @@ export function useChecklist(
       status: sync.status,
       statusDetail: sync.statusDetail,
       dirty: sync.dirty,
+      offline: sync.offline,
       loaded: sync.loaded,
       saveNow: sync.saveNow,
       undo,
@@ -233,6 +240,7 @@ export function useChecklist(
       sync.status,
       sync.statusDetail,
       sync.dirty,
+      sync.offline,
       sync.loaded,
       sync.saveNow,
       undo,

@@ -123,6 +123,8 @@ const settings = {
       "Your lists are encrypted. Enter your passphrase to unlock them on this device.",
     unlock: "Unlock",
     unlockWrong: "Wrong passphrase. Try again.",
+    unlockOffline:
+      "Can't reach your cloud, and there's no offline copy saved on this device yet. Reconnect and try again.",
   },
 
   logs: {

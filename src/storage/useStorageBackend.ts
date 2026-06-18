@@ -35,6 +35,11 @@ import {
   setEncryption as persistEncryption,
   setGdriveToken,
 } from "./backend-preference.ts";
+import {
+  OfflineUnavailableError,
+  localCacheKey,
+  withLocalCache,
+} from "./cache/index.ts";
 import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto.ts";
 import {
   type DropboxAuth,
@@ -360,10 +365,26 @@ export function useStorageBackend(): UseStorageBackend {
   // localStorage and state via the selection's `onAccessTokenRefreshed`.
   const inner = useMemo<StorageAdapter>(() => {
     switch (selection.kind) {
+      // Cloud backends mirror their bytes into a local cache so the document
+      // can be unlocked, read, and edited offline (the cache holds the
+      // encrypted envelope when encryption is on). Folder / browser are
+      // already on-device, so they need no mirror.
       case "dropbox":
-        return createDropboxAdapter(selection.auth, fetch, activeNamespace);
+        return withLocalCache(
+          createDropboxAdapter(selection.auth, fetch, activeNamespace),
+          {
+            storage: globalThis.localStorage,
+            key: localCacheKey("dropbox", activeNamespace),
+          },
+        );
       case "gdrive":
-        return createGdriveAdapter(selection.token, fetch, activeNamespace);
+        return withLocalCache(
+          createGdriveAdapter(selection.token, fetch, activeNamespace),
+          {
+            storage: globalThis.localStorage,
+            key: localCacheKey("gdrive", activeNamespace),
+          },
+        );
       case "folder":
         return createFolderAdapter({
           directoryHandle: selection.handle,
@@ -652,9 +673,21 @@ export function useStorageBackend(): UseStorageBackend {
   const unlock = useCallback(
     async (candidate: string) => {
       if (!candidate) throw new Error("Passphrase is required");
-      // Verify by decrypting the stored envelope. Plaintext-at-rest (the
-      // re-wrap never ran) can't be verified, so it unlocks optimistically.
-      const snap = await inner.load();
+      // Verify by decrypting the stored envelope. For a cloud backend the
+      // load falls back to the on-device cache when offline, so the
+      // passphrase can be checked in airplane mode against the cached
+      // ciphertext. If the backend is unreachable *and* nothing is cached,
+      // map it to a distinct error so the gate says "you're offline" instead
+      // of the misleading "wrong passphrase".
+      let snap: StoredSnapshot | null;
+      try {
+        snap = await inner.load();
+      } catch (err) {
+        log.warn("unlock: backend unreachable and no cached copy", err);
+        throw new OfflineUnavailableError();
+      }
+      // Plaintext-at-rest (the re-wrap never ran) can't be verified, so it
+      // unlocks optimistically.
       if (snap && isEncryptedEnvelope(snap.text)) {
         await decryptEnvelope(snap.text, candidate); // throws on wrong pass
       }

@@ -220,6 +220,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "När två enheter ändrar samma lista innan de synkas frågar appen vilken kopia som vinner i stället för att tyst välja — du behåller din eller tar deras.",
     },
+    offGrid: {
+      name: "Utanför nätet",
+      condition: "Öppna dina listor när du är offline.",
+      learnMore:
+        "Ett molnbackend behåller en kopia av dina listor på den här enheten, så att du kan låsa upp, läsa och redigera dem helt utan anslutning — på ett flygplan, i en tunnel, var som helst. Dina ändringar sparas lokalt och synkas tillbaka till molnet så fort du är online igen.",
+    },
     quietLife: {
       name: "Lugn och ro",
       condition: "Tysta aviseringarna.",

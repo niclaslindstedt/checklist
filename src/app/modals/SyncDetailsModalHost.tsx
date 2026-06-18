@@ -21,6 +21,7 @@ export function SyncDetailsModalHost() {
       status={sync.status}
       statusDetail={sync.statusDetail}
       dirty={sync.dirty}
+      offline={sync.offline}
       onSaveNow={sync.onSave}
       onReconnect={sync.onReconnect}
       onClose={close}

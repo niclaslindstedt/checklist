@@ -227,6 +227,12 @@ const achievements = {
       learnMore:
         "When two devices edit the same list before syncing, the app asks which copy wins rather than silently picking — you keep yours or take theirs.",
     },
+    offGrid: {
+      name: "Off the Grid",
+      condition: "Open your lists while offline.",
+      learnMore:
+        "A cloud backend keeps a copy of your lists on this device, so you can unlock, read, and edit them with no connection at all — on a plane, in a tunnel, anywhere. Your changes are saved locally and sync back to the cloud the moment you're online again.",
+    },
     quietLife: {
       name: "Quiet Life",
       condition: "Silence the toast notifications.",

@@ -216,6 +216,87 @@ describe("useChecklist save / undo / reload cycle", () => {
   });
 });
 
+describe("useChecklist offline / reconnect", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("flags offline when a load is served from the on-device cache", async () => {
+    // `withLocalCache` returns the cached snapshot marked `offline: true`
+    // when the backend is unreachable; the engine must surface that.
+    const adapter: StorageAdapter = {
+      id: "dropbox",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => ({
+        text: serialize(emptySnapshot()),
+        revision: "cached",
+        offline: true,
+      }),
+      save: async (next: string) => ({ text: next, revision: "r" }),
+      saveDebounceMs: 0,
+    };
+    const { result } = renderHook(() => useChecklist(adapter));
+    await waitFor(() => expect(result.current.offline).toBe(true));
+  });
+
+  it("goes offline on a network save failure, then re-syncs when the connection returns", async () => {
+    vi.useFakeTimers();
+    // A cloud adapter that throws a raw network error (TypeError, the way
+    // `fetch` rejects offline) until the test flips `healthy`. The engine
+    // should mark itself offline, keep the edit queued, and — when the
+    // browser fires `online` — flush the queue to a clean save.
+    let serverText = serialize(emptySnapshot());
+    let serverRev = 1;
+    let healthy = false;
+    const adapter: StorageAdapter = {
+      id: "gdrive",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => ({
+        text: serverText,
+        revision: String(serverRev),
+      }),
+      save: async (next: string) => {
+        if (!healthy) throw new TypeError("Failed to fetch");
+        serverText = next;
+        serverRev += 1;
+        return { text: serverText, revision: String(serverRev) };
+      },
+      saveDebounceMs: 0,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    act(() => result.current.addItem("a"));
+    // Drain the full backoff curve — the save ends up hard-errored, and the
+    // network-level failure flipped us offline.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(result.current.status).toBe("error");
+    expect(result.current.offline).toBe(true);
+    expect(result.current.dirty).toBe(true);
+
+    // The connection returns. The `online` event flushes the queued edit; it
+    // lands cleanly and the offline flag clears.
+    healthy = true;
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.status).toBe("saved");
+    expect(result.current.offline).toBe(false);
+    expect(result.current.dirty).toBe(false);
+    expect(parse(serverText).checklists[0]!.items.map((i) => i.title)).toEqual([
+      "a",
+    ]);
+  });
+});
+
 describe("useChecklist throttle / transient-retry recovery", () => {
   afterEach(() => {
     vi.useRealTimers();

@@ -26,6 +26,7 @@ import {
   RateLimitError,
   type StorageAdapter,
 } from "../storage/adapter.ts";
+import { isOfflineError } from "../storage/cache/index.ts";
 import {
   backoffDelayMs,
   isRetryableSaveError,
@@ -99,6 +100,13 @@ export interface ChecklistSync {
   statusDetail: string | null;
   /** Whether there are local edits not yet persisted to the backend. */
   dirty: boolean;
+  /**
+   * True when the active backend is unreachable and the document on screen
+   * came from (or is being held in) the on-device cache — i.e. the user is
+   * working against a local copy that will re-sync when the network returns.
+   * Always false for the local backends, which are never "offline".
+   */
+  offline: boolean;
   /** Re-read the document from the active backend, replacing what's on screen. */
   reload: () => Promise<void>;
   /** Flush any debounced save immediately (the "save now" affordance). */
@@ -139,6 +147,11 @@ export function useChecklistSync(deps: {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [statusDetail, setStatusDetail] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // True while the backend is unreachable and we're serving / holding the
+  // on-device cache. Drives the header's offline glyph so a stale local copy
+  // never masquerades as "synced". Cleared on any successful save and on a
+  // live (non-cached) load.
+  const [offline, setOffline] = useState(false);
   // Flips true once the first async backend load resolves; reset on every
   // backend swap so the achievement watcher re-baselines against the new
   // document instead of treating the swap as a burst of fresh unlocks.
@@ -221,6 +234,8 @@ export function useChecklistSync(deps: {
           // (throttle or transient) starts its curve from scratch.
           consecutiveThrottles.current = 0;
           transientRetries.current = 0;
+          // A write landed — we're demonstrably back online.
+          setOffline(false);
           revisionRef.current = stored.revision;
           // An edit queued while this save was in flight. Each queued edit is a
           // full snapshot, so the latest supersedes every one before it — send
@@ -236,6 +251,12 @@ export function useChecklistSync(deps: {
         .catch((err: unknown) => {
           inFlight.current = false;
           if (saveGeneration.current !== generation) return;
+          // A network-level save failure means we've dropped offline since
+          // the last good round-trip — reflect it so the header shows the
+          // local-copy state while the edit waits to re-sync. `withLocalCache`
+          // has already stashed the bytes; the retry below (and the `online`
+          // listener) will push them when the connection returns.
+          if (isOfflineError(err)) setOffline(true);
           if (err instanceof ConflictError) {
             log.warn("save: remote moved — surfacing conflict");
             setStatus("conflict");
@@ -375,16 +396,31 @@ export function useChecklistSync(deps: {
     setDirty(false);
     setLoaded(false);
     let cancelled = false;
-    void active.load().then((stored) => {
-      if (cancelled) return;
-      revisionRef.current = stored?.revision;
-      const loadedDoc = withActiveList(parse(stored?.text));
-      setDoc(loadedDoc);
-      // The freshly-loaded document is a new baseline — drop the old
-      // backend's undo history so "undo" can't jump to a vanished state.
-      resetHistory.current(loadedDoc);
-      setLoaded(true);
-    });
+    void active
+      .load()
+      .then((stored) => {
+        if (cancelled) return;
+        revisionRef.current = stored?.revision;
+        // A cloud load served from the on-device cache carries `offline`;
+        // record it so the header reflects that we're on a local copy, and
+        // award the "off the grid" achievement the first time it happens.
+        setOffline(stored?.offline ?? false);
+        if (stored?.offline) unlock("offGrid");
+        const loadedDoc = withActiveList(parse(stored?.text));
+        setDoc(loadedDoc);
+        // The freshly-loaded document is a new baseline — drop the old
+        // backend's undo history so "undo" can't jump to a vanished state.
+        resetHistory.current(loadedDoc);
+        setLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Offline with nothing cached (or a transient backend error): keep an
+        // empty document on screen rather than hanging on the loading state.
+        log.warn("initial load failed", err);
+        if (isOfflineError(err)) setOffline(true);
+        setLoaded(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -418,8 +454,19 @@ export function useChecklistSync(deps: {
     saveGeneration.current += 1;
     inFlight.current = false;
     pendingDoc.current = null;
-    const stored = await adapterRef.current.load();
+    let stored;
+    try {
+      stored = await adapterRef.current.load();
+    } catch (err) {
+      // Pulling to refresh while offline with nothing cached: leave what's on
+      // screen and flag offline rather than blanking the list.
+      log.warn("reload failed", err);
+      if (isOfflineError(err)) setOffline(true);
+      return;
+    }
     revisionRef.current = stored?.revision;
+    setOffline(stored?.offline ?? false);
+    if (stored?.offline) unlock("offGrid");
     setConflict(null);
     setStatus("idle");
     setStatusDetail(null);
@@ -428,6 +475,21 @@ export function useChecklistSync(deps: {
     setDoc(reloaded);
     resetHistory.current(reloaded);
   }, [flushSave, resetHistory]);
+
+  // When connectivity returns, flush whatever edit piled up offline so it
+  // syncs to the backend without the user lifting a finger. The browser's
+  // `online` event is the trigger; a successful save clears the offline flag
+  // (see `performSave`). Cloud `load()` failures during the outage left the
+  // edits queued in `pendingDoc`, so this is all the reconnect needs.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onOnline = () => {
+      log.info("connectivity restored — flushing queued save");
+      flushSaveRef.current();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
 
   // Push any debounced edit to the backend immediately — the "save now"
   // action on the cloud-sync glyph when there are unsaved changes.
@@ -478,6 +540,7 @@ export function useChecklistSync(deps: {
     status,
     statusDetail,
     dirty,
+    offline,
     loaded,
     reload,
     saveNow,

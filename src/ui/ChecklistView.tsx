@@ -90,6 +90,7 @@ function ChecklistViewImpl() {
               providerName={sync.providerName}
               status={sync.status}
               dirty={sync.dirty}
+              offline={sync.offline}
               onSave={sync.onSave}
               onOpenDetails={sync.onOpenDetails}
             />

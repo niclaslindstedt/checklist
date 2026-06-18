@@ -31,6 +31,8 @@ export type SyncInfo = {
   /** Why the last save failed; shown in the details modal. Null unless error. */
   statusDetail: string | null;
   dirty: boolean;
+  /** True when the backend is unreachable and we're on the on-device copy. */
+  offline: boolean;
   onSave: () => void;
   onOpenDetails: () => void;
   /**
