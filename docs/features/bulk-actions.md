@@ -13,7 +13,7 @@ small half-circle bar of bulk actions, then morphs back the moment you're done.
    destroyed.
 3. **Delete everything finished.** Tap the **red** action to clear every
    checked item in one pass. A single tap does it — there's no confirm step,
-   because the sweep is [undoable](feature:undo-redo) if you didn't mean it.
+   because the sweep is undoable if you didn't mean it.
 
 Both actions touch only **finished** items (checked and still in the list), so
 anything you haven't ticked stays put. The buttons are dimmed and inert when
