@@ -27,7 +27,12 @@ import { PlusIcon } from "./icons.tsx";
 //   • ⌘/Ctrl+Enter commits from the body (a bare Enter is a newline there).
 //   • Escape cancels, leaving the item untouched.
 //   • Blurring the whole editor commits whatever was typed, so an edit is
-//     never lost to a stray tap elsewhere.
+//     never lost to a stray tap elsewhere — but an editor left empty (no
+//     title, no body) deletes its item instead, so a wiped-out line never
+//     lingers (the parent's `onSubmit` makes that call).
+//   • Backspace at the start of an emptied title hands off to `onBackspaceEmpty`
+//     so the item is removed and editing backs up into the line above — keep
+//     the key held and you walk up the list erasing lines as you go.
 //
 // The "Add note" affordance beneath the title is the second way into the
 // body, alongside Shift+Enter.
@@ -38,6 +43,7 @@ export function ChecklistRowEditor({
   onCancel,
   onToggle,
   onAddAfter,
+  onBackspaceEmpty,
   focusBody = false,
   notesDisabled = false,
 }: {
@@ -52,6 +58,16 @@ export function ChecklistRowEditor({
    * the add button.
    */
   onAddAfter?: () => void;
+  /**
+   * Backspace was pressed at the start of an already-empty title (with no
+   * body), so the user means to erase this line and back up into the one
+   * above. Return true if the caller handled it (removed this item and moved
+   * editing up) — the editor then swallows the keystroke and stands down so
+   * the trailing unmount-blur doesn't fire a second outcome. Return false
+   * (e.g. this is the top line, nothing above) to let the keypress fall
+   * through untouched.
+   */
+  onBackspaceEmpty?: () => boolean;
   /** Open with the body field shown and focused (the "add a note" path). */
   focusBody?: boolean;
   /**
@@ -83,6 +99,11 @@ export function ChecklistRowEditor({
     const len = el?.value.length ?? 0;
     el?.setSelectionRange(len, len);
   }, [focusBody, notesDisabled]);
+
+  // The body text the item would carry — the live field while it's shown,
+  // else whatever note is stored (hidden when notes are off or collapsed).
+  // Used to gate the "empty line" backspace so a hidden note is never lost.
+  const bodyContent = () => (bodyShown ? notes : (item.notes ?? "")).trim();
 
   const submit = (addAfter = false) => {
     if (done.current) return;
@@ -118,6 +139,14 @@ export function ChecklistRowEditor({
     } else if (e.key === "Escape") {
       e.preventDefault();
       cancel();
+    } else if (e.key === "Backspace" && title === "" && !bodyContent()) {
+      // Erasing an already-empty line: hand off so the item is removed and
+      // editing backs up into the line above. If the caller takes it, swallow
+      // the keystroke and stand down so the unmount-blur doesn't also commit.
+      if (onBackspaceEmpty?.()) {
+        e.preventDefault();
+        done.current = true;
+      }
     }
   };
 

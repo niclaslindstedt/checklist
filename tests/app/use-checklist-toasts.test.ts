@@ -56,6 +56,29 @@ describe("useChecklist action toasts", () => {
     expect(notify).toHaveBeenCalledWith("Undone: Deleted “milk”");
   });
 
+  it("removes an emptied item silently but keeps it on the undo timeline", async () => {
+    const notify = vi.fn();
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() =>
+      useChecklist(adapter, "bottom", notify),
+    );
+    await act(async () => {});
+
+    act(() => result.current.addItem("scratch"));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    const id = result.current.items[0]!.id;
+
+    // No toast: the emptied row vanishes where the user is already looking.
+    act(() => result.current.removeEmpty(id));
+    await waitFor(() => expect(result.current.items).toHaveLength(0));
+    expect(notify).not.toHaveBeenCalled();
+
+    // Still undoable — a mis-erase resurrects the item, announced by label.
+    act(() => result.current.undo());
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(notify).toHaveBeenCalledWith("Undone: Removed empty item");
+  });
+
   it("toasts archive and restore with a success cue on restore", async () => {
     const notify = vi.fn();
     const adapter = memoryAdapter();

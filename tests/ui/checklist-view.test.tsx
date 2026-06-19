@@ -141,6 +141,55 @@ describe("ChecklistView", () => {
     expect(renameChecklist).toHaveBeenCalledWith("list-0", "Packing");
   });
 
+  describe("erasing items with Backspace", () => {
+    const twoItems: ChecklistItem[] = [
+      { id: "i1", title: "Milk", checked: false },
+      { id: "i2", title: "Bread", checked: false },
+    ];
+
+    it("removes an emptied line and backs editing up to the line above", () => {
+      const removeEmpty = vi.fn();
+      renderView({ items: twoItems, removeEmpty });
+
+      // Edit the second item, erase it, then Backspace past the start.
+      fireEvent.click(screen.getByText("Bread"));
+      const input = screen.getByDisplayValue("Bread") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "" } });
+      fireEvent.keyDown(input, { key: "Backspace" });
+
+      // The emptied line is removed, and the line above opens for editing
+      // (its title is now an input rather than a button).
+      expect(removeEmpty).toHaveBeenCalledWith("i2");
+      expect(screen.getByDisplayValue("Milk")).toBeTruthy();
+    });
+
+    it("does not back up past the top line on Backspace", () => {
+      const removeEmpty = vi.fn();
+      renderView({ items: twoItems, removeEmpty });
+
+      fireEvent.click(screen.getByText("Milk"));
+      const input = screen.getByDisplayValue("Milk") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "" } });
+      fireEvent.keyDown(input, { key: "Backspace" });
+
+      // Top of the list: nothing above to back into, so the keystroke is left
+      // alone (the empty line is only cleaned up on blur).
+      expect(removeEmpty).not.toHaveBeenCalled();
+    });
+
+    it("removes an item emptied out and then blurred", () => {
+      const removeEmpty = vi.fn();
+      renderView({ items: twoItems, removeEmpty });
+
+      fireEvent.click(screen.getByText("Bread"));
+      const input = screen.getByDisplayValue("Bread") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "" } });
+      fireEvent.blur(input);
+
+      expect(removeEmpty).toHaveBeenCalledWith("i2");
+    });
+  });
+
   describe("bulk actions (long-press the add button)", () => {
     it("keeps the bulk actions out of reach until a long-press", () => {
       renderView({ checkedCount: 1 });

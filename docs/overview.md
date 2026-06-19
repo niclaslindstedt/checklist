@@ -120,6 +120,21 @@ and a no-op edit is dropped without writing. A title change unlocks the
 **Wordsmith** achievement; adding a body unlocks **Note to Self** through
 its derived predicate.
 
+**Don't keep empty lines.** An item edited down to nothing — a blank title
+and no body left — is deleted rather than committed, so a wiped-out line
+never lingers: blurring such an editor (or committing it) routes through
+`ChecklistRow`'s `submitEdit` to the silent `removeEmpty` verb instead of
+`editItem`. **Backspace** at the start of an already-empty title (with no
+body) goes further: it removes the line and reopens the line above in its
+title editor with the cursor at the end (`onBackspaceEmpty` →
+`ChecklistView.backspaceEmpty` → `removeEmpty` + an `autoEditTitle` handoff
+to the previous row), so holding backspace walks up the list erasing lines.
+At the top line there's nothing above to back into, so the keypress falls
+through and the empty line is only cleaned up on blur. `removeEmpty`
+(`use-checklist-edits.ts`) raises no toast — the row vanishes where the
+cursor already is — but still records an undo step labelled
+`toast.emptyItemRemoved`, so a mis-erase is recoverable.
+
 ### Markdown renderer
 
 `src/ui/markdown/renderMarkdown.tsx` — a tiny, dependency-free renderer

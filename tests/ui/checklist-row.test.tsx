@@ -292,6 +292,71 @@ describe("ChecklistRow editing", () => {
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
   });
 
+  it("removes the item when committed empty instead of keeping a blank line", () => {
+    const onEdit = vi.fn();
+    const onRemoveEmpty = vi.fn();
+    renderRow({ onEdit, onRemoveEmpty });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+
+    expect(onRemoveEmpty).toHaveBeenCalledWith("i1");
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it("keeps an item with a stored note when only its title is emptied", () => {
+    const onEdit = vi.fn();
+    const onRemoveEmpty = vi.fn();
+    renderRow({ item: { ...item, notes: "keep me" }, onEdit, onRemoveEmpty });
+
+    // Reveal then edit the title; erase it and blur. The note must survive, so
+    // the item is edited (a no-op title), not removed.
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+
+    expect(onRemoveEmpty).not.toHaveBeenCalled();
+  });
+
+  it("backs up to the line above on Backspace in an empty title", () => {
+    const onBackspaceEmpty = vi.fn().mockReturnValue(true);
+    renderRow({ onBackspaceEmpty });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Backspace" });
+
+    expect(onBackspaceEmpty).toHaveBeenCalledWith("i1");
+  });
+
+  it("does not back up on Backspace while the title still has text", () => {
+    const onBackspaceEmpty = vi.fn().mockReturnValue(true);
+    renderRow({ onBackspaceEmpty });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "x" } });
+    fireEvent.keyDown(input, { key: "Backspace" });
+
+    expect(onBackspaceEmpty).not.toHaveBeenCalled();
+  });
+
+  it("opens straight into the title editor when autoEditTitle is set", () => {
+    const onAutoEditTitleConsumed = vi.fn();
+    renderRow({ autoEditTitle: true, onAutoEditTitleConsumed });
+
+    // The title field is focused and ready (no body field forced open).
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(onAutoEditTitleConsumed).toHaveBeenCalledTimes(1);
+  });
+
   it("commits a title + note together from the editor", () => {
     const onEdit = vi.fn();
     renderRow({ item: { ...item, notes: "old" }, onEdit });

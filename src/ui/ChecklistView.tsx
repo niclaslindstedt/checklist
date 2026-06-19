@@ -37,6 +37,7 @@ function ChecklistViewImpl() {
     editItem,
     toggle,
     remove,
+    removeEmpty,
     archive,
     archiveFinished,
     deleteFinished,
@@ -67,6 +68,24 @@ function ChecklistViewImpl() {
   // the flag once it's consumed it, so it fires exactly once.
   const [editBodyOfId, setEditBodyOfId] = useState<string | null>(null);
   const clearEditBody = useCallback(() => setEditBodyOfId(null), []);
+
+  // Backspacing an empty line removes it and hands editing to the line above.
+  // The view names that line here so its row opens straight into its title
+  // editor; the row clears the flag once consumed, so it fires exactly once.
+  const [editTitleOfId, setEditTitleOfId] = useState<string | null>(null);
+  const clearEditTitle = useCallback(() => setEditTitleOfId(null), []);
+  const backspaceEmpty = useCallback(
+    (id: string): boolean => {
+      const index = items.findIndex((it) => it.id === id);
+      // Nothing above the top line to back up into — let the keypress fall
+      // through so the empty line is only cleaned up on blur.
+      if (index <= 0) return false;
+      removeEmpty(id);
+      setEditTitleOfId(items[index - 1]!.id);
+      return true;
+    },
+    [items, removeEmpty],
+  );
   const addItemAndEditBody = useCallback(
     (title: string) => {
       const id = addItem(title);
@@ -139,9 +158,13 @@ function ChecklistViewImpl() {
                 onArchive={archive}
                 onDelete={remove}
                 onEdit={editItem}
+                onRemoveEmpty={removeEmpty}
+                onBackspaceEmpty={backspaceEmpty}
                 onAddAfter={startDraft}
                 autoEditBody={item.id === editBodyOfId}
                 onAutoEditConsumed={clearEditBody}
+                autoEditTitle={item.id === editTitleOfId}
+                onAutoEditTitleConsumed={clearEditTitle}
                 notesDisabled={disableItemNotes}
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}
