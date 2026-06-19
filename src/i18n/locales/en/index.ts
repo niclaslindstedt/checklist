@@ -10,6 +10,7 @@ import achievements from "./achievements";
 import app from "./app";
 import changelog from "./changelog";
 import common from "./common";
+import language from "./language";
 import menu from "./menu";
 import namespace from "./namespace";
 import nav from "./nav";
@@ -23,6 +24,7 @@ export const en = {
   app,
   changelog,
   common,
+  language,
   menu,
   namespace,
   nav,

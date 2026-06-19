@@ -111,7 +111,8 @@ export function ShowcasePage() {
             </li>
             <li>
               <strong className="text-fg-bright">Make it yours</strong> — pick a
-              theme, a font, and a text size; undo and redo your changes.
+              theme, a font, a text size, and your language (English or
+              Swedish); undo and redo your changes.
             </li>
           </ul>
         </Section>

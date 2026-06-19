@@ -24,6 +24,9 @@ const settings = {
     title: "General",
     blurb:
       "checklist is a local-first app — your lists live in this browser. Appearance settings are saved on this device.",
+    language: "Language",
+    languageHint:
+      "Switch the app's language. Saved on this device — it doesn't travel with a shared list.",
     devMode: "Developer mode",
     devModeHint:
       "Reveal the Developer and Logs tabs for capturing diagnostics and loading sample data.",

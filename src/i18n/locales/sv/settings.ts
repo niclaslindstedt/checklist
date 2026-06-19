@@ -19,6 +19,9 @@ const settings: SettingsCatalog = {
     title: "Allmänt",
     blurb:
       "checklist är en lokal-först-app — dina listor finns i den här webbläsaren. Utseendeinställningar sparas på den här enheten.",
+    language: "Språk",
+    languageHint:
+      "Byt appens språk. Sparas på den här enheten — det följer inte med en delad lista.",
     devMode: "Utvecklarläge",
     devModeHint:
       "Visa flikarna Utvecklare och Loggar för att fånga diagnostik och läsa in exempeldata.",

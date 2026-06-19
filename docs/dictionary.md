@@ -180,6 +180,7 @@ names. Honour these when naming a new file, key, or string.
 | Term                                         | Refers to                                                                          |
 | -------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Translations** / **language** / **i18n**   | `src/i18n/index.ts` (`useT`, `tFor`, `MessageKey`), `src/i18n/locale.ts` (`Lang`), `src/i18n/language-preference.ts`, `src/i18n/LanguageRoot.tsx`; catalogs under `src/i18n/locales/`. [→](overview.md#translations--language) |
+| **Language picker** / **flags** / **flag picker** | `src/ui/LanguagePicker.tsx` (UK + Swedish inline-SVG flag buttons); mounted on the General settings tab (`src/ui/settings/tabs/general.tsx`), wired to `useLang()` + `writeLanguagePreference`. [→](overview.md#translations--language) |
 
 ## PWA
 
