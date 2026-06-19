@@ -15,33 +15,38 @@ export function ListsTab({
 }) {
   const t = useT();
   return (
-    <Section title={t("settings.lists.title")}>
-      <Field label={t("settings.lists.addItemPosition")}>
-        <SegmentedRow
-          value={settings.addItemPosition}
-          ariaLabel={t("settings.lists.addItemPosition")}
-          options={[
-            { value: "top", label: t("settings.lists.addItemTop") },
-            { value: "bottom", label: t("settings.lists.addItemBottom") },
-          ]}
-          onChange={(v) => onUpdate("addItemPosition", v)}
+    <>
+      <Section title={t("settings.lists.addingSection")}>
+        <Field label={t("settings.lists.addItemPosition")}>
+          <SegmentedRow
+            value={settings.addItemPosition}
+            ariaLabel={t("settings.lists.addItemPosition")}
+            options={[
+              { value: "top", label: t("settings.lists.addItemTop") },
+              { value: "bottom", label: t("settings.lists.addItemBottom") },
+            ]}
+            onChange={(v) => onUpdate("addItemPosition", v)}
+          />
+        </Field>
+        <p className="text-xs text-muted">
+          {t("settings.lists.addItemPositionHint")}
+        </p>
+      </Section>
+
+      <Section title={t("settings.lists.displaySection")}>
+        <ToggleRow
+          label={t("settings.lists.sortCheckedToBottom")}
+          hint={t("settings.lists.sortCheckedToBottomHint")}
+          checked={settings.sortCheckedToBottom}
+          onChange={(next) => onUpdate("sortCheckedToBottom", next)}
         />
-      </Field>
-      <p className="text-xs text-muted">
-        {t("settings.lists.addItemPositionHint")}
-      </p>
-      <ToggleRow
-        label={t("settings.lists.sortCheckedToBottom")}
-        hint={t("settings.lists.sortCheckedToBottomHint")}
-        checked={settings.sortCheckedToBottom}
-        onChange={(next) => onUpdate("sortCheckedToBottom", next)}
-      />
-      <ToggleRow
-        label={t("settings.lists.disableItemNotes")}
-        hint={t("settings.lists.disableItemNotesHint")}
-        checked={settings.disableItemNotes}
-        onChange={(next) => onUpdate("disableItemNotes", next)}
-      />
-    </Section>
+        <ToggleRow
+          label={t("settings.lists.disableItemNotes")}
+          hint={t("settings.lists.disableItemNotesHint")}
+          checked={settings.disableItemNotes}
+          onChange={(next) => onUpdate("disableItemNotes", next)}
+        />
+      </Section>
+    </>
   );
 }

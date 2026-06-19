@@ -16,9 +16,13 @@ const settings: SettingsCatalog = {
   },
 
   general: {
-    title: "Allmänt",
     blurb:
       "checklist är en lokal-först-app — dina listor finns i den här webbläsaren. Utseendeinställningar sparas på den här enheten.",
+    languageSection: "Språk",
+    interfaceSection: "Gränssnitt",
+    notificationsSection: "Aviseringar",
+    achievementsSection: "Bedrifter",
+    developerSection: "Utvecklare",
     language: "Språk",
     languageHint:
       "Byt appens språk. Sparas på den här enheten — det följer inte med en delad lista.",
@@ -37,7 +41,8 @@ const settings: SettingsCatalog = {
   },
 
   lists: {
-    title: "Listor",
+    addingSection: "Lägg till poster",
+    displaySection: "Visning",
     addItemPosition: "Lägg till nya poster",
     addItemPositionHint:
       "Var en ny post hamnar när du lägger till den i en lista.",
