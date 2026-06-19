@@ -21,9 +21,13 @@ const settings = {
   },
 
   general: {
-    title: "General",
     blurb:
       "checklist is a local-first app — your lists live in this browser. Appearance settings are saved on this device.",
+    languageSection: "Language",
+    interfaceSection: "Interface",
+    notificationsSection: "Notifications",
+    achievementsSection: "Achievements",
+    developerSection: "Developer",
     language: "Language",
     languageHint:
       "Switch the app's language. Saved on this device — it doesn't travel with a shared list.",
@@ -42,7 +46,8 @@ const settings = {
   },
 
   lists: {
-    title: "Lists",
+    addingSection: "Adding items",
+    displaySection: "Display",
     addItemPosition: "Add new items to",
     addItemPositionHint: "Where a new item lands when you add it to a list.",
     addItemTop: "Top",
