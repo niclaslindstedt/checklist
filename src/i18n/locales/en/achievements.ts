@@ -169,6 +169,10 @@ const achievements = {
       name: "Top of the List",
       condition: "Change where new items land.",
     },
+    sinkOrSwim: {
+      name: "Sink or Swim",
+      condition: "Sort checked items to the bottom.",
+    },
     menuMover: {
       name: "Rearranger",
       condition: "Drag the floating menu button to a new spot.",

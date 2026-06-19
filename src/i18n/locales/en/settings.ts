@@ -44,6 +44,9 @@ const settings = {
     addItemPositionHint: "Where a new item lands when you add it to a list.",
     addItemTop: "Top",
     addItemBottom: "Bottom",
+    sortCheckedToBottom: "Sort checked items to the bottom",
+    sortCheckedToBottomHint:
+      "Checking an item sinks it below the unchecked ones, with the most recently checked first. The list itself isn’t reordered — unchecking puts it straight back.",
     disableItemNotes: "Disable item notes",
     disableItemNotesHint:
       "Make items title-only — hide the note body and the “Add note” editor. Notes you’ve already written are kept, just hidden.",

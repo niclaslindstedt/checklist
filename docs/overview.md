@@ -799,8 +799,29 @@ hint), the "Disable achievements" toggle that drives
 
 `src/ui/settings/tabs/lists.tsx` — list-behaviour preferences: the "add
 new items at top / bottom" choice that drives `addItemPosition` (moved
-here from the General tab), and the **Disable item notes** toggle
+here from the General tab), the **Sort checked items to the bottom**
+toggle (`sortCheckedToBottom`), and the **Disable item notes** toggle
 (`disableItemNotes`).
+
+### Sort checked items to the bottom
+
+The **Sort checked items to the bottom** toggle on the Lists tab
+(`sortCheckedToBottom` on the synced `Settings`) sinks the checked items
+below the still-unchecked ones in the active view, with the most recently
+checked item heading the checked group. It is a **view-only sort**: the
+stored document order is never reordered, so unchecking an item drops it
+straight back where it sat. The recency order is read from `checkedAt` on
+each `ChecklistItem` — stamped by `toggleItem` on the false→true flip and
+cleared on uncheck (`src/domain/types.ts`, `src/domain/checklists.ts`).
+`useChecklist` derives the displayed list through `displayItems(list,
+sortCheckedToBottom)` (which delegates to `sortCheckedToBottom(items)`),
+and drag-to-reorder still works because `reorder` routes through
+`moveDisplayedItem`, which translates a drop index expressed against the
+displayed order back into a document move. Turning it on unlocks the
+**Sink or Swim** achievement. Persists only on the JSON (this-device)
+backend; the markdown-backed folder / cloud stores don't round-trip
+`checkedAt`, so after a reload the checked group falls back to document
+order there.
 
 ### Disable item notes
 

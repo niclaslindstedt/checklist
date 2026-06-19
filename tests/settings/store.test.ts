@@ -155,6 +155,20 @@ describe("validateSettings", () => {
     );
   });
 
+  it("keeps checked items in place by default and honours an explicit boolean", () => {
+    expect(defaultSettings().sortCheckedToBottom).toBe(false);
+    expect(validateSettings({}).sortCheckedToBottom).toBe(false);
+    expect(
+      validateSettings({ sortCheckedToBottom: true }).sortCheckedToBottom,
+    ).toBe(true);
+  });
+
+  it("falls back to the default sortCheckedToBottom on a non-boolean value", () => {
+    expect(
+      validateSettings({ sortCheckedToBottom: "yes" }).sortCheckedToBottom,
+    ).toBe(false);
+  });
+
   it("enables achievements by default and honours an explicit boolean", () => {
     expect(defaultSettings().disableAchievements).toBe(false);
     expect(validateSettings({}).disableAchievements).toBe(false);

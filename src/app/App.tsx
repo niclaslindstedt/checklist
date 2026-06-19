@@ -167,6 +167,7 @@ function AppShell() {
     seedAdapter ?? storage.adapter,
     settings.addItemPosition,
     notify,
+    settings.sortCheckedToBottom,
   );
 
   // Achievements. The watcher records derived unlocks (first item, theme

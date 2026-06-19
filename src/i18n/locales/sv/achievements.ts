@@ -162,6 +162,10 @@ const achievements: AchievementsCatalog = {
       name: "Högst upp",
       condition: "Ändra var nya poster hamnar.",
     },
+    sinkOrSwim: {
+      name: "Sjunk eller simma",
+      condition: "Sortera bockade poster längst ned.",
+    },
     menuMover: {
       name: "Omplaceraren",
       condition: "Dra den flytande menyknappen till en ny plats.",

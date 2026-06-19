@@ -291,11 +291,79 @@ export function toggleItem(
 ): Checklist {
   return {
     ...checklist,
-    items: checklist.items.map((it) =>
-      it.id === itemId ? { ...it, checked: !it.checked } : it,
-    ),
+    items: checklist.items.map((it) => {
+      if (it.id !== itemId) return it;
+      // Checking stamps `checkedAt` (the recency key the "sort checked to the
+      // bottom" view sorts on); unchecking drops it so it never lingers on an
+      // active item.
+      if (it.checked) {
+        const next: ChecklistItem = { ...it, checked: false };
+        delete next.checkedAt;
+        return next;
+      }
+      return { ...it, checked: true, checkedAt: now };
+    }),
     updatedAt: now,
   };
+}
+
+/**
+ * Reorder a list of items so the checked ones sink below the unchecked ones,
+ * with the most recently checked item heading the checked group (by
+ * `checkedAt`, descending; items missing a timestamp sink last). The
+ * unchecked items keep their original relative order. A pure view transform —
+ * it never touches the stored document order, so unchecking an item drops it
+ * straight back where it sat.
+ */
+export function sortCheckedToBottom(
+  items: readonly ChecklistItem[],
+): ChecklistItem[] {
+  const unchecked = items.filter((it) => !it.checked);
+  const checked = items.filter((it) => it.checked);
+  // Array.prototype.sort is stable, so ties (and missing timestamps) preserve
+  // document order within the checked group.
+  checked.sort((a, b) => (b.checkedAt ?? "").localeCompare(a.checkedAt ?? ""));
+  return [...unchecked, ...checked];
+}
+
+/**
+ * The active items in the order the checklist view renders them: plain
+ * document order, or — when `sinkChecked` is on — with the checked items
+ * sorted to the bottom (see `sortCheckedToBottom`).
+ */
+export function displayItems(
+  checklist: Checklist,
+  sinkChecked: boolean,
+): ChecklistItem[] {
+  const active = activeItems(checklist);
+  return sinkChecked ? sortCheckedToBottom(active) : active;
+}
+
+/**
+ * Move a visible item to `toIndex` expressed against the *displayed* order.
+ * With `sinkChecked` off this is just `moveItem`. With it on, the displayed
+ * order is a permutation of the document order, so the drop index is
+ * translated through the item currently sitting at that display slot (the
+ * "anchor"): the dragged item takes that anchor's place in the document, and
+ * the view re-derives its sorted order from there. Keeps drag-to-reorder
+ * working without ever persisting the sunk-to-bottom ordering.
+ */
+export function moveDisplayedItem(
+  checklist: Checklist,
+  itemId: string,
+  toIndex: number,
+  sinkChecked: boolean,
+  now: string,
+): Checklist {
+  if (!sinkChecked) return moveItem(checklist, itemId, toIndex, now);
+  const display = displayItems(checklist, true);
+  if (display.length === 0) return checklist;
+  const active = activeItems(checklist);
+  const clamped = Math.max(0, Math.min(toIndex, display.length - 1));
+  const anchorId = display[clamped]!.id;
+  const docIndex = active.findIndex((it) => it.id === anchorId);
+  if (docIndex === -1) return checklist;
+  return moveItem(checklist, itemId, docIndex, now);
 }
 
 /** True when every required item is checked (or there are no required ones). */

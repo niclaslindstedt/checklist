@@ -117,6 +117,7 @@ names. Honour these when naming a new file, key, or string.
 | **General tab**                            | `src/ui/settings/tabs/general.tsx`. [→](overview.md#general-tab)                   |
 | **Lists tab** / **list settings**          | `src/ui/settings/tabs/lists.tsx`. [→](overview.md#lists-tab)                       |
 | **Disable item notes** / **disable bodies** / **title-only items** / **hide checklist bodies** | `disableItemNotes` (`src/settings/types.ts`); Lists-tab toggle (`src/ui/settings/tabs/lists.tsx`); honoured in `src/ui/ChecklistRow.tsx` / `src/ui/ChecklistRowEditor.tsx` via `disableItemNotes` on `ChecklistContextValue`. [→](overview.md#disable-item-notes) |
+| **Sort checked items to the bottom** / **sink checked** / **checked items at the bottom** | `sortCheckedToBottom` (`src/settings/types.ts`); Lists-tab toggle (`src/ui/settings/tabs/lists.tsx`); `displayItems`, `sortCheckedToBottom`, `moveDisplayedItem`, `checkedAt` (`src/domain/checklists.ts`, `src/domain/types.ts`). [→](overview.md#sort-checked-items-to-the-bottom) |
 | **Appearance tab** / **theme tab**         | `src/ui/settings/tabs/appearance.tsx`. [→](overview.md#appearance--theme-tab)      |
 | **Theme** / **font** / **text size** / **custom theme** | `src/theme/themes.ts`, `src/theme/useTheme.ts`, `src/theme/fonts.ts`. [→](overview.md#theme-engine) |
 

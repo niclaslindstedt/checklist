@@ -14,9 +14,9 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { unlock } from "../achievements/bus.ts";
 import {
-  activeItems,
   type ArchivedGroup,
   archivedByChecklist,
+  displayItems,
 } from "../domain/checklists.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -99,6 +99,7 @@ export function useChecklist(
   adapter?: StorageAdapter,
   addItemPosition: AddItemPosition = "bottom",
   notify: Notify = noopNotify,
+  sortCheckedToBottom = false,
 ): UseChecklist {
   const t = useT();
 
@@ -188,9 +189,13 @@ export function useChecklist(
     notify,
     t,
     addItemPosition,
+    sortCheckedToBottom,
   });
 
-  const items = useMemo(() => activeItems(list), [list]);
+  const items = useMemo(
+    () => displayItems(list, sortCheckedToBottom),
+    [list, sortCheckedToBottom],
+  );
   // The archive spans every checklist, so it derives from the whole document
   // rather than the active list — restoring or deleting reaches into whatever
   // list the item came from (see `useChecklistEdits`).

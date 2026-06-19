@@ -21,7 +21,7 @@ import {
   deleteChecked as deleteCheckedOp,
   deleteItem as deleteItemOp,
   editItem as editItemOp,
-  moveItem as moveItemOp,
+  moveDisplayedItem as moveDisplayedItemOp,
   setArchived,
   toggleItem as toggleItemOp,
 } from "../domain/checklists.ts";
@@ -97,14 +97,23 @@ export function useChecklistEdits(deps: {
   t: TFunction;
   /** Where `addItem` inserts a new item ("top" or "bottom"). */
   addItemPosition: AddItemPosition;
+  /**
+   * Whether checked items are sorted to the bottom of the view. Reorder reads
+   * it so a drop index is interpreted against the displayed order, not the
+   * raw document order.
+   */
+  sortCheckedToBottom: boolean;
 }): ChecklistEdits {
   const { list, docRef, setDoc, scheduleSave, record, notify, t } = deps;
-  const { addItemPosition } = deps;
+  const { addItemPosition, sortCheckedToBottom } = deps;
 
-  // Read the live preference from a ref so `addItem` stays referentially
-  // stable (App memoizes the view on it) even as the setting changes.
+  // Read the live preferences from refs so `addItem` / `reorder` stay
+  // referentially stable (App memoizes the view on them) even as the
+  // settings change.
   const addItemPositionRef = useRef(addItemPosition);
   addItemPositionRef.current = addItemPosition;
+  const sortCheckedToBottomRef = useRef(sortCheckedToBottom);
+  sortCheckedToBottomRef.current = sortCheckedToBottom;
 
   // Mirror the active list into a ref so the edit callbacks below can read
   // the latest list without listing it as a dependency. That keeps
@@ -302,8 +311,16 @@ export function useChecklistEdits(deps: {
   const reorder = useCallback(
     (itemId: string, toIndex: number) => {
       // No toast: the row visibly lands at its new spot. Label feeds undo.
+      // `toIndex` is an index into the *displayed* order, which differs from
+      // document order while checked items are sunk to the bottom.
       commit(
-        moveItemOp(listRef.current, itemId, toIndex, now()),
+        moveDisplayedItemOp(
+          listRef.current,
+          itemId,
+          toIndex,
+          sortCheckedToBottomRef.current,
+          now(),
+        ),
         t("toast.itemMoved", { title: titleOf(itemId) }),
       );
       unlock("reshuffle");

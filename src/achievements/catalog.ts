@@ -268,6 +268,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "sinkOrSwim",
+    tier: "intermediate",
+    glyph: ArrowUpDownGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.sortCheckedToBottom],
+      predicate: (prev, next) =>
+        !prev.settings.sortCheckedToBottom && next.settings.sortCheckedToBottom,
+    },
+  },
+  {
     id: "menuMover",
     tier: "intermediate",
     glyph: MoveGlyph,

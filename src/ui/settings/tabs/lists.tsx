@@ -31,6 +31,12 @@ export function ListsTab({
         {t("settings.lists.addItemPositionHint")}
       </p>
       <ToggleRow
+        label={t("settings.lists.sortCheckedToBottom")}
+        hint={t("settings.lists.sortCheckedToBottomHint")}
+        checked={settings.sortCheckedToBottom}
+        onChange={(next) => onUpdate("sortCheckedToBottom", next)}
+      />
+      <ToggleRow
         label={t("settings.lists.disableItemNotes")}
         hint={t("settings.lists.disableItemNotesHint")}
         checked={settings.disableItemNotes}
