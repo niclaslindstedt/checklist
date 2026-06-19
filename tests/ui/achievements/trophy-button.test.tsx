@@ -22,14 +22,28 @@ function renderTrophy(value: AchievementsContextValue) {
 }
 
 describe("TrophyButton", () => {
-  it("renders the button when achievements are enabled", () => {
+  it("renders the menu row when achievements are enabled", () => {
     renderTrophy({ unseenCount: 0, enabled: true });
-    expect(screen.getByRole("button")).toBeTruthy();
+    expect(screen.getByRole("menuitem")).toBeTruthy();
   });
 
   it("shows the unseen-count badge when there are new unlocks", () => {
     renderTrophy({ unseenCount: 3, enabled: true });
     expect(screen.getByText("3")).toBeTruthy();
+  });
+
+  it("colours the glyph when there are new unlocks", () => {
+    renderTrophy({ unseenCount: 2, enabled: true });
+    expect(
+      screen.getByRole("menuitem").querySelector(".text-flag"),
+    ).toBeTruthy();
+  });
+
+  it("greys the glyph out when nothing is unacknowledged", () => {
+    renderTrophy({ unseenCount: 0, enabled: true });
+    const row = screen.getByRole("menuitem");
+    expect(row.querySelector(".text-flag")).toBeNull();
+    expect(row.querySelector(".text-muted\\/50")).toBeTruthy();
   });
 
   it("renders nothing when achievements are disabled", () => {

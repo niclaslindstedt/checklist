@@ -30,6 +30,7 @@ import {
 } from "./icons.tsx";
 import { useModalDispatch } from "./modal-bus.ts";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
+import { TrophyButton } from "./achievements/TrophyButton.tsx";
 
 // The navigation drawer. On viewports narrower than the smallest iPad it
 // collapses to a single floating button the user can drag to either side
@@ -292,6 +293,10 @@ export function SideMenu({
           href={privacyUrl}
           onClick={close}
         />
+        {/* The trophy, relocated from the header. It does its own
+            quiet-vs-lit dispatch, so it just needs the drawer closed
+            behind it. Hides itself when achievements are disabled. */}
+        <TrophyButton onSelect={close} />
         <MenuButton
           icon={<SparklesIcon className="h-5 w-5" />}
           label={t("menu.changelog")}

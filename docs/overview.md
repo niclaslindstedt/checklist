@@ -912,10 +912,13 @@ Earned progress is the `achievements` map (id → unlock timestamp) and the
 via `clearUnseenAchievements` (`src/settings/useSettings.ts`); because it
 rides in `Settings`, progress travels with `settings.json` across
 devices. A fresh unlock raises a celebratory toast and lights up the
-header **trophy button** (`TrophyButton`, beside the copy / sync glyphs),
-which reads the unseen count from `AchievementsContext`. The button opens
-one of two modals, matching budget: when **quiet** (nothing unacknowledged)
-it opens the **achievements tour** (`AchievementsModal`, via the
+**trophy row** (`TrophyButton`) — a side-menu item sitting among the
+footer actions (settings, "what's new", the project links) at the foot of
+the drawer — which reads the unseen count from `AchievementsContext`. Its
+glyph is coloured (the `flag` accent) with a count badge when there are
+unseen unlocks, and greyed out otherwise. The row opens one of two
+modals, matching budget: when **quiet** (nothing unacknowledged) it opens
+the **achievements tour** (`AchievementsModal`, via the
 `{ kind: "achievements" }` command and `AchievementsModalHost`) — the
 four-tier browse of the whole catalog; when **lit** it instead opens the
 **unlock-notification modal** (`AchievementUnlockModal`, via
@@ -929,7 +932,7 @@ The whole system can be switched off from **Settings → General** via the
 `Settings`). When off, the watcher's `enabled` flag is false: both passes
 no-op — derived unlocks are skipped and the manual bus is
 drained-and-discarded so nothing queued mid-disable fires later — and the
-header `TrophyButton` (reading `enabled` from `AchievementsContext`)
+side-menu `TrophyButton` (reading `enabled` from `AchievementsContext`)
 renders nothing, removing the only entry point into the modals. Earned
 progress in the `achievements` map is left untouched, and re-enabling
 re-establishes the baseline like a fresh load so the deltas produced
