@@ -11,8 +11,11 @@
 // `checklist:v1:<slug>`. The local backend has no folders, so namespacing
 // here is purely a key change — there is nothing to relocate.
 
+import { createLogger } from "../../dev/logger.ts";
 import type { StorageAdapter, StoredSnapshot } from "../adapter.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceLocalKey } from "../namespaces.ts";
+
+const log = createLogger("local");
 
 export class BrowserLocalStorageAdapter implements StorageAdapter {
   readonly id = "browser" as const;
@@ -30,7 +33,12 @@ export class BrowserLocalStorageAdapter implements StorageAdapter {
 
   loadSync(): StoredSnapshot | null {
     const text = this.read();
-    return text === null ? null : { text };
+    if (text === null) {
+      log.info(`loadSync: no document at [${this.key}]`);
+      return null;
+    }
+    log.info(`loadSync: read ${text.length} B from [${this.key}]`);
+    return { text };
   }
 
   async load(): Promise<StoredSnapshot | null> {
@@ -38,15 +46,25 @@ export class BrowserLocalStorageAdapter implements StorageAdapter {
   }
 
   async save(text: string): Promise<StoredSnapshot> {
-    this.storage.setItem(this.key, text);
+    try {
+      this.storage.setItem(this.key, text);
+      log.info(`save: wrote ${text.length} B to [${this.key}]`);
+    } catch (err) {
+      // Quota exceeded, or disabled / blocked storage. Surface it so a
+      // silently-failing localStorage save is debuggable, then rethrow —
+      // the sync engine treats a thrown save as a failed write.
+      log.error(`save: write to [${this.key}] failed`, err);
+      throw err;
+    }
     return { text };
   }
 
   private read(): string | null {
     try {
       return this.storage.getItem(this.key);
-    } catch {
+    } catch (err) {
       // disabled / blocked storage — treat as "no data"
+      log.warn(`read: [${this.key}] unavailable — treating as empty`, err);
       return null;
     }
   }

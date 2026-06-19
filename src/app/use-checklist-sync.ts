@@ -222,6 +222,9 @@ export function useChecklistSync(deps: {
       const generation = saveGeneration.current;
       inFlight.current = true;
       setStatus("saving");
+      log.info(
+        `save: starting (gen ${generation}, base=${baseRevision ?? "none"})`,
+      );
       void adapterRef.current
         .save(serialize(next), baseRevision)
         .then((stored) => {
@@ -229,7 +232,12 @@ export function useChecklistSync(deps: {
           // The document was swapped out from under this save (reload, backend
           // change, conflict-adopt). Its revision and any queued follow-up
           // belong to a baseline that no longer exists — drop them.
-          if (saveGeneration.current !== generation) return;
+          if (saveGeneration.current !== generation) {
+            log.info(
+              `save: result for stale gen ${generation} (now ${saveGeneration.current}) — dropping`,
+            );
+            return;
+          }
           // A save landed — clear the backoff escalation so a future failure
           // (throttle or transient) starts its curve from scratch.
           consecutiveThrottles.current = 0;
@@ -237,10 +245,12 @@ export function useChecklistSync(deps: {
           // A write landed — we're demonstrably back online.
           setOffline(false);
           revisionRef.current = stored.revision;
+          log.info(`save: ok → revision=${stored.revision ?? "none"}`);
           // An edit queued while this save was in flight. Each queued edit is a
           // full snapshot, so the latest supersedes every one before it — send
           // only that, based on the revision we just got, never concurrently.
           if (pendingDoc.current !== null) {
+            log.info("save: draining edit queued during write");
             flushSaveRef.current();
           } else {
             setDirty(false);
@@ -330,12 +340,18 @@ export function useChecklistSync(deps: {
     }
     // One save in flight at a time (see `inFlight`). Leave the edit queued in
     // `pendingDoc`; the outstanding save drains it when it resolves.
-    if (inFlight.current) return;
+    if (inFlight.current) {
+      log.info("flushSave: write already in flight — staying queued");
+      return;
+    }
     // A cooldown (rate-limit throttle or transient backoff) is in
     // progress — don't start a fresh write that would just be rejected
     // again. The edit stays queued in `pendingDoc`; the armed resume
     // timer drains it (and any newer edit) when the cooldown elapses.
-    if (retryTimer.current !== null) return;
+    if (retryTimer.current !== null) {
+      log.info("flushSave: cooldown active — staying queued");
+      return;
+    }
     const next = pendingDoc.current;
     if (next === null) return;
     pendingDoc.current = null;
@@ -352,9 +368,11 @@ export function useChecklistSync(deps: {
       setDirty(true);
       const ms = adapterRef.current.saveDebounceMs ?? 0;
       if (ms <= 0) {
+        log.info("scheduleSave: no debounce — flushing now");
         flushSave();
         return;
       }
+      log.info(`scheduleSave: debouncing ${ms}ms`);
       if (saveTimer.current !== null) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(flushSave, ms);
     },
@@ -395,12 +413,17 @@ export function useChecklistSync(deps: {
     setStatusDetail(null);
     setDirty(false);
     setLoaded(false);
+    log.info(`load: loading from backend [${active.id}]`);
     let cancelled = false;
     void active
       .load()
       .then((stored) => {
         if (cancelled) return;
         revisionRef.current = stored?.revision;
+        log.info(
+          `load: ok (revision=${stored?.revision ?? "none"}` +
+            `${stored?.offline ? ", from offline cache" : ""})`,
+        );
         // A cloud load served from the on-device cache carries `offline`;
         // record it so the header reflects that we're on a local copy, and
         // award the "off the grid" achievement the first time it happens.
@@ -454,6 +477,7 @@ export function useChecklistSync(deps: {
     saveGeneration.current += 1;
     inFlight.current = false;
     pendingDoc.current = null;
+    log.info("reload: re-reading active backend");
     let stored;
     try {
       stored = await adapterRef.current.load();
@@ -502,6 +526,7 @@ export function useChecklistSync(deps: {
     (keep: "local" | "remote") => {
       setConflict((current) => {
         if (!current) return null;
+        log.info(`resolveConflict: keeping ${keep}`);
         if (keep === "local") {
           // Overwrite the remote: re-save this device's bytes basing the
           // write on the remote revision so the backend accepts it.

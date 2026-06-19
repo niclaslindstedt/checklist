@@ -11,6 +11,10 @@
 // parameters are stored on the envelope so future iteration bumps can be
 // honored without breaking older blobs.
 
+import { createLogger } from "../dev/logger.ts";
+
+const log = createLogger("crypto");
+
 const ENVELOPE_TAG = "checklist.encrypted.v1" as const;
 const DEFAULT_ITERATIONS = 600_000;
 const KEY_LENGTH_BITS = 256;
@@ -66,13 +70,20 @@ async function deriveKey(
     false,
     ["deriveKey"],
   );
-  return subtle.deriveKey(
+  // PBKDF2 at 600k iterations is the dominant cost of every encrypt /
+  // decrypt and is invisible at the adapter boundary, so time it here —
+  // a slow unlock on a low-end device shows up as this line.
+  const start = performance.now();
+  const key = await subtle.deriveKey(
     { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
     passwordKey,
     { name: "AES-GCM", length: KEY_LENGTH_BITS },
     false,
     ["encrypt", "decrypt"],
   );
+  const ms = (performance.now() - start).toFixed(0);
+  log.info(`deriveKey: PBKDF2 ${iterations} iterations (${ms}ms)`);
+  return key;
 }
 
 function randomBytes(length: number): Uint8Array {
