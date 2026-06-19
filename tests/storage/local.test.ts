@@ -67,6 +67,30 @@ describe("BrowserLocalStorageAdapter", () => {
     expect((await family.load())?.text).toBe("family-doc\n");
   });
 
+  it("propagates a write failure (e.g. quota exceeded) out of save", async () => {
+    // A storage whose setItem always throws — the sync engine relies on a
+    // failed write rejecting so it can surface the error and re-queue the
+    // edit, rather than silently reporting success.
+    class FullStorage extends MemoryStorage {
+      override setItem(): void {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+    }
+    const full = new BrowserLocalStorageAdapter(new FullStorage());
+    await expect(full.save("anything\n")).rejects.toThrow();
+  });
+
+  it("treats a read failure as no data rather than throwing", () => {
+    // A blocked / disabled storage whose getItem throws must read as empty.
+    class BlockedStorage extends MemoryStorage {
+      override getItem(): string {
+        throw new DOMException("blocked", "SecurityError");
+      }
+    }
+    const blocked = new BrowserLocalStorageAdapter(new BlockedStorage());
+    expect(blocked.loadSync()).toBeNull();
+  });
+
   it("deletes only the targeted namespace's bytes", async () => {
     const storage = new MemoryStorage();
     await new BrowserLocalStorageAdapter(storage, "default").save("keep\n");

@@ -18,9 +18,13 @@ const log = createLogger("serialize");
 
 /** Produce the canonical stored text for a document (trailing newline). */
 export function serialize(snapshot: Snapshot): string {
-  return (
-    JSON.stringify({ version: LATEST_VERSION, ...snapshot }, null, 2) + "\n"
+  const text =
+    JSON.stringify({ version: LATEST_VERSION, ...snapshot }, null, 2) + "\n";
+  log.info(
+    `serialize: v${LATEST_VERSION}, ${snapshot.templates.length} templates, ` +
+      `${snapshot.checklists.length} lists → ${text.length} B`,
   );
+  return text;
 }
 
 /**
@@ -30,13 +34,21 @@ export function serialize(snapshot: Snapshot): string {
  * falls back to empty rather than crashing the load.
  */
 export function parse(text: string | null | undefined): Snapshot {
-  if (!text) return emptySnapshot();
+  if (!text) {
+    log.info("parse: no bytes — empty document");
+    return emptySnapshot();
+  }
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
+    log.warn(`parse: invalid JSON (${text.length} B) — falling back to empty`);
     return emptySnapshot();
   }
+  const fromVersion =
+    typeof (raw as { version?: unknown })?.version === "number"
+      ? (raw as { version: number }).version
+      : "?";
   let migrated: unknown;
   try {
     migrated = migrate(raw).data;
@@ -45,8 +57,13 @@ export function parse(text: string | null | undefined): Snapshot {
     return emptySnapshot();
   }
   const doc = migrated as Partial<Snapshot>;
-  return {
+  const snapshot = {
     templates: doc.templates ?? [],
     checklists: doc.checklists ?? [],
   };
+  log.info(
+    `parse: migrated v${fromVersion}→v${LATEST_VERSION}, ` +
+      `${snapshot.templates.length} templates, ${snapshot.checklists.length} lists`,
+  );
+  return snapshot;
 }
