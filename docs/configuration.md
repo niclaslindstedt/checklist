@@ -143,14 +143,16 @@ stay in `localStorage` only.
 ### Developer settings (device-local)
 
 The **Settings → General** tab has a **Developer mode** switch that
-reveals the **Developer** and **Logs** tabs. These flags are device-local
+reveals the **Developer** tab; the **Logs** tab appears alongside it only
+once the Developer tab's **Capture logs** toggle is on — there's nothing
+to show until logs are being kept. These flags are device-local
 diagnostics — they live outside the appearance blob so they never travel
 with a shared list.
 
 | Key (in `localStorage`)       | Type       | Default | Effect |
 |-------------------------------|------------|---------|--------|
-| `checklist:dev:mode`          | `boolean`  | `false` | Whether developer mode (the Developer / Logs tabs) is exposed. |
-| `checklist:dev:captureLogs`   | `boolean`  | `false` | When `true`, the in-app logger mirrors its ring buffer to `localStorage` so the **Logs** tab survives a reload. Forced off when developer mode is turned off. |
+| `checklist:dev:mode`          | `boolean`  | `false` | Whether developer mode (the Developer tab, and the Logs tab once capture is on) is exposed. |
+| `checklist:dev:captureLogs`   | `boolean`  | `false` | When `true`, the in-app logger mirrors its ring buffer to `localStorage` so the **Logs** tab survives a reload, and the **Logs** tab is shown. Forced off when developer mode is turned off. |
 | `checklist:dev:logs`          | JSON array | (unset) | The persisted log entries, present only while capture is on. |
 
 The Developer tab's **Fake data** toggle is in-memory only — it swaps in

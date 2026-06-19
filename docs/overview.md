@@ -698,7 +698,8 @@ roadmap.
 `src/ui/settings/SettingsModal.tsx` — the tabbed settings dialog opened
 from the header menu (or the sync glyph, which deep-links to the Storage
 tab via `initialTab`). Tabs (`TabId`): General, Lists, Theme (appearance),
-Storage, and — only when dev mode is on — Developer and Logs. Each tab
+Storage, and — only when dev mode is on — Developer (plus Logs, once log
+capture is enabled). Each tab
 carries an inline-SVG marker glyph (`TAB_ICONS`). On desktop the tabs sit in
 a labelled left rail (a WAI-ARIA tablist with roving tabindex + arrow-key
 navigation); on mobile that rail collapses into a header burger button —
@@ -787,7 +788,8 @@ readable before the unlock gate renders).
 ### General tab
 
 `src/ui/settings/tabs/general.tsx` — the dev-mode toggle (which reveals
-the Developer and Logs tabs), the "Disable toasts" toggle that drives
+the Developer tab, and the Logs tab once log capture is on), the "Disable
+toasts" toggle that drives
 `disableToasts` (suppressing the general toast stack but not the upgrade
 hint), the "Disable achievements" toggle that drives
 `disableAchievements` (switching the achievements system off — see
@@ -1284,9 +1286,11 @@ still works.
 ### Dev mode / fake data
 
 `src/dev/useDevMode.ts` (`useDevMode`) holds two device-local flags —
-`devMode` (whether the Developer / Logs settings tabs show) and
-`captureLogs` — at module scope with a pub/sub layer and cross-tab
-sync; turning dev mode off forces capture off. `src/dev/useDevSeed.ts`
+`devMode` (whether the Developer settings tab shows) and `captureLogs`
+(which both mirrors the log to localStorage and gates the Logs settings
+tab — it only shows while dev mode is on *and* capture is enabled) — at
+module scope with a pub/sub layer and cross-tab sync; turning dev mode
+off forces capture off. `src/dev/useDevSeed.ts`
 (`useDevSeed`) backs the "Fake data" toggle as in-memory-only state (no
 localStorage write), so a reload always drops back to the real backend.
 When it's on, `App` swaps in an ephemeral seed adapter
@@ -1300,7 +1304,8 @@ touching real data. Toggles live in the Developer settings tab.
 `src/dev/logger.ts` — the in-app logger: a bounded ring buffer (500
 entries) with no console sink. `createLogger(scope)` returns an
 `info` / `warn` / `error` logger; when "Capture logs" is on the buffer
-mirrors to localStorage so it survives a reload. The Logs settings tab
+mirrors to localStorage so it survives a reload, and the Logs settings
+tab — gated on capture being enabled — appears. The Logs settings tab
 (`src/ui/settings/tabs/logs.tsx`) renders it with a level filter and
 copy / clear actions.
 
