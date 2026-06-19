@@ -3,31 +3,35 @@ import { useT } from "../../i18n";
 import { useModalDispatch } from "../modal-bus.ts";
 import { useAchievements } from "./achievements-context.ts";
 
-// Header affordance for achievements, sitting beside the copy / sync glyphs
-// in the checklist header (the checklist's analogue of budget's
-// `HeaderStar`). Two visual modes, each opening a different modal — same as
-// budget:
+// Side-menu row for achievements, living among the footer actions (settings,
+// "what's new", project links) at the foot of the drawer. It's the
+// checklist's analogue of budget's `HeaderStar`, with the same two modes —
+// only relocated from the header into the sidebar so the header chrome stays
+// lean:
 //
-// - **Quiet (outline)** — nothing new to acknowledge. Click opens the full
-//   four-tier achievements tour (`{ kind: "achievements" }`).
-// - **Lit (yellow)** — one or more achievements unlocked since they were
-//   last acknowledged; a small count badge rides the corner. Click opens the
-//   unlock notification modal listing just those new ones
+// - **Quiet (grey glyph, no badge)** — nothing new to acknowledge. Click
+//   opens the full four-tier achievements tour (`{ kind: "achievements" }`).
+// - **Lit (coloured glyph, count badge)** — one or more achievements
+//   unlocked since they were last acknowledged. Click opens the unlock
+//   notification modal listing just those new ones
 //   (`{ kind: "achievements-unlock" }`); closing it clears the unseen queue,
-//   returning the button to its quiet state.
+//   returning the row to its quiet state.
 //
-// Styled to match `CopyButton` / `SyncStatus` so the header chrome stays
-// uniform (36 × 36, 18-pixel glyph). Reads the unseen count from
-// `AchievementsContext` rather than props, so a fresh unlock badges the
-// button without re-rendering the memoised item list.
-export function TrophyButton() {
+// Styled to match the side-menu `MenuButton` / `NavItem` rows (px-5, the
+// density vertical padding, gap-3, h-5 glyph) so it reads as one continuous
+// list with the footer items around it. Reads the unseen count from
+// `AchievementsContext` rather than props, so a fresh unlock badges the row
+// without re-rendering the memoised item list.
+export function TrophyButton({ onSelect }: { onSelect?: () => void }) {
   const t = useT();
   const dispatch = useModalDispatch();
   const { unseenCount, enabled } = useAchievements();
-  // Achievements switched off (Settings → General): the trophy is the only way
+  // Achievements switched off (Settings → General): the row is the only way
   // into the tour / unlock modals, so hiding it removes the feature wholesale.
   if (!enabled) return null;
   const lit = unseenCount > 0;
+  // The accessible label carries the dynamic state ("3 new achievements");
+  // the visible row label stays the stable "Achievements".
   const label = lit
     ? unseenCount === 1
       ? t("achievements.button.unseenOne")
@@ -36,20 +40,21 @@ export function TrophyButton() {
   return (
     <button
       type="button"
-      onClick={() =>
-        dispatch({ kind: lit ? "achievements-unlock" : "achievements" })
-      }
+      role="menuitem"
+      onClick={() => {
+        onSelect?.();
+        dispatch({ kind: lit ? "achievements-unlock" : "achievements" });
+      }}
       title={label}
       aria-label={label}
-      className={`relative inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border bg-transparent focus-visible:ring-2 focus-visible:ring-fg focus-visible:outline-none ${
-        lit
-          ? "border-flag bg-flag/15 text-flag hover:bg-flag/25"
-          : "border-line text-muted hover:bg-fg/5 hover:text-fg"
-      }`}
+      className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
     >
-      <TrophyGlyph className="h-[18px] w-[18px]" />
+      <span className={lit ? "text-flag" : "text-muted/50"}>
+        <TrophyGlyph className="h-5 w-5" />
+      </span>
+      <span className="flex-1">{t("achievements.button.open")}</span>
       {lit && (
-        <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-flag px-1 text-[10px] leading-4 font-bold text-page-bg tabular-nums">
+        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-flag px-1.5 py-0.5 text-xs leading-none font-bold text-page-bg tabular-nums">
           {unseenCount}
         </span>
       )}
