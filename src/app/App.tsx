@@ -27,7 +27,11 @@ import {
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
-import { applyFaviconHref, namespaceLogoSrc } from "../ui/namespace-favicon.ts";
+import {
+  applyFaviconHref,
+  namespaceFaviconSrc,
+  namespaceLogoSrc,
+} from "../ui/namespace-favicon.ts";
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
 import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
@@ -259,9 +263,13 @@ function AppShell() {
     () => namespaceLogoSrc(activeNamespaceEntry),
     [activeNamespaceEntry],
   );
+  const faviconSrc = useMemo(
+    () => namespaceFaviconSrc(activeNamespaceEntry),
+    [activeNamespaceEntry],
+  );
   useEffect(() => {
-    applyFaviconHref(logoSrc);
-  }, [logoSrc]);
+    applyFaviconHref(faviconSrc);
+  }, [faviconSrc]);
 
   // The sync glyph shows for any async file-backed session (local folder,
   // Dropbox, Google Drive) so the user gets save status, a "save now"

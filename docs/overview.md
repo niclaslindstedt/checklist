@@ -1024,12 +1024,16 @@ In the **side menu** a customised namespace renders its own glyph tinted to
 its accent — only the glyph is coloured, never the row text — while an
 untouched one keeps the plain check (active) / folder (inactive) icon. When
 the active namespace has a glyph, that glyph (in its colour) **replaces the
-app logo**: `namespace-favicon.ts` resolves the logo `src`
-(`namespaceLogoSrc`) for both the header wordmark slot (threaded through
-`ChecklistContext` as `logoSrc`, read by `ChecklistView`) and the
-browser-tab favicon (`applyFaviconHref`, run from an effect in `App`). A
-namespace with only a colour keeps the bundled mark — the favicon is
-replaced only when a glyph is picked.
+app logo**: `namespace-favicon.ts` resolves the header wordmark slot
+(`namespaceLogoSrc`, threaded through `ChecklistContext` as `logoSrc` and
+read by `ChecklistView`) and the browser-tab favicon
+(`namespaceFaviconSrc`, applied via `applyFaviconHref` from an effect in
+`App`). The two agree for a picked glyph, but differ for the default
+no-glyph mark: the header keeps the dark rounded badge (`favicon.svg`)
+while the in-tab favicon shows the bare, background-less check
+(`favicon-mark.svg`) — the PWA app icons, generated from `favicon.svg`,
+keep their opaque badge. A namespace with only a colour keeps the bundled
+mark — the favicon is re-badged only when a glyph is picked.
 
 ### Storage tab
 

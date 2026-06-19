@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   applyFaviconHref,
+  namespaceFaviconSrc,
   namespaceLogoSrc,
 } from "../../src/ui/namespace-favicon.ts";
 
@@ -35,6 +36,31 @@ describe("namespaceLogoSrc", () => {
   it("tints a glyph that has no explicit colour with the app default", () => {
     const src = namespaceLogoSrc({ slug: "x", name: "X", glyph: "home" });
     expect(decodeURIComponent(src)).toContain('stroke="#34d399"');
+  });
+});
+
+describe("namespaceFaviconSrc", () => {
+  it("uses the background-less bundled mark when no namespace is active", () => {
+    const src = namespaceFaviconSrc(undefined);
+    expect(src).toContain("favicon-mark.svg");
+    expect(src).not.toContain("favicon.svg");
+  });
+
+  it("uses the background-less mark for a namespace with only a colour", () => {
+    expect(
+      namespaceFaviconSrc({ slug: "x", name: "X", color: "#abcdef" }),
+    ).toContain("favicon-mark.svg");
+  });
+
+  it("renders the glyph as a data URI when one is chosen", () => {
+    const src = namespaceFaviconSrc({
+      slug: "x",
+      name: "X",
+      glyph: "home",
+      color: "#abcdef",
+    });
+    expect(src.startsWith("data:image/svg+xml,")).toBe(true);
+    expect(decodeURIComponent(src)).toContain('stroke="#abcdef"');
   });
 });
 

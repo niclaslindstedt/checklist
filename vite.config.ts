@@ -353,6 +353,7 @@ export default defineConfig({
       // extras that aren't manifest icons.
       includeAssets: [
         "favicon.svg",
+        "favicon-mark.svg",
         "favicon.ico",
         "apple-touch-icon-180x180.png",
       ],
