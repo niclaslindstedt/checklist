@@ -5,15 +5,22 @@ import { useEffect } from "react";
 // focus is inside an editable element so the browser's native
 // field-level undo keeps working while the user is typing in the
 // add-item box.
+//
+// `enabled` (default true) gates the whole listener so the call site can
+// silence the shortcuts while the side menu owns the screen — an open
+// drawer's own controls take over, and a stray Cmd/Ctrl+Z shouldn't
+// reach through it to mutate the list behind the menu.
 export function useUndoRedoShortcuts(params: {
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  enabled?: boolean;
 }): void {
-  const { canUndo, canRedo, onUndo, onRedo } = params;
+  const { canUndo, canRedo, onUndo, onRedo, enabled = true } = params;
 
   useEffect(() => {
+    if (!enabled) return;
     const handler = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const key = e.key.toLowerCase();
@@ -42,5 +49,5 @@ export function useUndoRedoShortcuts(params: {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [canUndo, canRedo, onUndo, onRedo]);
+  }, [enabled, canUndo, canRedo, onUndo, onRedo]);
 }

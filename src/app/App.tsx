@@ -342,11 +342,14 @@ function AppShell() {
   });
 
   // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z mirror the burger-menu undo & redo.
+  // Silenced while the side menu is open (but not when it's pinned as a
+  // persistent docked sidebar) so the drawer owns the keyboard.
   useUndoRedoShortcuts({
     canUndo: checklist.canUndo,
     canRedo: checklist.canRedo,
     onUndo: checklist.undo,
     onRedo: checklist.redo,
+    enabled: !menuOpen || pinned,
   });
 
   // The values published to the views / SideMenu. Both are memoised so a
