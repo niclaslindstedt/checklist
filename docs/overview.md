@@ -1279,7 +1279,9 @@ state. Recording the whole document (not a diff) is what lets undo
 resurrect a deleted item. Reachable from the side menu and via
 `useUndoRedoShortcuts` (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z / Ctrl+Y), which
 bails out when focus is in an editable field so native field-level undo
-still works.
+still works, and is silenced entirely while the side menu is open (but
+not when it's pinned as a docked sidebar) so the drawer owns the
+keyboard.
 
 ## Dev mode
 
