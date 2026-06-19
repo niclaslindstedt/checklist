@@ -36,6 +36,12 @@ export type Settings = {
   customTheme: CustomTheme;
   // Where `addItem` inserts a new entry into the active list.
   addItemPosition: AddItemPosition;
+  // Whether checked items are sorted to the bottom of the active list. When
+  // on, checking an item sinks it below the still-unchecked ones, with the
+  // most recently checked item heading the checked group. A view-only sort:
+  // the stored document order is never reordered, so unchecking an item drops
+  // it straight back where it sat.
+  sortCheckedToBottom: boolean;
   // Where the floating navigation button sits after the user drags it.
   menuButtonPosition: MenuButtonPosition;
   // Whether the floating navigation button is shown. Only honoured in the

@@ -34,6 +34,10 @@ const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 // before this preference existed.
 export const DEFAULT_ADD_ITEM_POSITION: AddItemPosition = "bottom";
 
+// Checked items stay in document order by default. The opt-in sinks them to
+// the bottom of the active list as a view-only sort.
+export const DEFAULT_SORT_CHECKED_TO_BOTTOM = false;
+
 // The floating navigation button starts pinned to the left edge, halfway
 // down — where it lived before it became draggable.
 export const DEFAULT_MENU_BUTTON_POSITION: MenuButtonPosition = {
@@ -65,6 +69,7 @@ export function defaultSettings(): Settings {
     fontScale: DEFAULT_FONT_SCALE,
     customTheme: DEFAULT_CUSTOM_THEME,
     addItemPosition: DEFAULT_ADD_ITEM_POSITION,
+    sortCheckedToBottom: DEFAULT_SORT_CHECKED_TO_BOTTOM,
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
     disableToasts: DEFAULT_DISABLE_TOASTS,
@@ -185,6 +190,10 @@ export function validateSettings(raw: unknown): Settings {
       ["top", "bottom"],
       DEFAULT_ADD_ITEM_POSITION,
     ),
+    sortCheckedToBottom:
+      typeof raw.sortCheckedToBottom === "boolean"
+        ? raw.sortCheckedToBottom
+        : DEFAULT_SORT_CHECKED_TO_BOTTOM,
     menuButtonPosition: validMenuButtonPosition(raw.menuButtonPosition),
     showMenuButton:
       typeof raw.showMenuButton === "boolean"

@@ -31,6 +31,15 @@ export interface ChecklistItem extends Item {
    * can restore or delete each one. Absent means active.
    */
   archived?: boolean;
+  /**
+   * When the item was last checked off (ISO-8601). Stamped by `toggleItem`
+   * on the false→true flip and cleared when it's unchecked, so it only
+   * exists while `checked` is true. Drives the "sort checked to the bottom"
+   * view order — the most recently checked item heads the checked group —
+   * without ever reordering the stored document. Absent for items checked
+   * before this field existed (they sink last among the checked ones).
+   */
+  checkedAt?: string;
 }
 
 /**

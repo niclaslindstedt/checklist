@@ -9,14 +9,17 @@ import {
   createChecklist,
   deleteChecked,
   deleteItem,
+  displayItems,
   editItem,
   instantiate,
   isComplete,
+  moveDisplayedItem,
   moveItem,
   nextChecklistName,
   progress,
   renameChecklist,
   setArchived,
+  sortCheckedToBottom,
   toggleItem,
 } from "../../src/domain/checklists.ts";
 import { createTemplate } from "../../src/domain/templates.ts";
@@ -355,5 +358,134 @@ describe("moveItem", () => {
     expect(ids(moved)).toEqual(["i3", "i2", "i1"]);
     expect(activeItems(moved).map((it) => it.id)).toEqual(["i3", "i1"]);
     expect(moved.items[1]?.archived).toBe(true);
+  });
+});
+
+describe("toggleItem checkedAt", () => {
+  const CHECKED_AT = "2026-03-03T00:00:00.000Z";
+
+  function singleItemList() {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "i1", title: "A" }, NOW);
+    return c;
+  }
+
+  it("stamps checkedAt when an item is checked", () => {
+    const checked = toggleItem(singleItemList(), "i1", CHECKED_AT);
+    expect(checked.items[0]?.checked).toBe(true);
+    expect(checked.items[0]?.checkedAt).toBe(CHECKED_AT);
+  });
+
+  it("clears checkedAt when an item is unchecked", () => {
+    let c = toggleItem(singleItemList(), "i1", CHECKED_AT);
+    c = toggleItem(c, "i1", "2026-03-04T00:00:00.000Z");
+    expect(c.items[0]?.checked).toBe(false);
+    expect(c.items[0]?.checkedAt).toBeUndefined();
+  });
+});
+
+describe("sortCheckedToBottom", () => {
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+
+  const ids = (items: { id: string }[]) => items.map((it) => it.id);
+
+  it("keeps unchecked items first and sinks checked ones below, newest first", () => {
+    let c = listOf("A", "B", "C", "D");
+    c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z"); // A, oldest check
+    c = toggleItem(c, "i3", "2026-01-01T00:00:02.000Z"); // C, newest check
+    const sorted = sortCheckedToBottom(c.items);
+    // Unchecked B, D keep document order; checked C (newest) then A (oldest).
+    expect(ids(sorted)).toEqual(["i2", "i4", "i3", "i1"]);
+  });
+
+  it("sinks checked items without a timestamp last among the checked group", () => {
+    let c = listOf("A", "B", "C");
+    // i1 checked the legacy way (no checkedAt), i3 with a stamp.
+    c = {
+      ...c,
+      items: c.items.map((it) =>
+        it.id === "i1" ? { ...it, checked: true } : it,
+      ),
+    };
+    c = toggleItem(c, "i3", "2026-01-01T00:00:05.000Z");
+    const sorted = sortCheckedToBottom(c.items);
+    expect(ids(sorted)).toEqual(["i2", "i3", "i1"]);
+  });
+
+  it("does not mutate the input array", () => {
+    let c = listOf("A", "B");
+    c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z");
+    const before = ids(c.items);
+    sortCheckedToBottom(c.items);
+    expect(ids(c.items)).toEqual(before);
+  });
+});
+
+describe("displayItems", () => {
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+
+  const ids = (items: { id: string }[]) => items.map((it) => it.id);
+
+  it("returns plain active order when the sort is off", () => {
+    let c = listOf("A", "B", "C");
+    c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z");
+    expect(ids(displayItems(c, false))).toEqual(["i1", "i2", "i3"]);
+  });
+
+  it("sinks checked items when the sort is on, excluding archived", () => {
+    let c = listOf("A", "B", "C");
+    c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z");
+    c = setArchived(c, "i2", true, NOW);
+    expect(ids(displayItems(c, true))).toEqual(["i3", "i1"]);
+  });
+});
+
+describe("moveDisplayedItem", () => {
+  const LATER = "2026-02-02T00:00:00.000Z";
+
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+
+  const docIds = (c: ReturnType<typeof listOf>) => c.items.map((it) => it.id);
+  const viewIds = (c: ReturnType<typeof listOf>) =>
+    displayItems(c, true).map((it) => it.id);
+
+  it("delegates straight to moveItem when the sort is off", () => {
+    const c = listOf("A", "B", "C");
+    const moved = moveDisplayedItem(c, "i1", 2, false, LATER);
+    expect(docIds(moved)).toEqual(["i2", "i3", "i1"]);
+  });
+
+  it("translates a display-order drop into a document move when sinking", () => {
+    // Doc + view both [A, B, C]; check B so the view becomes [A, C, B].
+    let c = listOf("A", "B", "C");
+    c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z");
+    expect(viewIds(c)).toEqual(["i1", "i3", "i2"]);
+    // Drag A (display 0) to display index 1 — it should land after C in the
+    // view, i.e. just before the checked group.
+    const moved = moveDisplayedItem(c, "i1", 1, true, LATER);
+    expect(viewIds(moved)).toEqual(["i3", "i1", "i2"]);
+  });
+
+  it("returns the checklist unchanged for an unknown item", () => {
+    const c = listOf("A", "B");
+    expect(moveDisplayedItem(c, "nope", 0, true, LATER)).toBe(c);
   });
 });
