@@ -75,6 +75,13 @@ export default [
         "warn",
         { allowConstantExport: true },
       ],
+      // eslint-plugin-react-hooks 7 grew its `recommended` preset with new
+      // rules that fire on deliberate, working patterns already in the tree
+      // (synchronous setState in cleanup-style effects, refs touched in test
+      // harness render). Keeping the prior lint surface across the bump;
+      // adopting these is a separate, deliberate refactor.
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
     },
   },
   {

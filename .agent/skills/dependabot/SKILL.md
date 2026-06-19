@@ -51,6 +51,14 @@ versions with the commands above — the shape holds, the numbers drift):
   `npm view vite-plugin-pwa@<ver> peerDependencies` for the Vite range
   it accepts and bump it alongside Vite. `vitest`'s Vite peer is usually
   wide — check but it normally already allows the new Vite.
+  `@vitejs/plugin-react` peers Vite tightly too (its 6.x line peers
+  `vite ^8`) — bump it onto the line that lists the new Vite major.
+- **`vite-plugin-pwa` 1.x** → its 1.0 line peers
+  `@vite-pwa/assets-generator ^1.0.0`, so the two move together; bump
+  `@vite-pwa/assets-generator` to its 1.x alongside the plugin. The
+  assets-generator major also re-encodes `favicon.ico` from the same
+  source SVG (a few bytes smaller), which trips the `icons-check` CI
+  step — see step 6.
 - **ESLint major** → a new ESLint or `@typescript-eslint`/`typescript-eslint`
   major can grow its `recommended` preset with new rules (see step 4),
   and its `eslint` peer must list the new major. Bump
@@ -90,14 +98,20 @@ tsc flags it; don't restructure working logic to dodge a type change.
 
 ## 4. Lint — preserve the surface, don't adopt new rules
 
-A new ESLint or `@typescript-eslint` major can grow its `recommended`
-preset with a wave of new rules that fire on deliberate, working
-patterns. **Adopting them is a standalone refactor, not part of a
-version bump.** Turn the newly-firing rules off in `eslint.config.js`
-(after the `...recommended.rules` spread) with a comment explaining they
-arrived via the bump, so the prior lint surface is preserved and the
-diff stays about versions. Disabling the newly-firing rules to preserve
-the prior lint surface is a bump; adopting them is a separate refactor.
+A new ESLint, `@typescript-eslint`, **or `eslint-plugin-react-hooks`**
+major can grow its `recommended` preset with a wave of new rules that
+fire on deliberate, working patterns. **Adopting them is a standalone
+refactor, not part of a version bump.** Turn the newly-firing rules off
+in `eslint.config.js` (after the `...recommended.rules` spread) with a
+comment explaining they arrived via the bump, so the prior lint surface
+is preserved and the diff stays about versions. Disabling the
+newly-firing rules to preserve the prior lint surface is a bump;
+adopting them is a separate refactor.
+
+The `eslint-plugin-react-hooks` 5→7 jump notably added
+`react-hooks/set-state-in-effect` and `react-hooks/refs` to its
+`recommended` preset — both fire across existing effects/test harnesses;
+disable them rather than refactoring.
 
 Discover _which_ rules are new by counting failures by ruleId rather
 than scrolling the full message list:
@@ -127,15 +141,23 @@ pins above. No install needed.
 
 ## 6. Verify, ship, close
 
-Run the exact PR-gating chain:
+Run the exact chain CI's `test` job runs (`.github/workflows/ci.yml`):
 
 ```
-make fmt-check && make lint && make build && make test
+npm run build && npm test && npm run lint && make icons-check
 ```
 
-(`make lint` runs `eslint . && tsc --noEmit` — it _is_ the typecheck;
-there is no separate `make typecheck`. There is no icons / codegen / e2e
-step in the gate.)
+(`npm run lint` is `eslint . && tsc --noEmit` — it _is_ the typecheck;
+there is no separate `make typecheck`. **CI does not run `fmt-check`** —
+prettier formatting is not gated, so don't reformat unrelated
+preexisting files to chase a green `prettier --check .`; just keep your
+own changed files prettier-clean.)
+
+**`make icons-check` _is_ gated** and regenerates every icon from
+`public/favicon.svg` via `@vite-pwa/assets-generator`. Bumping that
+generator across a major changes its `favicon.ico` output, so after such
+a bump run `make icons` and commit the regenerated `public/favicon.ico`
+(the PNGs usually stay byte-identical) or this step fails.
 
 Commit (one `chore(deps):` commit is fine), push `-u origin <branch>`,
 open the PR ready-for-review listing every bump it subsumes and the
@@ -157,15 +179,21 @@ reopen for the same version.
 - Stale `package-lock.json` → misleading ERESOLVE. `rm -rf node_modules
 package-lock.json` before trusting the trace.
 - `vite-plugin-pwa` must move with a Vite major — it's not in the
-  Dependabot batch. Check its `peerDependencies` for the Vite range.
+  Dependabot batch. Check its `peerDependencies` for the Vite range, and
+  `@vitejs/plugin-react` (peers Vite tightly, e.g. 6.x → `vite ^8`).
+- `vite-plugin-pwa` 1.x peers `@vite-pwa/assets-generator ^1.0.0` — bump
+  the generator with it.
+- `@vite-pwa/assets-generator` major re-encodes `favicon.ico` → run
+  `make icons` and commit it, or the gated `make icons-check` fails.
 - A lint/format plugin whose peer lags the host's major → `overrides`
   shim, not a downgrade of the host.
 - New `recommended` lint rules from a major → disable (with a comment),
-  don't refactor.
+  don't refactor. `eslint-plugin-react-hooks` 7 adds
+  `react-hooks/set-state-in-effect` and `react-hooks/refs`.
+- CI does **not** run `fmt-check` — don't reformat unrelated preexisting
+  files chasing a green `prettier --check .`; this `SKILL.md` is itself
+  prettier-ignored (lives under `.agent`/`.claude`).
 - Don't merge the PRs individually — consolidate into one.
-- Prettier formats this `SKILL.md` too — run `make fmt-check` (or
-  `prettier --write` the file) after editing the skill, or CI's
-  `fmt-check` job fails on it.
 
 ## Improve this skill every run
 
