@@ -47,6 +47,19 @@ type Props = {
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, fields: { title?: string; notes?: string }) => void;
+  /**
+   * Delete this item because the user emptied it out — committed with a blank
+   * title and no body, or backspaced past the start of an empty line. Lets the
+   * row vanish silently instead of persisting a blank line.
+   */
+  onRemoveEmpty?: (id: string) => void;
+  /**
+   * Backspace at the start of an emptied line: remove this item and move
+   * editing into the line above. Returns true when there was a line above to
+   * back up into (so the editor swallows the key), false at the top of the
+   * list.
+   */
+  onBackspaceEmpty?: (id: string) => boolean;
   /** Open a fresh add-item draft — fired when Enter commits a title edit. */
   onAddAfter?: () => void;
   /**
@@ -58,6 +71,14 @@ type Props = {
   autoEditBody?: boolean;
   /** Tell the parent the auto body-edit has been consumed; clears the flag. */
   onAutoEditConsumed?: () => void;
+  /**
+   * Open this row straight into its title editor (cursor at the end) as soon
+   * as it mounts — set on the line above when a backspace erases the line
+   * below, so editing flows up the list. Cleared via `onAutoEditTitleConsumed`.
+   */
+  autoEditTitle?: boolean;
+  /** Tell the parent the auto title-edit has been consumed; clears the flag. */
+  onAutoEditTitleConsumed?: () => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
   dragHandleProps: DragHandleProps;
@@ -71,9 +92,13 @@ function ChecklistRowImpl({
   onArchive,
   onDelete,
   onEdit,
+  onRemoveEmpty,
+  onBackspaceEmpty,
   onAddAfter,
   autoEditBody = false,
   onAutoEditConsumed,
+  autoEditTitle = false,
+  onAutoEditTitleConsumed,
   notesDisabled = false,
   dragHandleProps,
   dragging,
@@ -106,6 +131,15 @@ function ChecklistRowImpl({
     onAutoEditConsumed?.();
   }, [autoEditBody, notesDisabled, enterEdit, onAutoEditConsumed]);
 
+  // A backspace erased the line below this one and asked us to take over: open
+  // straight into the title editor (cursor at the end, set by the editor's own
+  // mount focus) so the user keeps erasing up the list. Consumed once.
+  useEffect(() => {
+    if (!autoEditTitle) return;
+    enterEdit(false);
+    onAutoEditTitleConsumed?.();
+  }, [autoEditTitle, enterEdit, onAutoEditTitleConsumed]);
+
   // Tapping the title: expand a collapsed body first (reveal), edit on the
   // next tap. A note-less item has nothing to reveal, so it edits straight
   // away.
@@ -116,13 +150,24 @@ function ChecklistRowImpl({
 
   const submitEdit = useCallback(
     (fields: { title?: string; notes?: string }) => {
+      // An item emptied of all its text shouldn't linger: when the title is
+      // blank and no body remains (the field, if shown, or the stored note),
+      // delete it instead of committing a blank line. `notes` is only present
+      // when the body field was in play, so fall back to the stored note.
+      const titleEmpty = !(fields.title ?? "").trim();
+      const notesEmpty = !(fields.notes ?? item.notes ?? "").trim();
+      if (titleEmpty && notesEmpty) {
+        onRemoveEmpty?.(item.id);
+        setEditing(false);
+        return;
+      }
       onEdit(item.id, fields);
       setEditing(false);
       // Leave the body revealed when it still has content, so the rendered
       // result is visible right after editing; collapse a cleared note.
       if (fields.notes !== undefined) setExpanded(Boolean(fields.notes.trim()));
     },
-    [onEdit, item.id],
+    [onEdit, onRemoveEmpty, item.id, item.notes],
   );
 
   // While the body is revealed, a tap anywhere outside the row collapses it.
@@ -150,6 +195,9 @@ function ChecklistRowImpl({
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
           onAddAfter={onAddAfter}
+          onBackspaceEmpty={
+            onBackspaceEmpty ? () => onBackspaceEmpty(item.id) : undefined
+          }
           onCancel={() => setEditing(false)}
         />
       </li>

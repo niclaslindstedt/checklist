@@ -85,6 +85,7 @@ names. Honour these when naming a new file, key, or string.
 | **use-checklist hook** / **app state**            | `useChecklist`, `UseChecklist` (`src/app/use-checklist.ts`). [→](overview.md#use-checklist-hook)   |
 | **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
 | **Edit item** / **change item text** / **edit a note** | `editItem` (`src/domain/checklists.ts`); verb in `src/app/use-checklist-edits.ts`. [→](overview.md#edit-item) |
+| **Remove empty item** / **don't keep empty items** / **backspace to erase a line** / **back up to the line above** | `removeEmpty` (`src/app/use-checklist-edits.ts`); `submitEdit` / `onBackspaceEmpty` (`src/ui/ChecklistRow.tsx`); `onBackspaceEmpty` (`src/ui/ChecklistRowEditor.tsx`); `backspaceEmpty` + `editTitleOfId` (`src/ui/ChecklistView.tsx`). [→](overview.md#edit-item) |
 | **Import items** / **paste a checklist** / **paste to import** | `importItems` (`src/app/use-checklist-edits.ts`); `parseItemsFromMarkdown` (`src/storage/markdown/codec.ts`); `addItems` (`src/domain/checklists.ts`). [→](overview.md#import-items--paste-a-checklist) |
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
 | **Delete item**                                   | `deleteItem` (`src/domain/checklists.ts`). [→](overview.md#delete-item)                            |

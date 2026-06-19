@@ -58,6 +58,13 @@ export interface ChecklistEdits {
   ) => void;
   toggle: (itemId: string) => void;
   remove: (itemId: string) => void;
+  /**
+   * Delete an item that the user has emptied out — title (and body) erased —
+   * by blurring the editor or by backspacing past the start of an empty
+   * line. Silent (no toast), since the row simply vanishes where the user is
+   * looking; the step is still recorded so undo can resurrect it.
+   */
+  removeEmpty: (itemId: string) => void;
   archive: (itemId: string) => void;
   /**
    * Archive every finished (checked) item in the active list in one sweep —
@@ -260,6 +267,20 @@ export function useChecklistEdits(deps: {
     [commit, findItem, notify, t],
   );
 
+  const removeEmpty = useCallback(
+    (itemId: string) => {
+      const found = findItem(itemId);
+      if (!found) return;
+      // No toast: the emptied row disappears in place under the user's
+      // cursor. The undo step still carries a label so it can be walked back.
+      commit(
+        deleteItemOp(found.checklist, itemId, now()),
+        t("toast.emptyItemRemoved"),
+      );
+    },
+    [commit, findItem, t],
+  );
+
   const archive = useCallback(
     (itemId: string) => {
       const label = t("toast.itemArchived", { title: titleOf(itemId) });
@@ -335,6 +356,7 @@ export function useChecklistEdits(deps: {
       editItem,
       toggle,
       remove,
+      removeEmpty,
       archive,
       archiveFinished,
       deleteFinished,
@@ -348,6 +370,7 @@ export function useChecklistEdits(deps: {
       editItem,
       toggle,
       remove,
+      removeEmpty,
       archive,
       archiveFinished,
       deleteFinished,

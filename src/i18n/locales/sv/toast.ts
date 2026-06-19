@@ -8,6 +8,7 @@ const toast: ToastCatalog = {
   itemChecked: "Bockade av ”{title}”",
   itemUnchecked: "Bockade ur ”{title}”",
   itemDeleted: "Tog bort ”{title}”",
+  emptyItemRemoved: "Tog bort tom rad",
   itemArchived: "Arkiverade ”{title}”",
   itemRestored: "Återställde ”{title}”",
   itemMoved: "Flyttade ”{title}”",
