@@ -1320,8 +1320,20 @@ the shell renders in the right language from first paint;
 `src/i18n/LanguageRoot.tsx` is the top-level wrapper that provides the
 language, mounts the toast provider + update toast, and gates the first
 paint until the initial catalog loads. Catalog namespaces live under
-`src/i18n/locales/<lang>/` (app, changelog, common, menu, nav, pwa,
-settings, sync, toast).
+`src/i18n/locales/<lang>/` (app, changelog, common, language, menu, nav,
+pwa, settings, sync, toast).
+
+The user switches language from the **flag picker** on the General
+settings tab: `src/ui/LanguagePicker.tsx` renders the UK and Swedish
+flags as inline SVGs (not emoji, so rendering is deterministic across
+OSes) inside a `radiogroup`, with the active flag accented and the other
+dimmed. It's a controlled component (`value` + `onChange`); the General
+tab feeds it `useLang()` and wires `onChange` straight to
+`writeLanguagePreference`, which persists the choice and broadcasts
+`LANGUAGE_EVENT` for `LanguageRoot` to apply live. The same broadcast
+fires the `polyglot` achievement. The picker's own labels come from the
+`language.*` namespace; the section heading and hint are
+`settings.general.language` / `languageHint`.
 
 ## PWA
 
