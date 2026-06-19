@@ -163,13 +163,30 @@ describe("SettingsModal", () => {
     );
   });
 
-  it("reveals the Developer and Logs tabs when developer mode is on", () => {
+  it("reveals the Developer tab — but not Logs — when developer mode is on", () => {
     renderModal();
     expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();
     fireEvent.click(screen.getByLabelText("Developer mode"));
     expect(screen.getByRole("tab", { name: "Developer" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Logs" })).toBeTruthy();
+    // Logs stays hidden until log capture is switched on.
+    expect(screen.queryByRole("tab", { name: "Logs" })).toBeNull();
     // Turn it back off so module-scoped dev state doesn't leak.
+    fireEvent.click(screen.getByLabelText("Developer mode"));
+    expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();
+  });
+
+  it("shows the Logs tab only while log capture is enabled", () => {
+    renderModal();
+    fireEvent.click(screen.getByLabelText("Developer mode"));
+    fireEvent.click(screen.getByRole("tab", { name: "Developer" }));
+    // Enabling capture reveals the Logs tab; disabling it hides it again.
+    fireEvent.click(screen.getByLabelText("Capture logs"));
+    expect(screen.getByRole("tab", { name: "Logs" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Capture logs"));
+    expect(screen.queryByRole("tab", { name: "Logs" })).toBeNull();
+    // Turn dev mode back off (from General, where the toggle lives) so
+    // module-scoped dev state doesn't leak.
+    fireEvent.click(screen.getByRole("tab", { name: "General" }));
     fireEvent.click(screen.getByLabelText("Developer mode"));
     expect(screen.queryByRole("tab", { name: "Developer" })).toBeNull();
   });

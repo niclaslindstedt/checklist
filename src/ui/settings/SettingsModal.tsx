@@ -37,7 +37,8 @@ import { LogsTab } from "./tabs/logs.tsx";
 import { StorageTab } from "./tabs/storage.tsx";
 
 // Settings dialog. Lands on the General tab; Lists, Theme, and Storage are
-// always present; Developer and Logs appear only when developer mode is on.
+// always present; Developer appears when developer mode is on, and Logs only
+// once log capture is also enabled (there's nothing to show until then).
 // Modelled on the budget project's tabbed SettingsModal — a left rail of
 // labelled, icon-marked tabs on desktop, collapsed into a burger menu in the
 // header on mobile.
@@ -110,28 +111,36 @@ export function SettingsModal({
   initialTab,
 }: Props) {
   const t = useT();
-  const { devMode } = useDevMode();
+  const { devMode, captureLogs } = useDevMode();
   const [activeTab, setActiveTab] = useState<TabId>("general");
   // Local draft of the owned settings. Snapshots `settings` and re-syncs
   // each time the dialog is closed, so the next open starts clean and a
   // cancelled edit never lingers.
   const [draft, setDraft] = useState<Settings>(settings);
 
-  const tabs: TabId[] = useMemo(
-    () =>
-      devMode
-        ? ["general", "lists", "theme", "storage", "developer", "logs"]
-        : ["general", "lists", "theme", "storage"],
-    [devMode],
-  );
+  // The Logs tab only appears while developer mode is on *and* log capture
+  // is enabled — there's nothing worth showing until logs are being kept.
+  const tabs: TabId[] = useMemo(() => {
+    if (!devMode) return ["general", "lists", "theme", "storage"];
+    const devTabs: TabId[] = [
+      "general",
+      "lists",
+      "theme",
+      "storage",
+      "developer",
+    ];
+    if (captureLogs) devTabs.push("logs");
+    return devTabs;
+  }, [devMode, captureLogs]);
 
   // Jump to the requested tab each time the dialog opens with one set.
   useEffect(() => {
     if (open && initialTab) setActiveTab(initialTab);
   }, [open, initialTab]);
 
-  // If developer mode is switched off while the Developer / Logs tab is
-  // active, fall back to General so we never show an empty panel.
+  // If the active tab disappears — developer mode switched off, or log
+  // capture turned off while the Logs tab was open — fall back to General
+  // so we never show an empty panel.
   useEffect(() => {
     if (!tabs.includes(activeTab)) setActiveTab("general");
   }, [tabs, activeTab]);
