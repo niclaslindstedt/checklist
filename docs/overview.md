@@ -102,8 +102,11 @@ raw plain text. The title tap is swallowed after a swipe (the
 `src/ui/ChecklistRowEditor.tsx` — the in-place editor a row swaps to. It
 keeps the row's `Checkbox` so the line still reads as the same item (and
 the whole row is tinted `bg-surface-2` to signal the active edit); the
-title is one input, the body an optional `<textarea>` beneath it, both
-plain text. Enter in the title commits and immediately opens a fresh
+title is one line, the body an optional note beneath it, both plain text.
+Both are `ContentEditable` (a contenteditable `div`), not native
+input/textarea, so iOS doesn't stack its own form-assistant bar above the
+app's keyboard nav bar — see **Keyboard nav bar**. Enter in the title commits
+and immediately opens a fresh
 add-item draft (`onAddAfter`, wired to the view's `startDraft`) so one
 item flows straight into the next — the same draft row the add button
 opens. **Shift+Enter** (or the "Add a note" affordance shown when there's
@@ -159,6 +162,12 @@ at its title editor. Each button keeps its press inside the editor
 (`onMouseDown` preventDefault) so the tap never blurs the input out from under
 the bar mid-click. Jumping with the bar unlocks the **Line Walker**
 achievement (`unlock("lineWalker")`).
+
+This is the *only* nav bar on screen because the editor's fields are
+contenteditable rather than native input/textarea: iOS renders its own
+form-assistant bar (a second up/down/done bar) for native controls — which a
+web page can neither reprogram nor hide — but not for contenteditable. See
+`ContentEditable` (`src/ui/form/ContentEditable.tsx`).
 
 ### Markdown renderer
 

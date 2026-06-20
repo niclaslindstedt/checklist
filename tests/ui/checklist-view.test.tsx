@@ -8,6 +8,16 @@ import { renderWithChecklist } from "./context-harness.tsx";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
+// The row editor's title/note are contenteditable, not inputs: set the text and
+// fire the `input` the field listens on, and find the open editor by its
+// textbox role (the view-mode title is a button with the same label).
+function setText(el: HTMLElement, text: string): void {
+  el.textContent = text;
+  fireEvent.input(el);
+}
+const titleEditor = () =>
+  screen.getByRole("textbox", { name: "Edit item" }) as HTMLElement;
+
 const items: ChecklistItem[] = [
   { id: "i1", title: "Buy milk", checked: false },
 ];
@@ -61,7 +71,7 @@ describe("ChecklistView", () => {
     // re-add it), and the new row's note field is open and ready.
     expect(addItem).toHaveBeenCalledTimes(1);
     expect(addItem).toHaveBeenCalledWith("Buy milk");
-    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
   });
 
   it("falls back to a plain add on Shift+Enter when notes are disabled", () => {
@@ -75,7 +85,7 @@ describe("ChecklistView", () => {
     // No body to edit — Shift+Enter behaves like Enter, keeping the composer
     // open for the next item rather than opening a note field.
     expect(addItem).toHaveBeenCalledWith("New thing");
-    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
     expect(screen.getByLabelText("Add item")).toBeTruthy();
   });
 
@@ -84,8 +94,8 @@ describe("ChecklistView", () => {
     renderView({ editItem });
     // Edit the existing item, then press Enter in the title.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const titleInput = screen.getByLabelText("Edit item");
-    fireEvent.change(titleInput, { target: { value: "Buy oat milk" } });
+    const titleInput = titleEditor();
+    setText(titleInput, "Buy oat milk");
     fireEvent.keyDown(titleInput, { key: "Enter" });
     expect(editItem).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
     // The add-item draft is now open, focused and ready for the next item.
@@ -158,14 +168,20 @@ describe("ChecklistView", () => {
 
       // Edit the second item, erase it, then Backspace past the start.
       fireEvent.click(screen.getByText("Bread"));
-      const input = screen.getByDisplayValue("Bread") as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "" } });
+      const input = titleEditor();
+      setText(input, "");
       fireEvent.keyDown(input, { key: "Backspace" });
 
       // The emptied line is removed, and the line above opens for editing
-      // (its title is now an input rather than a button).
+      // (its title is now an editor showing "Milk"). `removeEmpty` is mocked
+      // here so the emptied row stays mounted, so match by content rather than
+      // assuming a single open editor.
       expect(removeEmpty).toHaveBeenCalledWith("i2");
-      expect(screen.getByDisplayValue("Milk")).toBeTruthy();
+      expect(
+        screen
+          .getAllByRole("textbox", { name: "Edit item" })
+          .map((el) => el.textContent),
+      ).toContain("Milk");
     });
 
     it("does not back up past the top line on Backspace", () => {
@@ -173,8 +189,8 @@ describe("ChecklistView", () => {
       renderView({ items: twoItems, removeEmpty });
 
       fireEvent.click(screen.getByText("Milk"));
-      const input = screen.getByDisplayValue("Milk") as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "" } });
+      const input = titleEditor();
+      setText(input, "");
       fireEvent.keyDown(input, { key: "Backspace" });
 
       // Top of the list: nothing above to back into, so the keystroke is left
@@ -187,8 +203,8 @@ describe("ChecklistView", () => {
       renderView({ items: twoItems, removeEmpty });
 
       fireEvent.click(screen.getByText("Bread"));
-      const input = screen.getByDisplayValue("Bread") as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "" } });
+      const input = titleEditor();
+      setText(input, "");
       fireEvent.blur(input);
 
       expect(removeEmpty).toHaveBeenCalledWith("i2");
@@ -218,12 +234,12 @@ describe("ChecklistView", () => {
       renderView({ items: threeItems, editItem });
 
       fireEvent.click(screen.getByText("Bread"));
-      expect(screen.getByDisplayValue("Bread")).toBeTruthy();
+      expect(titleEditor().textContent).toBe("Bread");
       fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
 
       // The open edit is committed before the jump, and the row below opens.
       expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread" });
-      expect(screen.getByDisplayValue("Cucumber")).toBeTruthy();
+      expect(titleEditor().textContent).toBe("Cucumber");
     });
 
     it("commits the edit and moves editing up to the previous item", () => {
@@ -236,7 +252,7 @@ describe("ChecklistView", () => {
       );
 
       expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread" });
-      expect(screen.getByDisplayValue("Milk")).toBeTruthy();
+      expect(titleEditor().textContent).toBe("Milk");
     });
 
     it("disables up at the top of the list and down at the bottom", () => {
@@ -268,13 +284,13 @@ describe("ChecklistView", () => {
       renderView({ items: threeItems, editItem });
 
       fireEvent.click(screen.getByText("Bread"));
-      const input = screen.getByDisplayValue("Bread") as HTMLInputElement;
-      fireEvent.change(input, { target: { value: "Bread!" } });
+      const input = titleEditor();
+      setText(input, "Bread!");
       fireEvent.click(screen.getByRole("button", { name: "Done editing" }));
 
       expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread!" });
       // The editor and the bar are both gone — editing is finished.
-      expect(screen.queryByDisplayValue("Bread!")).toBeNull();
+      expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
       expect(
         screen.queryByRole("button", { name: "Edit next item" }),
       ).toBeNull();
