@@ -8,7 +8,7 @@ import {
 
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
-import { Checkbox } from "./form/index.ts";
+import { Checkbox, ContentEditable, focusAtEnd } from "./form/index.ts";
 import { PlusIcon } from "./icons.tsx";
 
 // The in-place editor a checklist row swaps to when pressed. It keeps the
@@ -17,6 +17,12 @@ import { PlusIcon } from "./icons.tsx";
 // beneath — so the raw markdown is what you see while typing; the row
 // renders it back as markdown once the edit commits. The whole row is tinted
 // (`bg-surface-2`, set by the parent) so it reads as the active edit.
+//
+// Both fields are `ContentEditable` (a contenteditable div), not native
+// input/textarea, on purpose: iOS shows its own form-assistant bar above the
+// keyboard for native controls — a second up/down/done bar that duplicated the
+// app's own keyboard nav bar (`EditNavBar`) and can't be hidden — but not for
+// contenteditable elements. See `ContentEditable`.
 //
 // Commit / cancel mirror the add-item composer's feel:
 //   • Enter in the title commits and immediately opens a fresh draft row
@@ -91,21 +97,18 @@ export function ChecklistRowEditor({
   const [bodyShown, setBodyShown] = useState(
     !notesDisabled && (focusBody || Boolean(item.notes)),
   );
-  const titleRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   // Guards the commit/cancel paths so a blur that trails an Escape (the
   // component is unmounting) doesn't fire a second, conflicting outcome.
   const done = useRef(false);
 
   useEffect(() => {
     if (focusBody && !notesDisabled) {
-      bodyRef.current?.focus();
+      focusAtEnd(bodyRef.current);
       return;
     }
-    const el = titleRef.current;
-    el?.focus();
-    const len = el?.value.length ?? 0;
-    el?.setSelectionRange(len, len);
+    focusAtEnd(titleRef.current);
   }, [focusBody, notesDisabled]);
 
   // The body text the item would carry — the live field while it's shown,
@@ -133,7 +136,7 @@ export function ChecklistRowEditor({
 
   const revealBody = () => {
     setBodyShown(true);
-    requestAnimationFrame(() => bodyRef.current?.focus());
+    requestAnimationFrame(() => focusAtEnd(bodyRef.current));
   };
 
   // Expose a commit handle to the keyboard nav bar for as long as this editor
@@ -150,7 +153,7 @@ export function ChecklistRowEditor({
     return () => onActiveChangeRef.current?.(null);
   }, []);
 
-  const onTitleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+  const onTitleKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
       // Shift+Enter reveals the note field, unless notes are switched off —
@@ -172,7 +175,7 @@ export function ChecklistRowEditor({
     }
   };
 
-  const onBodyKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const onBodyKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
       e.preventDefault();
       cancel();
@@ -202,26 +205,26 @@ export function ChecklistRowEditor({
           onChange={onToggle}
           ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
         />
-        <input
+        <ContentEditable
           ref={titleRef}
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={setTitle}
           onKeyDown={onTitleKey}
           placeholder={t("app.editTitlePlaceholder")}
-          aria-label={t("app.editItem")}
-          className="min-w-0 flex-1 border-0 bg-transparent text-fg-bright outline-none placeholder:text-muted"
+          ariaLabel={t("app.editItem")}
+          className="min-w-0 flex-1 border-0 bg-transparent break-words text-fg-bright outline-none"
         />
       </div>
       {bodyShown ? (
-        <textarea
+        <ContentEditable
           ref={bodyRef}
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={setNotes}
           onKeyDown={onBodyKey}
-          rows={Math.min(14, Math.max(5, notes.split("\n").length + 1))}
+          multiline
           placeholder={t("app.notePlaceholder")}
-          aria-label={t("app.notePlaceholder")}
-          className="resize-y rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
+          ariaLabel={t("app.notePlaceholder")}
+          className="max-h-72 min-h-32 overflow-y-auto rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm break-words whitespace-pre-wrap text-fg outline-none focus:border-accent"
         />
       ) : (
         // With notes switched off there's no "Add note" path — the editor is

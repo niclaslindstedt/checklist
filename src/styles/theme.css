@@ -234,3 +234,13 @@ textarea {
   transition-duration: 0s !important;
   animation-duration: 0s !important;
 }
+
+/* Placeholder for the contenteditable fields in the row editor (see
+   `ContentEditable`). Native inputs get `::placeholder`; a contenteditable
+   has none, so we paint the `data-placeholder` text while the field is empty
+   and let it vanish the moment any character is typed. */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-muted);
+  pointer-events: none;
+}

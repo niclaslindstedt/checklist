@@ -14,6 +14,14 @@ import type { DragHandleProps } from "../../src/ui/hooks/useListReorder.ts";
 
 const noop = (): void => {};
 
+// The editor's title/note are contenteditable, not inputs, so they have no
+// `value` / change event: set the text and fire the `input` the field listens
+// on. (See `ContentEditable`.)
+function setText(el: HTMLElement, text: string): void {
+  el.textContent = text;
+  fireEvent.input(el);
+}
+
 const dragHandleProps: DragHandleProps = {
   onPointerDown: noop,
   onPointerMove: noop,
@@ -130,8 +138,8 @@ describe("ChecklistRow editing", () => {
 
     // A note-less item has nothing to reveal, so a title tap edits at once.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Buy oat milk");
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
@@ -143,8 +151,8 @@ describe("ChecklistRow editing", () => {
     renderRow({ onEdit, onAddAfter });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Buy oat milk");
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
@@ -168,8 +176,8 @@ describe("ChecklistRow editing", () => {
     renderRow({ onEdit, onAddAfter });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Buy oat milk");
     fireEvent.blur(input);
 
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
@@ -181,8 +189,8 @@ describe("ChecklistRow editing", () => {
     renderRow({ onEdit });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Changed" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Changed");
     fireEvent.keyDown(input, { key: "Escape" });
 
     expect(onEdit).not.toHaveBeenCalled();
@@ -194,10 +202,10 @@ describe("ChecklistRow editing", () => {
     renderRow();
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const input = screen.getByLabelText("Edit item");
-    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
 
     fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
-    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
   });
 
   it("opens straight into the body editor when autoEditBody is set", () => {
@@ -206,7 +214,7 @@ describe("ChecklistRow editing", () => {
     const onAutoEditConsumed = vi.fn();
     renderRow({ autoEditBody: true, onAutoEditConsumed });
 
-    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
     // The flag is consumed once so it doesn't re-open on a later render.
     expect(onAutoEditConsumed).toHaveBeenCalledTimes(1);
   });
@@ -216,7 +224,7 @@ describe("ChecklistRow editing", () => {
     renderRow({ autoEditBody: true, notesDisabled: true, onAutoEditConsumed });
 
     // Nothing to edit with notes off — the row stays in view mode.
-    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
     expect(onAutoEditConsumed).not.toHaveBeenCalled();
   });
 
@@ -224,7 +232,7 @@ describe("ChecklistRow editing", () => {
     renderRow();
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
-    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
   });
 
   it("reveals a body on the first title tap, then edits on the second", () => {
@@ -234,12 +242,12 @@ describe("ChecklistRow editing", () => {
     // First tap reveals (renders markdown), it does not enter the editor.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     expect(screen.getByText("bold").tagName).toBe("STRONG");
-    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
 
     // Second tap on the title opens the editor with the body shown as text.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     expect(onEdit).not.toHaveBeenCalled();
-    expect(screen.getByPlaceholderText(/markdown supported/i)).toBeTruthy();
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
   });
 
   it("expands the body from the hint chevron", () => {
@@ -272,7 +280,7 @@ describe("ChecklistRow editing", () => {
     expect(screen.queryByRole("button", { name: "Add a note" })).toBeNull();
     const input = screen.getByLabelText("Edit item");
     fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
-    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
   });
 
   it("preserves an existing note when editing the title with notes disabled", () => {
@@ -284,8 +292,8 @@ describe("ChecklistRow editing", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Buy oat milk" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Buy oat milk");
     fireEvent.keyDown(input, { key: "Enter" });
 
     // Only the title is sent — the note is untouched in the document.
@@ -298,8 +306,8 @@ describe("ChecklistRow editing", () => {
     renderRow({ onEdit, onRemoveEmpty });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "");
     fireEvent.blur(input);
 
     expect(onRemoveEmpty).toHaveBeenCalledWith("i1");
@@ -315,8 +323,8 @@ describe("ChecklistRow editing", () => {
     // the item is edited (a no-op title), not removed.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "");
     fireEvent.blur(input);
 
     expect(onRemoveEmpty).not.toHaveBeenCalled();
@@ -327,8 +335,8 @@ describe("ChecklistRow editing", () => {
     renderRow({ onBackspaceEmpty });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "");
     fireEvent.keyDown(input, { key: "Backspace" });
 
     expect(onBackspaceEmpty).toHaveBeenCalledWith("i1");
@@ -339,8 +347,8 @@ describe("ChecklistRow editing", () => {
     renderRow({ onBackspaceEmpty });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "x" } });
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "x");
     fireEvent.keyDown(input, { key: "Backspace" });
 
     expect(onBackspaceEmpty).not.toHaveBeenCalled();
@@ -351,9 +359,9 @@ describe("ChecklistRow editing", () => {
     renderRow({ autoEditTitle: true, onAutoEditTitleConsumed });
 
     // The title field is focused and ready (no body field forced open).
-    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
     expect(input).toBeTruthy();
-    expect(screen.queryByPlaceholderText(/markdown supported/i)).toBeNull();
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
     expect(onAutoEditTitleConsumed).toHaveBeenCalledTimes(1);
   });
 
@@ -382,8 +390,8 @@ describe("ChecklistRow editing", () => {
     // already shown as plain text.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const note = screen.getByPlaceholderText(/markdown supported/i);
-    fireEvent.change(note, { target: { value: "new body" } });
+    const note = screen.getByLabelText(/markdown supported/i);
+    setText(note, "new body");
     fireEvent.keyDown(note, { key: "Enter", ctrlKey: true });
 
     expect(onEdit).toHaveBeenCalledWith("i1", {
