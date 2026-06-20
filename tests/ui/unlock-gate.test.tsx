@@ -17,14 +17,19 @@ afterEach(() => {
 });
 
 describe("UnlockGate", () => {
-  it("renders as a centered card so the prompt sits mid-screen on mobile", () => {
-    // Regression: the gate used the full-screen mobile sheet, which pushed
-    // the unlock button into a footer at the bottom of the viewport — hard
-    // to reach one-handed on a phone. It must render centered on every size.
-    render(<UnlockGate open onUnlock={async () => {}} />);
-    const wrapper = screen.getByRole("dialog").parentElement;
+  it("renders a lone centered card on a solid page background, with no dimmed backdrop", () => {
+    // The gate is not a `Modal`: there's nothing to reveal behind it, so it
+    // paints a solid page background and floats one centered card on it —
+    // no dimmed backdrop and no header/footer chrome. (Regression: the gate
+    // used the full-screen mobile sheet, which pushed the unlock button into
+    // a footer at the bottom of the viewport, hard to reach one-handed.)
+    const { container } = render(<UnlockGate open onUnlock={async () => {}} />);
+    const wrapper = screen.getByRole("form").parentElement;
     expect(wrapper?.className).toContain("items-center");
-    expect(wrapper?.className).not.toContain("items-stretch");
+    expect(wrapper?.className).toContain("justify-center");
+    expect(wrapper?.className).toContain("bg-page-bg");
+    // No dimmed backdrop element behind the card.
+    expect(container.querySelector(".bg-black\\/50")).toBeNull();
   });
 
   it("submits the typed passphrase", () => {
@@ -33,7 +38,7 @@ describe("UnlockGate", () => {
     fireEvent.change(screen.getByLabelText(/passphrase/i), {
       target: { value: "hunter2" },
     });
-    fireEvent.submit(screen.getByRole("dialog").querySelector("form")!);
+    fireEvent.submit(screen.getByRole("form"));
     expect(onUnlock).toHaveBeenCalledWith("hunter2");
   });
 
@@ -45,7 +50,7 @@ describe("UnlockGate", () => {
     fireEvent.change(screen.getByLabelText(/passphrase/i), {
       target: { value: "nope" },
     });
-    fireEvent.submit(screen.getByRole("dialog").querySelector("form")!);
+    fireEvent.submit(screen.getByRole("form"));
     await waitFor(() => {
       expect(screen.getByRole("alert").textContent).toMatch(
         /wrong passphrase/i,
@@ -64,7 +69,7 @@ describe("UnlockGate", () => {
     fireEvent.change(screen.getByLabelText(/passphrase/i), {
       target: { value: "correct-but-offline" },
     });
-    fireEvent.submit(screen.getByRole("dialog").querySelector("form")!);
+    fireEvent.submit(screen.getByRole("form"));
     await waitFor(() => {
       const alert = screen.getByRole("alert").textContent ?? "";
       expect(alert).toMatch(/offline copy|reach your cloud/i);
