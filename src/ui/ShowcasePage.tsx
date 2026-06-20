@@ -82,8 +82,9 @@ export function ShowcasePage() {
             <li>
               <strong className="text-fg-bright">Capture quickly</strong> — type
               and press Enter to add an item, tap to check it off, swipe to
-              archive or delete, and optionally sort checked items to the bottom
-              so what&apos;s left stands out.
+              archive or delete, step between items without leaving the
+              keyboard, and optionally sort checked items to the bottom so
+              what&apos;s left stands out.
             </li>
             <li>
               <strong className="text-fg-bright">Reuse templates</strong> — turn

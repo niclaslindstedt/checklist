@@ -195,6 +195,92 @@ describe("ChecklistView", () => {
     });
   });
 
+  describe("keyboard nav bar", () => {
+    const threeItems: ChecklistItem[] = [
+      { id: "i1", title: "Milk", checked: false },
+      { id: "i2", title: "Bread", checked: false },
+      { id: "i3", title: "Cucumber", checked: false },
+    ];
+
+    it("stays hidden until an item is being edited", () => {
+      renderView({ items: threeItems });
+      expect(
+        screen.queryByRole("button", { name: "Edit next item" }),
+      ).toBeNull();
+      fireEvent.click(screen.getByText("Bread"));
+      expect(
+        screen.getByRole("button", { name: "Edit next item" }),
+      ).toBeTruthy();
+    });
+
+    it("commits the edit and moves editing down to the next item", () => {
+      const editItem = vi.fn();
+      renderView({ items: threeItems, editItem });
+
+      fireEvent.click(screen.getByText("Bread"));
+      expect(screen.getByDisplayValue("Bread")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
+
+      // The open edit is committed before the jump, and the row below opens.
+      expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread" });
+      expect(screen.getByDisplayValue("Cucumber")).toBeTruthy();
+    });
+
+    it("commits the edit and moves editing up to the previous item", () => {
+      const editItem = vi.fn();
+      renderView({ items: threeItems, editItem });
+
+      fireEvent.click(screen.getByText("Bread"));
+      fireEvent.click(
+        screen.getByRole("button", { name: "Edit previous item" }),
+      );
+
+      expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread" });
+      expect(screen.getByDisplayValue("Milk")).toBeTruthy();
+    });
+
+    it("disables up at the top of the list and down at the bottom", () => {
+      renderView({ items: threeItems });
+
+      fireEvent.click(screen.getByText("Milk"));
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Edit previous item",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+
+      // Move down to the last item; now the down button is the disabled one.
+      fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
+      fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Edit next item",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+    });
+
+    it("commits and closes the editor from the done button", () => {
+      const editItem = vi.fn();
+      renderView({ items: threeItems, editItem });
+
+      fireEvent.click(screen.getByText("Bread"));
+      const input = screen.getByDisplayValue("Bread") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "Bread!" } });
+      fireEvent.click(screen.getByRole("button", { name: "Done editing" }));
+
+      expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread!" });
+      // The editor and the bar are both gone — editing is finished.
+      expect(screen.queryByDisplayValue("Bread!")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Edit next item" }),
+      ).toBeNull();
+    });
+  });
+
   describe("bulk actions (long-press the add button)", () => {
     it("keeps the bulk actions out of reach until a long-press", () => {
       renderView({ checkedCount: 1 });

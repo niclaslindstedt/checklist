@@ -135,6 +135,31 @@ through and the empty line is only cleaned up on blur. `removeEmpty`
 cursor already is — but still records an undo step labelled
 `toast.emptyItemRemoved`, so a mis-erase is recoverable.
 
+### Keyboard nav bar
+
+`src/ui/EditNavBar.tsx` — a small pill that floats just above the soft
+keyboard while an item is being edited, mirroring iOS's own form-assistant
+bar: an up / down pair on the left and a check on the right. The up and down
+buttons commit the open edit and move editing to the item above or below; the
+check commits and closes (dismissing the keyboard). It's a touch affordance,
+so it only shows on touch layouts (`sm:hidden`), and it rides above the
+keyboard for free by living in-flow at the bottom of the visual-viewport-pinned
+shell (see **App shell** / `useViewportHeight`) rather than doing any fixed
+positioning of its own.
+
+The bar coordinates with the open editor through `ActiveEditor`
+(`src/ui/edit-nav.ts`): the mounted `ChecklistRowEditor` registers a
+`{ id, commit }` handle (via its `onActiveChange` prop, tagged with the row's
+id in `ChecklistRow`), and `ChecklistView` holds it as `activeEditor`. From
+that it knows which item is open (so it can find the neighbour and disable up at
+the top / down at the bottom) and how to flush the in-progress text before
+jumping. Moving reuses the same `editTitleOfId` hand-off the Backspace-erase
+flow uses: `moveEdit` calls `activeEditor.commit()` then points the target row
+at its title editor. Each button keeps its press inside the editor
+(`onMouseDown` preventDefault) so the tap never blurs the input out from under
+the bar mid-click. Jumping with the bar unlocks the **Line Walker**
+achievement (`unlock("lineWalker")`).
+
 ### Markdown renderer
 
 `src/ui/markdown/renderMarkdown.tsx` — a tiny, dependency-free renderer

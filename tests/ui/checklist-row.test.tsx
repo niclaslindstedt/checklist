@@ -357,6 +357,23 @@ describe("ChecklistRow editing", () => {
     expect(onAutoEditTitleConsumed).toHaveBeenCalledTimes(1);
   });
 
+  it("registers and clears its active-editor handle as editing opens and closes", () => {
+    const onActiveEditorChange = vi.fn();
+    renderRow({ onActiveEditorChange });
+
+    // No editor mounted yet, so nothing is registered.
+    expect(onActiveEditorChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const handle = onActiveEditorChange.mock.calls.at(-1)?.[0];
+    expect(handle?.id).toBe("i1");
+    expect(typeof handle?.commit).toBe("function");
+
+    // Closing the editor (Escape) clears the handle.
+    fireEvent.keyDown(screen.getByLabelText("Edit item"), { key: "Escape" });
+    expect(onActiveEditorChange).toHaveBeenLastCalledWith(null);
+  });
+
   it("commits a title + note together from the editor", () => {
     const onEdit = vi.fn();
     renderRow({ item: { ...item, notes: "old" }, onEdit });

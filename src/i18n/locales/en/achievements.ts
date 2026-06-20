@@ -137,6 +137,10 @@ const achievements = {
       learnMore:
         "Grab an item by its drag handle and drop it elsewhere in the list. Order is yours to set — the app never re-sorts behind your back.",
     },
+    lineWalker: {
+      name: "Line Walker",
+      condition: "Jump between items with the keyboard nav bar.",
+    },
     cleanSlate: {
       name: "Clean Slate",
       condition: "Remove a checklist.",

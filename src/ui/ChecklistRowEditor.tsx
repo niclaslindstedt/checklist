@@ -44,6 +44,7 @@ export function ChecklistRowEditor({
   onToggle,
   onAddAfter,
   onBackspaceEmpty,
+  onActiveChange,
   focusBody = false,
   notesDisabled = false,
 }: {
@@ -68,6 +69,13 @@ export function ChecklistRowEditor({
    * through untouched.
    */
   onBackspaceEmpty?: () => boolean;
+  /**
+   * Register (on mount) / clear (on unmount) a `commit` that persists the
+   * editor's current title/body and closes it — the keyboard nav bar calls it
+   * to flush a half-typed edit before jumping to a neighbouring item. See
+   * `edit-nav.ts`.
+   */
+  onActiveChange?: (commit: (() => void) | null) => void;
   /** Open with the body field shown and focused (the "add a note" path). */
   focusBody?: boolean;
   /**
@@ -127,6 +135,20 @@ export function ChecklistRowEditor({
     setBodyShown(true);
     requestAnimationFrame(() => bodyRef.current?.focus());
   };
+
+  // Expose a commit handle to the keyboard nav bar for as long as this editor
+  // is mounted. It calls the *latest* `submit` through a ref so the handle
+  // never persists stale text, and `submit()` (no `addAfter`) commits and
+  // closes without chaining a fresh draft. Registered once on mount, cleared
+  // on unmount, so the bar always points at the one open editor.
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  const onActiveChangeRef = useRef(onActiveChange);
+  onActiveChangeRef.current = onActiveChange;
+  useEffect(() => {
+    onActiveChangeRef.current?.(() => submitRef.current());
+    return () => onActiveChangeRef.current?.(null);
+  }, []);
 
   const onTitleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
