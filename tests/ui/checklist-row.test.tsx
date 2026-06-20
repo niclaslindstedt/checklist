@@ -427,7 +427,7 @@ describe("ChecklistRow sub-items", () => {
   it("indents a nested row by its depth", () => {
     renderRow({ depth: 2 });
     const fg = foreground();
-    expect(fg.style.paddingLeft).toContain("44px"); // 2 × 22
+    expect(fg.style.paddingLeft).toContain("64px"); // 2 × 32
   });
 
   it("tints the row when it is the active 'into' drop target", () => {

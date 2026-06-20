@@ -34,7 +34,7 @@ describe("DragGhostRow", () => {
     expect(flat.style.paddingLeft).toBe("");
     cleanup();
     const nested = renderGhost(2).container.querySelector("li")!;
-    // depth 2 → calc() carrying the per-level indent (22px × 2).
-    expect(nested.style.paddingLeft).toContain("44px");
+    // depth 2 → calc() carrying the per-level indent (32px × 2).
+    expect(nested.style.paddingLeft).toContain("64px");
   });
 });
