@@ -49,8 +49,9 @@ The **Settings → Lists** tab holds list-behaviour preferences: **Add new
 items to** (top or bottom of the list) and **Disable item notes** — when
 on, items are title-only: the markdown note body beneath each title is
 hidden and the editor's note field is dropped, but any notes already
-written stay saved and reappear when the toggle is turned back off. These
-choices persist to `checklist:settings:v1`.
+written stay saved and reappear when the toggle is turned back off. **Show
+item count** (on by default) toggles the checked / total progress badge in
+the list header. These choices persist to `checklist:settings:v1`.
 
 ### Storage
 

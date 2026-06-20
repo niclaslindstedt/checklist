@@ -25,6 +25,7 @@ const app: AppCatalog = {
   copyChecklist: "Kopiera checklista som markdown",
   copied: "Kopierad",
   copyFailed: "Kunde inte kopiera till urklipp",
+  itemCount: "{checked} av {total} poster bockade",
 };
 
 export default app;

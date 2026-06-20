@@ -61,6 +61,12 @@ export type ChecklistContextValue = UseChecklist & {
    * A presentational flag, mirrored from the synced `Settings`.
    */
   disableItemNotes: boolean;
+  /**
+   * Whether the header shows the progress counter (checked / total) beside
+   * the copy and sync glyphs. A presentational flag mirrored from the
+   * synced `Settings`; on by default.
+   */
+  showItemCount: boolean;
 };
 
 export const ChecklistContext = createContext<ChecklistContextValue | null>(

@@ -112,6 +112,13 @@ describe("deriveUnlocks", () => {
         {},
       ),
     ).toContain("minimalist");
+    expect(
+      deriveUnlocks(
+        state({ settings: { showItemCount: true } }),
+        state({ settings: { showItemCount: false } }),
+        {},
+      ),
+    ).toContain("lostCount");
   });
 
   it("never fires an already-unlocked achievement", () => {

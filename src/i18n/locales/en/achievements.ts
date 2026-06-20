@@ -269,6 +269,10 @@ const achievements = {
       name: "Bare Bones",
       condition: "Switch item notes off.",
     },
+    lostCount: {
+      name: "Lost Count",
+      condition: "Hide the item count in the list header.",
+    },
     underTheHood: {
       name: "Under the Hood",
       condition: "Turn on developer mode.",

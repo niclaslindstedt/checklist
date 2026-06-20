@@ -62,6 +62,10 @@ export type Settings = {
   // title-only. Existing notes are preserved in the document (just not
   // shown or editable), so flipping the toggle back off brings them back.
   disableItemNotes: boolean;
+  // Whether the checklist header shows the progress counter (checked /
+  // total) beside the copy and sync glyphs. On by default; the opt-out
+  // hides the badge for a cleaner header without affecting any behaviour.
+  showItemCount: boolean;
   // Whether the achievements system is switched off. When on, the watcher
   // stops recording unlocks and raising celebratory toasts, and the header
   // trophy button is hidden. Already-earned achievements are preserved (the

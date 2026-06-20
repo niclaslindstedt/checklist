@@ -262,6 +262,10 @@ const achievements: AchievementsCatalog = {
       name: "Skalbenen",
       condition: "Stäng av anteckningar.",
     },
+    lostCount: {
+      name: "Tappat räkningen",
+      condition: "Dölj antalet poster i listans rubrik.",
+    },
     underTheHood: {
       name: "Under huven",
       condition: "Slå på utvecklarläge.",

@@ -147,30 +147,23 @@ function parseArgs(argv) {
 async function recipe(page, _viewport) {
   await openApp(page);
 
-  // Add one item and check it so the bulk actions are enabled, not dimmed.
-  await page.getByRole("button", { name: /^add item$/i }).click();
-  const input = page.getByRole("textbox", { name: /^add item$/i });
-  await input.fill("Buy milk");
-  await input.press("Enter");
-  // Blur the still-open composer so the (+) button comes back.
-  await page.getByRole("heading", { name: "checklist", level: 1 }).click();
-  await page.waitForTimeout(150);
+  // Seed two items so the header progress counter reads "1/2".
+  for (const text of ["Buy milk", "Walk the dog"]) {
+    await page.getByRole("button", { name: /^add item$/i }).click();
+    const input = page.getByRole("textbox", { name: /^add item$/i });
+    await input.fill(text);
+    await input.press("Enter");
+    // Blur the still-open composer so the (+) button comes back.
+    await page.getByRole("heading", { name: "checklist", level: 1 }).click();
+    await page.waitForTimeout(150);
+  }
+
+  // Check the first item so the ring fills halfway (1 of 2).
   await page
     .getByRole("checkbox", { name: /^check item$/i })
     .first()
     .check({ force: true });
-
-  // Long-press the (+) to fan out the bulk-action row, then release the
-  // pointer *away* from the row so the pointerup doesn't land on a bulk
-  // button (which would fire it and collapse the row again).
-  const add = page.getByRole("button", { name: /^add item$/i });
-  const box = await add.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(600);
-  await page.mouse.move(box.x + box.width / 2, box.y - 200);
-  await page.mouse.up();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 }
 
 // === RUN (don't edit) ===

@@ -54,6 +54,9 @@ const settings: SettingsCatalog = {
     disableItemNotes: "Inaktivera anteckningar",
     disableItemNotesHint:
       "Gör poster till enbart titel – dölj anteckningstexten och redigeraren ”Lägg till anteckning”. Anteckningar du redan skrivit behålls, bara dolda.",
+    showItemCount: "Visa antal poster",
+    showItemCountHint:
+      "Visa förloppsräknaren (bockade / totalt) i listans rubrik.",
   },
 
   developer: {

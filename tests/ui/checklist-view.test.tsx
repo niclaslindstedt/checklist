@@ -22,7 +22,12 @@ describe("ChecklistView", () => {
   it("renders items and the progress count", () => {
     renderView();
     expect(screen.getByText("Buy milk")).toBeTruthy();
-    expect(screen.getByText("0/1")).toBeTruthy();
+    expect(screen.getByLabelText("0 of 1 items checked")).toBeTruthy();
+  });
+
+  it("hides the progress count when showItemCount is off", () => {
+    renderView({ showItemCount: false });
+    expect(screen.queryByLabelText(/items checked/i)).toBeNull();
   });
 
   it("shows an empty state when there are no items", () => {
