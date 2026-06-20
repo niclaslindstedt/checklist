@@ -46,6 +46,12 @@ export function ListsTab({
           checked={settings.disableItemNotes}
           onChange={(next) => onUpdate("disableItemNotes", next)}
         />
+        <ToggleRow
+          label={t("settings.lists.showItemCount")}
+          hint={t("settings.lists.showItemCountHint")}
+          checked={settings.showItemCount}
+          onChange={(next) => onUpdate("showItemCount", next)}
+        />
       </Section>
     </>
   );

@@ -371,8 +371,9 @@ function AppShell() {
       sync,
       logoSrc,
       disableItemNotes: settings.disableItemNotes,
+      showItemCount: settings.showItemCount,
     }),
-    [checklist, sync, logoSrc, settings.disableItemNotes],
+    [checklist, sync, logoSrc, settings.disableItemNotes, settings.showItemCount],
   );
   // Just the unseen count for the header trophy badge — kept off the
   // checklist context (whose stability lets the memoised list skip settings

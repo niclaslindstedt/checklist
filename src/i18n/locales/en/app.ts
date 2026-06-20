@@ -31,6 +31,7 @@ const app = {
   copyChecklist: "Copy checklist as markdown",
   copied: "Copied",
   copyFailed: "Couldn't copy to the clipboard",
+  itemCount: "{checked} of {total} items checked",
 } as const;
 
 export type AppCatalog = Widen<typeof app>;

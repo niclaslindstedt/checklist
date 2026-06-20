@@ -6,6 +6,7 @@ import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
+import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
@@ -49,6 +50,7 @@ function ChecklistViewImpl() {
     addItemPosition,
     logoSrc,
     disableItemNotes,
+    showItemCount,
   } = useChecklistContext();
   const reorderCtl = useListReorder(reorder);
   const t = useT();
@@ -121,9 +123,9 @@ function ChecklistViewImpl() {
           />
         </h1>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-sm text-muted tabular-nums">
-            {checkedCount}/{items.length}
-          </span>
+          {showItemCount && (
+            <ItemCount checked={checkedCount} total={items.length} />
+          )}
           <CopyButton checklist={activeList} />
           {sync && (
             <SyncStatus

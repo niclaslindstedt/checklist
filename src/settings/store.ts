@@ -58,6 +58,10 @@ export const DEFAULT_DISABLE_TOASTS = false;
 // destroying any notes already written.
 export const DEFAULT_DISABLE_ITEM_NOTES = false;
 
+// The header progress counter (checked / total) is shown by default. The
+// opt-out hides it for a cleaner header without changing any behaviour.
+export const DEFAULT_SHOW_ITEM_COUNT = true;
+
 // The achievements system is on by default. The opt-out stops tracking and
 // hides the trophy button without discarding already-earned progress.
 export const DEFAULT_DISABLE_ACHIEVEMENTS = false;
@@ -74,6 +78,7 @@ export function defaultSettings(): Settings {
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
     disableToasts: DEFAULT_DISABLE_TOASTS,
     disableItemNotes: DEFAULT_DISABLE_ITEM_NOTES,
+    showItemCount: DEFAULT_SHOW_ITEM_COUNT,
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements: {},
     unseenAchievements: [],
@@ -207,6 +212,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.disableItemNotes === "boolean"
         ? raw.disableItemNotes
         : DEFAULT_DISABLE_ITEM_NOTES,
+    showItemCount:
+      typeof raw.showItemCount === "boolean"
+        ? raw.showItemCount
+        : DEFAULT_SHOW_ITEM_COUNT,
     disableAchievements:
       typeof raw.disableAchievements === "boolean"
         ? raw.disableAchievements

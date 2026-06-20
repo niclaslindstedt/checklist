@@ -820,8 +820,9 @@ hint), the "Disable achievements" toggle that drives
 `src/ui/settings/tabs/lists.tsx` — list-behaviour preferences: the "add
 new items at top / bottom" choice that drives `addItemPosition` (moved
 here from the General tab), the **Sort checked items to the bottom**
-toggle (`sortCheckedToBottom`), and the **Disable item notes** toggle
-(`disableItemNotes`).
+toggle (`sortCheckedToBottom`), the **Disable item notes** toggle
+(`disableItemNotes`), and the **Show item count** toggle
+(`showItemCount`).
 
 ### Sort checked items to the bottom
 
@@ -856,6 +857,20 @@ chevron and the rendered markdown never show, and the in-place
 and the Shift+Enter reveal so editing only touches the title. Notes
 already written stay in the document untouched — flipping the toggle back
 off brings them back. Unlocks the **Bare Bones** achievement.
+
+### Show item count
+
+The header progress badge (`ItemCount`, `src/ui/ItemCount.tsx`) shows the
+**checked / total** fraction beside the copy and sync glyphs, wrapped in a
+small ring that fills as items get checked and flips to the success accent
+once every item is done. Sized and bordered (`h-9`) to sit on the same row
+as those glyphs so the header reads as one control group rather than a
+stray number. The **Show item count** toggle on the Lists tab
+(`showItemCount` on the synced `Settings`, on by default) hides the badge
+for a cleaner header; the flag rides the checklist context
+(`showItemCount` on `ChecklistContextValue`, set by `App` from the
+settings) to `ChecklistView`, which drops the badge when it's off. Hiding
+it unlocks the **Lost Count** achievement.
 
 ### Appearance / theme tab
 

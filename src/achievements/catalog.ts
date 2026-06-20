@@ -26,6 +26,7 @@ import {
   FlaskGlyph,
   FolderGlyph,
   GlobeGlyph,
+  HashGlyph,
   LayersGlyph,
   LockGlyph,
   MedalGlyph,
@@ -437,6 +438,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.settings.disableItemNotes],
       predicate: (prev, next) =>
         !prev.settings.disableItemNotes && next.settings.disableItemNotes,
+    },
+  },
+  {
+    id: "lostCount",
+    tier: "expert",
+    glyph: HashGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.showItemCount],
+      predicate: (prev, next) =>
+        prev.settings.showItemCount && !next.settings.showItemCount,
     },
   },
   {

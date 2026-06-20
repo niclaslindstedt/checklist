@@ -367,6 +367,15 @@ export function MedalGlyph({ className }: IconProps) {
   );
 }
 
+export function HashGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M9 4 7 20M17 4l-2 16" />
+      <path d="M5 9h15M4 15h15" />
+    </Svg>
+  );
+}
+
 // Re-exports of the chrome icons reused as achievement glyphs, normalised to
 // the `Glyph` signature so the catalog imports every glyph from one module.
 export const PlusGlyph: Glyph = PlusIcon;

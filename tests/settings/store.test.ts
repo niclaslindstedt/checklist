@@ -155,6 +155,16 @@ describe("validateSettings", () => {
     );
   });
 
+  it("shows the item count by default and honours an explicit boolean", () => {
+    expect(defaultSettings().showItemCount).toBe(true);
+    expect(validateSettings({}).showItemCount).toBe(true);
+    expect(validateSettings({ showItemCount: false }).showItemCount).toBe(false);
+  });
+
+  it("falls back to a shown item count on a non-boolean value", () => {
+    expect(validateSettings({ showItemCount: "no" }).showItemCount).toBe(true);
+  });
+
   it("keeps checked items in place by default and honours an explicit boolean", () => {
     expect(defaultSettings().sortCheckedToBottom).toBe(false);
     expect(validateSettings({}).sortCheckedToBottom).toBe(false);

@@ -58,6 +58,9 @@ const settings = {
     disableItemNotes: "Disable item notes",
     disableItemNotesHint:
       "Make items title-only — hide the note body and the “Add note” editor. Notes you’ve already written are kept, just hidden.",
+    showItemCount: "Show item count",
+    showItemCountHint:
+      "Show the progress counter (checked / total) in the list header.",
   },
 
   developer: {
