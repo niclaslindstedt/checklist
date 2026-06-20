@@ -24,3 +24,13 @@ export function useMediaQuery(query: string): boolean {
 
   return matches;
 }
+
+// True on a "desktop"-style pointer: a device with a precise, hovering
+// pointer (a mouse or trackpad) rather than a coarse touch screen. Gates
+// the right-click context menus — a contextmenu gesture only makes sense
+// where there's a real secondary click; touch devices keep their swipe and
+// tap affordances instead. A hybrid (touch laptop) reports `hover: hover`
+// and so opts into the right-click menus while still supporting touch.
+export function useDesktopPointer(): boolean {
+  return useMediaQuery("(hover: hover) and (pointer: fine)");
+}

@@ -72,6 +72,7 @@ names. Honour these when naming a new file, key, or string.
 | **Encryption log modal** / **encryption log**          | `EncryptionLogModal` (`src/ui/settings/EncryptionLogModal.tsx`). [→](overview.md#encryption-log-modal)   |
 | **Confirmation dialog** / **confirm modal** / **"are you sure" popup** | `ConfirmDialog` (`src/ui/ConfirmDialog.tsx`); `AlertTriangleIcon` / `HelpCircleIcon` (`src/ui/icons.tsx`). [→](overview.md#confirmation-dialog) |
 | **Dropdown** / **custom dropdown** / **picker** / **custom select** | `SelectPicker` (`src/ui/form/SelectPicker.tsx`); `FloatingPanel` (`src/ui/FloatingPanel.tsx`), `DismissBackdrop` (`src/ui/DismissBackdrop.tsx`); `useFloatingPosition` (`src/ui/hooks/useFloatingPosition.ts`), `useEscapeKey` (`src/ui/hooks/useEscapeKey.ts`). [→](overview.md#dropdown--custom-select) |
+| **Right-click menu** / **context menu** / **desktop actions menu** | `ContextMenu` (`src/ui/ContextMenu.tsx`); `useContextMenu` (`src/ui/hooks/useContextMenu.ts`); `useDesktopPointer` (`src/ui/hooks/useMediaQuery.ts`). [→](overview.md#right-click-menu) |
 | **Pull-to-refresh indicator**                          | `src/ui/PullToRefreshIndicator.tsx`. [→](overview.md#pull-to-refresh-indicator)                          |
 | **Update toast** / **"new build ready"**               | `src/ui/UpdateToast.tsx`. [→](overview.md#update-toast)                                                  |
 | **Toast** / **notification** / **disable toasts** / **toast timer** / **countdown ring** | `src/ui/toast/Toast.tsx` (`ToastProvider`; `disableToasts` gate; `ToastTimerRing`; click-to-dismiss), `src/ui/toast/useToast.ts` (`useToast`). [→](overview.md#toast) |
@@ -93,6 +94,7 @@ names. Honour these when naming a new file, key, or string.
 | **Toggle item** / **check off**                   | `toggleItem` (`src/domain/checklists.ts`). [→](overview.md#toggle-item)                            |
 | **Delete item**                                   | `deleteItem` (`src/domain/checklists.ts`). [→](overview.md#delete-item)                            |
 | **Archive / unarchive item**                      | `setArchived`, `activeItems`, `archivedItems`, `archivedByChecklist` (`src/domain/checklists.ts`). [→](overview.md#archive--unarchive-item) |
+| **Archive / unarchive a checklist** / **archive a whole list** / **archived lists** | `setChecklistArchived`, `activeChecklists`, `archivedChecklists` (`src/domain/checklists.ts`); `archiveChecklist`, `unarchiveChecklist`, `archivedChecklists` (`src/app/use-checklist-lists.ts`); the "Archived lists" section in `src/ui/ArchiveView.tsx`. [→](overview.md#archive-a-checklist) |
 | **Archive finished** / **delete finished** / **bulk actions** / **clear checked** / **long-press the plus** | `archiveChecked`, `deleteChecked` (`src/domain/checklists.ts`); `archiveFinished`, `deleteFinished` (`src/app/use-checklist-edits.ts`); the long-press action row in `src/ui/AddItemButton.tsx`. [→](overview.md#archive--delete-finished) |
 | **Reorder item** / **drag to reorder**            | `moveItem` (`src/domain/checklists.ts`); `useListReorder`. [→](overview.md#reorder-item)           |
 | **Sub-item** / **nested item** / **sub-checklist** / **drag into another item** / **indent an item** | `ChecklistItem.children` (`src/domain/types.ts`); `moveItemInto`, `flattenItems`, `findItem`, `flattenForDisplay`, `DropMode` (`src/domain/checklists.ts`); `useListReorder` drop zones (`src/ui/hooks/useListReorder.ts`); `depth` / caret / drop indicators in `src/ui/ChecklistRow.tsx`; `CaretRightIcon` (`src/ui/icons/action.tsx`). [→](overview.md#sub-items--nested-items) |
@@ -207,12 +209,13 @@ names. Honour these when naming a new file, key, or string.
 | **Add an item**                   | `AddItemButton` → inline `AddItemForm` → `addItem`. [→](overview.md#add-an-item)   |
 | **Check / uncheck an item**       | row checkbox → `toggleItem`. [→](overview.md#check--uncheck-an-item)               |
 | **Edit an item / its body**       | press the row → `ChecklistRowEditor` → `editItem`. [→](overview.md#edit-item)      |
-| **Delete an item**                | swipe-left → `deleteItem`. [→](overview.md#delete-an-item)                         |
-| **Archive an item**               | swipe-right → `setArchived(…, true)`. [→](overview.md#archive-an-item)             |
+| **Delete an item**                | swipe-left (or right-click → menu, desktop) → `deleteItem`. [→](overview.md#delete-an-item) |
+| **Archive an item**               | swipe-right (or right-click → menu, desktop) → `setArchived(…, true)`. [→](overview.md#archive-an-item) |
 | **Archive / delete finished items** | long-press the add (+) button → `archiveFinished` / `deleteFinished`. [→](overview.md#archive--delete-finished) |
 | **Restore an item**               | archive view → `setArchived(…, false)`. [→](overview.md#restore-an-item)          |
 | **Reorder items**                 | grip drag → `useListReorder` → `moveItem`. [→](overview.md#reorder-items)          |
-| **Remove a checklist**            | side-menu swipe-left → trash → `removeChecklist`. [→](overview.md#remove-a-checklist) |
+| **Remove a checklist**            | side-menu swipe-left → trash (or right-click → menu, desktop) → `removeChecklist`. [→](overview.md#remove-a-checklist) |
+| **Archive a checklist**           | side-menu right-click → Archive (desktop) → `archiveChecklist`. [→](overview.md#archive-a-checklist) |
 | **Remove a namespace**            | side-menu swipe-left → trash → confirm tap → `removeNamespace`. [→](overview.md#remove-a-namespace) |
 | **Undo / redo**                   | side menu / keyboard. [→](overview.md#undo--redo-1)                                |
 | **Pull to refresh**               | `usePullToRefresh` → `reload`. [→](overview.md#pull-to-refresh)                    |

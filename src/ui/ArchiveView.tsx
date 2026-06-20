@@ -1,26 +1,48 @@
 import { memo } from "react";
+import type { ReactNode } from "react";
 
-import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
+import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
-import { CloseIcon, RestoreIcon } from "./icons.tsx";
+import { useContextMenu } from "./hooks/useContextMenu.ts";
+import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
+import { ChecklistIcon, CloseIcon, RestoreIcon, TrashIcon } from "./icons.tsx";
 
 // The archive view, reached from the left navigation drawer. Same pinned
 // shell as ChecklistView (a header with a count over an internally
-// scrolling list) but read-mostly: each archived row carries a Restore
-// button that returns it to its source list and a Delete button that
-// removes it for good. No composer — items only enter the archive by
-// being archived from a checklist. The archive spans every checklist, so
-// items are grouped under a header naming the list they came from. Items
-// restore back into whichever list owns them, not the active one.
-// State-free: reads the grouped archived items and their actions from
-// `useChecklistContext`.
+// scrolling list) but read-mostly. It holds two kinds of archived thing:
+//
+//   • Whole archived **lists** (archive a checklist from the sidebar), each
+//     restorable or deletable as a unit, listed first.
+//   • Archived **items** from the active lists, grouped under a header
+//     naming the list they came from. Items restore back into whichever list
+//     owns them, not the active one.
+//
+// No composer — things only enter the archive by being archived elsewhere.
+// On a desktop pointer each row drops its inline buttons for a right-click
+// menu (see `useDesktopPointer` / `ContextMenu`); touch keeps the buttons.
+// State-free: reads the grouped archived items, the archived lists, and
+// their actions from `useChecklistContext`.
 
 function ArchiveViewImpl() {
-  const { archivedGroups: groups, unarchive, remove } = useChecklistContext();
+  const {
+    archivedGroups: groups,
+    unarchive,
+    remove,
+    archivedChecklists,
+    unarchiveChecklist,
+    removeChecklist,
+  } = useChecklistContext();
   const t = useT();
+  const desktop = useDesktopPointer();
+  const {
+    state: menuState,
+    open: openMenu,
+    close: closeMenu,
+  } = useContextMenu();
 
-  const count = groups.reduce((n, g) => n + g.items.length, 0);
+  const itemCount = groups.reduce((n, g) => n + g.items.length, 0);
+  const count = itemCount + archivedChecklists.length;
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
@@ -37,66 +59,156 @@ function ArchiveViewImpl() {
             {t("nav.archiveEmpty")}
           </p>
         ) : (
-          groups.map((group) => (
-            <section key={group.id} className="mb-2">
-              <h2 className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-muted first:pt-1">
-                {group.name}
-              </h2>
-              <ul className="m-0 list-none p-0">
-                {group.items.map((item) => (
-                  <ArchiveRow
-                    key={item.id}
-                    item={item}
-                    onRestore={() => unarchive(item.id)}
-                    onDelete={() => remove(item.id)}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))
+          <>
+            {archivedChecklists.length > 0 && (
+              <section className="mb-2">
+                <h2 className="px-3 pt-1 pb-1 text-xs font-semibold tracking-wider text-muted uppercase">
+                  {t("nav.archivedLists")}
+                </h2>
+                <ul className="m-0 list-none p-0">
+                  {archivedChecklists.map((list) => (
+                    <ArchiveRow
+                      key={list.id}
+                      title={list.name}
+                      icon={<ChecklistIcon className="h-4 w-4" />}
+                      restoreLabel={t("nav.restoreList")}
+                      onRestore={() => unarchiveChecklist(list.id)}
+                      onDelete={() => removeChecklist(list.id)}
+                      desktop={desktop}
+                      onOpenMenu={(e) =>
+                        openMenu(
+                          [
+                            {
+                              label: t("nav.restoreList"),
+                              icon: <RestoreIcon className="h-4 w-4" />,
+                              onSelect: () => unarchiveChecklist(list.id),
+                            },
+                            {
+                              label: t("app.delete"),
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              danger: true,
+                              onSelect: () => removeChecklist(list.id),
+                            },
+                          ],
+                          e,
+                        )
+                      }
+                    />
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {groups.map((group) => (
+              <section key={group.id} className="mb-2">
+                <h2 className="px-3 pt-4 pb-1 text-xs font-semibold tracking-wider text-muted uppercase first:pt-1">
+                  {group.name}
+                </h2>
+                <ul className="m-0 list-none p-0">
+                  {group.items.map((item) => (
+                    <ArchiveRow
+                      key={item.id}
+                      title={item.title}
+                      checked={item.checked}
+                      restoreLabel={t("nav.restore")}
+                      onRestore={() => unarchive(item.id)}
+                      onDelete={() => remove(item.id)}
+                      desktop={desktop}
+                      onOpenMenu={(e) =>
+                        openMenu(
+                          [
+                            {
+                              label: t("nav.restore"),
+                              icon: <RestoreIcon className="h-4 w-4" />,
+                              onSelect: () => unarchive(item.id),
+                            },
+                            {
+                              label: t("app.delete"),
+                              icon: <TrashIcon className="h-4 w-4" />,
+                              danger: true,
+                              onSelect: () => remove(item.id),
+                            },
+                          ],
+                          e,
+                        )
+                      }
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </>
         )}
       </div>
+
+      {menuState && (
+        <ContextMenu
+          x={menuState.x}
+          y={menuState.y}
+          items={menuState.items}
+          onClose={closeMenu}
+        />
+      )}
     </div>
   );
 }
 
 function ArchiveRow({
-  item,
+  title,
+  checked = false,
+  icon,
+  restoreLabel,
   onRestore,
   onDelete,
+  desktop,
+  onOpenMenu,
 }: {
-  item: ChecklistItem;
+  title: string;
+  checked?: boolean;
+  icon?: ReactNode;
+  restoreLabel: string;
   onRestore: () => void;
   onDelete: () => void;
+  desktop: boolean;
+  onOpenMenu: (e: React.MouseEvent) => void;
 }) {
   const t = useT();
   return (
-    <li className="flex min-h-11 items-center gap-3 border-b border-line px-3 py-2">
+    <li
+      onContextMenu={desktop ? onOpenMenu : undefined}
+      className="flex min-h-11 items-center gap-3 border-b border-line px-3 py-2"
+    >
+      {icon && <span className="shrink-0 text-muted">{icon}</span>}
       <span
         className={`min-w-0 flex-1 truncate ${
-          item.checked ? "text-muted line-through" : "text-fg"
+          checked ? "text-muted line-through" : "text-fg"
         }`}
       >
-        {item.title}
+        {title}
       </span>
-      <button
-        type="button"
-        onClick={onRestore}
-        aria-label={t("nav.restore")}
-        title={t("nav.restore")}
-        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
-      >
-        <RestoreIcon className="h-5 w-5" />
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label={t("app.delete")}
-        title={t("app.delete")}
-        className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-danger/10 hover:text-danger"
-      >
-        <CloseIcon className="h-4 w-4" />
-      </button>
+      {/* Touch keeps the inline buttons; desktop uses the right-click menu. */}
+      {!desktop && (
+        <>
+          <button
+            type="button"
+            onClick={onRestore}
+            aria-label={restoreLabel}
+            title={restoreLabel}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
+          >
+            <RestoreIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={t("app.delete")}
+            title={t("app.delete")}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-danger/10 hover:text-danger"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        </>
+      )}
     </li>
   );
 }

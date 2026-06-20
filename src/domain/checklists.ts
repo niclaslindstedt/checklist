@@ -171,6 +171,38 @@ export function renameChecklist(
 }
 
 /**
+ * Archive (hide) or restore a whole checklist without destroying it — the
+ * list-level counterpart of `setArchived` for an item. An archived list
+ * drops out of the switcher and the checklist view and surfaces in the
+ * archive view's "Archived lists" section instead. A no-op (already in the
+ * requested state) returns the same checklist untouched so it never writes.
+ */
+export function setChecklistArchived(
+  checklist: Checklist,
+  archived: boolean,
+  now: string,
+): Checklist {
+  if (archived) {
+    if (checklist.archived) return checklist;
+    return { ...checklist, archived: true, updatedAt: now };
+  }
+  if (!checklist.archived) return checklist;
+  const next = { ...checklist, updatedAt: now };
+  delete next.archived;
+  return next;
+}
+
+/** The active (non-archived) checklists, in document order. */
+export function activeChecklists(snapshot: Snapshot): Checklist[] {
+  return snapshot.checklists.filter((c) => !c.archived);
+}
+
+/** The archived checklists, in document order. */
+export function archivedChecklists(snapshot: Snapshot): Checklist[] {
+  return snapshot.checklists.filter((c) => c.archived);
+}
+
+/**
  * The next free default name for a new checklist: `base` if no existing
  * list already carries it, otherwise `base 2`, `base 3`, … — the lowest
  * unused suffix. Lets "add checklist" mint "Checklist", then "Checklist 2",
@@ -400,13 +432,16 @@ export interface ArchivedGroup {
 }
 
 /**
- * Archived items across every checklist, grouped by their source list and
- * kept in document order. Lists with nothing archived are dropped, so the
- * archive view renders a header only for the lists that actually contributed
- * an item.
+ * Archived items across every active checklist, grouped by their source
+ * list and kept in document order. Lists with nothing archived are dropped,
+ * so the archive view renders a header only for the lists that actually
+ * contributed an item. A wholly-archived list is excluded — it surfaces as
+ * a unit in the archive's "Archived lists" section instead (see
+ * `archivedChecklists`), so its items don't also appear here.
  */
 export function archivedByChecklist(snapshot: Snapshot): ArchivedGroup[] {
   return snapshot.checklists
+    .filter((c) => !c.archived)
     .map((c) => ({ id: c.id, name: c.name, items: archivedItems(c) }))
     .filter((g) => g.items.length > 0);
 }

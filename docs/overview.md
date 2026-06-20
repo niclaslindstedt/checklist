@@ -259,13 +259,19 @@ back through the paste-import path (see [Add-item form](#add-item-form)).
 ### Archive view
 
 `src/ui/ArchiveView.tsx` — the same pinned shell as the checklist view,
-listing archived items from **every** checklist (`archivedByChecklist`),
-grouped under a header naming the list each item came from; lists with
-nothing archived are omitted, and the header count is the total across
-groups. Each row offers Restore (back into the item's **source** list,
-not the active one) and Delete (permanent). There is no composer and no
-reordering — items only ever enter the archive by being swiped-right in
-the checklist view. Reached from the side menu.
+listing archived items from **every** active checklist
+(`archivedByChecklist`), grouped under a header naming the list each item
+came from; lists with nothing archived are omitted. Above the item groups
+sits an **Archived lists** section (`archivedChecklists`) listing whole
+checklists that have been archived as a unit (see
+[Archive a checklist](#archive-a-checklist)); the header count is the
+total across item groups plus archived lists. Each row offers Restore
+(an item goes back into its **source** list, not the active one; a list
+goes back into the switcher) and Delete (permanent). On a desktop pointer
+the row actions live in the [right-click menu](#right-click-menu); on
+touch they're inline buttons. There is no composer and no reordering —
+items only ever enter the archive by being archived in the checklist
+view. Reached from the side menu.
 
 ### Side menu
 
@@ -329,8 +335,14 @@ a sliding foreground and owns the confirm policy:
   `removeNamespace`). Closing the row disarms the confirm step.
 
 The two rows that must always survive never grow the affordance: the
-**default namespace** (can't be removed) and the **last remaining
+**default namespace** (can't be removed) and the **last remaining active
 checklist** (the views always need one to show) render as plain rows.
+
+On a **desktop pointer** the checklist rows drop the swipe gesture
+entirely for the [right-click menu](#right-click-menu) instead, which
+also offers **Archive** alongside Delete (see
+[Archive a checklist](#archive-a-checklist)). Namespace rows keep the
+swipe (a mouse drag still works).
 
 ### Floating menu button
 
@@ -505,6 +517,33 @@ These are pared-down ports of the budget project's equivalents — no
 swipeable-row coordinator, and no inline body-scroll lock since the only
 caller opens inside the already-locked settings `Modal`.
 
+### Right-click menu
+
+`src/ui/ContextMenu.tsx` (`ContextMenu`) with its state helper
+`useContextMenu` (`src/ui/hooks/useContextMenu.ts`) — the **desktop
+right-click actions menu** for list rows. It's the desktop counterpart of
+the touch swipe gestures: the same archive / delete (and restore) actions
+that hide behind a swipe on touch surface here on a device with a real
+secondary click. Whether a surface offers it is gated by
+`useDesktopPointer` (`src/ui/hooks/useMediaQuery.ts`), a thin wrapper over
+`useMediaQuery("(hover: hover) and (pointer: fine)")` — true for a mouse /
+trackpad, false for a coarse touch screen (a hybrid touch laptop reports
+`hover` and so opts in while still supporting touch).
+
+Unlike `FloatingPanel`, the menu anchors at the **pointer**, not a trigger
+element: a row's `onContextMenu` calls `open(items, event)`, stashing the
+click coordinates and the actions, and the view renders `<ContextMenu>`
+while the state is set. The menu portals to `document.body`, reuses the
+shared `DismissBackdrop` (outside-tap closes it) and `useEscapeKey`
+(Escape closes it), and clamps itself back inside the viewport after it
+measures so it never spills off a screen edge. Each row supplies its own
+actions, so the same menu serves item rows (Archive / Delete), archived
+item rows (Restore / Delete), archived-list rows (Restore / Delete), and
+the sidebar's checklist rows (Archive / Delete) — see
+[checklist row](#checklist-row), [archive view](#archive-view),
+[swipe to remove](#swipe-to-remove-sidebar), and
+[Archive a checklist](#archive-a-checklist).
+
 ### Pull-to-refresh indicator
 
 `src/ui/PullToRefreshIndicator.tsx` — the slide-down pill pinned to the
@@ -616,18 +655,46 @@ it, and records it on the undo timeline:
   the lowest unused suffix.
 - `renameChecklist(id, name)` — rename a list via the domain
   `renameChecklist` (a blank name is ignored).
-- `removeChecklist(id)` — drop a list from `checklists[]`. A no-op for the
-  last remaining list (the document must always carry one — `activeList`
-  falls back to `checklists[0]`); removing the selected list re-points the
-  selection at the first survivor. Like the other verbs it records on the
-  undo timeline, so a removed list is recoverable.
+- `removeChecklist(id)` — drop a list from `checklists[]`. A no-op when it
+  would leave no **active** list behind (the document must always carry one
+  to show); removing the selected list re-points the selection at the first
+  active survivor. Like the other verbs it records on the undo timeline, so
+  a removed list is recoverable.
+
+The `checklists` summary lists only the **active** (non-archived) lists, so
+the switcher hides any archived as a whole (see
+[Archive a checklist](#archive-a-checklist)).
 
 The side menu (`src/ui/SideMenu.tsx`) renders the switcher: a
-"Checklists" section listing every list by name (the active one marked,
-a check glyph standing in for its icon), each row switching the active
-list and navigating to the checklist view, with the section heading's
-trailing "+" creating a new list. The header **Checklist title** is the
-rename surface for the active list.
+"Checklists" section listing every active list by name (the active one
+marked, a check glyph standing in for its icon), each row switching the
+active list and navigating to the checklist view, with the section
+heading's trailing "+" creating a new list. The header **Checklist
+title** is the rename surface for the active list.
+
+### Archive a checklist
+
+A whole checklist can be archived as a unit — the list-level counterpart
+of [archiving an item](#archive--unarchive-item). The persisted shape
+carries an optional `archived` flag on `Checklist` (`src/domain/types.ts`);
+the pure op `setChecklistArchived` (`src/domain/checklists.ts`) sets or
+clears it, and the selectors `activeChecklists` / `archivedChecklists`
+split the document by it. `archivedByChecklist` skips any wholly-archived
+list, so its items never double up as an item group in the archive.
+
+`useChecklistLists` (`src/app/use-checklist-lists.ts`) exposes the verbs:
+`archiveChecklist(id)` moves a list out of the switcher (re-pointing the
+selection at a surviving active list, raising a toast, and recording on
+the undo timeline) and `unarchiveChecklist(id)` brings it back and selects
+it. Both refuse to leave **zero** active lists — `archiveChecklist` no-ops
+on the last active list, and `removeChecklist` won't delete it either — so
+the views always have one to render. The archived lists surface in the
+[archive view](#archive-view)'s "Archived lists" section
+(`archivedChecklists`), each with Restore / Delete. Archiving the first
+list unlocks the **Tidy Shelves** [achievement](#achievements) via a
+derived predicate over the document gaining an archived list. The trigger
+on desktop is the sidebar checklist row's
+[right-click menu](#right-click-menu) (Archive / Delete).
 
 ### use-checklist hook
 
@@ -1619,17 +1686,20 @@ header count updates.
 ### Delete an item
 
 Swipe a `ChecklistRow` left to latch open Delete, then tap it
-(`deleteItem`), or use Delete in the archive view. Recoverable via undo.
+(`deleteItem`), or use Delete in the archive view. On a computer,
+right-click the row and choose Delete from the
+[right-click menu](#right-click-menu). Recoverable via undo.
 
 ### Archive an item
 
-Swipe a `ChecklistRow` right (`setArchived(…, true)`). The item leaves
-the active view but stays in the document; find it in the archive view.
+Swipe a `ChecklistRow` right (`setArchived(…, true)`), or right-click it on
+a computer and choose Archive. The item leaves the active view but stays in
+the document; find it in the archive view.
 
 ### Restore an item
 
-Open the archive view (side menu) and tap Restore
-(`setArchived(…, false)`).
+Open the archive view (side menu) and Restore (`setArchived(…, false)`) —
+a row button on touch, the right-click menu on a computer.
 
 ### Reorder items
 
@@ -1640,7 +1710,16 @@ once on drop.
 
 Open the side menu, swipe a checklist row left to uncover its trash, and
 tap it (`removeChecklist`). One tap removes — it's recoverable via undo.
-The last remaining list shows no trash (the views always need one).
+The last remaining active list shows no trash (the views always need one).
+On a computer, right-click the row instead and choose Delete (or Archive)
+from the [right-click menu](#right-click-menu).
+
+### Archive a checklist
+
+Right-click a checklist row in the side menu (desktop) and choose Archive
+(`archiveChecklist`); the whole list leaves the switcher for the archive
+view's "Archived lists" section, where Restore / Delete act on it as a unit
+(see [Archive a checklist](#archive-a-checklist)). Recoverable via undo.
 
 ### Remove a namespace
 
