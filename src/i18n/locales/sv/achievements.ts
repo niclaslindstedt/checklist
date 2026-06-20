@@ -130,6 +130,13 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Ta tag i en post i draghandtaget och släpp den någon annanstans i listan. Ordningen är din att bestämma — appen sorterar aldrig om bakom ryggen på dig.",
     },
+    nestEgg: {
+      name: "Underpunkt",
+      condition:
+        "Släpp en post på en annan för att göra den till en underpunkt.",
+      learnMore:
+        "Dra en post och släpp den mitt på en annan för att lägga den under som en underpunkt — släpp nära en kant för att i stället lägga den bredvid. En förälder drar in sina barn och får en pil för att fälla ihop dem; att bocka av föräldern bockar av hela gruppen, och avbockade poster sjunker till botten inom varje egen underlista.",
+    },
     lineWalker: {
       name: "Radvandrare",
       condition: "Hoppa mellan rader med tangentbordets navigeringsrad.",

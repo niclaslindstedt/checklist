@@ -40,6 +40,16 @@ export interface ChecklistItem extends Item {
    * before this field existed (they sink last among the checked ones).
    */
   checkedAt?: string;
+  /**
+   * Nested sub-items. An item becomes a child of another by dropping it onto
+   * that item while dragging (see `moveItemInto`). A parent's checked state
+   * cascades to its whole subtree — checking a parent checks every
+   * descendant, unchecking unchecks them (see `toggleItem`). The "sort
+   * checked to the bottom" order applies within each sub-list independently.
+   * Absent (rather than an empty array) when an item has no children, so a
+   * leaf round-trips byte-for-byte.
+   */
+  children?: ChecklistItem[];
 }
 
 /**

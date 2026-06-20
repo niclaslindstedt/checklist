@@ -1,6 +1,7 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { unlock } from "../achievements/bus.ts";
+import { findItem, flattenForDisplay } from "../domain/checklists.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
@@ -34,6 +35,7 @@ import { useListReorder } from "./hooks/useListReorder.ts";
 function ChecklistViewImpl() {
   const {
     items,
+    visibleCount,
     checkedCount,
     addItem,
     importItems,
@@ -55,10 +57,44 @@ function ChecklistViewImpl() {
     disableItemNotes,
     showItemCount,
   } = useChecklistContext();
-  const reorderCtl = useListReorder(reorder);
   const t = useT();
   const activeName =
     checklists.find((c) => c.id === activeChecklistId)?.name ?? t("app.title");
+
+  // Which sub-lists are collapsed (children hidden). Local, non-persisted view
+  // state — the same shape as a revealed note body: expanded by default, a tap
+  // on the caret hides the children. New items default to expanded.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // The item tree flattened into the ordered, depth-tagged rows the list
+  // renders; a collapsed item's children are skipped.
+  const rows = useMemo(
+    () => flattenForDisplay(items, collapsed),
+    [items, collapsed],
+  );
+
+  // A row can't be dropped onto itself or one of its own descendants (that
+  // would orphan the subtree). The reorder hook consults this before offering
+  // a row as a drop target.
+  const canDrop = useCallback(
+    (draggedId: string, targetId: string) => {
+      if (draggedId === targetId) return false;
+      const dragged = findItem(items, draggedId);
+      return !!dragged && !findItem(dragged.children ?? [], targetId);
+    },
+    [items],
+  );
+  const reorderCtl = useListReorder(reorder, canDrop);
 
   // The inline composer is only mounted while drafting: the add button opens
   // it, Enter / blur-with-text commits through `addItem`, and an empty blur
@@ -80,15 +116,15 @@ function ChecklistViewImpl() {
   const clearEditTitle = useCallback(() => setEditTitleOfId(null), []);
   const backspaceEmpty = useCallback(
     (id: string): boolean => {
-      const index = items.findIndex((it) => it.id === id);
+      const index = rows.findIndex((r) => r.item.id === id);
       // Nothing above the top line to back up into — let the keypress fall
       // through so the empty line is only cleaned up on blur.
       if (index <= 0) return false;
       removeEmpty(id);
-      setEditTitleOfId(items[index - 1]!.id);
+      setEditTitleOfId(rows[index - 1]!.item.id);
       return true;
     },
-    [items, removeEmpty],
+    [rows, removeEmpty],
   );
   const addItemAndEditBody = useCallback(
     (title: string) => {
@@ -107,12 +143,12 @@ function ChecklistViewImpl() {
   // between rows.
   const [activeEditor, setActiveEditor] = useState<ActiveEditor | null>(null);
   const editIndex = activeEditor
-    ? items.findIndex((it) => it.id === activeEditor.id)
+    ? rows.findIndex((r) => r.item.id === activeEditor.id)
     : -1;
   const canPrev = editIndex > 0;
-  const canNext = editIndex >= 0 && editIndex < items.length - 1;
+  const canNext = editIndex >= 0 && editIndex < rows.length - 1;
   const moveEdit = (target: number) => {
-    const targetId = items[target]?.id;
+    const targetId = rows[target]?.item.id;
     if (!activeEditor || !targetId) return;
     activeEditor.commit();
     setEditTitleOfId(targetId);
@@ -146,7 +182,7 @@ function ChecklistViewImpl() {
         </h1>
         <div className="flex shrink-0 items-center gap-2">
           {showItemCount && (
-            <ItemCount checked={checkedCount} total={items.length} />
+            <ItemCount checked={checkedCount} total={visibleCount} />
           )}
           <CopyButton checklist={activeList} />
           {sync && (
@@ -172,7 +208,7 @@ function ChecklistViewImpl() {
           )
         ) : (
           <ul ref={reorderCtl.containerRef} className="m-0 list-none p-0">
-            {items.map((item) => (
+            {rows.map(({ item, depth, hasChildren }) => (
               <ChecklistRow
                 key={item.id}
                 item={item}
@@ -189,6 +225,15 @@ function ChecklistViewImpl() {
                 onAutoEditTitleConsumed={clearEditTitle}
                 onActiveEditorChange={setActiveEditor}
                 notesDisabled={disableItemNotes}
+                depth={depth}
+                hasChildren={hasChildren}
+                collapsed={collapsed.has(item.id)}
+                onToggleCollapse={toggleCollapse}
+                dropMode={
+                  reorderCtl.dropTarget?.id === item.id
+                    ? reorderCtl.dropTarget.mode
+                    : null
+                }
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}
                 style={reorderCtl.rowStyle(item.id)}

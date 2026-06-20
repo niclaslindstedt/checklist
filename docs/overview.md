@@ -719,8 +719,51 @@ button](#add-item-button)).
 `moveItem` (`src/domain/checklists.ts`) — moves an active item to a new
 index **among the visible items**, keeping archived items pinned to
 their absolute slots. `toIndex` is clamped and a no-op move returns the
-same checklist untouched (no `updatedAt` bump, so it never writes). The
-gesture is `useListReorder`; the commit happens once on drop.
+same checklist untouched (no `updatedAt` bump, so it never writes). This
+is the flat-list helper; the live drag gesture (which can also nest)
+commits through `moveItemInto` — see [Sub-items](#sub-items--nested-items).
+
+### Sub-items / nested items
+
+Items form a **tree**: every `ChecklistItem` may carry a `children` array
+(`src/domain/types.ts`), so a checklist row can hold its own sub-checklist
+to any depth. The whole feature is the same **drag** gesture as reordering,
+extended with a drop *zone*: `useListReorder`
+(`src/ui/hooks/useListReorder.ts`) splits the row the finger is over into
+thirds — the top edge drops the dragged item **before** it, the bottom edge
+**after** it, and the **middle band drops it _into_ that row as a
+sub-item** (`DropMode` = `"before" | "after" | "into"`). The middle-band
+target lights up (an accent ring); the edges draw an insertion line. On
+release the view commits `reorder(draggedId, targetId, mode)` →
+`moveItemInto` (`src/domain/checklists.ts`), which lifts the dragged item
+**with its own subtree** and re-inserts it; dropping onto itself, onto one
+of its own descendants, or in a spot that doesn't change the arrangement is
+a no-op (so the gesture leaves no undo step). The view's `canDrop` predicate
+keeps a row from offering itself or a descendant as a target.
+
+Rows render from `flattenForDisplay(items, collapsed)`
+(`src/domain/checklists.ts`), which walks the tree into ordered
+`{ item, depth, hasChildren }` rows; `ChecklistRow` indents by `depth` and,
+when `hasChildren`, shows a **disclosure caret** (`CaretRightIcon`,
+`src/ui/icons/action.tsx`) — deliberately a different glyph from the note-body
+chevron — that collapses/expands the sub-list. Collapse is **local view
+state** in `ChecklistView` (a `Set` of collapsed ids, expanded by default),
+exactly like a revealed note body, so it isn't persisted.
+
+A parent's **checked state cascades**: `toggleItem` checks (and stamps
+`checkedAt` on) or unchecks its entire subtree, so checking a parent reads as
+the whole group done. The other operations recurse too — `editItem`,
+`deleteItem` (drops the subtree), `setArchived` (the flag rides one node; its
+subtree hides with it and the archive view lists the archived *root*),
+`archiveChecked` / `deleteChecked`, and the **sort-checked-to-the-bottom**
+order, which sorts within each sub-list independently
+(`sortCheckedToBottom` recurses). The header **checked / total** count
+(`visibleCount`, `checkedCount`) spans the flattened tree. The on-disk
+**markdown codec** nests sub-items with two-space indentation per level (a
+note continuation is told apart from a nested task line by whether the
+indented line itself parses as an item); templates stay flat. Nesting an
+item unlocks the **Nest Egg** achievement; a plain sibling reorder keeps
+**Reshuffle**.
 
 ### Progress / completion
 

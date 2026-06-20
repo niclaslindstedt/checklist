@@ -16,6 +16,7 @@
 // `<parentId>-<index>` so a load with no intervening edit is idempotent —
 // the same bytes always reconstruct the same `Snapshot`.
 
+import { activeItems, archivedItems } from "../../domain/checklists.ts";
 import type {
   Checklist,
   ChecklistItem,
@@ -108,14 +109,17 @@ export function checklistToMarkdown(checklist: Checklist): string {
  * `parseItemsFromMarkdown`), where checked items stay checked.
  */
 export function checklistBodyMarkdown(checklist: Checklist): string {
-  const active = checklist.items.filter((it) => !it.archived);
-  const archived = checklist.items.filter((it) => it.archived);
+  // `activeItems` / `archivedItems` walk the item tree, so nested sub-items
+  // render indented under their parent and an archived subtree lands whole in
+  // the Archived section.
+  const active = activeItems(checklist);
+  const archived = archivedItems(checklist);
 
   const lines: string[] = [`# ${checklist.name}`, ""];
-  for (const item of active) lines.push(...renderChecklistItem(item));
+  for (const item of active) lines.push(...renderChecklistItem(item, 0));
   if (archived.length > 0) {
     lines.push("", "## Archived", "");
-    for (const item of archived) lines.push(...renderChecklistItem(item));
+    for (const item of archived) lines.push(...renderChecklistItem(item, 0));
   }
   return lines.join("\n").replace(/\n*$/, "") + "\n";
 }
@@ -132,24 +136,40 @@ export function templateToMarkdown(template: Template): string {
   return lines.join("\n").replace(/\n*$/, "") + "\n";
 }
 
-function renderChecklistItem(item: ChecklistItem): string[] {
-  const box = item.checked ? "x" : " ";
-  return [`- [${box}] ${renderItemTitle(item)}`, ...renderNotes(item.notes)];
+// Two spaces of indent per nesting level — the standard task-list nesting
+// every markdown viewer understands.
+function indentFor(depth: number): string {
+  return "  ".repeat(depth);
 }
 
+function renderChecklistItem(item: ChecklistItem, depth: number): string[] {
+  const pad = indentFor(depth);
+  const box = item.checked ? "x" : " ";
+  const lines = [
+    `${pad}- [${box}] ${renderItemTitle(item)}`,
+    ...renderNotes(item.notes, pad),
+  ];
+  for (const child of item.children ?? []) {
+    lines.push(...renderChecklistItem(child, depth + 1));
+  }
+  return lines;
+}
+
+// Templates are flat (the `Item` model carries no children), so they render
+// at a single level — only checklists nest.
 function renderTemplateItem(item: Item): string[] {
-  return [`- ${renderItemTitle(item)}`, ...renderNotes(item.notes)];
+  return [`- ${renderItemTitle(item)}`, ...renderNotes(item.notes, "")];
 }
 
 function renderItemTitle(item: Item): string {
   return item.required ? `${item.title} ${REQUIRED_MARKER}` : item.title;
 }
 
-function renderNotes(notes: string | undefined): string[] {
+function renderNotes(notes: string | undefined, pad: string): string[] {
   if (!notes) return [];
-  // Two-space indent so each note line renders as a continuation of the
-  // list item rather than a sibling.
-  return notes.split("\n").map((line) => `  ${line}`);
+  // Indent each note line two spaces past the item's bullet so it renders as
+  // a continuation of the list item rather than a sibling (or a nested item).
+  return notes.split("\n").map((line) => `${pad}  ${line}`);
 }
 
 function renderFrontmatter(fields: Record<string, string>): string {
@@ -198,7 +218,7 @@ export function parseEntry(text: string): ParsedEntry | null {
         version: 1,
         id,
         name: heading,
-        items: items.map((raw, i) => toItem(raw, `${id}-${i}`)),
+        items: flattenRaw(items).map((raw, i) => toItem(raw, `${id}-${i}`)),
         createdAt: created,
         updatedAt: updated,
       },
@@ -228,6 +248,8 @@ export interface ImportedItem {
   checked: boolean;
   required: boolean;
   notes?: string;
+  /** Nested sub-items, recovered from indented task lines. */
+  children?: ImportedItem[];
 }
 
 /**
@@ -244,15 +266,19 @@ export interface ImportedItem {
 export function parseItemsFromMarkdown(text: string): ImportedItem[] {
   const { body } = splitFrontmatter(text);
   const { items, archived } = parseBody(body);
-  return [...items, ...archived].map((raw) => {
+  const toImported = (raw: RawItem): ImportedItem => {
     const item: ImportedItem = {
       title: raw.title,
       checked: raw.checked,
       required: raw.required,
     };
     if (raw.notes) item.notes = raw.notes;
+    if (raw.children && raw.children.length > 0) {
+      item.children = raw.children.map(toImported);
+    }
     return item;
-  });
+  };
+  return [...items, ...archived].map(toImported);
 }
 
 type RawItem = {
@@ -261,7 +287,18 @@ type RawItem = {
   required: boolean;
   notes?: string;
   archived?: boolean;
+  children?: RawItem[];
 };
+
+// Templates are flat, so a nested template body collapses to a single level.
+function flattenRaw(items: readonly RawItem[]): RawItem[] {
+  const out: RawItem[] = [];
+  for (const raw of items) {
+    out.push(raw);
+    if (raw.children) out.push(...flattenRaw(raw.children));
+  }
+  return out;
+}
 
 function toItem(raw: RawItem, id: string): Item {
   const item: Item = { id, title: raw.title };
@@ -275,6 +312,13 @@ function toChecklistItem(raw: RawItem, id: string): ChecklistItem {
   if (raw.notes) item.notes = raw.notes;
   if (raw.required) item.required = true;
   if (raw.archived) item.archived = true;
+  if (raw.children && raw.children.length > 0) {
+    // Ids are regenerated deterministically from the path so a load with no
+    // edit stays idempotent (see the round-trip note at the top of the file).
+    item.children = raw.children.map((child, i) =>
+      toChecklistItem(child, `${id}-${i}`),
+    );
+  }
   return item;
 }
 
@@ -305,8 +349,10 @@ function parseBody(body: string): {
   let heading = "";
   const items: RawItem[] = [];
   const archived: RawItem[] = [];
-  let inArchived = false;
   let bucket = items;
+  // Open ancestors by indent, so each item nests under the nearest line
+  // indented less than it — the standard task-list outline shape.
+  let stack: { indent: number; item: RawItem }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
@@ -315,45 +361,77 @@ function parseBody(body: string): {
       continue;
     }
     if (/^##\s+archived\s*$/i.test(line)) {
-      inArchived = true;
       bucket = archived;
+      stack = [];
       continue;
     }
-    const item = parseItemLine(line);
-    if (item) {
-      // Gather indented continuation lines as notes. A line indented by
-      // two or more spaces is a continuation even when it holds nothing but
-      // that indent: a blank line *within* a multi-paragraph note renders
-      // as the bare indent (`"  "`), and it must fold back into the note
-      // rather than ending the scan and orphaning everything after it.
-      // Genuine separators between items are fully empty (zero-width), so
-      // they still terminate the gather.
-      const noteLines: string[] = [];
-      while (i + 1 < lines.length && /^\s{2,}/.test(lines[i + 1]!)) {
-        noteLines.push(lines[++i]!.replace(/^\s{2,}/, ""));
+    const parsed = parseItemLine(line);
+    if (!parsed) continue;
+    const { indent, item } = parsed;
+
+    // Gather continuation lines as notes — lines indented past this item's
+    // bullet that are *not* themselves list items. A nested item ends the
+    // gather (it belongs in the tree, not the note); a blank line that still
+    // carries indentation is a paragraph break *within* a multi-paragraph
+    // note and folds back in, while a fully empty line terminates it.
+    const noteLines: string[] = [];
+    while (i + 1 < lines.length) {
+      const peek = lines[i + 1]!;
+      if (parseItemLine(peek)) break;
+      if (peek.trim() === "") {
+        if (/^\s{2,}/.test(peek)) {
+          noteLines.push("");
+          i++;
+          continue;
+        }
+        break;
       }
-      if (noteLines.length > 0) item.notes = noteLines.join("\n");
-      bucket.push(item);
+      if (leadingSpaces(peek) > indent) {
+        noteLines.push(peek.replace(/^\s+/, ""));
+        i++;
+        continue;
+      }
+      break;
     }
+    if (noteLines.length > 0) item.notes = noteLines.join("\n");
+
+    // Splice the item into the tree by its indentation depth.
+    while (stack.length > 0 && stack[stack.length - 1]!.indent >= indent) {
+      stack.pop();
+    }
+    if (stack.length === 0) bucket.push(item);
+    else {
+      const parent = stack[stack.length - 1]!.item;
+      (parent.children ??= []).push(item);
+    }
+    stack.push({ indent, item });
   }
-  void inArchived;
   return { heading, items, archived };
 }
 
+function leadingSpaces(line: string): number {
+  return /^[ \t]*/.exec(line)![0].length;
+}
+
 // A list item is `- [ ] title`, `- [x] title`, or a plain `- title`
-// (templates). Returns null for any other line.
-function parseItemLine(line: string): RawItem | null {
-  const task = /^[-*]\s+\[([ xX])\]\s+(.*)$/.exec(line);
+// (templates), at any indentation. Returns the item plus its leading-space
+// indent (which the tree builder turns into nesting depth), or null for any
+// non-item line.
+function parseItemLine(line: string): { indent: number; item: RawItem } | null {
+  const m = /^([ \t]*)[-*]\s+(.*)$/.exec(line);
+  if (!m) return null;
+  const indent = m[1]!.length;
+  const rest = m[2]!;
+  const task = /^\[([ xX])\]\s+(.*)$/.exec(rest);
   if (task) {
     const { title, required } = stripRequired(task[2]!);
-    return { title, checked: task[1]!.toLowerCase() === "x", required };
+    return {
+      indent,
+      item: { title, checked: task[1]!.toLowerCase() === "x", required },
+    };
   }
-  const bullet = /^[-*]\s+(?!\[)(.*)$/.exec(line);
-  if (bullet) {
-    const { title, required } = stripRequired(bullet[1]!);
-    return { title, checked: false, required };
-  }
-  return null;
+  const { title, required } = stripRequired(rest);
+  return { indent, item: { title, checked: false, required } };
 }
 
 function stripRequired(raw: string): { title: string; required: boolean } {

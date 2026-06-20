@@ -400,3 +400,46 @@ describe("ChecklistRow editing", () => {
     });
   });
 });
+
+describe("ChecklistRow sub-items", () => {
+  afterEach(cleanup);
+
+  it("shows no caret on a childless row", () => {
+    renderRow();
+    expect(screen.queryByLabelText(/sub-items/i)).toBeNull();
+  });
+
+  it("toggles the sub-list open and closed via the caret", () => {
+    const onToggleCollapse = vi.fn();
+    renderRow({ hasChildren: true, collapsed: false, onToggleCollapse });
+    const caret = screen.getByLabelText("Hide sub-items");
+    expect(caret.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(caret);
+    expect(onToggleCollapse).toHaveBeenCalledWith("i1");
+  });
+
+  it("labels the caret for expanding when collapsed", () => {
+    renderRow({ hasChildren: true, collapsed: true });
+    const caret = screen.getByLabelText("Show sub-items");
+    expect(caret.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("indents a nested row by its depth", () => {
+    renderRow({ depth: 2 });
+    const fg = foreground();
+    expect(fg.style.paddingLeft).toContain("44px"); // 2 × 22
+  });
+
+  it("tints the row when it is the active 'into' drop target", () => {
+    const { container } = renderRow({ dropMode: "into" });
+    expect(container.querySelector("li")!.className).toContain("ring-accent");
+  });
+
+  it("draws a sibling insertion line for before / after drops", () => {
+    const before = renderRow({ dropMode: "before" });
+    expect(before.container.querySelector(".top-0")).toBeTruthy();
+    cleanup();
+    const after = renderRow({ dropMode: "after" });
+    expect(after.container.querySelector(".bottom-0")).toBeTruthy();
+  });
+});

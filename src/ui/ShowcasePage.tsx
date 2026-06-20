@@ -87,6 +87,11 @@ export function ShowcasePage() {
               what&apos;s left stands out.
             </li>
             <li>
+              <strong className="text-fg-bright">Nest sub-items</strong> — drag
+              one item onto another to tuck it underneath; a parent indents its
+              children, folds them away, and checking it checks the whole group.
+            </li>
+            <li>
               <strong className="text-fg-bright">Reuse templates</strong> — turn
               a recurring list into a template and spin up a fresh copy whenever
               you need it.

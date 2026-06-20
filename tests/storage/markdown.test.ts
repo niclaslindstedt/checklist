@@ -172,6 +172,79 @@ describe("markdown codec", () => {
     });
   });
 
+  describe("nested sub-items", () => {
+    const nested: Checklist = {
+      version: 1,
+      id: "cl-nest",
+      templateId: "",
+      name: "Project",
+      items: [
+        {
+          id: "p",
+          title: "Parent",
+          checked: false,
+          children: [
+            { id: "c1", title: "Child A", checked: true },
+            {
+              id: "c2",
+              title: "Child B",
+              checked: false,
+              notes: "with a note",
+              children: [{ id: "g", title: "Grandchild", checked: false }],
+            },
+          ],
+        },
+        { id: "flat", title: "Standalone", checked: false },
+      ],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    it("renders sub-items indented two spaces per level", () => {
+      const md = checklistBodyMarkdown(nested);
+      expect(md).toContain("- [ ] Parent");
+      expect(md).toContain("  - [x] Child A");
+      expect(md).toContain("  - [ ] Child B");
+      expect(md).toContain("    with a note");
+      expect(md).toContain("    - [ ] Grandchild");
+    });
+
+    it("round-trips the tree shape (modulo regenerated ids)", () => {
+      const parsed = parseEntry(checklistToMarkdown(nested));
+      expect(parsed?.kind).toBe("checklist");
+      if (parsed?.kind !== "checklist") return;
+      const items = parsed.checklist.items;
+      expect(items.map((it) => it.title)).toEqual(["Parent", "Standalone"]);
+      const kids = items[0]!.children!;
+      expect(kids.map((it) => it.title)).toEqual(["Child A", "Child B"]);
+      expect(kids[0]!.checked).toBe(true);
+      expect(kids[1]!.notes).toBe("with a note");
+      expect(kids[1]!.children!.map((it) => it.title)).toEqual(["Grandchild"]);
+    });
+
+    it("imports a pasted nested list as nested items", () => {
+      const items = parseItemsFromMarkdown(
+        "- [ ] Top\n  - [x] Sub one\n  - [ ] Sub two\n    - [ ] Deep\n",
+      );
+      expect(items).toEqual([
+        {
+          title: "Top",
+          checked: false,
+          required: false,
+          children: [
+            { title: "Sub one", checked: true, required: false },
+            {
+              title: "Sub two",
+              checked: false,
+              required: false,
+              children: [{ title: "Deep", checked: false, required: false }],
+            },
+          ],
+        },
+      ]);
+    });
+  });
+
   describe("parseItemsFromMarkdown", () => {
     it("returns no items for ordinary, non-list text", () => {
       expect(parseItemsFromMarkdown("just a plain note")).toEqual([]);
