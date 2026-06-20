@@ -2,17 +2,20 @@ import { memo, useCallback, useMemo, useState } from "react";
 
 import { unlock } from "../achievements/bus.ts";
 import { findItem, flattenForDisplay } from "../domain/checklists.ts";
+import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
+import { DragGhostRow } from "./DragGhostRow.tsx";
 import { EditNavBar } from "./EditNavBar.tsx";
 import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
+import { ghostPlacement } from "./dragGhostPlacement.ts";
 import type { ActiveEditor } from "./edit-nav.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
@@ -131,6 +134,31 @@ function ChecklistViewImpl() {
     [openMenu, t, archive, remove],
   );
 
+  // While a row is lifted, the rows of its own subtree are hidden: the subtree
+  // travels with the drag, stood in for by the single floating row plus the
+  // ghost preview, so leaving its children parked mid-list would read as
+  // broken. The lifted row itself stays rendered (it's the floating copy).
+  const draggingId = reorderCtl.draggingId;
+  const hiddenIds = useMemo(() => {
+    if (!draggingId) return null;
+    const dragged = findItem(items, draggingId);
+    if (!dragged?.children?.length) return null;
+    const ids = new Set<string>();
+    const walk = (list: readonly ChecklistItem[]) => {
+      for (const c of list) {
+        ids.add(c.id);
+        if (c.children) walk(c.children);
+      }
+    };
+    walk(dragged.children);
+    return ids;
+  }, [draggingId, items]);
+
+  // The item under the finger and where its ghost preview snaps in. Recomputed
+  // each move from the live drop target; null when nothing is being dragged.
+  const draggedItem = draggingId ? findItem(items, draggingId) : null;
+  const ghost = draggingId ? ghostPlacement(rows, reorderCtl.dropTarget) : null;
+
   // The inline composer is only mounted while drafting: the add button opens
   // it, Enter / blur-with-text commits through `addItem`, and an empty blur
   // just unmounts it again — so a blank item is never created.
@@ -242,39 +270,69 @@ function ChecklistViewImpl() {
             </p>
           )
         ) : (
-          <ul ref={reorderCtl.containerRef} className="m-0 list-none p-0">
-            {rows.map(({ item, depth, hasChildren }) => (
-              <ChecklistRow
-                key={item.id}
-                item={item}
-                onToggle={toggle}
-                onArchive={archive}
-                onDelete={remove}
-                onEdit={editItem}
-                onRemoveEmpty={removeEmpty}
-                onBackspaceEmpty={backspaceEmpty}
-                onAddAfter={startDraft}
-                autoEditBody={item.id === editBodyOfId}
-                onAutoEditConsumed={clearEditBody}
-                autoEditTitle={item.id === editTitleOfId}
-                onAutoEditTitleConsumed={clearEditTitle}
-                onActiveEditorChange={setActiveEditor}
-                notesDisabled={disableItemNotes}
-                depth={depth}
-                hasChildren={hasChildren}
-                collapsed={collapsed.has(item.id)}
-                onToggleCollapse={toggleCollapse}
-                dropMode={
-                  reorderCtl.dropTarget?.id === item.id
-                    ? reorderCtl.dropTarget.mode
-                    : null
-                }
-                dragHandleProps={reorderCtl.dragHandleProps(item.id)}
-                dragging={reorderCtl.draggingId === item.id}
-                style={reorderCtl.rowStyle(item.id)}
-                onContextMenu={desktop ? openRowMenu : undefined}
+          // `relative` so the lifted row can position itself absolutely
+          // against the list; the ghost preview is spliced into the flow so
+          // the surrounding rows open a gap exactly where the item will land.
+          <ul
+            ref={reorderCtl.containerRef}
+            className="relative m-0 list-none p-0"
+          >
+            {rows.flatMap(({ item, depth, hasChildren }, i) => {
+              const rowStyle = reorderCtl.rowStyle(item.id);
+              const row = (
+                <ChecklistRow
+                  key={item.id}
+                  item={item}
+                  onToggle={toggle}
+                  onArchive={archive}
+                  onDelete={remove}
+                  onEdit={editItem}
+                  onRemoveEmpty={removeEmpty}
+                  onBackspaceEmpty={backspaceEmpty}
+                  onAddAfter={startDraft}
+                  autoEditBody={item.id === editBodyOfId}
+                  onAutoEditConsumed={clearEditBody}
+                  autoEditTitle={item.id === editTitleOfId}
+                  onAutoEditTitleConsumed={clearEditTitle}
+                  onActiveEditorChange={setActiveEditor}
+                  notesDisabled={disableItemNotes}
+                  depth={depth}
+                  hasChildren={hasChildren}
+                  collapsed={collapsed.has(item.id)}
+                  onToggleCollapse={toggleCollapse}
+                  dropMode={
+                    reorderCtl.dropTarget?.id === item.id
+                      ? reorderCtl.dropTarget.mode
+                      : null
+                  }
+                  dragHandleProps={reorderCtl.dragHandleProps(item.id)}
+                  dragging={reorderCtl.draggingId === item.id}
+                  style={
+                    hiddenIds?.has(item.id)
+                      ? { ...rowStyle, display: "none" }
+                      : rowStyle
+                  }
+                  onContextMenu={desktop ? openRowMenu : undefined}
+                />
+              );
+              return ghost && draggedItem && ghost.index === i
+                ? [
+                    <DragGhostRow
+                      key="__drag_ghost"
+                      item={draggedItem}
+                      depth={ghost.depth}
+                    />,
+                    row,
+                  ]
+                : [row];
+            })}
+            {ghost && draggedItem && ghost.index === rows.length && (
+              <DragGhostRow
+                key="__drag_ghost"
+                item={draggedItem}
+                depth={ghost.depth}
               />
-            ))}
+            )}
           </ul>
         )}
         {addItemPosition === "bottom" && draftRow}

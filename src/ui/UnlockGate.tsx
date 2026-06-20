@@ -4,7 +4,6 @@ import { useT } from "../i18n";
 import { OfflineUnavailableError } from "../storage/cache/index.ts";
 import { Button, ClearableInput } from "./form/index.ts";
 import { ShieldIcon } from "./icons.tsx";
-import { Modal } from "./Modal.tsx";
 
 // Full-screen gate shown when at-rest encryption is on but no passphrase
 // is held this session (a fresh load, after a reload). The user can't see
@@ -12,6 +11,11 @@ import { Modal } from "./Modal.tsx";
 // stored bytes. The analog of the budget project's login screen, where
 // the account password doubles as the encryption key — pared to a single
 // passphrase prompt since the checklist has no accounts.
+//
+// Unlike the app's other dialogs, this isn't a `Modal`: there's nothing to
+// reveal behind it (the encrypted lists must not render until unlocked), so
+// it paints a solid page background and floats a lone centered card on it,
+// with no dimmed backdrop and no header/footer chrome.
 
 type Props = {
   open: boolean;
@@ -47,42 +51,49 @@ export function UnlockGate({ open, onUnlock }: Props) {
     }
   };
 
+  if (!open) return null;
+
   return (
-    <Modal open={open} onClose={() => {}} labelledBy="unlock-title" centered>
-      <form onSubmit={submit} className="flex flex-1 flex-col">
-        <header className="flex shrink-0 items-center gap-2 border-b border-line bg-surface-3 px-4 py-3">
-          <ShieldIcon className="h-5 w-5 text-accent" />
-          <h2
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-page-bg px-4">
+      <form
+        onSubmit={submit}
+        aria-labelledby="unlock-title"
+        className="flex w-full max-w-sm flex-col gap-3 rounded-[var(--radius)] border border-line bg-surface p-5"
+      >
+        <div className="flex items-center gap-2 text-accent">
+          <ShieldIcon className="h-6 w-6" />
+          <h1
             id="unlock-title"
-            className="text-sm font-bold tracking-wide text-fg-bright"
+            className="text-base font-bold text-fg-bright"
           >
             {t("settings.storage.unlockTitle")}
-          </h2>
-        </header>
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-          <p className="text-sm text-muted">
-            {t("settings.storage.unlockHint")}
-          </p>
-          <ClearableInput
-            type="password"
-            value={password}
-            onValueChange={setPassword}
-            placeholder={t("settings.storage.passphrase")}
-            aria-label={t("settings.storage.passphrase")}
-            wrapperClassName="rounded border border-line bg-surface-2 px-2 py-1.5"
-          />
-          {error && (
-            <p role="alert" className="text-xs text-danger">
-              {error}
-            </p>
-          )}
+          </h1>
         </div>
-        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3">
-          <Button type="submit" variant="primary" disabled={!password || busy}>
-            {t("settings.storage.unlock")}
-          </Button>
-        </footer>
+        <p className="text-sm text-muted">{t("settings.storage.unlockHint")}</p>
+        <ClearableInput
+          type="password"
+          value={password}
+          onValueChange={setPassword}
+          placeholder={t("settings.storage.passphrase")}
+          aria-label={t("settings.storage.passphrase")}
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          wrapperClassName="rounded-[var(--radius)] border border-line bg-surface-2 px-2 py-1.5 focus-within:border-accent"
+        />
+        {error && (
+          <p role="alert" className="text-xs text-danger">
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!password || busy}
+          className="w-full"
+        >
+          {t("settings.storage.unlock")}
+        </Button>
       </form>
-    </Modal>
+    </div>
   );
 }
