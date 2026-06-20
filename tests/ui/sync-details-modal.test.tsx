@@ -85,6 +85,16 @@ describe("SyncDetailsModal", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
+  it("renders as a compact centered card, not a full-screen sheet", () => {
+    renderModal({ status: "saved" });
+    const dialog = screen.getByRole("dialog");
+    // The centered layout caps the card width and rounds it on every
+    // viewport; the full-screen sheet would stretch to `h-full` instead.
+    expect(dialog.className).toContain("max-w-md");
+    expect(dialog.className).toContain("rounded-lg");
+    expect(dialog.className).not.toContain("h-full");
+  });
+
   it("explains the offline local-copy state instead of implying a sync", () => {
     renderModal({ status: "saved", offline: true });
     expect(screen.getByText("Offline")).toBeTruthy();

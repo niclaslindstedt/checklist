@@ -248,7 +248,12 @@ export function SyncDetailsModal({
     : RefreshIcon;
 
   return (
-    <Modal open={open} onClose={onClose} labelledBy="sync-details-title">
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="sync-details-title"
+      centered
+    >
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface-3 px-4 py-3">
         <h2
           id="sync-details-title"
