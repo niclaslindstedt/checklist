@@ -250,26 +250,28 @@ export function SideMenu({
         badge={archivedCount > 0 ? archivedCount : undefined}
         onClick={() => navigate("archive")}
       />
-      <SectionHeader label={t("nav.edit")} border />
-      {/* Undo / redo keep the drawer open so a burst of reverts can
-                be applied without reopening it each time. */}
-      <NavItem
-        icon={<UndoIcon className="h-5 w-5" />}
-        label={t("nav.undo")}
-        active={false}
-        disabled={!canUndo}
-        onClick={undo}
-      />
-      <NavItem
-        icon={<RedoIcon className="h-5 w-5" />}
-        label={t("nav.redo")}
-        active={false}
-        disabled={!canRedo}
-        onClick={redo}
-      />
+      {/* Undo / redo: a pair of side-by-side buttons pinned to the foot of
+          the list (mt-auto), so they sit just above the footer's divider and
+          fall under the thumb. Two columns share one row to save vertical
+          space; each keeps the drawer open so a burst of reverts can be
+          applied without reopening it. */}
+      <div className="mt-auto flex gap-2 px-3 pt-3 pb-1">
+        <EditButton
+          icon={<UndoIcon className="h-5 w-5" />}
+          label={t("nav.undo")}
+          disabled={!canUndo}
+          onClick={undo}
+        />
+        <EditButton
+          icon={<RedoIcon className="h-5 w-5" />}
+          label={t("nav.redo")}
+          disabled={!canRedo}
+          onClick={redo}
+        />
+      </div>
       {/* The old top-right burger menu, pinned to the foot of the
                 drawer with its order inverted so it reads bottom-up. */}
-      <div className="mt-auto flex flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
+      <div className="flex flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
         {donateUrl && (
           <MenuLink
             icon={<HeartIcon className="h-5 w-5 text-danger" />}
@@ -474,6 +476,39 @@ function NavItem({
           {badge}
         </span>
       )}
+    </button>
+  );
+}
+
+// Undo / redo render as a side-by-side pair rather than full-width rows so
+// the two fit on one line at the foot of the drawer. Each is a self-contained
+// bordered button (icon + label, centred) that dims and goes inert at the
+// ends of the timeline, where there is nothing to revert or re-apply.
+function EditButton({
+  icon,
+  label,
+  disabled = false,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-md border border-line py-2.5 text-sm ${
+        disabled
+          ? "cursor-not-allowed text-muted opacity-40"
+          : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
+      }`}
+    >
+      <span className={disabled ? "" : "text-muted"}>{icon}</span>
+      <span>{label}</span>
     </button>
   );
 }

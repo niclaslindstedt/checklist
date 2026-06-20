@@ -257,7 +257,9 @@ the active one marked, click to switch + navigate; the heading's trailing
 of not-yet-completed items — active, non-archived, still unchecked —
 hidden when the list is empty or fully checked off), with the Archive view
 sitting at the foot of that same list (badged with the archived-item
-count) rather than in a section of its own, then the Undo / Redo actions; it highlights the
+count) rather than in a section of its own; the Undo / Redo actions sit as a
+side-by-side button pair pinned to the foot of the list, just above the
+footer's divider. It highlights the
 active list and current view. The "+" affordances replace the full-width
 "New namespace" / "New checklist" rows the drawer used to carry, and a
 shared `SectionHeader` renders each heading with its optional action.
@@ -1376,7 +1378,8 @@ since the document otherwise swaps silently. `reset` clears the history
 whenever a document arrives from outside the edit path (initial load,
 backend swap, conflict resolution) so undo can't jump to a vanished
 state. Recording the whole document (not a diff) is what lets undo
-resurrect a deleted item. Reachable from the side menu and via
+resurrect a deleted item. Reachable from the side menu's side-by-side
+undo/redo button pair at the foot of the drawer and via
 `useUndoRedoShortcuts` (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z / Ctrl+Y), which
 bails out when focus is in an editable field so native field-level undo
 still works, and is silenced entirely while the side menu is open (but
