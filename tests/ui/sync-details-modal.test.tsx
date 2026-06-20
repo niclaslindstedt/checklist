@@ -85,6 +85,13 @@ describe("SyncDetailsModal", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
+  it("names the bare provider in the open-in link, without the (encrypted) suffix", () => {
+    renderModal({ status: "saved", providerName: "Dropbox (encrypted)" });
+    const link = screen.getByRole("link", { name: /open in/i });
+    expect(link.textContent).toContain("Open in Dropbox");
+    expect(link.textContent).not.toContain("(encrypted)");
+  });
+
   it("renders as a compact centered card, not a full-screen sheet", () => {
     renderModal({ status: "saved" });
     const dialog = screen.getByRole("dialog");

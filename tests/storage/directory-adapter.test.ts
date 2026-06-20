@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
 import { ConflictError } from "../../src/storage/adapter.ts";
-import { encryptText } from "../../src/storage/crypto.ts";
+import { encryptText, isEncryptedEnvelope } from "../../src/storage/crypto.ts";
 import {
   BLOB_FILE_NAME,
   createDirectoryAdapter,
@@ -135,6 +135,57 @@ describe("directory adapter", () => {
       "checklists/groceries-cl1.md",
       "templates/trip-tpl1.md",
     ]);
+  });
+
+  // A backend can drift into holding BOTH the plaintext markdown and a stale
+  // `checklist.json` envelope. `load` surfaces the markdown (it wins over the
+  // blob), so disabling encryption re-saves that markdown — which must drop the
+  // orphaned envelope, otherwise the encrypted file lingers forever. This is
+  // the contract the `disableEncryption` fix relies on: re-saving the surfaced
+  // document (whatever it is) is enough to clear the superseded representation.
+  it("clears a shadowed encrypted blob when the surfaced markdown is re-saved (disable from a both-representations state)", async () => {
+    const { store, adapter } = build();
+    await adapter.save(serialize(snapshot));
+    // A stale envelope sits beside the markdown.
+    await store.write(
+      BLOB_FILE_NAME,
+      JSON.stringify({ encrypted: "checklist.encrypted.v1" }),
+    );
+
+    const loaded = await adapter.load();
+    // The markdown is what surfaces, not the envelope — which is exactly why
+    // the disable path can't gate its re-save on "did the load return a blob".
+    expect(isEncryptedEnvelope(loaded!.text)).toBe(false);
+    await adapter.save(loaded!.text, loaded!.revision);
+
+    const paths = store.paths();
+    expect(paths).not.toContain(BLOB_FILE_NAME);
+    expect(paths.every((p) => p.endsWith(".md"))).toBe(true);
+  });
+
+  // The symmetric case: writing the envelope clears every markdown file (so the
+  // next load reads the ciphertext, not the plaintext markdown back), and
+  // writing markdown clears the blob — even when a fresh adapter that never
+  // tracked the old representation does the write.
+  it("swaps representations cleanly when a fresh adapter writes the other format", async () => {
+    const { store } = build();
+    // One adapter lays down the plaintext notes…
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(snapshot),
+    );
+    // …and a different, fresh adapter writes the envelope without loading.
+    const envelope = JSON.stringify({ encrypted: "checklist.encrypted.v1" });
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      envelope,
+    );
+    expect(store.paths()).toEqual([BLOB_FILE_NAME]);
+
+    // Decrypting back: yet another fresh adapter writes markdown, blob clears.
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(snapshot),
+    );
+    expect(store.paths()).not.toContain(BLOB_FILE_NAME);
+    expect(store.paths().every((p) => p.endsWith(".md"))).toBe(true);
   });
 
   it("raises a ConflictError when the directory moved past baseRevision", async () => {
