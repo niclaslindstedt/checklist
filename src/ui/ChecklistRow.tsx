@@ -10,6 +10,7 @@ import {
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
+import type { ActiveEditor } from "./edit-nav.ts";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
@@ -79,6 +80,11 @@ type Props = {
   autoEditTitle?: boolean;
   /** Tell the parent the auto title-edit has been consumed; clears the flag. */
   onAutoEditTitleConsumed?: () => void;
+  /**
+   * Report the editor opening (with a `commit` handle) or closing (`null`) so
+   * the view can drive the keyboard nav bar. See `edit-nav.ts`.
+   */
+  onActiveEditorChange?: (handle: ActiveEditor | null) => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
   dragHandleProps: DragHandleProps;
@@ -99,6 +105,7 @@ function ChecklistRowImpl({
   onAutoEditConsumed,
   autoEditTitle = false,
   onAutoEditTitleConsumed,
+  onActiveEditorChange,
   notesDisabled = false,
   dragHandleProps,
   dragging,
@@ -120,6 +127,16 @@ function ChecklistRowImpl({
     setEditFocusBody(focusBody);
     setEditing(true);
   }, []);
+
+  // Tag the editor's commit handle with this row's id before handing it up, so
+  // the view's nav bar knows which item is open. Stable across renders (both
+  // deps are referentially stable), so the editor registers exactly once.
+  const reportActive = useCallback(
+    (commit: (() => void) | null) => {
+      onActiveEditorChange?.(commit ? { id: item.id, commit } : null);
+    },
+    [onActiveEditorChange, item.id],
+  );
 
   // The composer just created this item with Shift+Enter and wants it opened
   // straight into its body editor. Honour it once, then tell the parent it's
@@ -194,6 +211,7 @@ function ChecklistRowImpl({
           notesDisabled={notesDisabled}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
+          onActiveChange={reportActive}
           onAddAfter={onAddAfter}
           onBackspaceEmpty={
             onBackspaceEmpty ? () => onBackspaceEmpty(item.id) : undefined

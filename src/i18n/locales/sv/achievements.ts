@@ -130,6 +130,10 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Ta tag i en post i draghandtaget och släpp den någon annanstans i listan. Ordningen är din att bestämma — appen sorterar aldrig om bakom ryggen på dig.",
     },
+    lineWalker: {
+      name: "Radvandrare",
+      condition: "Hoppa mellan rader med tangentbordets navigeringsrad.",
+    },
     cleanSlate: {
       name: "Rent bord",
       condition: "Ta bort en checklista.",

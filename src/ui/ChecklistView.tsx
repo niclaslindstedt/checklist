@@ -1,14 +1,17 @@
 import { memo, useCallback, useState } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
+import { EditNavBar } from "./EditNavBar.tsx";
 import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
+import type { ActiveEditor } from "./edit-nav.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
@@ -97,6 +100,25 @@ function ChecklistViewImpl() {
     [addItem],
   );
 
+  // The editor currently open, registered by its row. Drives the keyboard nav
+  // bar: which item is being edited (so we can find the one above/below) and
+  // the `commit` to flush its edit before jumping. Up/down reuse the same
+  // `editTitleOfId` hand-off the Backspace-erase flow uses to move editing
+  // between rows.
+  const [activeEditor, setActiveEditor] = useState<ActiveEditor | null>(null);
+  const editIndex = activeEditor
+    ? items.findIndex((it) => it.id === activeEditor.id)
+    : -1;
+  const canPrev = editIndex > 0;
+  const canNext = editIndex >= 0 && editIndex < items.length - 1;
+  const moveEdit = (target: number) => {
+    const targetId = items[target]?.id;
+    if (!activeEditor || !targetId) return;
+    activeEditor.commit();
+    setEditTitleOfId(targetId);
+    unlock("lineWalker");
+  };
+
   const draftRow = drafting ? (
     <AddItemForm
       onAdd={addItem}
@@ -165,6 +187,7 @@ function ChecklistViewImpl() {
                 onAutoEditConsumed={clearEditBody}
                 autoEditTitle={item.id === editTitleOfId}
                 onAutoEditTitleConsumed={clearEditTitle}
+                onActiveEditorChange={setActiveEditor}
                 notesDisabled={disableItemNotes}
                 dragHandleProps={reorderCtl.dragHandleProps(item.id)}
                 dragging={reorderCtl.draggingId === item.id}
@@ -182,6 +205,16 @@ function ChecklistViewImpl() {
           onArchiveFinished={archiveFinished}
           onDeleteFinished={deleteFinished}
           finishedCount={checkedCount}
+        />
+      )}
+
+      {activeEditor && (
+        <EditNavBar
+          canPrev={canPrev}
+          canNext={canNext}
+          onPrev={() => moveEdit(editIndex - 1)}
+          onNext={() => moveEdit(editIndex + 1)}
+          onDone={() => activeEditor.commit()}
         />
       )}
     </div>

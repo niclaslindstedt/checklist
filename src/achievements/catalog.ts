@@ -224,6 +224,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "lineWalker",
+    tier: "intermediate",
+    glyph: ArrowUpDownGlyph,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "cleanSlate",
     tier: "intermediate",
     glyph: TrashGlyph,
