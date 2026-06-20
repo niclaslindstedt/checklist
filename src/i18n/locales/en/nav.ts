@@ -17,7 +17,6 @@ const nav = {
   storage: "Storage",
   archiveEmpty: "Nothing archived — swipe an item right to archive it.",
   restore: "Restore item",
-  edit: "Edit",
   undo: "Undo",
   redo: "Redo",
 } as const;
