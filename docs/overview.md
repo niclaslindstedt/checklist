@@ -334,8 +334,27 @@ hidden and no modal or drawer already owns the screen) and suppressed
 while a modal is mounted. It watches the edge matching
 `menuButtonPosition.side`, so the panel always pulls in from where it
 lives. Touch-only and PWA-only by design: in a normal browser tab an
-edge swipe collides with the back-swipe, but a standalone window's edge
-is free — which is why the opt-out is offered only there.
+edge swipe collides with the back-swipe, so the button-hiding opt-out is
+offered only in the installed PWA. The standalone window has no browser
+chrome, but iOS still keeps its own edge swipe-back gesture alive there —
+see "Suppress edge swipe-back" for how that native navigation is cancelled
+so it doesn't fight the drawer.
+
+### Suppress edge swipe-back
+
+`useSuppressEdgeSwipeBack` (`src/ui/hooks/useSuppressEdgeSwipeBack.ts`)
+cancels the operating system's edge swipe-back / -forward navigation
+inside the installed PWA. iOS keeps its left-edge "swipe to go back"
+gesture alive even in a standalone home-screen app (Android's gesture nav
+does the same from either border), so a rightward swipe from the screen
+edge — the natural motion to pull the drawer in — would instead pop the
+PWA's history and yank the app off-screen. The hook is a document-level,
+touch-only listener (a sibling of `useEdgeSwipeOpen`): when a single touch
+starts within ~30px of either side border and then travels more
+horizontally than vertically, it calls `preventDefault()` on the move,
+which suppresses the native navigation without disturbing the drawer's own
+open gesture. App gates it on `isStandaloneMobile`, so a normal browser tab
+— which has real chrome and history — keeps its back-swipe untouched.
 
 ### Header menu
 
