@@ -54,6 +54,16 @@ describe("encryptText / decryptEnvelope", () => {
   it("rejects an empty password on encrypt", async () => {
     await expect(encryptText("x", "")).rejects.toThrow(/Password is required/);
   });
+
+  it("reports its progress phases in order when encrypting and decrypting", async () => {
+    const encryptSteps: string[] = [];
+    const envelope = await encryptText("hi", "pw", (s) => encryptSteps.push(s));
+    expect(encryptSteps).toEqual(["derivingKey", "encrypting"]);
+
+    const decryptSteps: string[] = [];
+    await decryptEnvelope(envelope, "pw", (s) => decryptSteps.push(s));
+    expect(decryptSteps).toEqual(["derivingKey", "decrypting"]);
+  });
 });
 
 describe("isEncryptedEnvelope / parseEnvelope", () => {

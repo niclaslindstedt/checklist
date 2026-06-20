@@ -1047,7 +1047,30 @@ mark — the favicon is re-badged only when a glyph is picked.
 (This device / Dropbox / Google Drive), connecting / disconnecting a
 cloud provider, and turning on at-rest encryption with a passphrase
 (with the too-short / mismatch validation). Deep-linked from the sync
-glyph.
+glyph. Turning encryption on or off is the heaviest thing the tab does
+(key derivation, re-wrapping every list, re-saving), so the toggle
+buttons spin while it runs and a one-line **encryption status bar**
+flashes the phase it's on — `Reading…`, `Deriving encryption key…`,
+`Encrypting…`, `Saving…`, `Finalizing…` — fed by the `onProgress`
+callback the [storage backend hook](#usestoragebackend-hook) reports each
+phase through. The messages flash by too fast to read in full by design;
+they're there to show *something is happening* during the
+otherwise-silent key-derivation pause. On success the bar vanishes and
+the heading's "Encryption is on / off" is all that's left. On failure the
+bar turns red and becomes a button that opens the
+[encryption log modal](#encryption-log-modal) with the whole phase
+sequence plus the error that stopped it.
+
+### Encryption log modal
+
+`EncryptionLogModal` (`src/ui/settings/EncryptionLogModal.tsx`) — the full
+log behind a failed [encryption status bar](#storage-tab). The status line
+only ever shows the single phase it's on; when a turn-on / turn-off
+throws, the red status line becomes tappable and opens this modal, which
+replays every phase (timestamped) and the terminating error — the
+[Logs tab](#logs) experience scoped to the one operation that just broke,
+so a passphrase or storage error is legible on a phone without reaching
+for devtools.
 
 ### Local backend / This device
 
@@ -1096,7 +1119,12 @@ revision from the directory's per-file revisions to detect drift
 (`ConflictError`). An **encrypted** store can't be expressed as markdown,
 so it lands whole in a single `checklist.json` envelope — which is also
 where the pre-markdown legacy cloud document is read from and migrated to
-markdown on the next plaintext save.
+markdown on the next plaintext save. Because every save re-lists the
+directory first, a **format conversion** (toggling encryption) cleans up
+after itself in either direction: writing the envelope clears every
+`*.md`, and writing markdown clears the `checklist.json` — so a toggle
+can't strand the old representation beside the new one (which the next
+load would otherwise read back).
 
 ### Dropbox backend
 
@@ -1162,6 +1190,19 @@ plaintext documents share one storage slot. When encryption is on but
 no passphrase is held (fresh load / reload), `UnlockGate`
 (`src/ui/UnlockGate.tsx`) is the full-screen gate that blocks the app
 until the user supplies the passphrase.
+
+Toggling the mode rewrites the document at rest: `enableEncryption`
+re-wraps the existing lists into ciphertext and `disableEncryption`
+decrypts them back. Disabling always re-saves the surfaced document as
+plaintext — even when a stale plaintext copy shadows the blob and the load
+returns that instead of the envelope — so the
+[markdown file store](#markdown-file-store) clears the superseded
+`checklist.json` and no ciphertext lingers behind. Both
+`enableEncryption` / `disableEncryption` (and `encryptText` /
+`decryptEnvelope` underneath) take an optional `onProgress` callback that
+fires once per phase (`reading → derivingKey →
+encrypting`/`decrypting → saving → finalizing`); the
+[storage tab](#storage-tab) feeds it into its status bar.
 
 ### Offline cache / local copy
 
