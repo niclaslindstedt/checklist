@@ -21,7 +21,7 @@ import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 // Horizontal step per nesting level. A sub-item sits this much further right
 // than its parent, so the tree shape reads at a glance. Exported so the drag
 // ghost preview can indent itself to match the row it'll land beside.
-export const INDENT_PER_LEVEL = 22;
+export const INDENT_PER_LEVEL = 32;
 
 // One checklist line. Two action layers sit behind a sliding foreground:
 // swiping the foreground right uncovers Archive (and triggers it past the
@@ -258,15 +258,12 @@ function ChecklistRowImpl({
         dropMode === "into" ? "bg-accent/10 ring-2 ring-accent ring-inset" : ""
       }`}
     >
-      {/* Drop indicators while dragging another row onto this one: a line on
-          the leading / trailing edge for a sibling drop (the "into" tint is on
-          the <li> above). */}
-      {dropMode === "before" && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-accent" />
-      )}
-      {dropMode === "after" && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-0.5 bg-accent" />
-      )}
+      {/* A drop *into* this row (nesting) tints it (the ring above) so the
+          parent-to-be is obvious. Sibling drops (before / after) aren't drawn
+          here: the ghost preview snaps into the gap at the exact landing spot,
+          which for an "after" on a parent is below its whole subtree — a line
+          on this row's edge would instead sit between the parent and its own
+          children, reading wrong. The ghost is the single landing indicator. */}
 
       {/* Archive — uncovered by swiping the row right. Hidden unless the
           foreground is sliding right so the archive slide-off never bares
