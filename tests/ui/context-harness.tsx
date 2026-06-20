@@ -4,7 +4,7 @@
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 
-import { createChecklist } from "../../src/domain/checklists.ts";
+import { createChecklist, flattenItems } from "../../src/domain/checklists.ts";
 import { emptySnapshot } from "../../src/domain/types.ts";
 import {
   ChecklistContext,
@@ -25,9 +25,14 @@ const fallbackList = createChecklist(
 export function makeChecklistValue(
   over: Partial<ChecklistContextValue> = {},
 ): ChecklistContextValue {
+  // Derive the visible (tree-wide) count from the seeded items unless a test
+  // overrides it explicitly, so the header's total tracks the items shown.
+  const items = over.items ?? [];
+  const visibleCount = over.visibleCount ?? flattenItems(items).length;
   return {
     snapshot: emptySnapshot(),
     items: [],
+    visibleCount,
     archivedGroups: [],
     checkedCount: 0,
     activeList: fallbackList,

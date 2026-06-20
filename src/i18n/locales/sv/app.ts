@@ -17,6 +17,8 @@ const app: AppCatalog = {
   addNote: "Lägg till en anteckning",
   showNote: "Visa anteckning",
   hideNote: "Dölj anteckning",
+  showSubitems: "Visa underpunkter",
+  hideSubitems: "Dölj underpunkter",
   editPrev: "Redigera föregående rad",
   editNext: "Redigera nästa rad",
   editDone: "Klar med redigering",

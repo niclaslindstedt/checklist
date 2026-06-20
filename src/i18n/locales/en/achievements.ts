@@ -137,6 +137,12 @@ const achievements = {
       learnMore:
         "Grab an item by its drag handle and drop it elsewhere in the list. Order is yours to set — the app never re-sorts behind your back.",
     },
+    nestEgg: {
+      name: "Nest Egg",
+      condition: "Drop one item onto another to make it a sub-item.",
+      learnMore:
+        "Drag an item and release it over the middle of another to tuck it underneath as a sub-item — drop near an edge to drop it alongside instead. A parent indents its children and carries an expand caret to fold them away; checking the parent checks the whole group, and checked items sink to the bottom within each sub-list of their own.",
+    },
     lineWalker: {
       name: "Line Walker",
       condition: "Jump between items with the keyboard nav bar.",

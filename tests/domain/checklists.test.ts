@@ -11,10 +11,14 @@ import {
   deleteItem,
   displayItems,
   editItem,
+  findItem,
+  flattenForDisplay,
+  flattenItems,
   instantiate,
   isComplete,
   moveDisplayedItem,
   moveItem,
+  moveItemInto,
   nextChecklistName,
   progress,
   renameChecklist,
@@ -23,7 +27,11 @@ import {
   toggleItem,
 } from "../../src/domain/checklists.ts";
 import { createTemplate } from "../../src/domain/templates.ts";
-import type { Template } from "../../src/domain/types.ts";
+import type {
+  Checklist,
+  ChecklistItem,
+  Template,
+} from "../../src/domain/types.ts";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
@@ -451,6 +459,226 @@ describe("displayItems", () => {
     expect(ids(displayItems(c, true))).toEqual(["i3", "i1"]);
   });
 });
+
+describe("nested sub-items", () => {
+  const LATER = "2026-02-02T00:00:00.000Z";
+
+  // A list of three flat items A/B/C as a starting point for nesting.
+  function listOf(...titles: string[]): Checklist {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+
+  describe("moveItemInto", () => {
+    it("nests the dragged item as the target's last child on 'into'", () => {
+      const c = listOf("A", "B", "C");
+      const moved = moveItemInto(c, "i3", "i1", "into", LATER);
+      expect(moved.items.map((it) => it.id)).toEqual(["i1", "i2"]);
+      expect(moved.items[0]!.children?.map((it) => it.id)).toEqual(["i3"]);
+      expect(moved.updatedAt).toBe(LATER);
+    });
+
+    it("appends to existing children, keeping order", () => {
+      let c = listOf("A", "B", "C");
+      c = moveItemInto(c, "i2", "i1", "into", NOW);
+      c = moveItemInto(c, "i3", "i1", "into", NOW);
+      expect(c.items.map((it) => it.id)).toEqual(["i1"]);
+      expect(c.items[0]!.children?.map((it) => it.id)).toEqual(["i2", "i3"]);
+    });
+
+    it("drops as a sibling before / after the target", () => {
+      const c = listOf("A", "B", "C");
+      expect(
+        moveItemInto(c, "i3", "i1", "before", NOW).items.map((it) => it.id),
+      ).toEqual(["i3", "i1", "i2"]);
+      expect(
+        moveItemInto(c, "i1", "i3", "after", NOW).items.map((it) => it.id),
+      ).toEqual(["i2", "i3", "i1"]);
+    });
+
+    it("carries the dragged item's own subtree along", () => {
+      let c = listOf("A", "B", "C");
+      c = moveItemInto(c, "i2", "i1", "into", NOW); // B under A
+      // Now drag A (with child B) under C.
+      c = moveItemInto(c, "i1", "i3", "into", NOW);
+      expect(c.items.map((it) => it.id)).toEqual(["i3"]);
+      const a = c.items[0]!.children?.[0];
+      expect(a?.id).toBe("i1");
+      expect(a?.children?.map((it) => it.id)).toEqual(["i2"]);
+    });
+
+    it("refuses to drop an item into its own descendant (no-op)", () => {
+      let c = listOf("A", "B");
+      c = moveItemInto(c, "i2", "i1", "into", NOW); // B under A
+      const tried = moveItemInto(c, "i1", "i2", "into", LATER);
+      expect(tried).toBe(c);
+    });
+
+    it("is a no-op for self-drop, unknown ids, and a positional non-move", () => {
+      const c = listOf("A", "B", "C");
+      expect(moveItemInto(c, "i1", "i1", "into", LATER)).toBe(c);
+      expect(moveItemInto(c, "nope", "i1", "into", LATER)).toBe(c);
+      expect(moveItemInto(c, "i9", "i1", "into", LATER)).toBe(c);
+      // Dropping i1 before i2 is where it already sits — no change.
+      expect(moveItemInto(c, "i1", "i2", "before", LATER)).toBe(c);
+    });
+  });
+
+  describe("toggleItem cascade", () => {
+    function nested(): Checklist {
+      let c = listOf("Parent", "Child1", "Child2");
+      c = moveItemInto(c, "i2", "i1", "into", NOW);
+      c = moveItemInto(c, "i3", "i1", "into", NOW);
+      return c;
+    }
+
+    it("checking a parent checks its whole subtree", () => {
+      const c = toggleItem(nested(), "i1", LATER);
+      const parent = c.items[0]!;
+      expect(parent.checked).toBe(true);
+      expect(parent.checkedAt).toBe(LATER);
+      expect(parent.children?.every((it) => it.checked)).toBe(true);
+      expect(parent.children?.every((it) => it.checkedAt === LATER)).toBe(true);
+    });
+
+    it("unchecking a parent clears the subtree and its timestamps", () => {
+      let c = toggleItem(nested(), "i1", LATER);
+      c = toggleItem(c, "i1", "2026-03-03T00:00:00.000Z");
+      const parent = c.items[0]!;
+      expect(parent.checked).toBe(false);
+      expect(parent.checkedAt).toBeUndefined();
+      expect(parent.children?.some((it) => it.checked)).toBe(false);
+      expect(parent.children?.some((it) => it.checkedAt !== undefined)).toBe(
+        false,
+      );
+    });
+
+    it("toggles a single child without touching its parent", () => {
+      const c = toggleItem(nested(), "i2", LATER);
+      expect(c.items[0]!.checked).toBe(false);
+      expect(findItem(c.items, "i2")?.checked).toBe(true);
+    });
+  });
+
+  it("deletes an item together with its subtree", () => {
+    let c = listOf("A", "B");
+    c = moveItemInto(c, "i2", "i1", "into", NOW);
+    const after = deleteItem(c, "i1", LATER);
+    expect(after.items).toHaveLength(0);
+    expect(findItem(after.items, "i2")).toBeUndefined();
+  });
+
+  it("counts progress over the whole tree, sub-items included", () => {
+    let c = listOf("A", "B", "C");
+    c = moveItemInto(c, "i2", "i1", "into", NOW); // B under A
+    c = toggleItem(c, "i2", NOW); // check the child
+    expect(progress(c)).toEqual({ checked: 1, total: 3 });
+  });
+
+  it("requires every nested required item to be complete", () => {
+    let c = listOf("A", "B");
+    c = moveItemInto(c, "i2", "i1", "into", NOW);
+    c = {
+      ...c,
+      items: c.items.map((it) =>
+        withChild(it, (child) =>
+          child.id === "i2" ? { ...child, required: true } : child,
+        ),
+      ),
+    };
+    expect(isComplete(c)).toBe(false);
+    expect(isComplete(toggleItem(c, "i2", NOW))).toBe(true);
+  });
+
+  describe("archive across the tree", () => {
+    function nested(): Checklist {
+      let c = listOf("Parent", "Child");
+      c = moveItemInto(c, "i2", "i1", "into", NOW);
+      return c;
+    }
+
+    it("hides an archived parent's subtree from the active view", () => {
+      const c = setArchived(nested(), "i1", true, LATER);
+      expect(activeItems(c)).toHaveLength(0);
+      // The archive lists the archived root; its child travels with it.
+      expect(archivedItems(c).map((it) => it.id)).toEqual(["i1"]);
+      expect(archivedItems(c)[0]!.children?.[0]!.id).toBe("i2");
+    });
+
+    it("prunes an archived child out of its active parent", () => {
+      const c = setArchived(nested(), "i2", true, LATER);
+      expect(activeItems(c).map((it) => it.id)).toEqual(["i1"]);
+      expect(activeItems(c)[0]!.children ?? []).toHaveLength(0);
+      expect(archivedItems(c).map((it) => it.id)).toEqual(["i2"]);
+    });
+
+    it("sweeps finished sub-items with archive / delete finished", () => {
+      let c = nested();
+      c = toggleItem(c, "i2", NOW); // finish the child
+      expect(archivedItems(archiveChecked(c, NOW)).map((it) => it.id)).toEqual([
+        "i2",
+      ]);
+      expect(findItem(deleteChecked(c, NOW).items, "i2")).toBeUndefined();
+    });
+  });
+
+  it("sorts checked items to the bottom within each sub-list", () => {
+    let c = listOf("Parent", "X", "Y", "Z");
+    c = moveItemInto(c, "i2", "i1", "into", NOW); // X under Parent
+    c = moveItemInto(c, "i3", "i1", "into", NOW); // Y under Parent
+    c = moveItemInto(c, "i4", "i1", "into", NOW); // Z under Parent
+    c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z"); // check X
+    const sorted = sortCheckedToBottom(activeItems(c));
+    // Within the parent's sub-list, unchecked Y, Z come first, X sinks.
+    expect(sorted[0]!.children?.map((it) => it.id)).toEqual(["i3", "i4", "i2"]);
+  });
+
+  describe("flattenForDisplay", () => {
+    function nested(): Checklist {
+      let c = listOf("A", "B", "C");
+      c = moveItemInto(c, "i2", "i1", "into", NOW); // B under A
+      c = moveItemInto(c, "i3", "i1", "into", NOW); // C under A
+      return c;
+    }
+
+    it("tags each row with its depth and whether it has children", () => {
+      const rows = flattenForDisplay(activeItems(nested()), new Set());
+      expect(rows.map((r) => [r.item.id, r.depth, r.hasChildren])).toEqual([
+        ["i1", 0, true],
+        ["i2", 1, false],
+        ["i3", 1, false],
+      ]);
+    });
+
+    it("skips the children of a collapsed item", () => {
+      const rows = flattenForDisplay(activeItems(nested()), new Set(["i1"]));
+      expect(rows.map((r) => r.item.id)).toEqual(["i1"]);
+    });
+  });
+
+  it("flattenItems walks parents before their children, depth-first", () => {
+    let c = listOf("A", "B", "C");
+    c = moveItemInto(c, "i2", "i1", "into", NOW);
+    c = moveItemInto(c, "i3", "i2", "into", NOW);
+    expect(flattenItems(c.items).map((it) => it.id)).toEqual([
+      "i1",
+      "i2",
+      "i3",
+    ]);
+  });
+});
+
+// Helper: map an item's children, preserving the rest of the node.
+function withChild(
+  item: ChecklistItem,
+  fn: (child: ChecklistItem) => ChecklistItem,
+): ChecklistItem {
+  if (!item.children) return item;
+  return { ...item, children: item.children.map(fn) };
+}
 
 describe("moveDisplayedItem", () => {
   const LATER = "2026-02-02T00:00:00.000Z";

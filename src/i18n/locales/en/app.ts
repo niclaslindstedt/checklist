@@ -23,6 +23,8 @@ const app = {
   addNote: "Add a note",
   showNote: "Show note",
   hideNote: "Hide note",
+  showSubitems: "Show sub-items",
+  hideSubitems: "Hide sub-items",
   editPrev: "Edit previous item",
   editNext: "Edit next item",
   editDone: "Done editing",

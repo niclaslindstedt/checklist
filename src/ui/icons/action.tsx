@@ -101,6 +101,25 @@ export function ChevronUpIcon({ className }: IconProps) {
   );
 }
 
+// A small filled disclosure triangle — the toggle on a row that has
+// sub-items. Deliberately distinct from `ChevronDownIcon` (the slim note-body
+// caret) so the two reveals read differently: this one is a solid triangle
+// that points right when collapsed and rotates down when the sub-list is open.
+export function CaretRightIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      stroke="none"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M6 4l5 4-5 4z" />
+    </svg>
+  );
+}
+
 export function CloseIcon({ className }: IconProps) {
   return (
     <svg

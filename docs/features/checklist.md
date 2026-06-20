@@ -19,6 +19,15 @@ a single line you act on directly, with no chrome to hunt through.
    Mistakes are recoverable — undo and redo step back through your edits.
 5. **Archive.** Swipe a row **right** and it slides off into the
    [archive](feature:archive), kept safe rather than destroyed.
+6. **Nest sub-items.** Drag a row onto the **middle** of another and release
+   to tuck it underneath as a sub-item — drop near a row's top or bottom edge
+   to drop it alongside instead, so nesting and reordering are one gesture. A
+   parent indents its children and shows a small triangle that folds them
+   away; ticking the parent ticks the whole group, dragging it carries the
+   group with it, and (with "sort checked to the bottom" on) finished items
+   sink within each sub-list of their own. Sub-items can nest as deep as you
+   like, and they survive a copy out to markdown as standard indented
+   `- [ ]` task lists.
 
 Each gesture maps to one outcome, so a drag never trips an edit and a swipe
 never toggles the box. Once you've added a few items, the list reads like a

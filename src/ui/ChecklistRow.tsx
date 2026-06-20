@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import type { DropMode } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
@@ -14,8 +15,12 @@ import type { ActiveEditor } from "./edit-nav.ts";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
-import { ChevronDownIcon, GripIcon } from "./icons.tsx";
+import { CaretRightIcon, ChevronDownIcon, GripIcon } from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
+
+// Horizontal step per nesting level. A sub-item sits this much further right
+// than its parent, so the tree shape reads at a glance.
+const INDENT_PER_LEVEL = 22;
 
 // One checklist line. Two action layers sit behind a sliding foreground:
 // swiping the foreground right uncovers Archive (and triggers it past the
@@ -87,6 +92,21 @@ type Props = {
   onActiveEditorChange?: (handle: ActiveEditor | null) => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
+  /** Nesting depth — indents the row one step per level. */
+  depth?: number;
+  /** Whether the item has sub-items, so it shows the expand/collapse caret. */
+  hasChildren?: boolean;
+  /** Whether the sub-list is collapsed (children hidden). */
+  collapsed?: boolean;
+  /** Toggle the sub-list open/closed. */
+  onToggleCollapse?: (id: string) => void;
+  /**
+   * When this row is the live drop target during a drag, how the dragged item
+   * would land on it: `"into"` (become a sub-item) tints the whole row, while
+   * `"before"` / `"after"` draw an insertion line on that edge. Null when the
+   * row isn't the current target.
+   */
+  dropMode?: DropMode | null;
   dragHandleProps: DragHandleProps;
   dragging: boolean;
   style?: CSSProperties;
@@ -107,10 +127,16 @@ function ChecklistRowImpl({
   onAutoEditTitleConsumed,
   onActiveEditorChange,
   notesDisabled = false,
+  depth = 0,
+  hasChildren = false,
+  collapsed = false,
+  onToggleCollapse,
+  dropMode = null,
   dragHandleProps,
   dragging,
   style,
 }: Props) {
+  const indent = depth * INDENT_PER_LEVEL;
   const archive = useCallback(() => onArchive(item.id), [onArchive, item.id]);
   const swipe = useRowSwipe(archive);
   const t = useT();
@@ -202,7 +228,7 @@ function ChecklistRowImpl({
       <li
         ref={rowRef}
         data-reorder-id={item.id}
-        style={style}
+        style={{ ...style, paddingLeft: indent || undefined }}
         className="relative border-b border-line bg-surface-2"
       >
         <ChecklistRowEditor
@@ -227,8 +253,20 @@ function ChecklistRowImpl({
       ref={rowRef}
       data-reorder-id={item.id}
       style={style}
-      className="relative overflow-hidden border-b border-line"
+      className={`relative overflow-hidden border-b border-line ${
+        dropMode === "into" ? "bg-accent/10 ring-2 ring-accent ring-inset" : ""
+      }`}
     >
+      {/* Drop indicators while dragging another row onto this one: a line on
+          the leading / trailing edge for a sibling drop (the "into" tint is on
+          the <li> above). */}
+      {dropMode === "before" && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-accent" />
+      )}
+      {dropMode === "after" && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-0.5 bg-accent" />
+      )}
+
       {/* Archive — uncovered by swiping the row right. Hidden unless the
           foreground is sliding right so the archive slide-off never bares
           the trailing edge. */}
@@ -262,12 +300,38 @@ function ChecklistRowImpl({
       {/* Sliding foreground. */}
       <div
         {...swipe.handlers}
-        style={{ transform: `translateX(${swipe.offset}px)` }}
+        style={{
+          transform: `translateX(${swipe.offset}px)`,
+          paddingLeft: indent
+            ? `calc(var(--density-row-px) + ${indent}px)`
+            : undefined,
+        }}
         className={`relative flex flex-col px-[var(--density-row-px)] py-[var(--density-row-py)] [touch-action:pan-y] ${
           dragging ? "bg-surface-2" : "bg-page-bg"
         } ${swipe.animating ? "transition-transform duration-200" : ""}`}
       >
         <div className="flex min-h-11 items-center gap-3">
+          {/* Sub-item disclosure caret — a fixed slot so leaf rows still align
+              their checkbox under a sibling that has one. */}
+          <span className="flex w-5 shrink-0 items-center justify-center">
+            {hasChildren && (
+              <button
+                type="button"
+                onClick={() => onToggleCollapse?.(item.id)}
+                aria-label={
+                  collapsed ? t("app.showSubitems") : t("app.hideSubitems")
+                }
+                aria-expanded={!collapsed}
+                className="flex h-7 w-5 items-center justify-center text-muted hover:text-fg"
+              >
+                <CaretRightIcon
+                  className={`h-4 w-4 transition-transform ${
+                    collapsed ? "" : "rotate-90"
+                  }`}
+                />
+              </button>
+            )}
+          </span>
           <Checkbox
             checked={item.checked}
             onChange={() => onToggle(item.id)}

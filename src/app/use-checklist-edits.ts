@@ -21,14 +21,20 @@ import {
   deleteChecked as deleteCheckedOp,
   deleteItem as deleteItemOp,
   editItem as editItemOp,
-  moveDisplayedItem as moveDisplayedItemOp,
+  findItem,
+  flattenItems,
+  moveItemInto as moveItemIntoOp,
   setArchived,
   toggleItem as toggleItemOp,
+  type DropMode,
 } from "../domain/checklists.ts";
 import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import type { AddItemPosition } from "../settings/types.ts";
-import { parseItemsFromMarkdown } from "../storage/markdown/codec.ts";
+import {
+  type ImportedItem,
+  parseItemsFromMarkdown,
+} from "../storage/markdown/codec.ts";
 import type { Notify } from "./notify.ts";
 import { newId, now } from "./side-effects.ts";
 
@@ -78,8 +84,12 @@ export interface ChecklistEdits {
   deleteFinished: () => void;
   /** Restore an archived item back into the list it came from. */
   unarchive: (itemId: string) => void;
-  /** Move a visible item to a new position among the active items. */
-  reorder: (itemId: string, toIndex: number) => void;
+  /**
+   * Move a dragged item relative to the item it was dropped on: `"into"`
+   * nests it as a sub-item, `"before"` / `"after"` drop it as a sibling on
+   * that side. Reordering and nesting are the same gesture.
+   */
+  reorder: (itemId: string, targetId: string, mode: DropMode) => void;
   /**
    * Where a new item lands ("top" or "bottom"), surfaced so the view can
    * render the add-item draft row in the same spot the item will appear.
@@ -104,23 +114,16 @@ export function useChecklistEdits(deps: {
   t: TFunction;
   /** Where `addItem` inserts a new item ("top" or "bottom"). */
   addItemPosition: AddItemPosition;
-  /**
-   * Whether checked items are sorted to the bottom of the view. Reorder reads
-   * it so a drop index is interpreted against the displayed order, not the
-   * raw document order.
-   */
-  sortCheckedToBottom: boolean;
 }): ChecklistEdits {
   const { list, docRef, setDoc, scheduleSave, record, notify, t } = deps;
-  const { addItemPosition, sortCheckedToBottom } = deps;
+  const { addItemPosition } = deps;
 
-  // Read the live preferences from refs so `addItem` / `reorder` stay
-  // referentially stable (App memoizes the view on them) even as the
-  // settings change.
+  // Read the live add-item position from a ref so `addItem` stays
+  // referentially stable (App memoizes the view on it) even as the setting
+  // changes. The drop-onto reorder places items relative to a stable target
+  // id, so it doesn't need to read the checked-sort setting at all.
   const addItemPositionRef = useRef(addItemPosition);
   addItemPositionRef.current = addItemPosition;
-  const sortCheckedToBottomRef = useRef(sortCheckedToBottom);
-  sortCheckedToBottomRef.current = sortCheckedToBottom;
 
   // Mirror the active list into a ref so the edit callbacks below can read
   // the latest list without listing it as a dependency. That keeps
@@ -152,21 +155,22 @@ export function useChecklistEdits(deps: {
   );
 
   // The title of an item in the active list, for an action label. Falls
-  // back to empty so a label is still well-formed if the id has gone.
+  // back to empty so a label is still well-formed if the id has gone. Walks
+  // the tree, so a sub-item resolves too.
   const titleOf = useCallback(
-    (itemId: string) =>
-      listRef.current.items.find((it) => it.id === itemId)?.title ?? "",
+    (itemId: string) => findItem(listRef.current.items, itemId)?.title ?? "",
     [],
   );
 
   // Locate an item by id anywhere in the document, returning it with its
   // owning checklist. The archive spans every list, so restore and delete
   // resolve the owner from the whole snapshot rather than the active list —
-  // an archived item may belong to a checklist the user isn't looking at.
-  const findItem = useCallback(
+  // an archived item may belong to a checklist the user isn't looking at. The
+  // search walks each list's tree so a nested sub-item is found too.
+  const findOwner = useCallback(
     (itemId: string) => {
       for (const checklist of docRef.current.checklists) {
-        const item = checklist.items.find((it) => it.id === itemId);
+        const item = findItem(checklist.items, itemId);
         if (item) return { checklist, item };
       }
       return null;
@@ -198,7 +202,9 @@ export function useChecklistEdits(deps: {
     (markdown: string): number => {
       const parsed = parseItemsFromMarkdown(markdown);
       if (parsed.length === 0) return 0;
-      const items: ChecklistItem[] = parsed.map((raw) => {
+      // Rebuild the imported tree as fresh items, minting an id per node so a
+      // pasted nested list lands as nested sub-items.
+      const toItem = (raw: ImportedItem): ChecklistItem => {
         const item: ChecklistItem = {
           id: newId(),
           title: raw.title,
@@ -206,27 +212,31 @@ export function useChecklistEdits(deps: {
         };
         if (raw.required) item.required = true;
         if (raw.notes) item.notes = raw.notes;
+        if (raw.children && raw.children.length > 0) {
+          item.children = raw.children.map(toItem);
+        }
         return item;
-      });
-      const label = t("toast.itemsImported", { count: items.length });
+      };
+      const items: ChecklistItem[] = parsed.map(toItem);
+      const count = flattenItems(items).length;
+      const label = t("toast.itemsImported", { count });
       commit(addItemsOp(listRef.current, items, now()), label);
       notify(label, "success");
       unlock("pasteList");
-      return items.length;
+      return count;
     },
     [commit, notify, t],
   );
 
   const editItem = useCallback(
     (itemId: string, fields: { title?: string; notes?: string }) => {
-      const before = listRef.current.items.find((it) => it.id === itemId);
+      const before = findItem(listRef.current.items, itemId);
       if (!before) return;
       const next = editItemOp(listRef.current, itemId, fields, now());
       // A no-op edit returns the same list — nothing changed, so don't
       // write or record an empty step on the undo timeline.
       if (next === listRef.current) return;
-      const title =
-        next.items.find((it) => it.id === itemId)?.title ?? before.title;
+      const title = findItem(next.items, itemId)?.title ?? before.title;
       // No toast: the edited row updates in place. The label still feeds undo.
       commit(next, t("toast.itemEdited", { title }));
       // Renaming an item's headline is the "Wordsmith" trophy; adding a note
@@ -245,8 +255,7 @@ export function useChecklistEdits(deps: {
   const toggle = useCallback(
     (itemId: string) => {
       const title = titleOf(itemId);
-      const willCheck = !listRef.current.items.find((it) => it.id === itemId)
-        ?.checked;
+      const willCheck = !findItem(listRef.current.items, itemId)?.checked;
       // No toast: the checkbox flips in place. The label still feeds undo.
       commit(
         toggleItemOp(listRef.current, itemId, now()),
@@ -258,18 +267,18 @@ export function useChecklistEdits(deps: {
 
   const remove = useCallback(
     (itemId: string) => {
-      const found = findItem(itemId);
+      const found = findOwner(itemId);
       if (!found) return;
       const label = t("toast.itemDeleted", { title: found.item.title });
       commit(deleteItemOp(found.checklist, itemId, now()), label);
       notify(label);
     },
-    [commit, findItem, notify, t],
+    [commit, findOwner, notify, t],
   );
 
   const removeEmpty = useCallback(
     (itemId: string) => {
-      const found = findItem(itemId);
+      const found = findOwner(itemId);
       if (!found) return;
       // No toast: the emptied row disappears in place under the user's
       // cursor. The undo step still carries a label so it can be walked back.
@@ -278,7 +287,7 @@ export function useChecklistEdits(deps: {
         t("toast.emptyItemRemoved"),
       );
     },
-    [commit, findItem, t],
+    [commit, findOwner, t],
   );
 
   const archive = useCallback(
@@ -292,10 +301,13 @@ export function useChecklistEdits(deps: {
 
   // Count the finished (checked, still-active) items the bulk verbs act on,
   // so they can no-op silently when there's nothing to sweep and feed the
-  // count into the toast otherwise.
+  // count into the toast otherwise. Walks the tree, so finished sub-items
+  // count toward the sweep.
   const finishedCount = useCallback(
     () =>
-      listRef.current.items.filter((it) => it.checked && !it.archived).length,
+      flattenItems(listRef.current.items).filter(
+        (it) => it.checked && !it.archived,
+      ).length,
     [],
   );
 
@@ -319,32 +331,34 @@ export function useChecklistEdits(deps: {
 
   const unarchive = useCallback(
     (itemId: string) => {
-      const found = findItem(itemId);
+      const found = findOwner(itemId);
       if (!found) return;
       const label = t("toast.itemRestored", { title: found.item.title });
       commit(setArchived(found.checklist, itemId, false, now()), label);
       notify(label, "success");
       unlock("comeback");
     },
-    [commit, findItem, notify, t],
+    [commit, findOwner, notify, t],
   );
 
   const reorder = useCallback(
-    (itemId: string, toIndex: number) => {
-      // No toast: the row visibly lands at its new spot. Label feeds undo.
-      // `toIndex` is an index into the *displayed* order, which differs from
-      // document order while checked items are sunk to the bottom.
-      commit(
-        moveDisplayedItemOp(
-          listRef.current,
-          itemId,
-          toIndex,
-          sortCheckedToBottomRef.current,
-          now(),
-        ),
-        t("toast.itemMoved", { title: titleOf(itemId) }),
+    (itemId: string, targetId: string, mode: DropMode) => {
+      const next = moveItemIntoOp(
+        listRef.current,
+        itemId,
+        targetId,
+        mode,
+        now(),
       );
-      unlock("reshuffle");
+      // Dropping onto itself or its own descendant is a no-op — skip the
+      // write and the undo step so the gesture leaves no trace.
+      if (next === listRef.current) return;
+      // No toast: the row visibly lands at its new spot. Label feeds undo.
+      commit(next, t("toast.itemMoved", { title: titleOf(itemId) }));
+      // Nesting an item under another (the drop-into gesture) is its own
+      // trophy; a plain sibling reorder keeps the Reshuffle one.
+      if (mode === "into") unlock("nestEgg");
+      else unlock("reshuffle");
     },
     [commit, titleOf, t],
   );

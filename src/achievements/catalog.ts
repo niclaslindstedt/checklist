@@ -47,6 +47,7 @@ import {
   TypeGlyph,
   UndoGlyph,
   WandGlyph,
+  WorkflowGlyph,
 } from "./glyphs.tsx";
 import type { Achievement } from "./types.ts";
 
@@ -59,10 +60,15 @@ function someItem(
   snap: Snapshot,
   fn: (item: ChecklistItem) => boolean,
 ): boolean {
-  for (const list of snap.checklists) {
-    for (const item of list.items) {
+  const walk = (items: readonly ChecklistItem[]): boolean => {
+    for (const item of items) {
       if (fn(item)) return true;
+      if (item.children && walk(item.children)) return true;
     }
+    return false;
+  };
+  for (const list of snap.checklists) {
+    if (walk(list.items)) return true;
   }
   return false;
 }
@@ -220,6 +226,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "reshuffle",
     tier: "intermediate",
     glyph: ArrowUpDownGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "nestEgg",
+    tier: "intermediate",
+    glyph: WorkflowGlyph,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

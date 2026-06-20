@@ -17,6 +17,7 @@ import {
   type ArchivedGroup,
   archivedByChecklist,
   displayItems,
+  flattenItems,
 } from "../domain/checklists.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -48,8 +49,17 @@ export type { ChecklistSummary, ConflictState, SaveStatus };
 export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   /** The full in-memory document (used by the conflict summary). */
   snapshot: Snapshot;
-  /** The active checklist's visible (non-archived) items. */
+  /**
+   * The active checklist's visible (non-archived) items, as a tree — each
+   * item may carry `children` (its sub-items). The view flattens this for
+   * rendering (see `flattenForDisplay`).
+   */
   items: ChecklistItem[];
+  /**
+   * How many visible items there are in total, sub-items included — the
+   * denominator of the header's checked/total count.
+   */
+  visibleCount: number;
   /**
    * Archived items across every checklist, grouped by their source list —
    * what the archive view lists under a per-checklist header. Lists with
@@ -189,7 +199,6 @@ export function useChecklist(
     notify,
     t,
     addItemPosition,
-    sortCheckedToBottom,
   });
 
   const items = useMemo(
@@ -200,10 +209,14 @@ export function useChecklist(
   // rather than the active list — restoring or deleting reaches into whatever
   // list the item came from (see `useChecklistEdits`).
   const archivedGroups = useMemo(() => archivedByChecklist(doc), [doc]);
+  // Counts span the whole tree, so a checked or extant sub-item counts toward
+  // the header's checked/total tally.
+  const flat = useMemo(() => flattenItems(items), [items]);
   const checkedCount = useMemo(
-    () => items.filter((it) => it.checked).length,
-    [items],
+    () => flat.filter((it) => it.checked).length,
+    [flat],
   );
+  const visibleCount = flat.length;
 
   // Memoized so the returned object keeps a stable identity across renders
   // that don't touch the checklist (e.g. an appearance-settings change in
@@ -214,6 +227,7 @@ export function useChecklist(
     () => ({
       snapshot: doc,
       items,
+      visibleCount,
       archivedGroups,
       checkedCount,
       ...lists,
@@ -235,6 +249,7 @@ export function useChecklist(
     [
       doc,
       items,
+      visibleCount,
       archivedGroups,
       checkedCount,
       lists,
