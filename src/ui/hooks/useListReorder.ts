@@ -1,15 +1,19 @@
 // Pointer-driven drag for the checklist. A grip handle on each row arms the
 // gesture (kept off the row body so it never collides with the horizontal
-// swipe-to-archive/delete). While dragging, the picked-up row follows the
-// finger vertically and a drop indicator tracks where it would land: the row
-// it's over is split into three zones — the top edge drops it *before* that
-// row, the bottom edge *after* it, and the middle *into* it as a sub-item.
-// So reordering and nesting are the same gesture; on release the caller
-// commits through `onReorder(draggedId, targetId, mode)`.
+// swipe-to-archive/delete). While dragging, the picked-up row is lifted out of
+// the list flow as a smaller, translucent copy that follows the finger — small
+// enough to see the rows behind it — while a full-size *ghost* preview snaps
+// into the spot where it would land. The row the finger is over is split into
+// three zones: the top edge drops it *before* that row, the bottom edge
+// *after* it, and the middle *into* it as a sub-item (the ghost indents a
+// level). So reordering and nesting are the same gesture; on release the
+// caller commits through `onReorder(draggedId, targetId, mode)`.
 //
 // Row positions are measured once at pointer-down and the drop target is
 // computed from that static snapshot plus the finger position, so the math
-// stays stable until the single commit on drop.
+// stays stable until the single commit on drop. The lifted row is positioned
+// absolutely against the list, so the view marks its `<ul>` `position:
+// relative`; its `top` is the row's offset captured at pointer-down.
 
 import {
   useCallback,
@@ -28,8 +32,13 @@ const AXIS_LOCK = 6;
 
 // Fraction of a row's height at its top / bottom edge that drops the dragged
 // item *beside* it (before / after); the middle band drops it *into* the row
-// as a sub-item.
-const EDGE_ZONE = 0.3;
+// as a sub-item. The middle band is the wider half so that dragging squarely
+// *onto* a row reliably nests it — easy to hit with a thumb on a phone.
+const EDGE_ZONE = 0.25;
+
+// How much the lifted row shrinks while dragging. A touch under full size so
+// the rows it passes over (and the ghost preview) stay visible behind it.
+const DRAG_SCALE = 0.92;
 
 // Shared, stable "no transform" style handed to every row while no drag is
 // in progress. Returning one frozen reference (rather than a fresh `{}` per
@@ -83,6 +92,9 @@ export function useListReorder(
 
   const rects = useRef<Rect[]>([]);
   const dragIndex = useRef(-1);
+  // Offset of the lifted row's top within the (relatively positioned) list,
+  // captured at pointer-down so the floating copy can be placed absolutely.
+  const dragTop = useRef(0);
   const startY = useRef(0);
   const pointerId = useRef<number | null>(null);
   const armed = useRef(false);
@@ -126,6 +138,10 @@ export function useListReorder(
       if (index === -1) return;
       rects.current = measured;
       dragIndex.current = index;
+      const node = containerRef.current?.querySelector<HTMLElement>(
+        `[data-reorder-id="${CSS.escape(id)}"]`,
+      );
+      dragTop.current = node?.offsetTop ?? 0;
       startY.current = e.clientY;
       pointerId.current = e.pointerId;
       armed.current = false;
@@ -216,11 +232,22 @@ export function useListReorder(
     (id: string): CSSProperties => {
       if (!draggingId) return IDLE_ROW_STYLE;
       if (id === draggingId) {
+        // Lift the row clean out of the list flow (so its slot collapses and
+        // the ghost can take the place it'll land in) and float a shrunken,
+        // translucent copy under the finger. `left/right: 0` spans the list;
+        // `top` is the captured offset, nudged by the drag delta.
         return {
-          transform: `translateY(${delta}px)`,
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: dragTop.current,
+          transform: `translateY(${delta}px) scale(${DRAG_SCALE})`,
+          transformOrigin: "center left",
           transition: "none",
-          position: "relative",
-          zIndex: 20,
+          zIndex: 30,
+          opacity: 0.82,
+          boxShadow: "0 10px 28px rgba(0, 0, 0, 0.28)",
+          borderRadius: "0.5rem",
           cursor: "grabbing",
         };
       }

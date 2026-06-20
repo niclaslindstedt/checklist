@@ -730,11 +730,29 @@ Items form a **tree**: every `ChecklistItem` may carry a `children` array
 to any depth. The whole feature is the same **drag** gesture as reordering,
 extended with a drop *zone*: `useListReorder`
 (`src/ui/hooks/useListReorder.ts`) splits the row the finger is over into
-thirds — the top edge drops the dragged item **before** it, the bottom edge
-**after** it, and the **middle band drops it _into_ that row as a
-sub-item** (`DropMode` = `"before" | "after" | "into"`). The middle-band
-target lights up (an accent ring); the edges draw an insertion line. On
-release the view commits `reorder(draggedId, targetId, mode)` →
+bands — the top / bottom edges drop the dragged item **before** / **after**
+it, and the **wider middle band drops it _into_ that row as a sub-item**
+(`DropMode` = `"before" | "after" | "into"`; the middle band is deliberately
+the larger half so dragging squarely *onto* a row reliably nests it, which
+matters most under a thumb on a phone).
+
+While dragging, the picked-up row is **lifted clean out of the list flow**
+and floated under the finger as a **smaller, translucent copy** (`rowStyle`
+returns an absolute, `scale(0.92)`, low-opacity transform — small enough to
+see the rows behind it; the `<ul>` is `position: relative` so the copy
+positions against the list, its `top` captured at pointer-down). A
+full-size **ghost preview** — a dashed, accent-tinted marker of the dragged
+item (`DragGhostRow`, `src/ui/DragGhostRow.tsx`) — snaps into the exact spot
+the item will land, **indented a level for an _into_ drop**, while the
+surrounding rows open a gap for it. The view places it with
+`ghostPlacement` (`src/ui/dragGhostPlacement.ts`), a pure function that maps
+the live drop target to a `{ index, depth }` in the flattened rows (walking
+past the target's visible subtree for _after_ / _into_, exactly as
+`moveItemInto` will). When a **parent** is dragged its descendant rows are
+hidden for the duration — the subtree travels as one, stood in for by the
+floating copy plus ghost. The target row still lights up (an accent ring on
+an _into_ drop; an insertion line on a sibling edge) to reinforce the
+landing. On release the view commits `reorder(draggedId, targetId, mode)` →
 `moveItemInto` (`src/domain/checklists.ts`), which lifts the dragged item
 **with its own subtree** and re-inserts it; dropping onto itself, onto one
 of its own descendants, or in a spot that doesn't change the arrangement is

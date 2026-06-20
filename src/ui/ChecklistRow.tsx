@@ -19,8 +19,9 @@ import { CaretRightIcon, ChevronDownIcon, GripIcon } from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 
 // Horizontal step per nesting level. A sub-item sits this much further right
-// than its parent, so the tree shape reads at a glance.
-const INDENT_PER_LEVEL = 22;
+// than its parent, so the tree shape reads at a glance. Exported so the drag
+// ghost preview can indent itself to match the row it'll land beside.
+export const INDENT_PER_LEVEL = 22;
 
 // One checklist line. Two action layers sit behind a sliding foreground:
 // swiping the foreground right uncovers Archive (and triggers it past the
