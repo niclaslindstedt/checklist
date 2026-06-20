@@ -385,7 +385,10 @@ Dropbox / Google Drive), a Save now / Try again button, the provider name
 and file location, and an "Open in <provider>" link out to the backend's
 web UI (omitted for the local folder, which has no URL). The provider
 path / URL are derived from `SyncInfo.backend` + `namespace` via the
-backends' web-URL helpers (`dropboxWebUrl`, `gdriveWebUrl`).
+backends' web-URL helpers (`dropboxWebUrl`, `gdriveWebUrl`). Its content
+is short and opens no soft keyboard, so it renders as a compact
+`centered` card on every viewport rather than the full-screen mobile
+sheet.
 
 ### Modal
 
