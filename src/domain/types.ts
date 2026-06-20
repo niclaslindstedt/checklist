@@ -63,6 +63,14 @@ export interface Checklist {
   templateId: string;
   name: string;
   items: ChecklistItem[];
+  /**
+   * An archived checklist drops out of the sidebar switcher and the
+   * checklist view, surfacing instead under the archive view's "Archived
+   * lists" section, where it can be restored or deleted as a whole. Absent
+   * means active. Mirrors `archived` on a `ChecklistItem`, but for the
+   * whole list — right-click a list (desktop) and choose Archive.
+   */
+  archived?: boolean;
   createdAt: string;
   updatedAt: string;
 }

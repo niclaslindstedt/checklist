@@ -18,6 +18,8 @@ const toast: ToastCatalog = {
   listCreated: "Skapade listan ”{name}”",
   listRenamed: "Bytte namn på listan till ”{name}”",
   listDeleted: "Tog bort listan ”{name}”",
+  listArchived: "Arkiverade listan ”{name}”",
+  listRestored: "Återställde listan ”{name}”",
   namespaceCreated: "Skapade namnrymden ”{name}”",
   namespaceDeleted: "Tog bort namnrymden ”{name}”",
   undone: "Ångrade: {action}",

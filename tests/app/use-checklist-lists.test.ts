@@ -207,6 +207,82 @@ describe("useChecklist multi-list verbs", () => {
     );
   });
 
+  it("archives a whole list out of the switcher into the archived set", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const first = result.current.activeChecklistId;
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const second = result.current.activeChecklistId;
+
+    // Archive the active (second) list — it leaves the switcher, lands in the
+    // archived set, and the selection re-points at the surviving active list.
+    act(() => result.current.archiveChecklist(second));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(1));
+    expect(result.current.archivedChecklists.map((l) => l.id)).toEqual([
+      second,
+    ]);
+    expect(result.current.activeChecklistId).toBe(first);
+    // Persisted with the flag set.
+    const stored = parse(adapter.stored()).checklists.find(
+      (c) => c.id === second,
+    );
+    expect(stored!.archived).toBe(true);
+  });
+
+  it("restores an archived list back into the switcher and selects it", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const second = result.current.activeChecklistId;
+    act(() => result.current.archiveChecklist(second));
+    await waitFor(() =>
+      expect(result.current.archivedChecklists).toHaveLength(1),
+    );
+
+    act(() => result.current.unarchiveChecklist(second));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    expect(result.current.archivedChecklists).toHaveLength(0);
+    expect(result.current.activeChecklistId).toBe(second);
+  });
+
+  it("refuses to archive the last remaining active list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const only = result.current.activeChecklistId;
+    act(() => result.current.archiveChecklist(only));
+    expect(result.current.checklists).toHaveLength(1);
+    expect(result.current.archivedChecklists).toHaveLength(0);
+  });
+
+  it("deletes an archived list without tripping the last-active guard", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const second = result.current.activeChecklistId;
+    act(() => result.current.archiveChecklist(second));
+    await waitFor(() =>
+      expect(result.current.archivedChecklists).toHaveLength(1),
+    );
+
+    // Deleting the archived list is allowed — an active list still remains.
+    act(() => result.current.removeChecklist(second));
+    await waitFor(() =>
+      expect(result.current.archivedChecklists).toHaveLength(0),
+    );
+    expect(parse(adapter.stored()).checklists).toHaveLength(1);
+  });
+
   it("ignores a blank rename", async () => {
     const adapter = memoryAdapter();
     const { result } = renderHook(() => useChecklist(adapter));

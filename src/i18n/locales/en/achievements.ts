@@ -125,6 +125,10 @@ const achievements = {
       learnMore:
         "Swipe an item right (or use its menu) to archive it — it drops out of the active list without being destroyed. The Archive view restores or deletes archived items.",
     },
+    tidyShelves: {
+      name: "Tidy Shelves",
+      condition: "Archive a whole checklist.",
+    },
     comeback: {
       name: "Comeback",
       condition: "Restore an item from the archive.",

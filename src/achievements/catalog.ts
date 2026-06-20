@@ -82,6 +82,8 @@ const hasRequiredItem = (snap: Snapshot) =>
 const hasArchivedItem = (snap: Snapshot) =>
   someItem(snap, (it) => it.archived === true);
 const hasMultipleChecklists = (snap: Snapshot) => snap.checklists.length > 1;
+const hasArchivedChecklist = (snap: Snapshot) =>
+  snap.checklists.some((c) => c.archived === true);
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
@@ -213,6 +215,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.snapshot],
       predicate: (prev, next) =>
         !hasArchivedItem(prev.snapshot) && hasArchivedItem(next.snapshot),
+    },
+  },
+  {
+    id: "tidyShelves",
+    tier: "intermediate",
+    glyph: ArchiveGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot.checklists],
+      predicate: (prev, next) =>
+        !hasArchivedChecklist(prev.snapshot) &&
+        hasArchivedChecklist(next.snapshot),
     },
   },
   {

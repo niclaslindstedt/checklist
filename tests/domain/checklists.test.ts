@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeChecklists,
   activeItems,
   addItem,
   addItems,
   archiveChecked,
   archivedByChecklist,
+  archivedChecklists,
   archivedItems,
   createChecklist,
   deleteChecked,
@@ -23,6 +25,7 @@ import {
   progress,
   renameChecklist,
   setArchived,
+  setChecklistArchived,
   sortCheckedToBottom,
   toggleItem,
 } from "../../src/domain/checklists.ts";
@@ -268,6 +271,65 @@ describe("addItems", () => {
 
   it("is a no-op (same reference) when given no items", () => {
     expect(addItems(base, [], NOW)).toBe(base);
+  });
+});
+
+describe("setChecklistArchived", () => {
+  const NOW = "2026-01-01T00:00:00.000Z";
+  const LATER = "2026-02-02T00:00:00.000Z";
+  const base = createChecklist("c1", "Groceries", NOW);
+
+  it("marks a checklist archived and bumps updatedAt", () => {
+    const archived = setChecklistArchived(base, true, LATER);
+    expect(archived.archived).toBe(true);
+    expect(archived.updatedAt).toBe(LATER);
+    // Source untouched.
+    expect(base.archived).toBeUndefined();
+  });
+
+  it("is a no-op when already in the requested state", () => {
+    expect(setChecklistArchived(base, false, LATER)).toBe(base);
+    const archived = setChecklistArchived(base, true, LATER);
+    expect(setChecklistArchived(archived, true, NOW)).toBe(archived);
+  });
+
+  it("restores by dropping the flag entirely (round-trips clean)", () => {
+    const archived = setChecklistArchived(base, true, LATER);
+    const restored = setChecklistArchived(archived, false, NOW);
+    expect("archived" in restored).toBe(false);
+    expect(restored.updatedAt).toBe(NOW);
+  });
+});
+
+describe("active / archived checklist selectors", () => {
+  const NOW = "2026-01-01T00:00:00.000Z";
+  const a = createChecklist("a", "Active 1", NOW);
+  const b = setChecklistArchived(
+    createChecklist("b", "Archived", NOW),
+    true,
+    NOW,
+  );
+  const c = createChecklist("c", "Active 2", NOW);
+  const snapshot = { templates: [], checklists: [a, b, c] };
+
+  it("splits the document into active and archived lists in order", () => {
+    expect(activeChecklists(snapshot).map((l) => l.id)).toEqual(["a", "c"]);
+    expect(archivedChecklists(snapshot).map((l) => l.id)).toEqual(["b"]);
+  });
+
+  it("excludes a wholly-archived list from the item archive groups", () => {
+    // Archive an item inside the archived list `b`; it must not surface as an
+    // item group, since the whole list is shown as a unit instead.
+    let archivedList = addItem(b, { id: "bi", title: "buried" }, NOW);
+    archivedList = setArchived(archivedList, "bi", true, NOW);
+    // …and an archived item inside the active list `a` still shows.
+    let activeList = addItem(a, { id: "ai", title: "shown" }, NOW);
+    activeList = setArchived(activeList, "ai", true, NOW);
+    const groups = archivedByChecklist({
+      templates: [],
+      checklists: [activeList, archivedList, c],
+    });
+    expect(groups.map((g) => g.id)).toEqual(["a"]);
   });
 });
 

@@ -8,8 +8,11 @@ import {
   type Namespace,
 } from "../storage/namespaces.ts";
 import { APP_VIEWPORT_RECT } from "./appViewportRect.ts";
+import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useNav } from "./nav-context.ts";
+import { useContextMenu } from "./hooks/useContextMenu.ts";
+import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
 import { useSwipeReveal } from "./hooks/useSwipeReveal.ts";
 import {
@@ -105,13 +108,24 @@ export function SideMenu({
     canRedo,
     archivedGroups,
     checklists,
+    archivedChecklists,
     activeChecklistId,
     selectChecklist,
     addChecklist,
     removeChecklist,
+    archiveChecklist,
   } = useChecklistContext();
-  const archivedCount = archivedGroups.reduce((n, g) => n + g.items.length, 0);
+  // The archive badge counts archived items plus whole archived lists.
+  const archivedCount =
+    archivedGroups.reduce((n, g) => n + g.items.length, 0) +
+    archivedChecklists.length;
   const drag = useDraggableMenuButton(position, setPosition);
+  const desktop = useDesktopPointer();
+  const {
+    state: menuState,
+    open: openMenu,
+    close: closeMenu,
+  } = useContextMenu();
 
   // Mirror the live drag state up so the parent can gate pull-to-refresh
   // off while the button is being dragged.
@@ -226,10 +240,39 @@ export function SideMenu({
             }}
           />
         );
-        // The last remaining list can't be removed — the views always
-        // need one to show — so it renders without the swipe action.
+        // The last remaining active list can't be archived or removed — the
+        // views always need one to show — so it renders as a plain row.
         if (checklists.length <= 1) {
           return <div key={c.id}>{row}</div>;
+        }
+        // Desktop swaps the swipe-to-remove gesture for a right-click menu
+        // that also offers archiving the whole list.
+        if (desktop) {
+          return (
+            <div
+              key={c.id}
+              onContextMenu={(e) =>
+                openMenu(
+                  [
+                    {
+                      label: t("app.archive"),
+                      icon: <ArchiveIcon className="h-4 w-4" />,
+                      onSelect: () => archiveChecklist(c.id),
+                    },
+                    {
+                      label: t("nav.removeChecklist"),
+                      icon: <TrashIcon className="h-4 w-4" />,
+                      danger: true,
+                      onSelect: () => removeChecklist(c.id),
+                    },
+                  ],
+                  e,
+                )
+              }
+            >
+              {row}
+            </div>
+          );
         }
         return (
           <SwipeToRemove
@@ -310,6 +353,14 @@ export function SideMenu({
           onClick={() => pick(() => dispatch({ kind: "settings" }))}
         />
       </div>
+      {menuState && (
+        <ContextMenu
+          x={menuState.x}
+          y={menuState.y}
+          items={menuState.items}
+          onClose={closeMenu}
+        />
+      )}
     </>
   );
 

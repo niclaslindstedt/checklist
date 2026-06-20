@@ -13,10 +13,14 @@ import { DragGhostRow } from "./DragGhostRow.tsx";
 import { EditNavBar } from "./EditNavBar.tsx";
 import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
+import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { ghostPlacement } from "./dragGhostPlacement.ts";
 import type { ActiveEditor } from "./edit-nav.ts";
+import { useContextMenu } from "./hooks/useContextMenu.ts";
+import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
+import { ArchiveIcon, TrashIcon } from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
 // column reminiscent of a plain-text editor. State-free — it reads the
@@ -98,6 +102,37 @@ function ChecklistViewImpl() {
     [items],
   );
   const reorderCtl = useListReorder(reorder, canDrop);
+
+  // Desktop swaps each row's swipe-to-reveal gesture for a right-click menu
+  // carrying the same archive / delete actions. `openMenu` is referentially
+  // stable, so handing it to the memoized rows doesn't re-render the list.
+  const desktop = useDesktopPointer();
+  const {
+    state: menuState,
+    open: openMenu,
+    close: closeMenu,
+  } = useContextMenu();
+  const openRowMenu = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      openMenu(
+        [
+          {
+            label: t("app.archive"),
+            icon: <ArchiveIcon className="h-4 w-4" />,
+            onSelect: () => archive(id),
+          },
+          {
+            label: t("app.delete"),
+            icon: <TrashIcon className="h-4 w-4" />,
+            danger: true,
+            onSelect: () => remove(id),
+          },
+        ],
+        e,
+      );
+    },
+    [openMenu, t, archive, remove],
+  );
 
   // While a row is lifted, the rows of its own subtree are hidden: the subtree
   // travels with the drag, stood in for by the single floating row plus the
@@ -277,6 +312,7 @@ function ChecklistViewImpl() {
                       ? { ...rowStyle, display: "none" }
                       : rowStyle
                   }
+                  onContextMenu={desktop ? openRowMenu : undefined}
                 />
               );
               return ghost && draggedItem && ghost.index === i
@@ -318,6 +354,15 @@ function ChecklistViewImpl() {
           onPrev={() => moveEdit(editIndex - 1)}
           onNext={() => moveEdit(editIndex + 1)}
           onDone={() => activeEditor.commit()}
+        />
+      )}
+
+      {menuState && (
+        <ContextMenu
+          x={menuState.x}
+          y={menuState.y}
+          items={menuState.items}
+          onClose={closeMenu}
         />
       )}
     </div>

@@ -118,6 +118,10 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Svep en post åt höger (eller använd dess meny) för att arkivera den — den faller ur den aktiva listan utan att förstöras. Arkivvyn återställer eller raderar arkiverade poster.",
     },
+    tidyShelves: {
+      name: "Städade hyllor",
+      condition: "Arkivera en hel checklista.",
+    },
     comeback: {
       name: "Comeback",
       condition: "Återställ en post från arkivet.",

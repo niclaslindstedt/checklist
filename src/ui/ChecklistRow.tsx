@@ -111,6 +111,12 @@ type Props = {
   dragHandleProps: DragHandleProps;
   dragging: boolean;
   style?: CSSProperties;
+  /**
+   * Desktop only — open the right-click actions menu (archive / delete) for
+   * this row. When supplied the row drops its swipe-to-reveal gesture in
+   * favour of the menu; touch viewports leave it unset and keep swiping.
+   */
+  onContextMenu?: (id: string, e: React.MouseEvent) => void;
 };
 
 function ChecklistRowImpl({
@@ -136,11 +142,15 @@ function ChecklistRowImpl({
   dragHandleProps,
   dragging,
   style,
+  onContextMenu,
 }: Props) {
   const indent = depth * INDENT_PER_LEVEL;
   const archive = useCallback(() => onArchive(item.id), [onArchive, item.id]);
   const swipe = useRowSwipe(archive);
   const t = useT();
+  // Desktop swaps the swipe-to-reveal gesture for the right-click menu: no
+  // sliding foreground, no archive/delete reveal layers behind it.
+  const desktop = Boolean(onContextMenu);
 
   const [editing, setEditing] = useState(false);
   const [editFocusBody, setEditFocusBody] = useState(false);
@@ -254,6 +264,7 @@ function ChecklistRowImpl({
       ref={rowRef}
       data-reorder-id={item.id}
       style={style}
+      onContextMenu={desktop ? (e) => onContextMenu!(item.id, e) : undefined}
       className={`relative overflow-hidden border-b border-line ${
         dropMode === "into" ? "bg-accent/10 ring-2 ring-accent ring-inset" : ""
       }`}
@@ -265,48 +276,51 @@ function ChecklistRowImpl({
           on this row's edge would instead sit between the parent and its own
           children, reading wrong. The ghost is the single landing indicator. */}
 
-      {/* Archive — uncovered by swiping the row right. Hidden unless the
-          foreground is sliding right so the archive slide-off never bares
-          the trailing edge. */}
-      <div
-        aria-hidden={swipe.offset <= 0}
-        className={`absolute inset-0 flex items-center justify-start bg-surface-2 pl-4 text-xs font-semibold tracking-wide text-muted uppercase ${
-          swipe.offset > 0 ? "" : "invisible"
-        }`}
-      >
-        {t("app.archive")}
-      </div>
+      {/* Swipe-reveal action layers (touch only — desktop uses the right-click
+          menu instead). Archive is uncovered by swiping right, delete by
+          swiping left; each stays hidden unless the foreground slides its way
+          so the off-axis action is never bared as the row clears. */}
+      {!desktop && (
+        <>
+          <div
+            aria-hidden={swipe.offset <= 0}
+            className={`absolute inset-0 flex items-center justify-start bg-surface-2 pl-4 text-xs font-semibold tracking-wide text-muted uppercase ${
+              swipe.offset > 0 ? "" : "invisible"
+            }`}
+          >
+            {t("app.archive")}
+          </div>
 
-      {/* Delete — uncovered by swiping the row left. Kept hidden while the
-          row slides right to archive so the right-aligned button is never
-          exposed as the foreground clears the row. */}
-      <div
-        aria-hidden={swipe.offset >= 0}
-        className={`absolute inset-0 flex items-center justify-end ${
-          swipe.offset < 0 ? "" : "invisible"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() => onDelete(item.id)}
-          className="h-full w-24 bg-danger text-xs font-semibold tracking-wide text-white uppercase"
-        >
-          {t("app.delete")}
-        </button>
-      </div>
+          <div
+            aria-hidden={swipe.offset >= 0}
+            className={`absolute inset-0 flex items-center justify-end ${
+              swipe.offset < 0 ? "" : "invisible"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => onDelete(item.id)}
+              className="h-full w-24 bg-danger text-xs font-semibold tracking-wide text-white uppercase"
+            >
+              {t("app.delete")}
+            </button>
+          </div>
+        </>
+      )}
 
-      {/* Sliding foreground. */}
+      {/* Foreground. On touch it slides over the action layers; on desktop it
+          sits still (the menu replaces the gesture). */}
       <div
-        {...swipe.handlers}
+        {...(desktop ? {} : swipe.handlers)}
         style={{
-          transform: `translateX(${swipe.offset}px)`,
+          transform: desktop ? undefined : `translateX(${swipe.offset}px)`,
           paddingLeft: indent
             ? `calc(var(--density-row-px) + ${indent}px)`
             : undefined,
         }}
         className={`relative flex flex-col px-[var(--density-row-px)] py-[var(--density-row-py)] [touch-action:pan-y] ${
           dragging ? "bg-surface-2" : "bg-page-bg"
-        } ${swipe.animating ? "transition-transform duration-200" : ""}`}
+        } ${!desktop && swipe.animating ? "transition-transform duration-200" : ""}`}
       >
         <div className="flex min-h-11 items-center gap-3">
           {/* Sub-item disclosure caret — a fixed slot so leaf rows still align

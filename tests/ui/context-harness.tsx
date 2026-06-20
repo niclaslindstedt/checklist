@@ -40,10 +40,13 @@ export function makeChecklistValue(
     checklists: [
       { id: fallbackList.id, name: fallbackList.name, remaining: 0 },
     ],
+    archivedChecklists: [],
     selectChecklist: noop,
     addChecklist: noop,
     renameChecklist: noop,
     removeChecklist: noop,
+    archiveChecklist: noop,
+    unarchiveChecklist: noop,
     addItem: () => null,
     importItems: () => 0,
     editItem: noop,

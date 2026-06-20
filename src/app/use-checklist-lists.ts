@@ -21,6 +21,7 @@ import {
   nextChecklistName,
   progress,
   renameChecklist as renameChecklistOp,
+  setChecklistArchived,
 } from "../domain/checklists.ts";
 import type { Checklist, Snapshot } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
@@ -41,8 +42,14 @@ export interface ChecklistLists {
   activeList: Checklist;
   /** The id of {@link activeList}. */
   activeChecklistId: string;
-  /** Every checklist in the document, in document order. */
+  /** Every active (non-archived) checklist, in document order — the switcher. */
   checklists: ChecklistSummary[];
+  /**
+   * The archived checklists, in document order — what the archive view lists
+   * under its "Archived lists" section so each can be restored or deleted as
+   * a whole.
+   */
+  archivedChecklists: ChecklistSummary[];
   /** Make a checklist active (the side-menu switcher). */
   selectChecklist: (id: string) => void;
   /** Append a fresh, default-named checklist and switch to it. */
@@ -50,11 +57,20 @@ export interface ChecklistLists {
   /** Rename a checklist (the clickable header title). */
   renameChecklist: (id: string, name: string) => void;
   /**
-   * Remove a checklist from the document. A no-op for the last remaining
-   * list (the views always need one to show). Recoverable via undo —
-   * `commit` records the whole document on the timeline.
+   * Remove a checklist from the document. A no-op when it would leave no
+   * active list behind (the views always need one to show). Recoverable via
+   * undo — `commit` records the whole document on the timeline.
    */
   removeChecklist: (id: string) => void;
+  /**
+   * Archive a whole checklist — it leaves the switcher and the checklist view
+   * and surfaces in the archive's "Archived lists" section. A no-op when it
+   * would leave no active list behind. Recoverable via undo (and via the
+   * archive's restore action).
+   */
+  archiveChecklist: (id: string) => void;
+  /** Restore an archived checklist back into the switcher and select it. */
+  unarchiveChecklist: (id: string) => void;
 }
 
 export function useChecklistLists(deps: {
@@ -81,9 +97,13 @@ export function useChecklistLists(deps: {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // The sync engine guarantees the document always has at least one list
-  // (`withActiveList`), so `[0]` is a safe fallback for an unknown selection.
+  // (`withActiveList`); the archive/delete verbs guarantee at least one is
+  // *active*. Resolve the selection against the active lists, falling back to
+  // the first active one (then, defensively, the first list of all).
   const activeList =
-    doc.checklists.find((c) => c.id === activeId) ?? doc.checklists[0]!;
+    doc.checklists.find((c) => c.id === activeId && !c.archived) ??
+    doc.checklists.find((c) => !c.archived) ??
+    doc.checklists[0]!;
 
   const commit = useCallback(
     (next: Snapshot, label: string) => {
@@ -134,30 +154,92 @@ export function useChecklistLists(deps: {
   const removeChecklist = useCallback(
     (id: string) => {
       const prev = docRef.current;
-      // The document must always carry at least one list — `activeList`
-      // falls back to `checklists[0]`, so dropping the last one would blank
-      // the screen. Refuse it (the side menu also hides the affordance).
-      if (prev.checklists.length <= 1) return;
       const remaining = prev.checklists.filter((c) => c.id !== id);
       if (remaining.length === prev.checklists.length) return;
+      // The views always need at least one *active* list to render — refuse a
+      // removal that would leave none (the side menu also hides the
+      // affordance). Deleting an archived list never trips this, since the
+      // list being viewed is active and survives.
+      if (!remaining.some((c) => !c.archived)) return;
       const name = prev.checklists.find((c) => c.id === id)?.name ?? "";
       const label = t("toast.listDeleted", { name });
       commit({ ...prev, checklists: remaining }, label);
       notify(label);
       unlock("cleanSlate");
       // Removing the explicitly-selected list re-points the selection at the
-      // first survivor; an unset selection already falls back to `[0]`.
-      if (id === activeId) setActiveId(remaining[0]!.id);
+      // first active survivor; an unset selection already falls back to it.
+      if (id === activeId) {
+        setActiveId(remaining.find((c) => !c.archived)?.id ?? null);
+      }
     },
     [docRef, commit, notify, t, activeId],
   );
 
+  const archiveChecklist = useCallback(
+    (id: string) => {
+      const prev = docRef.current;
+      const target = prev.checklists.find((c) => c.id === id);
+      if (!target || target.archived) return;
+      // Never archive the last active list — the view needs one to show.
+      if (prev.checklists.filter((c) => !c.archived).length <= 1) return;
+      const label = t("toast.listArchived", { name: target.name });
+      commit(
+        {
+          ...prev,
+          checklists: prev.checklists.map((c) =>
+            c.id === id ? setChecklistArchived(c, true, now()) : c,
+          ),
+        },
+        label,
+      );
+      notify(label);
+      // The "Tidy Shelves" trophy fires from a derived predicate over the
+      // document gaining its first archived list (see the catalog).
+      // Archiving the selected list re-points the selection at the first
+      // remaining active list, so the view never lands on a hidden one.
+      if (id === activeId) {
+        setActiveId(
+          prev.checklists.find((c) => !c.archived && c.id !== id)?.id ?? null,
+        );
+      }
+    },
+    [docRef, commit, notify, t, activeId],
+  );
+
+  const unarchiveChecklist = useCallback(
+    (id: string) => {
+      const prev = docRef.current;
+      const target = prev.checklists.find((c) => c.id === id);
+      if (!target || !target.archived) return;
+      const label = t("toast.listRestored", { name: target.name });
+      commit(
+        {
+          ...prev,
+          checklists: prev.checklists.map((c) =>
+            c.id === id ? setChecklistArchived(c, false, now()) : c,
+          ),
+        },
+        label,
+      );
+      notify(label, "success");
+      // Jump straight to the freshly-restored list, the way adding one does.
+      setActiveId(id);
+    },
+    [docRef, commit, notify, t],
+  );
+
+  const summarize = (c: Checklist): ChecklistSummary => {
+    const { checked, total } = progress(c);
+    return { id: c.id, name: c.name, remaining: total - checked };
+  };
+
   const checklists = useMemo(
-    () =>
-      doc.checklists.map((c) => {
-        const { checked, total } = progress(c);
-        return { id: c.id, name: c.name, remaining: total - checked };
-      }),
+    () => doc.checklists.filter((c) => !c.archived).map(summarize),
+    [doc.checklists],
+  );
+
+  const archivedChecklists = useMemo(
+    () => doc.checklists.filter((c) => c.archived).map(summarize),
     [doc.checklists],
   );
 
@@ -166,18 +248,24 @@ export function useChecklistLists(deps: {
       activeList,
       activeChecklistId: activeList.id,
       checklists,
+      archivedChecklists,
       selectChecklist,
       addChecklist,
       renameChecklist,
       removeChecklist,
+      archiveChecklist,
+      unarchiveChecklist,
     }),
     [
       activeList,
       checklists,
+      archivedChecklists,
       selectChecklist,
       addChecklist,
       renameChecklist,
       removeChecklist,
+      archiveChecklist,
+      unarchiveChecklist,
     ],
   );
 }
