@@ -30,11 +30,16 @@ describe("DragGhostRow", () => {
   });
 
   it("indents one step per nesting level so it reads as a sub-item", () => {
-    const flat = renderGhost(0).container.querySelector("li")!;
-    expect(flat.style.paddingLeft).toBe("");
+    // The indent (and the caret-slot column that keeps the checkbox aligned
+    // with the rows around it) lives on the content row inside the ghost <li>.
+    const content = (depth: number) =>
+      renderGhost(depth).container.querySelector(
+        "[data-drag-ghost] > div",
+      ) as HTMLElement;
+    // A top-level (sibling) drop has no indent — it lines up with the parent.
+    expect(content(0).style.paddingLeft).toBe("");
     cleanup();
-    const nested = renderGhost(2).container.querySelector("li")!;
     // depth 2 → calc() carrying the per-level indent (32px × 2).
-    expect(nested.style.paddingLeft).toContain("64px");
+    expect(content(2).style.paddingLeft).toContain("64px");
   });
 });

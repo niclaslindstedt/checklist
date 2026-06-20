@@ -435,11 +435,17 @@ describe("ChecklistRow sub-items", () => {
     expect(container.querySelector("li")!.className).toContain("ring-accent");
   });
 
-  it("draws a sibling insertion line for before / after drops", () => {
+  it("draws no edge line for sibling (before / after) drops", () => {
+    // Sibling drops are shown by the ghost preview snapping into the gap, not
+    // by a line on this row — a line on the parent's edge would sit between it
+    // and its own children for an "after" drop. Only the "into" tint remains.
     const before = renderRow({ dropMode: "before" });
-    expect(before.container.querySelector(".top-0")).toBeTruthy();
+    expect(before.container.querySelector("li")!.className).not.toContain(
+      "ring-accent",
+    );
+    expect(before.container.querySelector(".top-0")).toBeNull();
     cleanup();
     const after = renderRow({ dropMode: "after" });
-    expect(after.container.querySelector(".bottom-0")).toBeTruthy();
+    expect(after.container.querySelector(".bottom-0")).toBeNull();
   });
 });

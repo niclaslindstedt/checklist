@@ -750,9 +750,12 @@ the live drop target to a `{ index, depth }` in the flattened rows (walking
 past the target's visible subtree for _after_ / _into_, exactly as
 `moveItemInto` will). When a **parent** is dragged its descendant rows are
 hidden for the duration — the subtree travels as one, stood in for by the
-floating copy plus ghost. The target row still lights up (an accent ring on
-an _into_ drop; an insertion line on a sibling edge) to reinforce the
-landing. On release the view commits `reorder(draggedId, targetId, mode)` →
+floating copy plus ghost. For an _into_ drop the target row also lights up
+with an accent ring so the parent-to-be is obvious; sibling (_before_ /
+_after_) drops draw **no** line on the target row — the ghost is the single
+landing indicator, since an "after-a-parent" line on the target's own edge
+would sit between it and its children rather than below the whole subtree.
+On release the view commits `reorder(draggedId, targetId, mode)` →
 `moveItemInto` (`src/domain/checklists.ts`), which lifts the dragged item
 **with its own subtree** and re-inserts it; dropping onto itself, onto one
 of its own descendants, or in a spot that doesn't change the arrangement is
