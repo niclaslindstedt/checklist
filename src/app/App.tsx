@@ -33,6 +33,7 @@ import {
   namespaceLogoSrc,
 } from "../ui/namespace-favicon.ts";
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
+import { useSuppressEdgeSwipeBack } from "../ui/hooks/useSuppressEdgeSwipeBack.ts";
 import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
@@ -348,6 +349,13 @@ function AppShell() {
     enabled: !showMenuButton && !anyModalOpen && !menuOpen && !pinned,
     onOpen: openMenu,
   });
+
+  // iOS keeps its left-edge swipe-back gesture alive inside an installed PWA,
+  // so a swipe from the border to open the drawer would instead pop the app's
+  // history and yank it off-screen. Cancel that native navigation in the
+  // standalone PWA so the edge belongs to the drawer, not the browser; a
+  // normal tab keeps its back-swipe.
+  useSuppressEdgeSwipeBack(standaloneMobile);
 
   // Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z mirror the burger-menu undo & redo.
   // Silenced while the side menu is open (but not when it's pinned as a
