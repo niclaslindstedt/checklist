@@ -522,7 +522,11 @@ prompt pinned above the safe-area inset, just under the general toast
 stack. Shows the incoming version when known, a Reload button (posts
 `SKIP_WAITING` to the waiting service worker), and a Dismiss button.
 Mounted by `LanguageRoot`; the service-worker registration and update
-polling live in `usePwaUpdate`.
+polling live in `usePwaUpdate`. Because it renders outside App's flex
+layout, on a wide screen it centres over the *content* area rather than
+the whole window — App publishes the pinned sidebar's footprint as the
+`--app-content-{left,right}` CSS variables (see `useSidebarInset`) and the
+toast pulls its centring band in by that much.
 
 ### Toast
 

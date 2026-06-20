@@ -35,6 +35,7 @@ import {
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
 import { useSuppressEdgeSwipeBack } from "../ui/hooks/useSuppressEdgeSwipeBack.ts";
 import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
+import { useSidebarInset } from "../ui/hooks/useSidebarInset.ts";
 import { usePullToRefresh } from "../ui/hooks/usePullToRefresh.ts";
 import { useUndoRedoShortcuts } from "../ui/hooks/useUndoRedoShortcuts.ts";
 import { useViewportHeight } from "../ui/hooks/useViewportHeight.ts";
@@ -145,6 +146,10 @@ function AppShell() {
   // pinned open as a permanent docked sidebar rather than a drawer. Below
   // that the floating-button drawer carries the navigation as before.
   const pinned = useMediaQuery("(min-width: 768px)");
+  // Expose the pinned sidebar's footprint so the route-wide `UpdateToast`
+  // (mounted by `LanguageRoot`, outside this flex layout) can centre over
+  // the content area instead of the whole window.
+  useSidebarInset(pinned, settings.menuButtonPosition.side);
   const navigate = useCallback((next: View) => {
     setView(next);
     setMenuOpen(false);

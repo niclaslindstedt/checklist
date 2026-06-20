@@ -7,6 +7,15 @@ import { usePwaUpdate } from "../pwa/usePwaUpdate.ts";
 // `usePwaUpdate` store (`src/pwa/usePwaUpdate.ts`); this component is
 // just the completion CTA. It pins above the safe-area inset at
 // `z-[60]`, just under the general toast stack (`z-[70]`).
+//
+// On a wide screen the side menu is pinned as a permanent docked sidebar
+// (`SideMenu`), which eats 16rem on one edge. Since this toast lives
+// outside App's flex layout it would otherwise centre over the whole
+// window and land visibly off-centre over the content; the
+// `--app-content-{left,right}` insets App publishes (see `useSidebarInset`)
+// pull its centring band in to match the content area. They default to 0,
+// so on narrow screens and the sidebar-less privacy/home pages nothing
+// shifts.
 export function UpdateToast() {
   const t = useT();
   const { needRefresh, incomingVersion, reload, dismiss } = usePwaUpdate();
@@ -18,7 +27,7 @@ export function UpdateToast() {
       role="status"
       aria-live="polite"
       data-toast-stack
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-sm border border-line bg-surface px-3 py-2 text-fg shadow-md"
+      className="fixed right-[calc(0.75rem+var(--app-content-right,0px))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[calc(0.75rem+var(--app-content-left,0px))] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-sm border border-line bg-surface px-3 py-2 text-fg shadow-md"
     >
       <span className="flex-1 text-sm">
         {incomingVersion
