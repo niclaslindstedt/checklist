@@ -101,16 +101,23 @@ raw plain text. The title tap is swallowed after a swipe (the
 
 `src/ui/ChecklistRowEditor.tsx` — the in-place editor a row swaps to. It
 keeps the row's `Checkbox` so the line still reads as the same item (and
-the whole row is tinted `bg-surface-2` to signal the active edit); the
-title is one line (a native `<input>`), the body an optional note beneath it
-(a native `<textarea>`), both plain text. The native fields mean iOS draws its
-own keyboard accessory bar (previous / next / Done) above the keyboard, and
-that is the only bar on screen — the app no longer draws its own. While an
-editor is open the row reports its id up (`onActiveEditorChange`) so
-`ChecklistView` hides the add button (`editingId`) and it doesn't crowd the
+the whole row is tinted `bg-surface-2` to signal the active edit); an empty
+disclosure-caret slot in front of the checkbox keeps the editor lined up with
+every other row instead of sliding left. The checkbox stays live while
+editing — its press is `preventDefault`ed (the `Checkbox` `onMouseDown` hook)
+so tapping it ticks the item without blurring the title field (which would
+otherwise commit and close the editor, since iOS doesn't focus the label on
+tap). The title is one line (a native `<input>`), the body an optional note
+beneath it (a native `<textarea>`), both plain text. The native fields mean
+iOS draws its own keyboard accessory bar (previous / next / Done) above the
+keyboard, and that is the only bar on screen — the app no longer draws its
+own. While an editor is open the row reports its id up (`onActiveEditorChange`)
+so `ChecklistView` hides the add button (`editingId`) and it doesn't crowd the
 keyboard, and the editor scrolls itself into view above the keyboard on mount
 (and again when the keyboard's appearance resizes the visual viewport), since
 the visual-viewport-pinned shell stops iOS from auto-scrolling the field up.
+Revealing the body with "Add a note" eases it open with a short grow + fade
+(`note-reveal` in `theme.css`) rather than popping in with a hard reflow.
 Enter in the title commits
 and immediately opens a fresh
 add-item draft (`onAddAfter`, wired to the view's `startDraft`) so one

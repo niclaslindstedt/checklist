@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   act,
   cleanup,
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -361,6 +362,32 @@ describe("ChecklistRow editing", () => {
     expect(input).toBeTruthy();
     expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
     expect(onAutoEditTitleConsumed).toHaveBeenCalledTimes(1);
+  });
+
+  it("toggles the item from the editor's checkbox while editing", () => {
+    const onToggle = vi.fn();
+    const onEdit = vi.fn();
+    renderRow({ onToggle, onEdit });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    // The checkbox stays live while the row is in edit mode.
+    fireEvent.click(screen.getByLabelText("Check item"));
+
+    expect(onToggle).toHaveBeenCalledWith("i1");
+    // The editor is still open — toggling doesn't commit/close it.
+    expect(screen.getByLabelText("Edit item")).toBeTruthy();
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the checkbox press default so the title input keeps focus", () => {
+    // On iOS the label doesn't take focus, so without this the title input
+    // would blur and the editor would commit/close before the toggle landed.
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const checkbox = screen.getByLabelText("Check item");
+    const mouseDown = createEvent.mouseDown(checkbox);
+    fireEvent(checkbox, mouseDown);
+    expect(mouseDown.defaultPrevented).toBe(true);
   });
 
   it("reports its item id as editing opens and clears it as it closes", () => {
