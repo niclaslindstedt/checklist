@@ -241,3 +241,21 @@ input::placeholder,
 textarea::placeholder {
   color: var(--color-muted);
 }
+
+/* Grow + fade the row editor's note field in when "Add a note" reveals it, so
+   the body doesn't pop in with a hard reflow. The wrapper is clipped
+   (overflow-hidden) while the max-height grows; after the animation it settles
+   to its natural height. */
+@keyframes note-reveal {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 20rem;
+  }
+}
+.animate-note-reveal {
+  animation: note-reveal 180ms ease-out;
+}

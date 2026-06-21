@@ -90,6 +90,10 @@ export function ChecklistRowEditor({
   const [bodyShown, setBodyShown] = useState(
     !notesDisabled && (focusBody || Boolean(item.notes)),
   );
+  // True only when the body is revealed by tapping "Add a note" (not when the
+  // editor opens with a body already showing), so the grow-in animation plays
+  // on that reveal but never on first mount.
+  const [revealAnimate, setRevealAnimate] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -146,6 +150,7 @@ export function ChecklistRowEditor({
 
   const revealBody = () => {
     setBodyShown(true);
+    setRevealAnimate(true);
     requestAnimationFrame(() => focusAtEnd(bodyRef.current));
   };
 
@@ -197,10 +202,17 @@ export function ChecklistRowEditor({
       <div
         className={`flex items-center gap-3 ${bodyShown ? "min-h-7" : "min-h-11"}`}
       >
+        {/* Empty disclosure-caret slot, matching the view row, so the editor's
+            checkbox and title line up with every other row instead of sliding
+            left. */}
+        <span className="flex w-5 shrink-0 items-center justify-center" />
         <Checkbox
           checked={item.checked}
           onChange={onToggle}
           ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
+          // Keep the press from blurring the open title field (which would
+          // commit and close the editor before the toggle lands).
+          onMouseDown={(e) => e.preventDefault()}
         />
         <input
           ref={titleRef}
@@ -214,15 +226,21 @@ export function ChecklistRowEditor({
         />
       </div>
       {bodyShown ? (
-        <textarea
-          ref={bodyRef}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onKeyDown={onBodyKey}
-          placeholder={t("app.notePlaceholder")}
-          aria-label={t("app.notePlaceholder")}
-          className="max-h-72 min-h-32 w-full resize-none overflow-y-auto rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm break-words text-fg outline-none focus:border-accent"
-        />
+        // The wrapper clips the field during the grow-in reveal (see
+        // `note-reveal` in theme.css); `ml-8` lines the note up under the title.
+        <div
+          className={`ml-8 overflow-hidden ${revealAnimate ? "animate-note-reveal" : ""}`}
+        >
+          <textarea
+            ref={bodyRef}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onKeyDown={onBodyKey}
+            placeholder={t("app.notePlaceholder")}
+            aria-label={t("app.notePlaceholder")}
+            className="max-h-72 min-h-32 w-full resize-none overflow-y-auto rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm break-words text-fg outline-none focus:border-accent"
+          />
+        </div>
       ) : (
         // With notes switched off there's no "Add note" path — the editor is
         // title-only.
@@ -232,7 +250,7 @@ export function ChecklistRowEditor({
             // Keep the press inside the editor so the blur-commit doesn't fire.
             onMouseDown={(e) => e.preventDefault()}
             onClick={revealBody}
-            className="ml-8 flex w-fit items-center gap-1 text-xs text-muted hover:text-fg"
+            className="mb-1.5 ml-8 flex w-fit items-center gap-1 text-xs text-muted hover:text-fg"
           >
             <PlusIcon className="h-3.5 w-3.5" />
             {t("app.addNote")}
