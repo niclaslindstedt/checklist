@@ -1400,7 +1400,15 @@ load / save into this device's `localStorage` (keyed by
 `localCacheKey(backend, namespace)`), and on a raw network failure serves
 the cached bytes instead, marked `offline: true`; it never masks the
 typed signals (`Auth` / `Conflict` / `RateLimit`), which keep their
-upstream handling. It sits **below** `withEncryption`
+upstream handling. Because the mirror already lives in `localStorage`, the
+wrapper also advertises and implements `loadSync`, handing that
+(possibly-stale) copy back synchronously so a reload paints the last-seen
+list instantly instead of an empty one while the live `load()` round-trips
+to refresh it — the same no-flash fast path the local backend has, now
+extended to the cloud backends. `withEncryption` strips the `loadSync`
+capability back off (decryption is async), so the instant first paint
+applies to an unencrypted cloud backend; an encrypted one still waits for
+the async unlock/decrypt. It sits **below** `withEncryption`
 (`cloudAdapter → withLocalCache → withEncryption → app`), so the cache
 holds the encrypted envelope when encryption is on (never plaintext) and
 the canonical JSON when it isn't — and because it is the `inner` the
