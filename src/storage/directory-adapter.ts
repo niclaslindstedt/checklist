@@ -135,6 +135,20 @@ export function createDirectoryAdapter(
     return serialize(snap);
   }
 
+  // The canonical document a `load` would return for `text` once it has been
+  // written to markdown files and read back: the markdown carries no item ids,
+  // so they're regenerated to the positional `<parentId>-<index>` form (see
+  // the codec's round-trip note). A remote rebuilt from markdown is in that
+  // same form, so projecting our about-to-be-written bytes through the round
+  // trip is the only way to compare them like-for-like — which is what lets
+  // conflict detection tell a *phantom* conflict (the remote already holds
+  // these bytes) from a real divergence.
+  function loadEquivalent(text: string): string {
+    const snapshot = parse(text);
+    const rebuilt = serialize(filesToSnapshot(snapshotToFiles(snapshot)));
+    return injectFolders(rebuilt, snapshot.folders ?? []);
+  }
+
   // Write the folder registry sidecar when it changed. Writes `[]` to clear a
   // sidecar whose folders were all removed; skips entirely on a folder-less
   // document that never had one, so a plain checklist folder gains no stray
@@ -198,13 +212,27 @@ export function createDirectoryAdapter(
       if (current !== baseRevision) {
         const remoteText = await readSnapshotText(before);
         const remoteFolders = await readFolders(before);
-        throw new ConflictError({
-          text: injectFolders(
-            remoteText ?? serialize(parse(null)),
-            remoteFolders,
-          ),
-          revision: current,
-        });
+        const remoteDoc = injectFolders(
+          remoteText ?? serialize(parse(null)),
+          remoteFolders,
+        );
+        // The aggregate revision moved past our base — but on a single device
+        // this is usually a *phantom* conflict, not another device's edit. A
+        // save can commit to the backend while its response is lost to a flaky
+        // link (a `fetch` that succeeds server-side but rejects client-side
+        // with a raw network error, or a post-write re-list that fails): the
+        // write lands, yet the client never learns the new revision and keeps
+        // basing on the stale one. So the next save sees the revision "move"
+        // and would surface a conflict over the user's own edit. If the remote
+        // already holds exactly the document we're about to write, that earlier
+        // write is what moved it — adopt the new revision and report success
+        // instead of interrupting the user. (Plaintext only: two AES-GCM
+        // envelopes of the same document differ by their random IV, so an
+        // encrypted blob can't be compared this way and always conflicts.)
+        if (!isEncryptedEnvelope(text) && loadEquivalent(text) === remoteDoc) {
+          return { text, revision: current };
+        }
+        throw new ConflictError({ text: remoteDoc, revision: current });
       }
     }
 

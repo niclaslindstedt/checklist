@@ -197,6 +197,43 @@ describe("directory adapter", () => {
       adapter.save(serialize(snapshot), first.revision),
     ).rejects.toBeInstanceOf(ConflictError);
   });
+
+  // Phantom-conflict regression: on a flaky link a save can commit to the
+  // backend while its response is lost, so the device never learns the new
+  // revision and keeps basing on the stale one. The next save sees the
+  // revision "move" even though the remote holds exactly what this device
+  // wrote — that must NOT surface as a conflict over the user's own edit.
+  it("adopts the moved revision instead of conflicting when a lost-response write already landed these bytes", async () => {
+    const { adapter } = build();
+    const text = serialize(snapshot);
+    const first = await adapter.save(text);
+    // The "lost response" write: it commits (the remote advances to a new
+    // revision holding the same document) but the client never sees the result.
+    const landed = await adapter.save(text, first.revision);
+    expect(landed.revision).not.toBe(first.revision);
+    // The client retries on its now-stale base. Because the remote already
+    // equals these bytes, the save succeeds and adopts the moved revision
+    // rather than throwing a ConflictError.
+    const resolved = await adapter.save(text, first.revision);
+    expect(resolved.revision).toBe(landed.revision);
+  });
+
+  // The guard must not over-reach: a genuinely different remote document (a
+  // real other-device edit, written as valid markdown) still conflicts.
+  it("still raises a ConflictError when the remote holds a genuinely different document", async () => {
+    const { adapter } = build();
+    const first = await adapter.save(serialize(snapshot));
+    // Another device renames the list and saves on top of our base revision.
+    const otherDevice = {
+      ...snapshot,
+      checklists: [{ ...snapshot.checklists[0]!, name: "Their list" }],
+    };
+    await adapter.save(serialize(otherDevice), first.revision);
+    // We try to save our (different) document on the stale base — a real clash.
+    await expect(
+      adapter.save(serialize(snapshot), first.revision),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
 });
 
 const foldered: Snapshot = {
