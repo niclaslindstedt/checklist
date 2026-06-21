@@ -102,10 +102,10 @@ export function createDirectoryAdapter(
   // clearing.
   let lastFoldersJson: string | null = null;
 
-  // Load-equivalent forms (see `loadEquivalent`) of the documents this adapter
-  // has *attempted* to write this session, newest last — recorded up front in
-  // `save`, before the network round-trip, so even an attempt that throws still
-  // enters the history (see the note there). A flaky link can land a write
+  // Order-independent canonical forms (see `comparable`) of the documents this
+  // adapter has *attempted* to write this session, newest last — recorded up
+  // front in `save`, before the network round-trip, so even an attempt that
+  // throws still enters the history (see the note there). A flaky link can land
   // server-side while losing the response, so the device keeps basing on the
   // stale revision; when a later save sees the aggregate revision "move", the
   // remote holds one of *these* — our own earlier write, not another device's
@@ -178,6 +178,31 @@ export function createDirectoryAdapter(
     return injectFolders(rebuilt, snapshot.folders ?? []);
   }
 
+  // An order-independent canonical form of a document, for the phantom-conflict
+  // comparison only (never for what's written). `load` — and the remote
+  // readback below — rebuilds a snapshot in the backend's file-*listing* order,
+  // while the bytes we're about to write carry the *in-memory* order, which can
+  // come from the offline cache and need not match how the backend lists its
+  // files. The two then serialize the *same* content to the *same* byte length
+  // but a different top-level array order, so a raw string compare never
+  // matches — the field bug where the remote was byte-identical in size to this
+  // device's own earlier write yet came back "unrecognised". Sorting the
+  // checklist / template / folder arrays by id makes them comparable; item
+  // order *within* a list is intrinsic to the document and left untouched.
+  function comparable(text: string): string {
+    const snap = parse(text);
+    const byId = (a: { id: string }, b: { id: string }) =>
+      a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    const normalized: Snapshot = {
+      templates: [...snap.templates].sort(byId),
+      checklists: [...snap.checklists].sort(byId),
+    };
+    if (snap.folders && snap.folders.length > 0) {
+      normalized.folders = [...snap.folders].sort(byId);
+    }
+    return serialize(normalized);
+  }
+
   // Write the folder registry sidecar when it changed. Writes `[]` to clear a
   // sidecar whose folders were all removed; skips entirely on a folder-less
   // document that never had one, so a plain checklist folder gains no stray
@@ -235,12 +260,12 @@ export function createDirectoryAdapter(
     text: string,
     baseRevision?: string,
   ): Promise<StoredSnapshot> {
-    // The canonical form of the bytes we're about to write, for phantom-
-    // conflict comparison and the write history. Null for an encrypted
-    // envelope — its random IV makes byte comparison meaningless.
+    // The order-independent canonical form of the bytes we're about to write,
+    // for phantom-conflict comparison and the write history. Null for an
+    // encrypted envelope — its random IV makes byte comparison meaningless.
     const writingEquivalent = isEncryptedEnvelope(text)
       ? null
-      : loadEquivalent(text);
+      : comparable(loadEquivalent(text));
     // Record the *intended* write before touching the network. A lost-response
     // write — the whole reason phantom conflicts arise — happens on a flaky
     // link, where this save throws (often from `store.list()` below, before a
@@ -270,7 +295,11 @@ export function createDirectoryAdapter(
         // basing on the stale one. So the next save sees the revision "move"
         // and would surface a conflict over the user's own edit.
         if (writingEquivalent !== null) {
-          if (writingEquivalent === remoteDoc) {
+          // Compare on the same order-independent footing the history is kept
+          // in: the remote was rebuilt from a file listing whose order need not
+          // match our in-memory document's.
+          const remoteComparable = comparable(remoteDoc);
+          if (writingEquivalent === remoteComparable) {
             // The remote already holds exactly the document we're about to
             // write: our own lost-response write of *these* bytes is what moved
             // the revision. Adopt it and report success — nothing left to write.
@@ -279,7 +308,7 @@ export function createDirectoryAdapter(
             );
             return { text, revision: current };
           }
-          if (recentWrites.includes(remoteDoc)) {
+          if (recentWrites.includes(remoteComparable)) {
             // The remote holds an *earlier* write of ours (the lost-response
             // one) and the user has since edited further, so the local document
             // has moved ahead of what landed. Still not another device — write
