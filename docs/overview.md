@@ -1633,15 +1633,20 @@ so a mid-flight edit queues rather than racing the in-flight write — see
 to suppress **phantom** conflicts: on a flaky link a save can commit to
 the backend while its response is lost, so the device never learns the
 new revision and the next save sees the aggregate revision "move" even
-though no other device touched the data. Before raising `ConflictError`
-the adapter reconstructs the remote document and compares it against the
-bytes about to be written (projected through the same markdown round trip
-so regenerated item ids line up); when they're identical the earlier
-write is what moved the revision, so it adopts the new revision and
-reports success instead of interrupting the user. Only a genuinely
-different remote still conflicts. When a save loses that race, the
-adapter throws `ConflictError` and the hook turns it into a
-`ConflictState`.
+though no other device touched the data. To tell its own write apart from
+another device's, the adapter keeps a small history of the documents it
+has tried to write this session (each projected through the same markdown
+round trip so regenerated item ids line up — `recentWrites`). Before
+raising `ConflictError` it reconstructs the remote document and checks it
+against that history: if the remote already holds exactly the bytes about
+to be written, the earlier write is what moved the revision, so it adopts
+the new revision and reports success; if the remote matches an *earlier*
+write (the lost-response one) while the user has since edited further —
+so the local document has moved ahead of what landed — it writes the
+newer bytes over the moved revision instead of conflicting. Only a remote
+that matches none of this device's own writes is a genuine cross-device
+divergence. When a save loses that race, the adapter throws
+`ConflictError` and the hook turns it into a `ConflictState`.
 `ConflictResolutionModal` (`src/ui/ConflictResolutionModal.tsx`) is the
 non-dismissable prompt: it summarises the local and remote documents
 side by side and makes the user pick. "Keep mine" re-saves this
