@@ -10,11 +10,46 @@
 // forward and `serialize` stamps, while `domain/` keeps working with the
 // version-free `Snapshot` shape.
 
-import { emptySnapshot, type Snapshot } from "../domain/types.ts";
+import { emptySnapshot, type Folder, type Snapshot } from "../domain/types.ts";
 import { createLogger } from "../dev/logger.ts";
 import { LATEST_VERSION, migrate } from "./migrations.ts";
 
 const log = createLogger("serialize");
+
+function isFolder(value: unknown): value is Folder {
+  if (!value || typeof value !== "object") return false;
+  const f = value as Record<string, unknown>;
+  return (
+    typeof f.id === "string" &&
+    f.id.length > 0 &&
+    typeof f.name === "string" &&
+    typeof f.createdAt === "string"
+  );
+}
+
+/**
+ * Parse a folder registry defensively: drop malformed entries and collapse
+ * duplicate ids, keeping the first. Used both for the `folders` array inside a
+ * document and to parse a standalone `folders.json` sidecar through the same
+ * validation.
+ */
+export function parseFolders(value: unknown): Folder[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: Folder[] = [];
+  for (const entry of value) {
+    if (!isFolder(entry)) continue;
+    if (seen.has(entry.id)) continue;
+    seen.add(entry.id);
+    out.push({ id: entry.id, name: entry.name, createdAt: entry.createdAt });
+  }
+  return out;
+}
+
+/** Serialize a folder registry to the JSON stored in a `folders.json` sidecar. */
+export function serializeFolders(folders: readonly Folder[]): string {
+  return JSON.stringify(folders);
+}
 
 /** Produce the canonical stored text for a document (trailing newline). */
 export function serialize(snapshot: Snapshot): string {
@@ -57,13 +92,18 @@ export function parse(text: string | null | undefined): Snapshot {
     return emptySnapshot();
   }
   const doc = migrated as Partial<Snapshot>;
-  const snapshot = {
+  const snapshot: Snapshot = {
     templates: doc.templates ?? [],
     checklists: doc.checklists ?? [],
   };
+  const folders = parseFolders(doc.folders);
+  // Absent rather than an empty array when no folders exist, so a folder-less
+  // document round-trips byte-for-byte.
+  if (folders.length > 0) snapshot.folders = folders;
   log.info(
     `parse: migrated v${fromVersion}→v${LATEST_VERSION}, ` +
-      `${snapshot.templates.length} templates, ${snapshot.checklists.length} lists`,
+      `${snapshot.templates.length} templates, ${snapshot.checklists.length} lists, ` +
+      `${folders.length} folders`,
   );
   return snapshot;
 }

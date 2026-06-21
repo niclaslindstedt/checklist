@@ -23,6 +23,14 @@ import {
   renameChecklist as renameChecklistOp,
   setChecklistArchived,
 } from "../domain/checklists.ts";
+import {
+  addFolder,
+  createFolder as createFolderOp,
+  removeFolder as removeFolderOp,
+  renameFolderInSnapshot,
+  setChecklistFolder,
+  sortFoldersByCreated,
+} from "../domain/folders.ts";
 import type { Checklist, Snapshot } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import type { Notify } from "./notify.ts";
@@ -35,6 +43,16 @@ export interface ChecklistSummary {
   name: string;
   /** Active (non-archived) items still unchecked — the switcher's badge. */
   remaining: number;
+  /** The folder this list is grouped under, or undefined when ungrouped. */
+  folderId?: string;
+}
+
+/** A lightweight summary of one folder, for the side-menu's folder groups. */
+export interface FolderSummary {
+  id: string;
+  name: string;
+  /** How many active (non-archived) checklists sit in this folder. */
+  count: number;
 }
 
 export interface ChecklistLists {
@@ -71,6 +89,21 @@ export interface ChecklistLists {
   archiveChecklist: (id: string) => void;
   /** Restore an archived checklist back into the switcher and select it. */
   unarchiveChecklist: (id: string) => void;
+  /** The folders defined in this namespace, oldest first, with their counts. */
+  folders: FolderSummary[];
+  /** Create a new, empty folder and add it to the registry. */
+  createFolder: (name: string) => void;
+  /** Rename a folder in place. A blank or unchanged name is a no-op. */
+  renameFolder: (id: string, name: string) => void;
+  /**
+   * Remove a folder. The checklists inside it aren't destroyed — they drop
+   * back to the top level (ungrouped). Recoverable via undo.
+   */
+  removeFolder: (id: string) => void;
+  /** Move a checklist into a folder (or out of any folder when `null`). */
+  moveChecklistToFolder: (id: string, folderId: string | null) => void;
+  /** Append a fresh checklist already filed inside `folderId`, and select it. */
+  addChecklistInFolder: (folderId: string) => void;
 }
 
 export function useChecklistLists(deps: {
@@ -228,9 +261,99 @@ export function useChecklistLists(deps: {
     [docRef, commit, notify, t],
   );
 
+  const createFolder = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const prev = docRef.current;
+      const folder = createFolderOp(newId(), trimmed, now());
+      // No toast: the new folder appears in the sidebar list in place.
+      commit(
+        addFolder(prev, folder),
+        t("toast.folderCreated", { name: trimmed }),
+      );
+    },
+    [docRef, commit, t],
+  );
+
+  const renameFolder = useCallback(
+    (id: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const prev = docRef.current;
+      const next = renameFolderInSnapshot(prev, id, trimmed);
+      if (next === prev) return;
+      commit(next, t("toast.folderRenamed", { name: trimmed }));
+    },
+    [docRef, commit, t],
+  );
+
+  const removeFolder = useCallback(
+    (id: string) => {
+      const prev = docRef.current;
+      const target = (prev.folders ?? []).find((f) => f.id === id);
+      if (!target) return;
+      const next = removeFolderOp(prev, id);
+      const label = t("toast.folderDeleted", { name: target.name });
+      commit(next, label);
+      notify(label);
+    },
+    [docRef, commit, notify, t],
+  );
+
+  const moveChecklistToFolder = useCallback(
+    (id: string, folderId: string | null) => {
+      const prev = docRef.current;
+      let changed = false;
+      const checklists = prev.checklists.map((c) => {
+        if (c.id !== id) return c;
+        const moved = setChecklistFolder(c, folderId);
+        if (moved !== c) changed = true;
+        return moved;
+      });
+      if (!changed) return;
+      const name =
+        folderId === null
+          ? null
+          : ((prev.folders ?? []).find((f) => f.id === folderId)?.name ?? null);
+      const label =
+        name === null
+          ? t("toast.listUnfiled")
+          : t("toast.listMovedToFolder", { name });
+      commit({ ...prev, checklists }, label);
+    },
+    [docRef, commit, t],
+  );
+
+  const addChecklistInFolder = useCallback(
+    (folderId: string) => {
+      const prev = docRef.current;
+      const created = setChecklistFolder(
+        createChecklist(
+          newId(),
+          nextChecklistName(prev.checklists, DEFAULT_LIST_NAME),
+          now(),
+        ),
+        folderId,
+      );
+      commit(
+        { ...prev, checklists: [...prev.checklists, created] },
+        t("toast.listCreated", { name: created.name }),
+      );
+      setActiveId(created.id);
+    },
+    [docRef, commit, t],
+  );
+
   const summarize = (c: Checklist): ChecklistSummary => {
     const { checked, total } = progress(c);
-    return { id: c.id, name: c.name, remaining: total - checked };
+    const summary: ChecklistSummary = {
+      id: c.id,
+      name: c.name,
+      remaining: total - checked,
+    };
+    if (c.folderId) summary.folderId = c.folderId;
+    return summary;
   };
 
   const checklists = useMemo(
@@ -242,6 +365,19 @@ export function useChecklistLists(deps: {
     () => doc.checklists.filter((c) => c.archived).map(summarize),
     [doc.checklists],
   );
+
+  // Folder groups for the sidebar: the registry in creation order, each
+  // tagged with how many active lists it holds. Empty folders are kept (they
+  // live in the registry, not derived from the lists), so a freshly-made
+  // folder shows up before anything is filed into it.
+  const folders = useMemo<FolderSummary[]>(() => {
+    const active = doc.checklists.filter((c) => !c.archived);
+    return sortFoldersByCreated(doc.folders ?? []).map((f) => ({
+      id: f.id,
+      name: f.name,
+      count: active.filter((c) => c.folderId === f.id).length,
+    }));
+  }, [doc.folders, doc.checklists]);
 
   return useMemo(
     () => ({
@@ -255,6 +391,12 @@ export function useChecklistLists(deps: {
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,
+      folders,
+      createFolder,
+      renameFolder,
+      removeFolder,
+      moveChecklistToFolder,
+      addChecklistInFolder,
     }),
     [
       activeList,
@@ -266,6 +408,12 @@ export function useChecklistLists(deps: {
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,
+      folders,
+      createFolder,
+      renameFolder,
+      removeFolder,
+      moveChecklistToFolder,
+      addChecklistInFolder,
     ],
   );
 }

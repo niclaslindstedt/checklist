@@ -110,7 +110,17 @@ const achievements: AchievementsCatalog = {
       name: "Listbyggaren",
       condition: "Ha fler än en checklista.",
       learnMore:
-        "“+” på Checklistor-rubriken i sidomenyn lägger till en lista till. Var och en är fristående; växlaren visar varje listas återstående antal.",
+        "“+” i sidomenyns åtgärdsrad lägger till en lista till. Var och en är fristående; växlaren visar varje listas återstående antal.",
+    },
+    folderMade: {
+      name: "Inplacerad",
+      condition: "Skapa en mapp.",
+      learnMore:
+        "Mappknappen i sidomenyns åtgärdsrad skapar en ny mapp, och sedan kan en lista läggas i den. Mappar grupperar dina checklistor inom en namnrymd — fäll ihop en för att gömma undan dess listor — och på fil- och molnbackendarna är varje mapp en riktig katalog med markdown-filer som du kan bläddra i med vilket verktyg som helst.",
+    },
+    filed: {
+      name: "Bortlagd",
+      condition: "Flytta en checklista till en mapp.",
     },
     archivist: {
       name: "Arkivarien",

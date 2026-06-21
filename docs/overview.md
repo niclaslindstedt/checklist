@@ -1157,6 +1157,56 @@ namespace list plus `switchNamespace` / `createNamespace` /
 `renameNamespace` / `removeNamespace`. The session passphrase is held in
 memory only — never persisted, lost on reload.
 
+### Folders
+
+**Folders** group checklists *within* a single namespace — the organising
+layer below namespaces. The model is pure data in `src/domain/types.ts`: a
+`Folder` is `{ id, name, createdAt }`, a `Checklist` carries an optional
+`folderId` linking it to one, and the `Snapshot` carries a `folders[]`
+registry. The registry is kept on the snapshot (not derived from the lists)
+so an **empty folder** — one no list references yet — persists; everything is
+absent rather than empty/null when unused, so an older document needs no
+migration. The pure operations live in `src/domain/folders.ts`
+(`createFolder`, `renameFolder`, `setChecklistFolder`, `checklistsInFolder`,
+`removeFolder` — which un-groups the lists inside rather than destroying them).
+
+The app-state verbs hang off `src/app/use-checklist-lists.ts` alongside the
+list verbs: `folders` (a `FolderSummary[]` with per-folder active counts),
+`createFolder`, `renameFolder`, `removeFolder`, `moveChecklistToFolder`, and
+`addChecklistInFolder` (mint a list already filed inside a folder). They flow
+to the side menu through the checklist context like every other list verb.
+
+In the side menu (`src/ui/SideMenu.tsx`) each folder renders as a collapsible
+`FolderRow` (caret + folder glyph + name + count, plus a `+` that adds a list
+straight into it); the grouped lists nest under it when expanded, ungrouped
+lists follow, and a compact segmented action bar at the foot carries **New
+list**, **New folder**, and **Archive** (`BarButton`s, replacing the old
+section-header `+` and full-width Archive row). `FolderEditRow` is the inline
+name input for creating or renaming a folder. Moving an existing list into a
+folder is a right-click menu entry on a computer and a swipe-revealed "move"
+button (opening the same folder menu) on touch; the collapse state is
+device-local component state, not persisted.
+
+On the **file/cloud backends** a folder is a *real directory*. The codec
+(`src/storage/markdown/codec.ts`) files a grouped list into
+`checklists/<folder-slug>/<stem>.md` (`folderDirSegment` / `checklistFilePath`)
+and writes a `folder: <id>` line into the list's frontmatter — and that
+**frontmatter link is authoritative**: the physical directory is only a
+browsable projection, so two folders that slug alike never lose a list. The
+folder *names* (and empty folders) ride a plaintext `folders.json` registry
+sidecar the directory adapter keeps (`FOLDERS_FILE_NAME` in
+`src/storage/directory-adapter.ts`): on load it's folded back into the
+snapshot's `folders[]`; on save it's rewritten only when the registry changed.
+A folder rename therefore never rewrites the list files. When at-rest
+encryption is on, the whole document — folders included — stays in the single
+`checklist.json` blob and the plaintext sidecar is cleared, so nothing about
+the folders leaks on disk; per-folder encrypted directories are a later step.
+The serialize seam (`src/storage/serialize.ts`) validates the registry both
+inside a document and as a standalone sidecar (`parseFolders` /
+`serializeFolders`), dropping malformed entries and duplicate ids. Two
+achievements ride the feature: **Pigeonholed** (create a folder) and **Filed
+Away** (move a list into one).
+
 ### Namespaces
 
 `src/storage/namespaces.ts` — the registry of **namespaces**: named

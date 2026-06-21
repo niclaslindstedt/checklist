@@ -106,6 +106,14 @@ export function ShowcasePage() {
             </li>
             <li>
               <strong className="text-fg-bright">
+                Group lists into folders
+              </strong>{" "}
+              — file related checklists into named, collapsible folders within a
+              namespace; on the file and cloud backends each folder is a real
+              directory of markdown files.
+            </li>
+            <li>
+              <strong className="text-fg-bright">
                 Import and export markdown
               </strong>{" "}
               — copy lists in and out as plain{" "}

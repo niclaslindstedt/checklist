@@ -33,6 +33,7 @@ function checklist(
     notes?: string;
     archived?: boolean;
   }[],
+  folderId?: string,
 ): Checklist {
   return {
     version: 1,
@@ -40,6 +41,7 @@ function checklist(
     templateId,
     name,
     items,
+    ...(folderId ? { folderId } : {}),
     createdAt: STAMP,
     updatedAt: STAMP,
   };
@@ -62,6 +64,9 @@ export function buildSeedSnapshot(): Snapshot {
         { id: "d4", title: "Tag and push" },
       ]),
     ],
+    // A "Home" folder groups a couple of household lists; Groceries stays
+    // ungrouped at the top level, so the seed shows both shapes.
+    folders: [{ id: "fld-home", name: "Home", createdAt: STAMP }],
     checklists: [
       checklist("cl-groceries", "", "Groceries", [
         { id: "g1", title: "Oat milk", checked: true },
@@ -76,6 +81,28 @@ export function buildSeedSnapshot(): Snapshot {
         },
         { id: "g6", title: "Tinfoil", checked: false, archived: true },
       ]),
+      checklist(
+        "cl-chores",
+        "",
+        "Weekend chores",
+        [
+          { id: "c1", title: "Water the plants", checked: false },
+          { id: "c2", title: "Laundry", checked: true },
+          { id: "c3", title: "Vacuum", checked: false },
+        ],
+        "fld-home",
+      ),
+      checklist(
+        "cl-pantry",
+        "",
+        "Pantry restock",
+        [
+          { id: "p1", title: "Rice", checked: false },
+          { id: "p2", title: "Pasta", checked: false },
+          { id: "p3", title: "Tinned tomatoes", checked: true },
+        ],
+        "fld-home",
+      ),
     ],
   };
 }

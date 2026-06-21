@@ -84,6 +84,11 @@ const hasArchivedItem = (snap: Snapshot) =>
 const hasMultipleChecklists = (snap: Snapshot) => snap.checklists.length > 1;
 const hasArchivedChecklist = (snap: Snapshot) =>
   snap.checklists.some((c) => c.archived === true);
+const hasFolder = (snap: Snapshot) => (snap.folders?.length ?? 0) > 0;
+const hasFiledChecklist = (snap: Snapshot) =>
+  snap.checklists.some(
+    (c) => typeof c.folderId === "string" && c.folderId !== "",
+  );
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
@@ -203,6 +208,29 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       predicate: (prev, next) =>
         !hasMultipleChecklists(prev.snapshot) &&
         hasMultipleChecklists(next.snapshot),
+    },
+  },
+  {
+    id: "folderMade",
+    tier: "intermediate",
+    glyph: FolderGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot.folders],
+      predicate: (prev, next) =>
+        !hasFolder(prev.snapshot) && hasFolder(next.snapshot),
+    },
+  },
+  {
+    id: "filed",
+    tier: "intermediate",
+    glyph: BoxesGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot.checklists],
+      predicate: (prev, next) =>
+        !hasFiledChecklist(prev.snapshot) && hasFiledChecklist(next.snapshot),
     },
   },
   {

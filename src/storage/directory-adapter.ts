@@ -26,18 +26,33 @@
 // first and raises `ConflictError` when the aggregate moved past the
 // caller's `baseRevision`.
 
+import type { Folder, Snapshot } from "../domain/types.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import { ConflictError } from "./adapter.ts";
 import { isEncryptedEnvelope } from "./crypto.ts";
 import type { FileEntry, FileStore } from "./file-store.ts";
 import { snapshotToFiles } from "./markdown/codec.ts";
 import { filesToSnapshot } from "./markdown/codec.ts";
-import { parse, serialize } from "./serialize.ts";
+import {
+  parse,
+  parseFolders,
+  serialize,
+  serializeFolders,
+} from "./serialize.ts";
 
 // Single-file location for bytes that can't be expressed as markdown: an
 // AES-GCM envelope (encryption on), and the pre-markdown legacy document
 // the cloud backends used to write.
 export const BLOB_FILE_NAME = "checklist.json";
+
+// The folder registry sidecar (folder display names + empty folders), beside
+// the checklist files in the namespace root. Plaintext JSON — folder names
+// aren't secret, and a list's `folder:` frontmatter only carries the id — and
+// metadata, not a list: each checklist `.md` carries only the folder *id*, so
+// this maps id → name and keeps a folder that holds no lists. Written only on
+// the plaintext path; when encryption is on the whole document (folders
+// included) rides the single `checklist.json` blob instead.
+export const FOLDERS_FILE_NAME = "folders.json";
 
 function isMarkdownPath(path: string): boolean {
   return path.endsWith(".md");
@@ -45,10 +60,17 @@ function isMarkdownPath(path: string): boolean {
 
 // Build the directory's aggregate revision from the per-file revisions.
 // Order-independent (sorted) so two listings of the same bytes compare
-// equal regardless of the order the backend returned them in.
+// equal regardless of the order the backend returned them in. The folder
+// registry sidecar is folded in too, so a folder rename (which rewrites only
+// `folders.json`) still moves the revision and is caught by conflict detection.
 function aggregateRevision(entries: readonly FileEntry[]): string {
   const md = entries
-    .filter((e) => isMarkdownPath(e.path) || e.path === BLOB_FILE_NAME)
+    .filter(
+      (e) =>
+        isMarkdownPath(e.path) ||
+        e.path === BLOB_FILE_NAME ||
+        e.path === FOLDERS_FILE_NAME,
+    )
     .map((e) => `${e.path}:${e.rev ?? ""}`)
     .sort();
   return md.join("\n");
@@ -64,6 +86,68 @@ export function createDirectoryAdapter(
   store: FileStore,
   options: DirectoryAdapterOptions,
 ): StorageAdapter {
+  // The canonical JSON of the folder registry as it currently stands on disk
+  // (null = no `folders.json` sidecar exists). Set on every load and after
+  // each write so `save` skips a redundant rewrite when the folders didn't
+  // change, and so enabling encryption knows whether a stale sidecar needs
+  // clearing.
+  let lastFoldersJson: string | null = null;
+
+  // Read the folder registry sidecar, tolerating a missing / corrupt file by
+  // yielding no folders. Records the canonical bytes so the next save can tell
+  // whether the registry actually changed. Skips the read entirely when the
+  // listing shows no sidecar, so a folder-less document costs no extra fetch.
+  async function readFolders(entries: readonly FileEntry[]): Promise<Folder[]> {
+    if (!entries.some((e) => e.path === FOLDERS_FILE_NAME)) {
+      lastFoldersJson = null;
+      return [];
+    }
+    let raw: string | null;
+    try {
+      raw = await store.read(FOLDERS_FILE_NAME);
+    } catch {
+      lastFoldersJson = null;
+      return [];
+    }
+    if (!raw) {
+      lastFoldersJson = null;
+      return [];
+    }
+    let folders: Folder[];
+    try {
+      folders = parseFolders(JSON.parse(raw));
+    } catch {
+      folders = [];
+    }
+    lastFoldersJson = serializeFolders(folders);
+    return folders;
+  }
+
+  // Fold the registry's folders into a snapshot's text on load — the
+  // checklists are rebuilt from the `.md` files and carry only a folder *id*,
+  // so the names (and any empty folders) come from the sidecar. The single
+  // encrypted blob already carries its folders inside the (sealed) document,
+  // so it's left untouched.
+  function injectFolders(text: string, folders: readonly Folder[]): string {
+    if (folders.length === 0 || isEncryptedEnvelope(text)) return text;
+    const snap = parse(text);
+    snap.folders = [...folders];
+    return serialize(snap);
+  }
+
+  // Write the folder registry sidecar when it changed. Writes `[]` to clear a
+  // sidecar whose folders were all removed; skips entirely on a folder-less
+  // document that never had one, so a plain checklist folder gains no stray
+  // file.
+  async function persistFolders(snapshot: Snapshot): Promise<void> {
+    const folders = snapshot.folders ?? [];
+    if (folders.length === 0 && lastFoldersJson === null) return;
+    const json = serializeFolders(folders);
+    if (json === lastFoldersJson) return;
+    await store.write(FOLDERS_FILE_NAME, json);
+    lastFoldersJson = json;
+  }
+
   async function readSnapshotText(
     entries: readonly FileEntry[],
   ): Promise<string | null> {
@@ -88,9 +172,20 @@ export function createDirectoryAdapter(
 
   async function load(): Promise<StoredSnapshot | null> {
     const entries = await store.list();
+    // Read the registry alongside the checklists so an empty folder (one no
+    // list references) still loads, and a document whose only content is empty
+    // folders loads as a real, non-null document rather than null.
+    const folders = await readFolders(entries);
+    const revision = aggregateRevision(entries);
     const text = await readSnapshotText(entries);
-    if (text === null) return null;
-    return { text, revision: aggregateRevision(entries) };
+    if (text === null) {
+      if (folders.length === 0) return null;
+      return {
+        text: injectFolders(serialize(parse(null)), folders),
+        revision,
+      };
+    }
+    return { text: injectFolders(text, folders), revision };
   }
 
   async function save(
@@ -102,8 +197,12 @@ export function createDirectoryAdapter(
       const current = aggregateRevision(before);
       if (current !== baseRevision) {
         const remoteText = await readSnapshotText(before);
+        const remoteFolders = await readFolders(before);
         throw new ConflictError({
-          text: remoteText ?? serialize(parse(null)),
+          text: injectFolders(
+            remoteText ?? serialize(parse(null)),
+            remoteFolders,
+          ),
           revision: current,
         });
       }
@@ -113,19 +212,31 @@ export function createDirectoryAdapter(
       before.map((e) => e.path).filter(isMarkdownPath),
     );
     const hasBlob = before.some((e) => e.path === BLOB_FILE_NAME);
+    const hasFoldersSidecar = before.some((e) => e.path === FOLDERS_FILE_NAME);
 
     if (isEncryptedEnvelope(text)) {
-      // Can't express an envelope as markdown — store it whole and drop
-      // any markdown files so the two representations can't disagree.
+      // Can't express an envelope as markdown — store it whole (folders and
+      // all, inside the sealed document) and drop any markdown files so the
+      // two representations can't disagree. The plaintext folder sidecar is
+      // cleared too: encryption keeps the document to a single opaque blob,
+      // so a stale `folders.json` would leak folder names on disk.
       await store.write(BLOB_FILE_NAME, text);
-      await Promise.all([...existingMd].map((path) => store.remove(path)));
+      const removals = [...existingMd];
+      if (hasFoldersSidecar) removals.push(FOLDERS_FILE_NAME);
+      await Promise.all(removals.map((path) => store.remove(path)));
+      lastFoldersJson = null;
     } else {
-      const files = snapshotToFiles(parse(text));
+      const snapshot = parse(text);
+      const files = snapshotToFiles(snapshot);
       const desired = new Set(files.map((f) => f.path));
       await Promise.all(files.map((f) => store.write(f.path, f.text)));
       const removals = [...existingMd].filter((p) => !desired.has(p));
       if (hasBlob) removals.push(BLOB_FILE_NAME);
       await Promise.all(removals.map((path) => store.remove(path)));
+      // Persist the folder registry sidecar (names + empty folders). The list
+      // files carry only the folder id, so this is what makes a renamed or
+      // empty folder survive. A no-op when the registry didn't change.
+      await persistFolders(snapshot);
     }
 
     const after = await store.list();

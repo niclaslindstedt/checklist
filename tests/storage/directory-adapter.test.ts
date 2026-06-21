@@ -198,3 +198,118 @@ describe("directory adapter", () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 });
+
+const foldered: Snapshot = {
+  templates: [],
+  checklists: [
+    {
+      version: 1,
+      id: "cl1",
+      templateId: "",
+      name: "Groceries",
+      items: [],
+      folderId: "f-work",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      version: 1,
+      id: "cl2",
+      templateId: "",
+      name: "Loose",
+      items: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
+  folders: [{ id: "f-work", name: "Work", createdAt: "2026-01-01T00:00:00Z" }],
+};
+
+describe("directory adapter — folders", () => {
+  it("files a grouped checklist inside its physical folder directory", async () => {
+    const { store, adapter } = build();
+    await adapter.save(serialize(foldered));
+    const paths = store.paths();
+    expect(paths).toContain("checklists/work/groceries-cl1.md");
+    expect(paths).toContain("checklists/loose-cl2.md");
+    expect(paths).toContain("folders.json");
+  });
+
+  it("writes the folder registry sidecar with names + empty folders", async () => {
+    const { store, adapter } = build();
+    await adapter.save(serialize(foldered));
+    const json = await store.read("folders.json");
+    expect(JSON.parse(json!)).toEqual([
+      { id: "f-work", name: "Work", createdAt: "2026-01-01T00:00:00Z" },
+    ]);
+  });
+
+  it("round-trips folder names and per-list links through a reload", async () => {
+    const { adapter } = build();
+    await adapter.save(serialize(foldered));
+    const loaded = await adapter.load();
+    const snap = parse(loaded!.text);
+    expect(snap.folders).toEqual(foldered.folders);
+    expect(snap.checklists.find((c) => c.id === "cl1")?.folderId).toBe(
+      "f-work",
+    );
+    expect(
+      snap.checklists.find((c) => c.id === "cl2")?.folderId,
+    ).toBeUndefined();
+  });
+
+  it("persists an empty folder (one no checklist references) via the sidecar", async () => {
+    const { store, adapter } = build();
+    const emptyFolderOnly: Snapshot = {
+      templates: [],
+      checklists: [],
+      folders: [
+        { id: "f-x", name: "Someday", createdAt: "2026-01-01T00:00:00Z" },
+      ],
+    };
+    await adapter.save(serialize(emptyFolderOnly));
+    expect(store.paths()).toContain("folders.json");
+    const loaded = await adapter.load();
+    expect(loaded).not.toBeNull();
+    expect(parse(loaded!.text).folders).toEqual(emptyFolderOnly.folders);
+  });
+
+  it("moves a list out of its folder, removing the now-stale file path", async () => {
+    const { store, adapter } = build();
+    await adapter.save(serialize(foldered));
+    expect(store.paths()).toContain("checklists/work/groceries-cl1.md");
+    const moved: Snapshot = {
+      ...foldered,
+      checklists: foldered.checklists.map((c) =>
+        c.id === "cl1" ? { ...c, folderId: undefined } : c,
+      ),
+    };
+    await adapter.save(serialize(moved));
+    expect(store.paths()).not.toContain("checklists/work/groceries-cl1.md");
+    expect(store.paths()).toContain("checklists/groceries-cl1.md");
+  });
+
+  it("skips a redundant sidecar rewrite when the registry is unchanged", async () => {
+    const { store, adapter } = build();
+    await adapter.save(serialize(foldered));
+    const rev1 = (await store.list()).find(
+      (e) => e.path === "folders.json",
+    )!.rev;
+    // Re-save the same folders (only a checklist body changed) — sidecar stays.
+    await adapter.save(serialize(foldered));
+    const rev2 = (await store.list()).find(
+      (e) => e.path === "folders.json",
+    )!.rev;
+    expect(rev2).toBe(rev1);
+  });
+
+  it("clears the plaintext sidecar when encryption takes over", async () => {
+    const { store, adapter } = build();
+    await adapter.save(serialize(foldered));
+    expect(store.paths()).toContain("folders.json");
+    const envelope = await encryptText(serialize(foldered), "pw");
+    expect(isEncryptedEnvelope(envelope)).toBe(true);
+    await adapter.save(envelope);
+    expect(store.paths()).toEqual([BLOB_FILE_NAME]);
+  });
+});

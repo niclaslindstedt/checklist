@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot, type Snapshot } from "../../src/domain/types.ts";
-import { parse, serialize } from "../../src/storage/serialize.ts";
+import {
+  parse,
+  parseFolders,
+  serialize,
+  serializeFolders,
+} from "../../src/storage/serialize.ts";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
@@ -40,5 +45,46 @@ describe("serialize", () => {
     const text = serialize(emptySnapshot());
     expect(JSON.parse(text).version).toBe(1);
     expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("round-trips a folder registry through serialize / parse", () => {
+    const snap = {
+      templates: [],
+      checklists: [],
+      folders: [{ id: "f1", name: "Work", createdAt: "2026-01-01T00:00:00Z" }],
+    };
+    expect(parse(serialize(snap)).folders).toEqual(snap.folders);
+  });
+
+  it("omits an empty folder registry rather than writing folders: []", () => {
+    const snap = parse(serialize(emptySnapshot()));
+    expect("folders" in snap).toBe(false);
+  });
+
+  it("drops malformed folder entries and duplicate ids defensively", () => {
+    const text = JSON.stringify({
+      version: 1,
+      templates: [],
+      checklists: [],
+      folders: [
+        { id: "f1", name: "Keep", createdAt: "2026-01-01T00:00:00Z" },
+        { id: "f1", name: "Dup", createdAt: "2026-01-02T00:00:00Z" },
+        { name: "No id", createdAt: "x" },
+        "garbage",
+      ],
+    });
+    expect(parse(text).folders).toEqual([
+      { id: "f1", name: "Keep", createdAt: "2026-01-01T00:00:00Z" },
+    ]);
+  });
+
+  it("parseFolders / serializeFolders validate a standalone sidecar", () => {
+    const folders = [
+      { id: "f1", name: "X", createdAt: "2026-01-01T00:00:00Z" },
+    ];
+    expect(parseFolders(JSON.parse(serializeFolders(folders)))).toEqual(
+      folders,
+    );
+    expect(parseFolders("nope")).toEqual([]);
   });
 });

@@ -161,14 +161,14 @@ describe("SideMenu", () => {
     ).not.toContain("0");
   });
 
-  it("adds a checklist from the Checklists heading's add button", () => {
+  it("adds a checklist from the action bar's New list button", () => {
     const addChecklist = vi.fn();
     const navigate = vi.fn();
     renderMenu({
       nav: { open: true, navigate },
       checklist: { addChecklist },
     });
-    fireEvent.click(screen.getByRole("button", { name: "New checklist" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "New checklist" }));
     expect(addChecklist).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith("checklist");
   });
@@ -463,5 +463,58 @@ describe("SideMenu", () => {
           .visualViewport;
       }
     }
+  });
+
+  describe("folders", () => {
+    const foldered: Partial<ChecklistContextValue> = {
+      folders: [{ id: "f1", name: "Work", count: 1 }],
+      checklists: [
+        { id: "c1", name: "Filed list", remaining: 0, folderId: "f1" },
+        { id: "c2", name: "Loose list", remaining: 0 },
+      ],
+      activeChecklistId: "c1",
+    };
+
+    it("renders a folder group with its filed lists nested inside", () => {
+      renderMenu({ nav: { open: true }, checklist: foldered });
+      // Folder header (collapse toggle) carries the name and its count badge.
+      const header = screen.getByRole("button", { name: /Work/ });
+      expect(header.getAttribute("aria-expanded")).toBe("true");
+      expect(header.textContent).toContain("1");
+      // Both the filed and the ungrouped list render.
+      expect(screen.getByRole("menuitem", { name: /Filed list/ })).toBeTruthy();
+      expect(screen.getByRole("menuitem", { name: /Loose list/ })).toBeTruthy();
+    });
+
+    it("collapses a folder so its lists drop out of the tree", () => {
+      renderMenu({ nav: { open: true }, checklist: foldered });
+      const header = screen.getByRole("button", { name: /Work/ });
+      fireEvent.click(header);
+      expect(header.getAttribute("aria-expanded")).toBe("false");
+      expect(screen.queryByRole("menuitem", { name: /Filed list/ })).toBeNull();
+      // The ungrouped list is unaffected.
+      expect(screen.getByRole("menuitem", { name: /Loose list/ })).toBeTruthy();
+    });
+
+    it("creates a folder via the action bar's New folder button", () => {
+      const createFolder = vi.fn();
+      renderMenu({ nav: { open: true }, checklist: { createFolder } });
+      fireEvent.click(screen.getByRole("menuitem", { name: "New folder" }));
+      // The inline name input appears; typing + Enter commits.
+      const input = screen.getByPlaceholderText("Folder name");
+      fireEvent.change(input, { target: { value: "Recipes" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(createFolder).toHaveBeenCalledWith("Recipes");
+    });
+
+    it("adds a list straight into a folder from its header +", () => {
+      const addChecklistInFolder = vi.fn();
+      renderMenu({
+        nav: { open: true },
+        checklist: { ...foldered, addChecklistInFolder },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "New checklist" }));
+      expect(addChecklistInFolder).toHaveBeenCalledWith("f1");
+    });
   });
 });

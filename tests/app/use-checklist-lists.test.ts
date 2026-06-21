@@ -292,3 +292,78 @@ describe("useChecklist multi-list verbs", () => {
     expect(result.current.checklists[0]!.name).toBe("Checklist");
   });
 });
+
+describe("useChecklist folder verbs", () => {
+  it("creates, renames, and persists a folder", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    act(() => result.current.createFolder("Work"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    const folderId = result.current.folders[0]!.id;
+    expect(result.current.folders[0]!.name).toBe("Work");
+    expect(parse(adapter.stored()).folders).toHaveLength(1);
+
+    act(() => result.current.renameFolder(folderId, "Office"));
+    await waitFor(() => expect(result.current.folders[0]!.name).toBe("Office"));
+  });
+
+  it("files a checklist into a folder and counts it", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    const listId = result.current.activeChecklistId;
+
+    act(() => result.current.createFolder("Work"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    const folderId = result.current.folders[0]!.id;
+
+    act(() => result.current.moveChecklistToFolder(listId, folderId));
+    await waitFor(() => expect(result.current.folders[0]!.count).toBe(1));
+    expect(result.current.checklists[0]!.folderId).toBe(folderId);
+    expect(parse(adapter.stored()).checklists[0]!.folderId).toBe(folderId);
+
+    // Moving it back out drops the count and clears the link.
+    act(() => result.current.moveChecklistToFolder(listId, null));
+    await waitFor(() => expect(result.current.folders[0]!.count).toBe(0));
+    expect(result.current.checklists[0]!.folderId).toBeUndefined();
+  });
+
+  it("adds a new list already filed inside a folder, and selects it", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    act(() => result.current.createFolder("Work"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    const folderId = result.current.folders[0]!.id;
+
+    act(() => result.current.addChecklistInFolder(folderId));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const created = result.current.checklists.find(
+      (c) => c.folderId === folderId,
+    );
+    expect(created).toBeTruthy();
+    expect(result.current.activeChecklistId).toBe(created!.id);
+  });
+
+  it("removes a folder but keeps its lists, ungrouping them", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    const listId = result.current.activeChecklistId;
+
+    act(() => result.current.createFolder("Work"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    const folderId = result.current.folders[0]!.id;
+    act(() => result.current.moveChecklistToFolder(listId, folderId));
+    await waitFor(() => expect(result.current.folders[0]!.count).toBe(1));
+
+    act(() => result.current.removeFolder(folderId));
+    await waitFor(() => expect(result.current.folders).toHaveLength(0));
+    // The list survives, now ungrouped.
+    expect(result.current.checklists).toHaveLength(1);
+    expect(result.current.checklists[0]!.folderId).toBeUndefined();
+  });
+});
