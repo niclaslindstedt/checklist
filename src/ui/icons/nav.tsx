@@ -257,6 +257,26 @@ export function FolderIcon({ className }: IconProps) {
   );
 }
 
+/** The open-lid twin of `FolderIcon`, shown when a sidebar folder is expanded. */
+export function FolderOpenIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M4 5h5l2 2.5h7a1 1 0 0 1 1 1V10" />
+      <path d="M3 18.5 5.4 11a1 1 0 0 1 .95-.7H21a1 1 0 0 1 .95 1.32L19.6 18.5a1 1 0 0 1-.95.7H4a1 1 0 0 1-1-.7z" />
+    </svg>
+  );
+}
+
 /** Three labelled sliders — the General settings tab marker. */
 export function SlidersIcon({ className }: IconProps) {
   return (

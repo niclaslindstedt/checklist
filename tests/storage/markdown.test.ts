@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Checklist, Snapshot, Template } from "../../src/domain/types.ts";
+import type {
+  Checklist,
+  Folder,
+  Snapshot,
+  Template,
+} from "../../src/domain/types.ts";
 import {
   checklistBodyMarkdown,
   checklistToMarkdown,
@@ -298,6 +303,63 @@ describe("markdown codec", () => {
         { title: "Eggs", checked: true },
         { title: "Old thing", checked: true },
       ]);
+    });
+  });
+
+  describe("folders", () => {
+    const folder: Folder = {
+      id: "f-work",
+      name: "Work Stuff",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const grouped: Snapshot = {
+      templates: [],
+      checklists: [{ ...checklist, folderId: "f-work", items: [] }],
+      folders: [folder],
+    };
+
+    it("files a grouped checklist inside its slugged folder directory", () => {
+      const files = snapshotToFiles(grouped);
+      expect(files.map((f) => f.path)).toEqual([
+        "checklists/work-stuff/groceries-bbbbbb.md",
+      ]);
+    });
+
+    it("keeps an ungrouped checklist at the checklists root", () => {
+      const files = snapshotToFiles({
+        templates: [],
+        checklists: [{ ...checklist, items: [] }],
+      });
+      expect(files[0]!.path).toBe("checklists/groceries-bbbbbb.md");
+    });
+
+    it("writes the folder id into the frontmatter as the authoritative link", () => {
+      const md = checklistToMarkdown({ ...checklist, folderId: "f-work" });
+      expect(md).toContain("folder: f-work");
+    });
+
+    it("omits the folder field for an ungrouped checklist", () => {
+      expect(checklistToMarkdown(checklist)).not.toContain("folder:");
+    });
+
+    it("parses the folder link back from the frontmatter", () => {
+      const md = checklistToMarkdown({ ...checklist, folderId: "f-work" });
+      const parsed = parseEntry(md);
+      expect(parsed?.kind).toBe("checklist");
+      if (parsed?.kind === "checklist") {
+        expect(parsed.checklist.folderId).toBe("f-work");
+      }
+    });
+
+    it("falls back to a stable id-derived dir for an unslugabble name", () => {
+      const files = snapshotToFiles({
+        templates: [],
+        checklists: [{ ...checklist, folderId: "f-emoji", items: [] }],
+        folders: [{ id: "f-emoji", name: "🎉", createdAt: "x" }],
+      });
+      expect(files[0]!.path).toBe(
+        "checklists/folder-femoji/groceries-bbbbbb.md",
+      );
     });
   });
 });

@@ -117,7 +117,17 @@ const achievements = {
       name: "List Maker",
       condition: "Keep more than one checklist.",
       learnMore:
-        "The “+” on the side menu's Checklists heading adds another list. Each is independent; the switcher badges every list with its remaining count.",
+        "The “+” on the side menu's action bar adds another list. Each is independent; the switcher badges every list with its remaining count.",
+    },
+    folderMade: {
+      name: "Pigeonholed",
+      condition: "Create a folder.",
+      learnMore:
+        "The folder button on the side menu's action bar makes a new folder, then a list can be filed inside it. Folders group your checklists within a namespace — collapse one to tuck its lists away — and on the file and cloud backends each folder is a real directory of markdown files you can browse with any tool.",
+    },
+    filed: {
+      name: "Filed Away",
+      condition: "Move a checklist into a folder.",
     },
     archivist: {
       name: "Archivist",

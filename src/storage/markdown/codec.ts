@@ -20,6 +20,7 @@ import { activeItems, archivedItems } from "../../domain/checklists.ts";
 import type {
   Checklist,
   ChecklistItem,
+  Folder,
   Item,
   Snapshot,
   Template,
@@ -69,6 +70,60 @@ function slugify(name: string): string {
     .slice(0, 48);
 }
 
+// -- Physical folder directories --------------------------------------
+//
+// A checklist's folder is a **real subdirectory** under the namespace's
+// `checklists/` root on the file/cloud backends: a grouped list's `.md` is
+// written into `checklists/<folder-dir>/<stem>.md`, so the synced folder is
+// browsable and tool-friendly (open the `Groceries/` folder in any file
+// manager and there are the lists). The directory name is a slug of the
+// folder's display name, falling back to a stable id-derived stem for a name
+// that slugs to nothing (an all-emoji name), so every folder still maps to a
+// distinct, deterministic directory. The list's `folder:` frontmatter (the
+// folder *id*) stays the authoritative link the load reads back — the
+// directory is a write-side projection for browsing — so two folders that
+// happen to slug alike never lose a list, and the folder's display name lives
+// in the `folders.json` registry the directory adapter keeps (renaming a
+// folder never has to rewrite every list file).
+
+/** The directory segment a folder's checklists are filed under (no slashes). */
+export function folderDirSegment(folder: Folder): string {
+  return slugify(folder.name) || `folder-${idSuffix(folder.id)}`;
+}
+
+/**
+ * The directory a checklist is filed under, relative to the `checklists/`
+ * root: the empty string for an ungrouped list (it lives directly at the
+ * root) and the folder's `folderDirSegment` when it points at a known folder.
+ * An unknown / missing folder id (no registry, or a stale link) falls back to
+ * the root.
+ */
+export function folderDirName(
+  folderId: string | undefined,
+  folders: readonly Folder[] | undefined,
+): string {
+  if (!folderId || !folders) return "";
+  const folder = folders.find((f) => f.id === folderId);
+  return folder ? folderDirSegment(folder) : "";
+}
+
+/**
+ * The path a checklist's `.md` file lives at, relative to the namespace root,
+ * resolving its folder against the registry:
+ * `checklists/<folder-dir>/<stem>.md` when grouped, `checklists/<stem>.md`
+ * when ungrouped.
+ */
+export function checklistFilePath(
+  checklist: Checklist,
+  folders?: readonly Folder[],
+): string {
+  const dir = folderDirName(checklist.folderId, folders);
+  const stem = entryFileStem(checklist.name, checklist.id);
+  return dir
+    ? `${CHECKLISTS_DIR}/${dir}/${stem}.md`
+    : `${CHECKLISTS_DIR}/${stem}.md`;
+}
+
 // -- Serialize --------------------------------------------------------
 
 /** Every checklist and template in a snapshot, as individual markdown files. */
@@ -81,8 +136,10 @@ export function snapshotToFiles(snapshot: Snapshot): MarkdownFile[] {
     });
   }
   for (const checklist of snapshot.checklists) {
+    // A grouped list is filed into its folder's real subdirectory; an
+    // ungrouped one sits at the `checklists/` root.
     files.push({
-      path: `${CHECKLISTS_DIR}/${entryFileStem(checklist.name, checklist.id)}.md`,
+      path: checklistFilePath(checklist, snapshot.folders),
       text: checklistToMarkdown(checklist),
     });
   }
@@ -97,6 +154,11 @@ export function checklistToMarkdown(checklist: Checklist): string {
     updated: checklist.updatedAt,
   };
   if (checklist.templateId) front.template = checklist.templateId;
+  // The folder the list belongs to, by id. Only written when set, so an
+  // ungrouped list's frontmatter stays minimal and an older file (no link)
+  // round-trips as ungrouped. The folder's display name lives in the
+  // `folders.json` sidecar, so this is just the authoritative link.
+  if (checklist.folderId) front.folder = checklist.folderId;
   return renderFrontmatter(front) + "\n" + checklistBodyMarkdown(checklist);
 }
 
@@ -226,18 +288,21 @@ export function parseEntry(text: string): ParsedEntry | null {
   }
   if (front.type === "checklist") {
     const all = [...items, ...archived.map((a) => ({ ...a, archived: true }))];
-    return {
-      kind: "checklist",
-      checklist: {
-        version: 1,
-        id,
-        templateId: front.template ?? "",
-        name: heading,
-        items: all.map((raw, i) => toChecklistItem(raw, `${id}-${i}`)),
-        createdAt: created,
-        updatedAt: updated,
-      },
+    const checklist: Checklist = {
+      version: 1,
+      id,
+      templateId: front.template ?? "",
+      name: heading,
+      items: all.map((raw, i) => toChecklistItem(raw, `${id}-${i}`)),
+      createdAt: created,
+      updatedAt: updated,
     };
+    // The authoritative folder link rides the frontmatter, not the file's
+    // physical directory — carried only when present so an ungrouped list
+    // round-trips minimally. The directory adapter reconciles the name from
+    // the `folders.json` registry.
+    if (front.folder) checklist.folderId = front.folder;
+    return { kind: "checklist", checklist };
   }
   return null;
 }

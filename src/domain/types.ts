@@ -71,14 +71,52 @@ export interface Checklist {
    * whole list — right-click a list (desktop) and choose Archive.
    */
   archived?: boolean;
+  /**
+   * The folder this checklist sits in within the namespace, by `Folder.id`.
+   * A checklist with no `folderId` lives at the top level (ungrouped).
+   * Folders group checklists *inside* a namespace; the registry of folders
+   * rides on the `Snapshot`. Absent on an ungrouped list rather than written
+   * as `null`, so an older document needs no migration. On the file/cloud
+   * backends it rides the markdown frontmatter (`folder: <id>`) so the
+   * grouping survives a round-trip — and that frontmatter link is the
+   * authoritative one: a list's physical directory is only a browsable
+   * projection of it.
+   */
+  folderId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A folder: a named bucket grouping checklists *within* a single namespace.
+ * The `id` is stable (a checklist points at it by `folderId`); the `name` is
+ * an editable label. A folder can be empty — it exists in the `Snapshot`'s
+ * folder registry independently of whether any checklist references it — so a
+ * freshly-created, still-unfilled folder persists. Pure data, like the rest
+ * of this module.
+ */
+export interface Folder {
+  id: string;
+  name: string;
+  /**
+   * When the folder was created (ISO-8601), set once. Folders sort by
+   * creation order so the list stays stable as checklists move in and out.
+   */
+  createdAt: string;
 }
 
 /** The full document persisted by a storage backend. */
 export interface Snapshot {
   templates: Template[];
   checklists: Checklist[];
+  /**
+   * The folders defined in this namespace, by which checklists are grouped
+   * (a checklist points at one by `Checklist.folderId`). Kept on the
+   * snapshot — not derived from the checklists — so an empty folder persists.
+   * Absent rather than an empty array when no folders exist, so an older
+   * document needs no migration.
+   */
+  folders?: Folder[];
 }
 
 export function emptySnapshot(): Snapshot {

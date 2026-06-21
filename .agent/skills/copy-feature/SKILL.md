@@ -1,25 +1,36 @@
 ---
 name: copy-feature
-description: "Use whenever you want to bring a feature, look, modal, button, component, or behaviour from the budget app into this checklist app — 'port budget's split-entry modal', 'copy budget's company picker', 'I want budget's gold download fill', 'add budget's insights view'. Clones the budget repo, studies the named feature in place (its components, hooks, storage, styles, achievements, and the dependencies it needs), then re-implements it here adapted to the checklist domain — same structure and patterns, not a verbatim paste. Reach for this instead of hand-copying files, so the port stays idiomatic and self-consistent."
+description: "Use whenever you want to bring a feature, look, modal, button, component, or behaviour from a sibling app (budget or notes) into this checklist app — 'port budget's split-entry modal', 'copy budget's company picker', 'copy the folder concept from notes', 'add notes' redesigned action bar'. Clones the sibling repo over plain HTTPS git, studies the named feature in place (its components, hooks, storage, styles, achievements, and the dependencies it needs), then re-implements it here adapted to the checklist domain — same structure and patterns, not a verbatim paste. Reach for this instead of hand-copying files, so the port stays idiomatic and self-consistent."
 ---
 
-# Copying a feature from budget into checklist
+# Copying a feature from a sibling app into checklist
 
-checklist and [`budget`](https://github.com/niclaslindstedt/budget) are sibling
-apps that **inspire each other** — same stack (Vite + React 19 + Tailwind v4 +
+checklist, [`budget`](https://github.com/niclaslindstedt/budget), and
+[`notes`](https://github.com/niclaslindstedt/notes) are sibling apps that
+**inspire each other** — same stack (Vite + React 19 + Tailwind v4 +
 `vite-plugin-pwa` + Vitest), same `OSS_SPEC.md` conventions, same `src/`-by-concern
 layout, same CSS-variable token vocabulary, same i18n (en/sv) + achievements +
-changeset machinery. Features flow both ways: budget pioneered the
-update-download wordmark fill, checklist pioneered other surfaces. This skill is
-the procedure for porting **from budget into checklist well** — adapting a
-feature to the checklist domain rather than dumping files that don't fit.
+changeset machinery. `notes` in particular is the closest sibling — it shares
+checklist's exact storage layer (the directory adapter, the markdown codec, the
+namespace/folder registries), so a storage feature there often ports almost
+line-for-line. Features flow every way: budget pioneered the update-download
+wordmark fill, notes pioneered folders, checklist pioneered other surfaces. This
+skill is the procedure for porting **from a sibling into checklist well** —
+adapting a feature to the checklist domain rather than dumping files that don't
+fit.
 
-Use this skill every time you bring a budget feature across, so each port lands
-in the same shape as the last.
+Use this skill every time you bring a sibling's feature across, so each port
+lands in the same shape as the last.
+
+> Throughout this skill `<sibling>` is whichever repo the feature lives in —
+> `budget` or `notes`. The steps are identical; only the clone URL and the
+> domain mapping differ. (`notes` deals in *notes* where checklist deals in
+> *checklists*, but its namespace/folder/storage vocabulary is the same.)
 
 ## When to invoke
 
-Invoke when the task is "bring `<thing>` over from budget", e.g.:
+Invoke when the task is "bring `<thing>` over from a sibling (budget / notes)",
+e.g.:
 
 - A UI surface: a modal, a picker, a confirm dialog, a header affordance, a
   progress indicator.
@@ -28,46 +39,55 @@ Invoke when the task is "bring `<thing>` over from budget", e.g.:
 
 Do **not** invoke when:
 
-- The feature has no budget precedent — design it fresh in `src/` instead.
+- The feature has no sibling precedent — design it fresh in `src/` instead.
 - You only need a single small utility you can read and retype in a minute
-  (still _read_ budget's version for the pattern, but you don't need the full
-  clone-and-port loop).
+  (still _read_ the sibling's version for the pattern, but you don't need the
+  full clone-and-port loop).
 
-## Step 0 — Clone the budget repo
+## Step 0 — Clone the sibling repo (plain `git`, not the GitHub tools)
 
-> **Learning, baked in:** in the Claude Code on the web sandbox the git proxy
-> is scoped to this repo only. Cloning budget through the proxy fails with
-> **`Proxy error: repository not authorized`** (HTTP 502), and the GitHub MCP
-> tools refuse it with *"repository … is not configured for this session"*.
-> **budget is public open source, so clone it directly from github.com over
-> HTTPS instead** — that path is not gated by the proxy allow-list:
+> **Learning, baked in:** in the Claude Code on the web sandbox the GitHub MCP
+> tools (`mcp__github__*`) and the git proxy are **scoped to this repo only**.
+> Reading a sibling repo through them fails — the MCP tools refuse with
+> *"repository … is not configured for this session"* and the proxy returns
+> **`Proxy error: repository not authorized`** (HTTP 502). **Do not reach for
+> the GitHub tools (or `mcp__claude-code-remote__add_repo`) to inspect a
+> sibling.** budget and notes are public open source, so **clone the sibling
+> directly from github.com over plain HTTPS `git`** — that path is not gated by
+> the proxy allow-list — and read it from `/tmp` with the normal file tools:
 
 ```sh
+# budget:
 git clone --depth 1 https://github.com/niclaslindstedt/budget.git /tmp/budget
+# notes:
+git clone https://github.com/niclaslindstedt/notes.git /tmp/notes
 ```
 
-If even that is blocked (no outbound network at all), ask the user to add
-`niclaslindstedt/budget` to the session's repository scope, or to paste the
-relevant files — don't guess at budget's implementation from memory.
+> Drop `--depth 1` (or use `--depth 50`) when the user points you at a specific
+> commit/PR, so `git log`/`git show` can reach it.
 
-Clone fresh each run (`rm -rf /tmp/budget` first if it exists) so you study
+If even that is blocked (no outbound network at all), ask the user to paste the
+relevant files — don't guess at the sibling's implementation from memory, and
+don't fall back to the scope-locked GitHub tools.
+
+Clone fresh each run (`rm -rf /tmp/<sibling>` first if it exists) so you study
 current truth, and clone to `/tmp`, never inside this repo's working tree. When
-the user names a specific commit or PR ("the redesigned toast from #1054"),
-`git log`/`git show` it in `/tmp/budget` to read the exact diff before porting.
+the user names a specific commit or PR ("the redesigned action bar from #112"),
+`git log`/`git show` it in `/tmp/<sibling>` to read the exact diff before
+porting.
 
-## Step 1 — Locate the feature in budget
+## Step 1 — Locate the feature in the sibling
 
-Find every file the feature touches before copying anything. budget's tree is
-organized by concern, the same as ours:
+Find every file the feature touches before copying anything. Each sibling's tree
+is organized by concern, the same as ours:
 
 ```sh
-cd /tmp/budget
-ls src                       # components/ hooks/ data/ storage/ i18n/ seo/ styles/ ...
-ls src/components            # presentational components + AppShell host live here
+cd /tmp/<sibling>
+ls src                       # components|ui/ hooks/ domain|data/ storage/ i18n/ ...
 rg -l "<FeatureName>" src     # ripgrep the term and the component name
 ```
 
-Read `/tmp/budget/AGENTS.md` and `/tmp/budget/docs/` first — budget keeps a
+Read `/tmp/<sibling>/AGENTS.md` and `/tmp/<sibling>/docs/` first — they keep a
 `docs/dictionary.md` + `docs/overview.md` pair (same as ours) that maps user
 vocabulary to concrete files. Use it to resolve what the user actually means.
 
