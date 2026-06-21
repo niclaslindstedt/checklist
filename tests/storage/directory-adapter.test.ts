@@ -36,6 +36,24 @@ class MemoryFileStore implements FileStore {
   }
 }
 
+// A MemoryFileStore whose next `list()` can be made to throw a raw network
+// error, modelling a save attempted while the link is flaky: `save` rejects
+// before writing a byte, yet (in reality) the underlying request can still
+// commit server-side — the lost-response write that drives phantom conflicts.
+class FlakyFileStore extends MemoryFileStore {
+  private failListOnce = false;
+  failNextList(): void {
+    this.failListOnce = true;
+  }
+  override async list(): Promise<FileEntry[]> {
+    if (this.failListOnce) {
+      this.failListOnce = false;
+      throw new TypeError("Load failed");
+    }
+    return super.list();
+  }
+}
+
 const snapshot: Snapshot = {
   templates: [
     {
@@ -260,6 +278,68 @@ describe("directory adapter", () => {
     const resolved = await adapter.save(serialize(withBread), first.revision);
     expect(resolved.revision).not.toBe(landed.revision);
     const loaded = await adapter.load();
+    expect(
+      parse(loaded!.text).checklists[0]!.items.map((i) => i.title),
+    ).toEqual(["Milk", "Eggs", "Bread"]);
+  });
+
+  // The failure the field logs exposed: the lost-response write happens during
+  // an *offline* attempt, where `store.list()` throws before the adapter writes
+  // a byte — so a history recorded only on the post-list path never captures
+  // it. The document must still be remembered (recorded up front, before the
+  // network round-trip) so the later online save recognises the remote as our
+  // own earlier write instead of surfacing a phantom conflict.
+  it("remembers a write attempted while offline so a later save doesn't conflict over it", async () => {
+    const store = new FlakyFileStore();
+    const adapter = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "Memory",
+    });
+    const first = await adapter.save(serialize(snapshot));
+
+    // The user adds "Eggs" → docB and saves, but the link is flaky: `list()`
+    // throws, so this attempt rejects before the adapter writes anything.
+    const withEggs = {
+      ...snapshot,
+      checklists: [
+        {
+          ...snapshot.checklists[0]!,
+          items: [
+            ...snapshot.checklists[0]!.items,
+            { id: "2", title: "Eggs", checked: false },
+          ],
+        },
+      ],
+    };
+    store.failNextList();
+    await expect(
+      adapter.save(serialize(withEggs), first.revision),
+    ).rejects.toBeInstanceOf(TypeError);
+
+    // …yet the underlying request committed server-side (the lost response).
+    // Model that landing with a separate adapter laying down docB's bytes.
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(withEggs),
+    );
+
+    // The user adds "Bread" → docC and saves online, still basing on the stale
+    // `first.revision`. The remote holds docB — which this device *tried* to
+    // write while offline — so it must write through, not conflict.
+    const withBread = {
+      ...withEggs,
+      checklists: [
+        {
+          ...withEggs.checklists[0]!,
+          items: [
+            ...withEggs.checklists[0]!.items,
+            { id: "3", title: "Bread", checked: false },
+          ],
+        },
+      ],
+    };
+    const resolved = await adapter.save(serialize(withBread), first.revision);
+    const loaded = await adapter.load();
+    expect(resolved.revision).toBe(loaded!.revision);
     expect(
       parse(loaded!.text).checklists[0]!.items.map((i) => i.title),
     ).toEqual(["Milk", "Eggs", "Bread"]);

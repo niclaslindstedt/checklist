@@ -103,16 +103,18 @@ export function createDirectoryAdapter(
   let lastFoldersJson: string | null = null;
 
   // Load-equivalent forms (see `loadEquivalent`) of the documents this adapter
-  // has attempted to write this session, newest last. A flaky link can land a
-  // write server-side while losing the response, so the device keeps basing on
-  // the stale revision; when a later save sees the aggregate revision "move",
-  // the remote holds one of *these* — our own earlier write, not another
-  // device's edit. Matching the remote against this whole history (not only the
-  // bytes currently being written) is what stops a burst of edits made *after*
-  // the lost response from surfacing a phantom conflict over the user's own
-  // work — the single-device case where the local document has already moved
-  // ahead of what actually landed. Plaintext only: encrypted envelopes carry a
-  // random IV, so two envelopes of the same document never compare equal.
+  // has *attempted* to write this session, newest last — recorded up front in
+  // `save`, before the network round-trip, so even an attempt that throws still
+  // enters the history (see the note there). A flaky link can land a write
+  // server-side while losing the response, so the device keeps basing on the
+  // stale revision; when a later save sees the aggregate revision "move", the
+  // remote holds one of *these* — our own earlier write, not another device's
+  // edit. Matching the remote against this whole history (not only the bytes
+  // currently being written) is what stops a burst of edits made *after* the
+  // lost response from surfacing a phantom conflict over the user's own work —
+  // the single-device case where the local document has already moved ahead of
+  // what actually landed. Plaintext only: encrypted envelopes carry a random
+  // IV, so two envelopes of the same document never compare equal.
   const recentWrites: string[] = [];
   function rememberWrite(equivalent: string): void {
     if (recentWrites[recentWrites.length - 1] === equivalent) return;
@@ -239,6 +241,16 @@ export function createDirectoryAdapter(
     const writingEquivalent = isEncryptedEnvelope(text)
       ? null
       : loadEquivalent(text);
+    // Record the *intended* write before touching the network. A lost-response
+    // write — the whole reason phantom conflicts arise — happens on a flaky
+    // link, where this save throws (often from `store.list()` below, before a
+    // single byte is written) yet the underlying request still commits server
+    // side. If we only remembered writes whose `store.list()` succeeded, the
+    // offline attempts that actually became the lost-response write would never
+    // enter the history, so the later online save couldn't recognise the remote
+    // as our own and would surface a phantom conflict. Remembering up front
+    // means every document this device tried to push is matchable later.
+    if (writingEquivalent !== null) rememberWrite(writingEquivalent);
     const before = await store.list();
     if (baseRevision !== undefined) {
       const current = aggregateRevision(before);
@@ -265,7 +277,6 @@ export function createDirectoryAdapter(
             log.info(
               "save: remote already holds these bytes — adopting revision",
             );
-            rememberWrite(writingEquivalent);
             return { text, revision: current };
           }
           if (recentWrites.includes(remoteDoc)) {
@@ -290,7 +301,6 @@ export function createDirectoryAdapter(
         }
       }
     }
-    if (writingEquivalent !== null) rememberWrite(writingEquivalent);
 
     const existingMd = new Set(
       before.map((e) => e.path).filter(isMarkdownPath),
