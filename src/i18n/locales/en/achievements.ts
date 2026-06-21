@@ -153,9 +153,10 @@ const achievements = {
     },
     nestEgg: {
       name: "Nest Egg",
-      condition: "Drop one item onto another to make it a sub-item.",
+      condition:
+        "Make an item a sub-item — drag it onto another, or use Add sub-item.",
       learnMore:
-        "Drag an item and release it over the middle of another to tuck it underneath as a sub-item — drop near an edge to drop it alongside instead. A parent indents its children and carries an expand caret to fold them away; checking the parent checks the whole group, and checked items sink to the bottom within each sub-list of their own.",
+        "Drag an item and release it over the middle of another to tuck it underneath as a sub-item — drop near an edge to drop it alongside instead. Or, while editing an item, tap Add sub-item to start a composer nested right under it. A parent indents its children and carries an expand caret to fold them away; checking the parent checks the whole group, and checked items sink to the bottom within each sub-list of their own.",
     },
     cleanSlate: {
       name: "Clean Slate",

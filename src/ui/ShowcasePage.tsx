@@ -89,8 +89,9 @@ export function ShowcasePage() {
             </li>
             <li>
               <strong className="text-fg-bright">Nest sub-items</strong> — drag
-              one item onto another to tuck it underneath; a parent indents its
-              children, folds them away, and checking it checks the whole group.
+              one item onto another, or use &ldquo;Add sub-item&rdquo; while
+              editing, to tuck it underneath; a parent indents its children,
+              folds them away, and checking it checks the whole group.
             </li>
             <li>
               <strong className="text-fg-bright">Reuse templates</strong> — turn

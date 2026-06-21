@@ -234,6 +234,57 @@ describe("ChecklistRow editing", () => {
     expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
   });
 
+  it("commits and opens a sub-item composer from the Add-sub-item button", () => {
+    const onEdit = vi.fn();
+    const onAddChild = vi.fn();
+    renderRow({ onEdit, onAddChild });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Clothes");
+    fireEvent.click(screen.getByRole("button", { name: "Add sub-item" }));
+
+    // The title edit lands first, then the parent is asked to nest under it.
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Clothes" });
+    expect(onAddChild).toHaveBeenCalledWith("i1");
+  });
+
+  it("offers no Add-sub-item button when nesting isn't wired", () => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    expect(screen.queryByRole("button", { name: "Add sub-item" })).toBeNull();
+  });
+
+  it("keeps Enter inside the sub-list for a nested row", () => {
+    // A nested row (it has a parent) routes the Enter-chain to another sibling
+    // sub-item rather than jumping out to a top-level draft.
+    const onAddAfter = vi.fn();
+    const onAddChild = vi.fn();
+    renderRow({ parentId: "parent-1", onAddAfter, onAddChild });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Kid");
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onAddChild).toHaveBeenCalledWith("parent-1");
+    expect(onAddAfter).not.toHaveBeenCalled();
+  });
+
+  it("chains a top-level draft from Enter on a top-level row", () => {
+    const onAddAfter = vi.fn();
+    const onAddChild = vi.fn();
+    renderRow({ onAddAfter, onAddChild });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLElement;
+    setText(input, "Top");
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onAddAfter).toHaveBeenCalledTimes(1);
+    expect(onAddChild).not.toHaveBeenCalled();
+  });
+
   it("reveals a body on the first title tap, then edits on the second", () => {
     const onEdit = vi.fn();
     renderRow({ item: { ...item, notes: "**bold** note" }, onEdit });

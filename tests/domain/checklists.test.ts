@@ -96,6 +96,43 @@ describe("free-standing checklist item operations", () => {
     expect(c.items.map((i) => i.id)).toEqual(["i2", "i1"]);
   });
 
+  it("nests a new item under a parent when given a parentId", () => {
+    let c = addItem(base, { id: "p", title: "Parent" }, NOW);
+    c = addItem(c, { id: "k1", title: "Kid 1" }, NOW, "bottom", "p");
+    c = addItem(c, { id: "k2", title: "Kid 2" }, NOW, "bottom", "p");
+    // Stays a single top-level item carrying both children, in order.
+    expect(c.items.map((i) => i.id)).toEqual(["p"]);
+    expect(c.items[0]?.children?.map((i) => i.id)).toEqual(["k1", "k2"]);
+    expect(c.items[0]?.children?.[0]).toEqual({
+      id: "k1",
+      title: "Kid 1",
+      checked: false,
+    });
+  });
+
+  it("honours 'top' position within a parent's children", () => {
+    let c = addItem(base, { id: "p", title: "Parent" }, NOW);
+    c = addItem(c, { id: "k1", title: "Kid 1" }, NOW, "bottom", "p");
+    c = addItem(c, { id: "k2", title: "Kid 2" }, NOW, "top", "p");
+    expect(c.items[0]?.children?.map((i) => i.id)).toEqual(["k2", "k1"]);
+  });
+
+  it("nests under a deeper sub-item too", () => {
+    let c = addItem(base, { id: "p", title: "Parent" }, NOW);
+    c = addItem(c, { id: "k", title: "Kid" }, NOW, "bottom", "p");
+    c = addItem(c, { id: "g", title: "Grandkid" }, NOW, "bottom", "k");
+    expect(c.items[0]?.children?.[0]?.children?.map((i) => i.id)).toEqual([
+      "g",
+    ]);
+  });
+
+  it("falls back to a top-level add when the parentId is unknown", () => {
+    let c = addItem(base, { id: "i1", title: "A" }, NOW);
+    c = addItem(c, { id: "i2", title: "B" }, NOW, "bottom", "ghost");
+    expect(c.items.map((i) => i.id)).toEqual(["i1", "i2"]);
+    expect(c.items[1]?.children).toBeUndefined();
+  });
+
   it("archives an item without removing it, hiding it from the view", () => {
     const withItem = addItem(base, { id: "i1", title: "A" }, NOW);
     const archived = setArchived(withItem, "i1", true, NOW);
@@ -271,6 +308,32 @@ describe("addItems", () => {
 
   it("is a no-op (same reference) when given no items", () => {
     expect(addItems(base, [], NOW)).toBe(base);
+  });
+
+  it("appends imported items under a parent when given a parentId", () => {
+    const seeded = addItem(base, { id: "p", title: "Parent" }, NOW);
+    const next = addItems(
+      seeded,
+      [
+        { id: "k1", title: "Milk", checked: false },
+        { id: "k2", title: "Bread", checked: true },
+      ],
+      NOW,
+      "p",
+    );
+    expect(next.items.map((i) => i.id)).toEqual(["p"]);
+    expect(next.items[0]?.children?.map((i) => i.id)).toEqual(["k1", "k2"]);
+  });
+
+  it("falls back to a top-level append when the parentId is unknown", () => {
+    const seeded = addItem(base, { id: "i0", title: "Existing" }, NOW);
+    const next = addItems(
+      seeded,
+      [{ id: "i1", title: "Milk", checked: false }],
+      NOW,
+      "ghost",
+    );
+    expect(next.items.map((i) => i.id)).toEqual(["i0", "i1"]);
   });
 });
 

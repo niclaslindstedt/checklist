@@ -222,26 +222,38 @@ export function nextChecklistName(
 /**
  * Add a fresh, unchecked item to the list. `position` controls where it
  * lands — appended to the bottom (the default) or prepended to the top.
+ *
+ * Pass `parentId` to nest the new item as a sub-item of an existing item
+ * instead of dropping it at the top level — the "add sub-item" affordance
+ * in the row editor uses this so a checklist can grow its tree without the
+ * drag-to-nest gesture. `position` applies within the parent's children too.
+ * A `parentId` that isn't in the tree falls back to a top-level add, so an
+ * item is never silently lost.
  */
 export function addItem(
   checklist: Checklist,
   item: { id: string; title: string },
   now: string,
   position: "top" | "bottom" = "bottom",
+  parentId?: string,
 ): Checklist {
   const next: ChecklistItem = {
     id: item.id,
     title: item.title.trim(),
     checked: false,
   };
-  return {
-    ...checklist,
-    items:
-      position === "top"
-        ? [next, ...checklist.items]
-        : [...checklist.items, next],
-    updatedAt: now,
-  };
+  const place = (list: readonly ChecklistItem[]): ChecklistItem[] =>
+    position === "top" ? [next, ...list] : [...list, next];
+  if (parentId) {
+    const items = updateItem(checklist.items, parentId, (parent) =>
+      withChildren(parent, place(parent.children ?? [])),
+    );
+    if (items !== checklist.items) {
+      return { ...checklist, items, updatedAt: now };
+    }
+    // Parent gone — fall through to a top-level add rather than drop the item.
+  }
+  return { ...checklist, items: place(checklist.items), updatedAt: now };
 }
 
 /**
@@ -249,14 +261,27 @@ export function addItem(
  * any `required` flag / `notes`) rather than forcing them unchecked the way
  * `addItem` does. Backs the "paste a markdown checklist" import: the parsed
  * items land at the bottom of the list, so an existing list is added to, not
- * replaced. A no-op (empty `items`) returns the same checklist untouched.
+ * replaced. Pass `parentId` to append them as sub-items of an existing item
+ * (the in-row sub-item composer pastes there); an unknown `parentId` falls
+ * back to a top-level append. A no-op (empty `items`) returns the same
+ * checklist untouched.
  */
 export function addItems(
   checklist: Checklist,
   items: readonly ChecklistItem[],
   now: string,
+  parentId?: string,
 ): Checklist {
   if (items.length === 0) return checklist;
+  if (parentId) {
+    const next = updateItem(checklist.items, parentId, (parent) =>
+      withChildren(parent, [...(parent.children ?? []), ...items]),
+    );
+    if (next !== checklist.items) {
+      return { ...checklist, items: next, updatedAt: now };
+    }
+    // Parent gone — fall through to a top-level append.
+  }
   return {
     ...checklist,
     items: [...checklist.items, ...items],

@@ -42,7 +42,9 @@ import { PlusIcon } from "./icons.tsx";
 //     the key held and you walk up the list erasing lines as you go.
 //
 // The "Add note" affordance beneath the title is the second way into the
-// body, alongside Shift+Enter.
+// body, alongside Shift+Enter. Beside it, "Add sub-item" commits the edit and
+// opens a composer nested under this item (`onAddChild`) — the no-drag way to
+// grow the tree.
 
 export function ChecklistRowEditor({
   item,
@@ -50,6 +52,7 @@ export function ChecklistRowEditor({
   onCancel,
   onToggle,
   onAddAfter,
+  onAddChild,
   onBackspaceEmpty,
   focusBody = false,
   notesDisabled = false,
@@ -65,6 +68,12 @@ export function ChecklistRowEditor({
    * the add button.
    */
   onAddAfter?: () => void;
+  /**
+   * Commit the edit and open a sub-item composer nested under this item —
+   * wired to the "Add sub-item" button so a checklist can grow its tree
+   * without the drag-to-nest gesture. Omitted when nesting isn't offered.
+   */
+  onAddChild?: () => void;
   /**
    * Backspace was pressed at the start of an already-empty title (with no
    * body), so the user means to erase this line and back up into the one
@@ -154,6 +163,14 @@ export function ChecklistRowEditor({
     requestAnimationFrame(() => focusAtEnd(bodyRef.current));
   };
 
+  // Commit whatever's been typed, then hand off to the parent so a sub-item
+  // composer opens nested under this item — the title edit lands first so the
+  // user's last keystrokes aren't dropped on the way into the new draft.
+  const addChild = () => {
+    submit();
+    onAddChild?.();
+  };
+
   const onTitleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -225,7 +242,7 @@ export function ChecklistRowEditor({
           className="min-w-0 flex-1 border-0 bg-transparent text-fg-bright outline-none"
         />
       </div>
-      {bodyShown ? (
+      {bodyShown && (
         // The wrapper clips the field during the grow-in reveal (see
         // `note-reveal` in theme.css); `ml-8` lines the note up under the title.
         <div
@@ -241,21 +258,36 @@ export function ChecklistRowEditor({
             className="max-h-72 min-h-32 w-full resize-none overflow-y-auto rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm break-words text-fg outline-none focus:border-accent"
           />
         </div>
-      ) : (
-        // With notes switched off there's no "Add note" path — the editor is
-        // title-only.
-        !notesDisabled && (
-          <button
-            type="button"
-            // Keep the press inside the editor so the blur-commit doesn't fire.
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={revealBody}
-            className="mb-1.5 ml-8 flex w-fit items-center gap-1 text-xs text-muted hover:text-fg"
-          >
-            <PlusIcon className="h-3.5 w-3.5" />
-            {t("app.addNote")}
-          </button>
-        )
+      )}
+      {/* The affordance row beneath the title: "Add a note" (until the body is
+          revealed or notes are off) and, to its right, "Add sub-item" which
+          commits and opens a nested composer. Both keep the press inside the
+          editor (mousedown preventDefault) so the blur-commit doesn't fire. */}
+      {(onAddChild || (!bodyShown && !notesDisabled)) && (
+        <div className="mb-1.5 ml-8 flex w-fit items-center gap-4 text-xs text-muted">
+          {!bodyShown && !notesDisabled && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={revealBody}
+              className="flex items-center gap-1 hover:text-fg"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              {t("app.addNote")}
+            </button>
+          )}
+          {onAddChild && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={addChild}
+              className="flex items-center gap-1 hover:text-fg"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              {t("app.addSubitem")}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
