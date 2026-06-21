@@ -74,6 +74,7 @@ export const DEFAULT_NAMESPACE: Namespace = {
 
 const LIST_KEY = "checklist:namespaces";
 const ACTIVE_KEY = "checklist:namespace:active";
+const ACTIVE_LIST_KEY_PREFIX = "checklist:list:active:";
 
 // Longest slug we mint. Long enough to stay readable as a folder name,
 // short enough to keep cloud paths well within every backend's limits.
@@ -221,6 +222,36 @@ export function getActiveNamespaceSlug(): string {
 
 export function setActiveNamespaceSlug(slug: string): void {
   write(ACTIVE_KEY, slug);
+}
+
+/**
+ * The id of the checklist the user last had open in `namespaceSlug`, or null
+ * when none was ever recorded (or it was cleared). Device-local and scoped per
+ * namespace — the same flavour of cursor as the active-namespace pointer above,
+ * so a reload or an app update lands back on the list the user was looking at
+ * instead of snapping to the first one. The caller still resolves it against
+ * the live document (the stored list may have been archived or removed on
+ * another device), so a stale id is harmless.
+ */
+export function getActiveChecklistId(namespaceSlug: string): string | null {
+  return read(ACTIVE_LIST_KEY_PREFIX + namespaceSlug);
+}
+
+/** Record (or, with `null`, forget) the active checklist for `namespaceSlug`. */
+export function setActiveChecklistId(
+  namespaceSlug: string,
+  id: string | null,
+): void {
+  const key = ACTIVE_LIST_KEY_PREFIX + namespaceSlug;
+  if (id === null) {
+    try {
+      if (typeof localStorage !== "undefined") localStorage.removeItem(key);
+    } catch (err) {
+      log.warn(`remove failed for ${key}`, err);
+    }
+    return;
+  }
+  write(key, id);
 }
 
 /**

@@ -614,11 +614,16 @@ document but drop out of the active view (see Archive view).
 ### Active checklist / active list
 
 The checklist the UI currently renders — `activeList`, resolved by
-`useChecklistLists` (`use-checklist-lists.ts`) from a device-local,
-in-memory `activeChecklistId`. The hook falls back to the first list
-(`doc.checklists[0]`) whenever the selection points at no surviving list
-— e.g. after a reload or a backend swap brought in a different document —
-so a stale selection never blanks the screen. The edit verbs
+`useChecklistLists` (`use-checklist-lists.ts`) from a device-local
+`activeChecklistId`. That selection is mirrored to a per-namespace cursor
+in localStorage (`getActiveChecklistId` / `setActiveChecklistId` in
+`storage/namespaces.ts`, keyed `checklist:list:active:<slug>`) so a reload
+or an app update lands back on the same list instead of snapping to the
+first one; switching namespace restores that namespace's own cursor. The
+hook falls back to the first list (`doc.checklists[0]`) whenever the
+selection points at no surviving list — e.g. a stale cursor whose list was
+archived or removed on another device, or a backend swap that brought in a
+different document — so a stale selection never blanks the screen. The edit verbs
 (`use-checklist-edits.ts`) mutate this list by id, and the views read its
 items. `withActiveList` (in `use-checklist-sync.ts`) guarantees the
 document always has at least one list to show, minting a default

@@ -184,6 +184,7 @@ function AppShell() {
     settings.addItemPosition,
     notify,
     settings.sortCheckedToBottom,
+    storage.activeNamespace,
   );
 
   // Achievements. The watcher records derived unlocks (first item, theme

@@ -8,11 +8,14 @@
 // persistence engine) so a new list-management feature lands here rather
 // than swelling the central `use-checklist.ts` composer. The persistence
 // engine (`setDoc` / `scheduleSave`) and the undo timeline (`record`) are
-// threaded in; the active-selection state lives here in memory — it is a
-// property of this view, not of the persisted document, so a reload simply
-// falls back to the first list.
+// threaded in; the active-selection state lives here — it is a property of this
+// view, not of the persisted document. It is mirrored to a device-local,
+// per-namespace cursor (`getActiveChecklistId` / `setActiveChecklistId`) so a
+// reload or an app update lands back on the same list instead of snapping to
+// the first one. A cursor that no longer resolves (the list was archived or
+// removed elsewhere) silently falls back to the first active list.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 
 import { unlock } from "../achievements/bus.ts";
@@ -33,6 +36,10 @@ import {
 } from "../domain/folders.ts";
 import type { Checklist, Snapshot } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
+import {
+  getActiveChecklistId,
+  setActiveChecklistId,
+} from "../storage/namespaces.ts";
 import type { Notify } from "./notify.ts";
 import { DEFAULT_LIST_NAME } from "./use-checklist-sync.ts";
 import { newId, now } from "./side-effects.ts";
@@ -129,13 +136,40 @@ export function useChecklistLists(deps: {
   notify: Notify;
   /** Translator for the action labels (also reused as the toast text). */
   t: TFunction;
+  /**
+   * The active namespace's slug. Scopes the device-local active-list cursor so
+   * each namespace remembers its own selection across reloads and app updates.
+   */
+  namespace: string;
 }): ChecklistLists {
-  const { doc, docRef, setDoc, scheduleSave, record, notify, t } = deps;
+  const { doc, docRef, setDoc, scheduleSave, record, notify, t, namespace } =
+    deps;
 
-  // Which list the user is looking at. Device-local and in-memory: a
-  // selection that points at no surviving list (after a reload or a backend
-  // swap brought in a different document) silently falls back to the first.
-  const [activeId, setActiveId] = useState<string | null>(null);
+  // Which list the user is looking at. Device-local, restored from the
+  // per-namespace cursor on mount: a selection that points at no surviving list
+  // (after a reload or a backend swap brought in a different document) silently
+  // falls back to the first.
+  const [activeId, setActiveIdState] = useState<string | null>(() =>
+    getActiveChecklistId(namespace),
+  );
+
+  // Persist every selection change so a reload / app update lands back on it.
+  const setActiveId = useCallback(
+    (id: string | null) => {
+      setActiveIdState(id);
+      setActiveChecklistId(namespace, id);
+    },
+    [namespace],
+  );
+
+  // Switching namespace swaps the underlying document; restore that
+  // namespace's own cursor rather than carrying the previous one over.
+  const lastNamespace = useRef(namespace);
+  useEffect(() => {
+    if (lastNamespace.current === namespace) return;
+    lastNamespace.current = namespace;
+    setActiveIdState(getActiveChecklistId(namespace));
+  }, [namespace]);
 
   // The sync engine guarantees the document always has at least one list
   // (`withActiveList`); the archive/delete verbs guarantee at least one is
@@ -155,7 +189,10 @@ export function useChecklistLists(deps: {
     [setDoc, scheduleSave, record],
   );
 
-  const selectChecklist = useCallback((id: string) => setActiveId(id), []);
+  const selectChecklist = useCallback(
+    (id: string) => setActiveId(id),
+    [setActiveId],
+  );
 
   const addChecklist = useCallback(() => {
     const prev = docRef.current;
@@ -170,7 +207,7 @@ export function useChecklistLists(deps: {
       t("toast.listCreated", { name: created.name }),
     );
     setActiveId(created.id);
-  }, [docRef, commit, t]);
+  }, [docRef, commit, t, setActiveId]);
 
   const renameChecklist = useCallback(
     (id: string, name: string) => {
@@ -213,7 +250,7 @@ export function useChecklistLists(deps: {
         setActiveId(remaining.find((c) => !c.archived)?.id ?? null);
       }
     },
-    [docRef, commit, notify, t, activeId],
+    [docRef, commit, notify, t, activeId, setActiveId],
   );
 
   const archiveChecklist = useCallback(
@@ -244,7 +281,7 @@ export function useChecklistLists(deps: {
         );
       }
     },
-    [docRef, commit, notify, t, activeId],
+    [docRef, commit, notify, t, activeId, setActiveId],
   );
 
   const unarchiveChecklist = useCallback(
@@ -266,7 +303,7 @@ export function useChecklistLists(deps: {
       // Jump straight to the freshly-restored list, the way adding one does.
       setActiveId(id);
     },
-    [docRef, commit, notify, t],
+    [docRef, commit, notify, t, setActiveId],
   );
 
   const createFolder = useCallback(
@@ -350,7 +387,7 @@ export function useChecklistLists(deps: {
       );
       setActiveId(created.id);
     },
-    [docRef, commit, t],
+    [docRef, commit, t, setActiveId],
   );
 
   const detachChecklistToNamespace = useCallback(
@@ -373,7 +410,7 @@ export function useChecklistLists(deps: {
         setActiveId(remaining.find((c) => !c.archived)?.id ?? null);
       }
     },
-    [docRef, commit, t, activeId],
+    [docRef, commit, t, activeId, setActiveId],
   );
 
   const summarize = (c: Checklist): ChecklistSummary => {
