@@ -89,12 +89,64 @@ export type DirectoryAdapterOptions = {
   id: StorageAdapter["id"];
   label: string;
   saveDebounceMs?: number;
+  /**
+   * Where to persist the phantom-conflict write log so it survives a reload.
+   * The lost-response writes that cause phantom conflicts are made *offline*;
+   * the device often reloads (and so re-creates this adapter, dropping the
+   * in-memory history) before it next reaches the backend, then loads a *stale*
+   * revision from the offline cache and sees the remote "move" to a write the
+   * previous session made. Persisting the log per (backend, namespace) lets the
+   * new session still recognise that write as its own. Omitted in tests that
+   * only exercise the in-memory path, and on platforms without `localStorage`.
+   */
+  writeLog?: WriteLogStore;
 };
+
+/** Per-(backend, namespace) persistence for the phantom-conflict write log. */
+export type WriteLogStore = {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  key: string;
+};
+
+/**
+ * Build the browser-backed write log for a backend + namespace, or `undefined`
+ * when `localStorage` isn't available (SSR, a locked-down embedding). Fingerprints
+ * are tiny, so this adds only a few hundred bytes per namespace.
+ */
+export function browserWriteLog(
+  id: string,
+  namespace: string,
+): WriteLogStore | undefined {
+  if (typeof localStorage === "undefined") return undefined;
+  return {
+    storage: localStorage,
+    key: `checklist:writelog:${id}:${namespace}`,
+  };
+}
+
+// A compact, dependency-free content fingerprint for the write history: the
+// string length plus two differently-seeded rolling hashes. Storing
+// fingerprints rather than whole documents keeps the persisted log tiny and
+// leaks no extra plaintext, while an accidental collision between two *distinct*
+// documents stays vanishingly unlikely — enough to tell this device's own
+// earlier write from another device's edit.
+function fingerprint(s: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0xc2b2ae35;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0x85ebca77) >>> 0;
+  }
+  return `${s.length}:${h1.toString(36)}:${h2.toString(36)}`;
+}
 
 export function createDirectoryAdapter(
   store: FileStore,
   options: DirectoryAdapterOptions,
 ): StorageAdapter {
+  const { writeLog } = options;
+
   // The canonical JSON of the folder registry as it currently stands on disk
   // (null = no `folders.json` sidecar exists). Set on every load and after
   // each write so `save` skips a redundant rewrite when the folders didn't
@@ -102,24 +154,45 @@ export function createDirectoryAdapter(
   // clearing.
   let lastFoldersJson: string | null = null;
 
-  // Order-independent canonical forms (see `comparable`) of the documents this
-  // adapter has *attempted* to write this session, newest last — recorded up
-  // front in `save`, before the network round-trip, so even an attempt that
-  // throws still enters the history (see the note there). A flaky link can land
-  // server-side while losing the response, so the device keeps basing on the
-  // stale revision; when a later save sees the aggregate revision "move", the
-  // remote holds one of *these* — our own earlier write, not another device's
-  // edit. Matching the remote against this whole history (not only the bytes
-  // currently being written) is what stops a burst of edits made *after* the
-  // lost response from surfacing a phantom conflict over the user's own work —
-  // the single-device case where the local document has already moved ahead of
-  // what actually landed. Plaintext only: encrypted envelopes carry a random
-  // IV, so two envelopes of the same document never compare equal.
-  const recentWrites: string[] = [];
-  function rememberWrite(equivalent: string): void {
-    if (recentWrites[recentWrites.length - 1] === equivalent) return;
-    recentWrites.push(equivalent);
+  // Fingerprints (see `fingerprint`) of the order-independent canonical form
+  // (see `comparable`) of every document this adapter has *attempted* to write,
+  // newest last — recorded up front in `save`, before the network round-trip,
+  // so even an attempt that throws still enters the history (see the note
+  // there), and persisted via `writeLog` so it survives the reload that
+  // otherwise wipes it. A flaky link can land a write server-side while losing
+  // the response, so the device keeps basing on the stale revision; when a
+  // later save (even one in a *later session*, after a reload that loaded a
+  // stale revision from the offline cache) sees the aggregate revision "move",
+  // the remote holds one of *these* — our own earlier write, not another
+  // device's edit. Matching the remote against this whole history is what stops
+  // a burst of edits made *after* the lost response from surfacing a phantom
+  // conflict over the user's own work. Plaintext only: encrypted envelopes
+  // carry a random IV, so two envelopes of the same document never compare
+  // equal, and nothing is recorded for them.
+  const recentWrites: string[] = loadWriteLog();
+  function loadWriteLog(): string[] {
+    if (!writeLog) return [];
+    try {
+      const raw = writeLog.storage.getItem(writeLog.key);
+      if (!raw) return [];
+      const arr: unknown = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.filter((x): x is string => typeof x === "string");
+    } catch {
+      return [];
+    }
+  }
+  function rememberWrite(fp: string): void {
+    if (recentWrites[recentWrites.length - 1] === fp) return;
+    recentWrites.push(fp);
     if (recentWrites.length > MAX_RECENT_WRITES) recentWrites.shift();
+    if (writeLog) {
+      try {
+        writeLog.storage.setItem(writeLog.key, JSON.stringify(recentWrites));
+      } catch {
+        // A full / unavailable localStorage just degrades to in-memory history.
+      }
+    }
   }
 
   // Read the folder registry sidecar, tolerating a missing / corrupt file by
@@ -260,12 +333,13 @@ export function createDirectoryAdapter(
     text: string,
     baseRevision?: string,
   ): Promise<StoredSnapshot> {
-    // The order-independent canonical form of the bytes we're about to write,
-    // for phantom-conflict comparison and the write history. Null for an
-    // encrypted envelope — its random IV makes byte comparison meaningless.
-    const writingEquivalent = isEncryptedEnvelope(text)
+    // The fingerprint of the order-independent canonical form of the bytes
+    // we're about to write, for phantom-conflict comparison and the write
+    // history. Null for an encrypted envelope — its random IV makes byte
+    // comparison meaningless.
+    const writingFingerprint = isEncryptedEnvelope(text)
       ? null
-      : comparable(loadEquivalent(text));
+      : fingerprint(comparable(loadEquivalent(text)));
     // Record the *intended* write before touching the network. A lost-response
     // write — the whole reason phantom conflicts arise — happens on a flaky
     // link, where this save throws (often from `store.list()` below, before a
@@ -275,7 +349,7 @@ export function createDirectoryAdapter(
     // enter the history, so the later online save couldn't recognise the remote
     // as our own and would surface a phantom conflict. Remembering up front
     // means every document this device tried to push is matchable later.
-    if (writingEquivalent !== null) rememberWrite(writingEquivalent);
+    if (writingFingerprint !== null) rememberWrite(writingFingerprint);
     const before = await store.list();
     if (baseRevision !== undefined) {
       const current = aggregateRevision(before);
@@ -294,12 +368,12 @@ export function createDirectoryAdapter(
         // write lands, yet the client never learns the new revision and keeps
         // basing on the stale one. So the next save sees the revision "move"
         // and would surface a conflict over the user's own edit.
-        if (writingEquivalent !== null) {
+        if (writingFingerprint !== null) {
           // Compare on the same order-independent footing the history is kept
           // in: the remote was rebuilt from a file listing whose order need not
           // match our in-memory document's.
-          const remoteComparable = comparable(remoteDoc);
-          if (writingEquivalent === remoteComparable) {
+          const remoteFingerprint = fingerprint(comparable(remoteDoc));
+          if (writingFingerprint === remoteFingerprint) {
             // The remote already holds exactly the document we're about to
             // write: our own lost-response write of *these* bytes is what moved
             // the revision. Adopt it and report success — nothing left to write.
@@ -308,7 +382,7 @@ export function createDirectoryAdapter(
             );
             return { text, revision: current };
           }
-          if (recentWrites.includes(remoteComparable)) {
+          if (recentWrites.includes(remoteFingerprint)) {
             // The remote holds an *earlier* write of ours (the lost-response
             // one) and the user has since edited further, so the local document
             // has moved ahead of what landed. Still not another device — write

@@ -67,6 +67,21 @@ class ReorderingFileStore extends MemoryFileStore {
   }
 }
 
+// Minimal in-memory `Storage` for the persisted write log — survives across
+// adapter instances the way `localStorage` survives across a page reload.
+class MemoryStorage {
+  private map = new Map<string, string>();
+  getItem(key: string): string | null {
+    return this.map.get(key) ?? null;
+  }
+  setItem(key: string, value: string): void {
+    this.map.set(key, value);
+  }
+  removeItem(key: string): void {
+    this.map.delete(key);
+  }
+}
+
 const snapshot: Snapshot = {
   templates: [
     {
@@ -449,6 +464,103 @@ describe("directory adapter", () => {
     const resolved = await adapter.save(serialize(evenMore), first.revision);
     const loaded = await adapter.load();
     expect(resolved.revision).toBe(loaded!.revision);
+  });
+
+  // The cross-reload case from the field logs: a lost-response write commits in
+  // one session, the app reloads (a fresh adapter with no in-memory history)
+  // and loads a *stale* revision from the offline cache, then the user keeps
+  // editing. The persisted write log lets the new session still recognise the
+  // remote as its own earlier write instead of surfacing a phantom conflict.
+  it("recognises a write from before a reload via the persisted write log", async () => {
+    const storage = new MemoryStorage();
+    const store = new MemoryFileStore();
+    const writeLog = { storage, key: "checklist:writelog:dev:default" };
+
+    // Session A: save a baseline, then write docB (recorded + persisted). docB
+    // lands but — as in the field — the device never carries its revision into
+    // the next session (the offline cache kept the *baseline* revision).
+    const sessionA = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      writeLog,
+    });
+    const first = await sessionA.save(serialize(twoLists));
+    const withMore = {
+      ...twoLists,
+      checklists: [
+        {
+          ...twoLists.checklists[0]!,
+          items: [
+            ...twoLists.checklists[0]!.items,
+            { id: "2", title: "Eggs", checked: false },
+          ],
+        },
+        twoLists.checklists[1]!,
+      ],
+    };
+    await sessionA.save(serialize(withMore), first.revision);
+
+    // Session B: a brand-new adapter (the reload) over the same backend and the
+    // same persisted log, with no in-memory history. The user keeps editing
+    // from the stale baseline revision.
+    const sessionB = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      writeLog,
+    });
+    const evenMore = {
+      ...withMore,
+      checklists: [
+        {
+          ...withMore.checklists[0]!,
+          items: [
+            ...withMore.checklists[0]!.items,
+            { id: "3", title: "Bread", checked: false },
+          ],
+        },
+        withMore.checklists[1]!,
+      ],
+    };
+    // The remote holds docB (session A's write). Without the persisted log this
+    // is "unrecognised" and conflicts; with it, docC writes through.
+    const resolved = await sessionB.save(serialize(evenMore), first.revision);
+    const loaded = await sessionB.load();
+    expect(resolved.revision).toBe(loaded!.revision);
+  });
+
+  // A genuinely different remote document — one this device never wrote, in any
+  // session — is still a real conflict even with the persisted log in play.
+  it("still conflicts on a genuinely foreign document despite the persisted log", async () => {
+    const storage = new MemoryStorage();
+    const store = new MemoryFileStore();
+    const writeLog = { storage, key: "checklist:writelog:dev:default" };
+    const ours = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      writeLog,
+    });
+    const first = await ours.save(serialize(twoLists));
+    // Another device (its own adapter, no shared log) writes a different doc.
+    const theirs = {
+      ...twoLists,
+      checklists: [
+        { ...twoLists.checklists[0]!, name: "Theirs" },
+        twoLists.checklists[1]!,
+      ],
+    };
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(theirs),
+      first.revision,
+    );
+    // A fresh session of ours (persisted log loaded) must still conflict.
+    const reopened = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      writeLog,
+    });
+    await expect(
+      reopened.save(serialize(twoLists), first.revision),
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 
   // The guard must not over-reach: a genuinely different remote document from

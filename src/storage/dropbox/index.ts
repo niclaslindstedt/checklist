@@ -18,7 +18,10 @@
 
 import { createLogger } from "../../dev/logger.ts";
 import { AuthError, RateLimitError, type StorageAdapter } from "../adapter.ts";
-import { createDirectoryAdapter } from "../directory-adapter.ts";
+import {
+  browserWriteLog,
+  createDirectoryAdapter,
+} from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG, namespaceCloudFolder } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
@@ -150,6 +153,7 @@ export function createDropboxAdapter(
     id: "dropbox",
     label: "Dropbox",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
+    writeLog: browserWriteLog("dropbox", namespace),
   });
 }
 
