@@ -9,14 +9,19 @@
 // level). So reordering and nesting are the same gesture; on release the
 // caller commits through `onReorder(draggedId, targetId, mode)`.
 //
-// Row positions are measured once at pointer-down and the drop target is
-// computed from that static snapshot plus the finger position, so the math
-// stays stable until the single commit on drop. The lifted row is positioned
-// absolutely against the list, so the view marks its `<ul>` `position:
-// relative`; its `top` is the row's offset captured at pointer-down.
+// Row positions are snapshotted once per drag and the drop target is computed
+// from that static geometry plus the finger position, so the math stays stable
+// until the single commit on drop. The snapshot is taken *after* the picked-up
+// row lifts out of flow (and its subtree hides) — with the dragged row excluded
+// — so it mirrors the collapsed layout actually on screen; measuring against
+// the pre-lift positions would leave the row's vacated slot a dead zone it
+// could never be dropped back into. The lifted row is positioned absolutely
+// against the list, so the view marks its `<ul>` `position: relative`; its
+// `top` is the row's offset captured at pointer-down.
 
 import {
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -46,7 +51,8 @@ const DRAG_SCALE = 0.92;
 // edit — only the row whose item changed reconciles.
 const IDLE_ROW_STYLE: CSSProperties = Object.freeze({});
 
-interface Rect {
+/** A measured row's vertical extent in viewport coordinates. */
+export interface Rect {
   id: string;
   top: number;
   height: number;
@@ -74,6 +80,13 @@ export interface ListReorder {
   dropTarget: DropTarget | null;
   rowStyle: (id: string) => CSSProperties;
   dragHandleProps: (id: string) => DragHandleProps;
+  /**
+   * Abandon any in-progress drag without committing a move and release the
+   * pointer capture. For tearing the gesture down when something else seizes
+   * the screen mid-drag (e.g. a sync-conflict modal) — otherwise the lifted
+   * row and its captured pointer sit frozen on top of it.
+   */
+  cancel: () => void;
 }
 
 export function useListReorder(
@@ -91,7 +104,14 @@ export function useListReorder(
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
   const rects = useRef<Rect[]>([]);
-  const dragIndex = useRef(-1);
+  // The id of the row currently picked up (null when idle). Kept as its own
+  // ref rather than an index into `rects` because, once the drag arms, `rects`
+  // is re-snapshotted *without* the dragged row (see the layout effect below),
+  // so an index into it would no longer point at the right entry.
+  const draggedIdRef = useRef<string | null>(null);
+  // The element holding the pointer capture for the active drag, so `cancel`
+  // can release it even though it never sees the originating event.
+  const captureEl = useRef<HTMLElement | null>(null);
   // Offset of the lifted row's top within the (relatively positioned) list,
   // captured at pointer-down so the floating copy can be placed absolutely.
   const dragTop = useRef(0);
@@ -118,15 +138,45 @@ export function useListReorder(
     return out;
   }, []);
 
+  // A second, dragged-row-excluded snapshot of the list taken once the row has
+  // lifted out of flow and its subtree has hidden — so the drop math runs
+  // against the collapsed layout that's actually on screen, not the pre-lift
+  // geometry. Hidden subtree rows collapse to zero height; skip them too.
+  const measureCollapsed = useCallback((): Rect[] => {
+    const el = containerRef.current;
+    if (!el) return [];
+    const out: Rect[] = [];
+    for (const child of Array.from(el.children)) {
+      const id = (child as HTMLElement).dataset.reorderId;
+      if (!id || id === draggedIdRef.current) continue;
+      const r = child.getBoundingClientRect();
+      if (r.height === 0) continue;
+      out.push({ id, top: r.top, height: r.height });
+    }
+    return out;
+  }, []);
+
   const reset = useCallback(() => {
     setDraggingId(null);
     setDelta(0);
     setDropTarget(null);
     dropTargetRef.current = null;
-    dragIndex.current = -1;
+    draggedIdRef.current = null;
+    captureEl.current = null;
     pointerId.current = null;
     armed.current = false;
   }, []);
+
+  // Re-snapshot the collapsed layout the first time each drag arms the lifted
+  // row. `draggingId` flips non-null inside `onPointerDown`, and this runs
+  // after that render commits — while `dropTarget` is still null, so no ghost
+  // has spliced into the flow yet. Measuring here (and only here) keeps the
+  // geometry stable for the rest of the gesture, the way a once-per-drag
+  // snapshot is meant to.
+  useLayoutEffect(() => {
+    if (draggingId === null) return;
+    rects.current = measureCollapsed();
+  }, [draggingId, measureCollapsed]);
 
   const onPointerDown = useCallback(
     (id: string) => (e: PointerEvent<HTMLElement>) => {
@@ -136,8 +186,10 @@ export function useListReorder(
       const measured = measure();
       const index = measured.findIndex((r) => r.id === id);
       if (index === -1) return;
+      // Seed `rects` with the pre-lift geometry as an immediate fallback; the
+      // layout effect re-snapshots the collapsed layout once the row lifts.
       rects.current = measured;
-      dragIndex.current = index;
+      draggedIdRef.current = id;
       const node = containerRef.current?.querySelector<HTMLElement>(
         `[data-reorder-id="${CSS.escape(id)}"]`,
       );
@@ -145,6 +197,7 @@ export function useListReorder(
       startY.current = e.clientY;
       pointerId.current = e.pointerId;
       armed.current = false;
+      captureEl.current = e.currentTarget;
       e.currentTarget.setPointerCapture(e.pointerId);
       setDraggingId(id);
       setDelta(0);
@@ -154,46 +207,16 @@ export function useListReorder(
     [measure],
   );
 
-  // Resolve the finger position to a drop target: the row it's over, split
-  // into before / into / after zones. Rows the dragged item can't land on
-  // (itself or its own descendants) are skipped.
   const computeDropTarget = useCallback(
-    (draggedId: string, y: number): DropTarget | null => {
-      const list = rects.current;
-      let candidate: DropTarget | null = null;
-      for (const r of list) {
-        if (y < r.top || y >= r.top + r.height) continue;
-        if (r.id !== draggedId && canDropRef.current(draggedId, r.id)) {
-          const rel = (y - r.top) / r.height;
-          const mode: DropMode =
-            rel < EDGE_ZONE ? "before" : rel > 1 - EDGE_ZONE ? "after" : "into";
-          return { id: r.id, mode };
-        }
-        // Over the dragged row (or a forbidden one): fall back to the nearest
-        // droppable neighbour, before/after by which half the finger is in.
-        return nearestNeighbour(list, draggedId, r, y);
-      }
-      // Past the ends of the list: clamp to the first / last droppable row.
-      const first = list.find(
-        (r) => r.id !== draggedId && canDropRef.current(draggedId, r.id),
-      );
-      const last = [...list]
-        .reverse()
-        .find((r) => r.id !== draggedId && canDropRef.current(draggedId, r.id));
-      if (list.length > 0 && first && last) {
-        candidate =
-          y < list[0]!.top
-            ? { id: first.id, mode: "before" }
-            : { id: last.id, mode: "after" };
-      }
-      return candidate;
-    },
+    (draggedId: string, y: number): DropTarget | null =>
+      resolveDropTarget(rects.current, draggedId, y, canDropRef.current),
     [],
   );
 
   const onPointerMove = useCallback(
     (e: PointerEvent<HTMLElement>) => {
-      if (pointerId.current !== e.pointerId || dragIndex.current === -1) return;
+      if (pointerId.current !== e.pointerId || draggedIdRef.current === null)
+        return;
       e.stopPropagation();
       const d = e.clientY - startY.current;
       if (!armed.current) {
@@ -201,7 +224,7 @@ export function useListReorder(
         armed.current = true;
       }
       e.preventDefault();
-      const draggedId = rects.current[dragIndex.current]!.id;
+      const draggedId = draggedIdRef.current;
       const target = computeDropTarget(draggedId, e.clientY);
       setDelta(d);
       setDropTarget(target);
@@ -216,8 +239,7 @@ export function useListReorder(
       e.stopPropagation();
       if (e.currentTarget.hasPointerCapture(e.pointerId))
         e.currentTarget.releasePointerCapture(e.pointerId);
-      const draggedId =
-        dragIndex.current === -1 ? null : rects.current[dragIndex.current]!.id;
+      const draggedId = draggedIdRef.current;
       const target = dropTargetRef.current;
       const moved = armed.current;
       reset();
@@ -227,6 +249,20 @@ export function useListReorder(
     },
     [onReorder, reset],
   );
+
+  const cancel = useCallback(() => {
+    const el = captureEl.current;
+    const pid = pointerId.current;
+    if (el && pid !== null) {
+      try {
+        if (el.hasPointerCapture(pid)) el.releasePointerCapture(pid);
+      } catch {
+        // The capture may already be gone (the pointer was released between
+        // the conflict surfacing and this teardown) — nothing left to free.
+      }
+    }
+    reset();
+  }, [reset]);
 
   const rowStyle = useCallback(
     (id: string): CSSProperties => {
@@ -288,7 +324,52 @@ export function useListReorder(
     [onPointerDown, onPointerMove, onPointerUp],
   );
 
-  return { containerRef, draggingId, dropTarget, rowStyle, dragHandleProps };
+  return {
+    containerRef,
+    draggingId,
+    dropTarget,
+    rowStyle,
+    dragHandleProps,
+    cancel,
+  };
+}
+
+// Resolve a finger position to a drop target against a measured row list: the
+// row it's over, split into before / into / after zones, with rows the dragged
+// item can't land on (itself or its own descendants) skipped. Pure over the
+// passed geometry so it's unit-testable; the hook feeds it the collapsed,
+// dragged-row-excluded snapshot.
+export function resolveDropTarget(
+  list: readonly Rect[],
+  draggedId: string,
+  y: number,
+  canDrop: (draggedId: string, targetId: string) => boolean,
+): DropTarget | null {
+  for (const r of list) {
+    if (y < r.top || y >= r.top + r.height) continue;
+    if (r.id !== draggedId && canDrop(draggedId, r.id)) {
+      const rel = (y - r.top) / r.height;
+      const mode: DropMode =
+        rel < EDGE_ZONE ? "before" : rel > 1 - EDGE_ZONE ? "after" : "into";
+      return { id: r.id, mode };
+    }
+    // Over the dragged row (or a forbidden one): fall back to the nearest
+    // droppable neighbour, before/after by which half the finger is in.
+    return nearestNeighbour(list, draggedId, r, y);
+  }
+  // Past the ends of the list: clamp to the first / last droppable row.
+  const first = list.find(
+    (r) => r.id !== draggedId && canDrop(draggedId, r.id),
+  );
+  const last = [...list]
+    .reverse()
+    .find((r) => r.id !== draggedId && canDrop(draggedId, r.id));
+  if (list.length > 0 && first && last) {
+    return y < list[0]!.top
+      ? { id: first.id, mode: "before" }
+      : { id: last.id, mode: "after" };
+  }
+  return null;
 }
 
 // The nearest droppable row to the dragged one, picked when the finger sits

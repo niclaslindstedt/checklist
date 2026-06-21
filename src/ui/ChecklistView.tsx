@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { findItem, flattenForDisplay } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
@@ -99,6 +99,16 @@ function ChecklistViewImpl() {
     [items],
   );
   const reorderCtl = useListReorder(reorder, canDrop);
+
+  // A background save can collide with another device mid-drag, raising the
+  // non-dismissable conflict modal over the list. Tear the drag down when that
+  // happens: otherwise the lifted row keeps its pointer capture and floats
+  // frozen on top of the modal, swallowing the taps meant to resolve it.
+  const conflicted = sync?.status === "conflict";
+  const cancelDrag = reorderCtl.cancel;
+  useEffect(() => {
+    if (conflicted) cancelDrag();
+  }, [conflicted, cancelDrag]);
 
   // Desktop swaps each row's swipe-to-reveal gesture for a right-click menu
   // carrying the same archive / delete actions. `openMenu` is referentially
