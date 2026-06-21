@@ -24,6 +24,7 @@ import { useT } from "../i18n";
 import type { AddItemPosition } from "../settings/types.ts";
 import { type StorageAdapter } from "../storage/adapter.ts";
 import { BrowserLocalStorageAdapter } from "../storage/local/index.ts";
+import { DEFAULT_NAMESPACE_SLUG } from "../storage/namespaces.ts";
 import { type Notify, noopNotify } from "./notify.ts";
 import {
   type ChecklistEdits,
@@ -110,6 +111,7 @@ export function useChecklist(
   addItemPosition: AddItemPosition = "bottom",
   notify: Notify = noopNotify,
   sortCheckedToBottom = false,
+  namespace: string = DEFAULT_NAMESPACE_SLUG,
 ): UseChecklist {
   const t = useT();
 
@@ -183,6 +185,7 @@ export function useChecklist(
     record,
     notify,
     t,
+    namespace,
   });
   const list = lists.activeList;
 

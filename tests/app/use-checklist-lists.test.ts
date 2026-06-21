@@ -4,7 +4,7 @@
 // list, switching the active selection, and renaming. Uses an in-memory
 // adapter so the persisted bytes can be read back.
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { useChecklist } from "../../src/app/use-checklist.ts";
 import type {
@@ -323,6 +323,87 @@ describe("useChecklist multi-list verbs", () => {
     act(() => result.current.detachChecklistToNamespace(only, "Work"));
     expect(result.current.checklists).toHaveLength(1);
     expect(result.current.activeChecklistId).toBe(only);
+  });
+});
+
+describe("active-list cursor persistence", () => {
+  // Each test asserts a concrete persisted value, so start from a clean
+  // device-local cursor rather than whatever a sibling test left behind.
+  beforeEach(() => localStorage.clear());
+
+  it("lands back on the selected list after a remount (reload)", async () => {
+    const adapter = memoryAdapter();
+    const first = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    // Add a second list (it becomes active), then switch back to the first so
+    // the active selection is no longer the document's first list.
+    const firstId = first.result.current.activeChecklistId;
+    act(() => first.result.current.addChecklist());
+    await waitFor(() =>
+      expect(first.result.current.checklists).toHaveLength(2),
+    );
+    const secondId = first.result.current.activeChecklistId;
+    act(() => first.result.current.selectChecklist(secondId));
+    await waitFor(() =>
+      expect(first.result.current.activeChecklistId).toBe(secondId),
+    );
+    first.unmount();
+
+    // A fresh mount over the same backed bytes (a reload / app update) restores
+    // the saved cursor instead of snapping to the first list.
+    const second = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    expect(second.result.current.activeChecklistId).toBe(secondId);
+    expect(second.result.current.activeChecklistId).not.toBe(firstId);
+  });
+
+  it("scopes the cursor per namespace", async () => {
+    const adapter = memoryAdapter();
+    const first = renderHook(() =>
+      useChecklist(adapter, "bottom", undefined, false, "default"),
+    );
+    await act(async () => {});
+    act(() => first.result.current.addChecklist());
+    await waitFor(() =>
+      expect(first.result.current.checklists).toHaveLength(2),
+    );
+    const secondId = first.result.current.activeChecklistId;
+    first.unmount();
+
+    // A different namespace has its own cursor, so it falls back to the first
+    // list rather than inheriting the default namespace's selection.
+    const other = renderHook(() =>
+      useChecklist(adapter, "bottom", undefined, false, "work"),
+    );
+    await act(async () => {});
+    expect(other.result.current.activeChecklistId).not.toBe(secondId);
+    expect(other.result.current.activeChecklistId).toBe(
+      other.result.current.checklists[0]!.id,
+    );
+  });
+
+  it("falls back to the first list when the saved cursor no longer resolves", async () => {
+    const adapter = memoryAdapter();
+    const first = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    const firstId = first.result.current.activeChecklistId;
+    act(() => first.result.current.addChecklist());
+    await waitFor(() =>
+      expect(first.result.current.checklists).toHaveLength(2),
+    );
+    const secondId = first.result.current.activeChecklistId;
+    // Remove the selected list, then remount: the stale cursor resolves to the
+    // surviving first list.
+    act(() => first.result.current.removeChecklist(secondId));
+    await waitFor(() =>
+      expect(first.result.current.checklists).toHaveLength(1),
+    );
+    first.unmount();
+
+    const second = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    expect(second.result.current.activeChecklistId).toBe(firstId);
   });
 });
 

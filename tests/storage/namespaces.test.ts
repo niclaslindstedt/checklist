@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_NAMESPACE_SLUG,
   addNamespace,
+  getActiveChecklistId,
   getActiveNamespaceSlug,
   getNamespaces,
   hasLocalOnlyNamespaces,
@@ -14,6 +15,7 @@ import {
   removeNamespace,
   renameNamespace,
   serializeNamespaces,
+  setActiveChecklistId,
   setActiveNamespaceSlug,
   setNamespaceAppearance,
   slugify,
@@ -77,6 +79,25 @@ describe("namespaces registry", () => {
 
   it("rejects an empty name", () => {
     expect(() => addNamespace("   ")).toThrow();
+  });
+});
+
+describe("active-checklist cursor", () => {
+  it("returns null for a namespace with no recorded cursor", () => {
+    expect(getActiveChecklistId("default")).toBeNull();
+  });
+
+  it("round-trips a cursor scoped per namespace", () => {
+    setActiveChecklistId("default", "list-a");
+    setActiveChecklistId("work", "list-b");
+    expect(getActiveChecklistId("default")).toBe("list-a");
+    expect(getActiveChecklistId("work")).toBe("list-b");
+  });
+
+  it("forgets a cursor when set to null", () => {
+    setActiveChecklistId("default", "list-a");
+    setActiveChecklistId("default", null);
+    expect(getActiveChecklistId("default")).toBeNull();
   });
 });
 
