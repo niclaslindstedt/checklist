@@ -1636,7 +1636,12 @@ new revision and the next save sees the aggregate revision "move" even
 though no other device touched the data. To tell its own write apart from
 another device's, the adapter keeps a small history of the documents it
 has tried to write this session (each projected through the same markdown
-round trip so regenerated item ids line up — `recentWrites`). Before
+round trip so regenerated item ids line up, then normalised to an
+order-independent canonical form — `comparable` / `recentWrites` — because
+`load` rebuilds a snapshot in the backend's file-listing order while the
+document being written carries the in-memory order from the offline cache,
+so the same content can otherwise serialize to a different array order and
+never match). Before
 raising `ConflictError` it reconstructs the remote document and checks it
 against that history: if the remote already holds exactly the bytes about
 to be written, the earlier write is what moved the revision, so it adopts

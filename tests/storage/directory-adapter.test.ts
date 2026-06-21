@@ -54,6 +54,19 @@ class FlakyFileStore extends MemoryFileStore {
   }
 }
 
+// A MemoryFileStore that lists its files in reverse insertion order. The cloud
+// backends don't guarantee `list()` returns files in the order they were
+// written — and the in-memory document's order can come from the offline cache,
+// not the backend — so a snapshot rebuilt from a listing can carry its
+// checklists in a different array order than the document about to be written.
+// Same content, same byte length, different order: the exact shape that broke
+// phantom-conflict detection in the field.
+class ReorderingFileStore extends MemoryFileStore {
+  override async list(): Promise<FileEntry[]> {
+    return (await super.list()).reverse();
+  }
+}
+
 const snapshot: Snapshot = {
   templates: [
     {
@@ -72,6 +85,32 @@ const snapshot: Snapshot = {
       templateId: "",
       name: "Groceries",
       items: [{ id: "1", title: "Milk", checked: false }],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
+};
+
+// Two checklists, so the order the top-level array is serialized in actually
+// matters when the backend lists files in a different order than the document.
+const twoLists: Snapshot = {
+  templates: [],
+  checklists: [
+    {
+      version: 1,
+      id: "cl1",
+      templateId: "",
+      name: "Groceries",
+      items: [{ id: "1", title: "Milk", checked: false }],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      version: 1,
+      id: "cl2",
+      templateId: "",
+      name: "Packing",
+      items: [{ id: "1", title: "Socks", checked: false }],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
@@ -343,6 +382,73 @@ describe("directory adapter", () => {
     expect(
       parse(loaded!.text).checklists[0]!.items.map((i) => i.title),
     ).toEqual(["Milk", "Eggs", "Bread"]);
+  });
+
+  // The field failure: the remote held byte-for-byte the same *content* as an
+  // earlier local write but, rebuilt from a listing in a different order than
+  // the in-memory document, serialized its checklists in a different array
+  // order — same length, different bytes — so the phantom check never matched
+  // and surfaced a conflict over the user's own write. The comparison must be
+  // order-independent.
+  it("adopts a lost-response write of identical content even when the backend lists files in a different order", async () => {
+    const store = new ReorderingFileStore();
+    const adapter = createDirectoryAdapter(store, { id: "dev", label: "M" });
+    const text = serialize(twoLists);
+    const first = await adapter.save(text);
+    // The lost-response write: identical content commits, the revision moves.
+    const landed = await adapter.save(text, first.revision);
+    expect(landed.revision).not.toBe(first.revision);
+    // The retry bases on the stale revision. The remote holds the same content
+    // (just listed in a different order) — adopt it, don't conflict.
+    const resolved = await adapter.save(text, first.revision);
+    expect(resolved.revision).toBe(landed.revision);
+  });
+
+  it("writes newer edits over an out-of-order lost-response write instead of conflicting", async () => {
+    const store = new ReorderingFileStore();
+    const adapter = createDirectoryAdapter(store, { id: "dev", label: "M" });
+    const first = await adapter.save(serialize(twoLists));
+    // The user adds an item → docB. This device tries to write it but the link
+    // is flaky, so the attempt is recorded yet the device never learns the new
+    // revision; meanwhile docB commits server-side (modelled by a second
+    // adapter laying down its bytes).
+    const withMore = {
+      ...twoLists,
+      checklists: [
+        {
+          ...twoLists.checklists[0]!,
+          items: [
+            ...twoLists.checklists[0]!.items,
+            { id: "2", title: "Eggs", checked: false },
+          ],
+        },
+        twoLists.checklists[1]!,
+      ],
+    };
+    await adapter.save(serialize(withMore), first.revision);
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(withMore),
+    );
+    // The user adds another item → docC, still basing on the stale `first`
+    // revision. The remote holds docB — listed in a different order than the
+    // in-memory document — but it's our own earlier write, so docC writes
+    // through instead of surfacing a conflict.
+    const evenMore = {
+      ...withMore,
+      checklists: [
+        {
+          ...withMore.checklists[0]!,
+          items: [
+            ...withMore.checklists[0]!.items,
+            { id: "3", title: "Bread", checked: false },
+          ],
+        },
+        withMore.checklists[1]!,
+      ],
+    };
+    const resolved = await adapter.save(serialize(evenMore), first.revision);
+    const loaded = await adapter.load();
+    expect(resolved.revision).toBe(loaded!.revision);
   });
 
   // The guard must not over-reach: a genuinely different remote document from
