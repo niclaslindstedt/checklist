@@ -517,4 +517,53 @@ describe("SideMenu", () => {
       expect(addChecklistInFolder).toHaveBeenCalledWith("f1");
     });
   });
+
+  describe("drag drop targets", () => {
+    const foldered: Partial<ChecklistContextValue> = {
+      folders: [{ id: "f1", name: "Work", count: 1 }],
+      checklists: [
+        { id: "c1", name: "Filed list", remaining: 0, folderId: "f1" },
+        { id: "c2", name: "Loose list", remaining: 0 },
+      ],
+      activeChecklistId: "c1",
+    };
+
+    it("marks folders, the ungrouped zone, and Archive as drop targets", () => {
+      const { container } = renderMenu({
+        nav: { open: true },
+        checklist: foldered,
+      });
+      // The folder, the root zone, and the Archive button each advertise a
+      // `data-checklist-drop` key so the touch drag layer can hit-test them.
+      expect(
+        container.querySelector('[data-checklist-drop="f1"]'),
+      ).toBeTruthy();
+      expect(
+        container.querySelector('[data-checklist-drop="__root__"]'),
+      ).toBeTruthy();
+      expect(
+        container.querySelector('[data-checklist-drop="__archive__"]'),
+      ).toBeTruthy();
+    });
+
+    it("makes every namespace but the active one a drop target", () => {
+      const { container } = renderMenu({
+        nav: { open: true },
+        props: {
+          namespaces: [
+            { slug: "default", name: "Default" },
+            { slug: "work", name: "Work" },
+          ],
+          activeNamespace: "default",
+        },
+      });
+      // The inactive namespace accepts a dropped list; the active one doesn't.
+      expect(
+        container.querySelector('[data-checklist-drop="ns:work"]'),
+      ).toBeTruthy();
+      expect(
+        container.querySelector('[data-checklist-drop="ns:default"]'),
+      ).toBeNull();
+    });
+  });
 });

@@ -53,6 +53,7 @@ export function makeChecklistValue(
     removeFolder: noop,
     moveChecklistToFolder: noop,
     addChecklistInFolder: noop,
+    detachChecklistToNamespace: noop,
     addItem: () => null,
     importItems: () => 0,
     editItem: noop,

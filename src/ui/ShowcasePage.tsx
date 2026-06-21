@@ -113,6 +113,11 @@ export function ShowcasePage() {
               directory of markdown files.
             </li>
             <li>
+              <strong className="text-fg-bright">Drag to organise</strong> —
+              drag a checklist onto a folder, another namespace, or the archive
+              to move it there (press and hold on a touchscreen).
+            </li>
+            <li>
               <strong className="text-fg-bright">
                 Import and export markdown
               </strong>{" "}

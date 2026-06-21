@@ -17,6 +17,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 // achievement bus's `unlock` comes in under a distinct name.
 import { unlock as unlockAchievement } from "../achievements/bus.ts";
 import { createLogger } from "../dev/logger.ts";
+import { setChecklistFolder } from "../domain/folders.ts";
+import type { Checklist } from "../domain/types.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import {
   type BackendId,
@@ -69,6 +71,7 @@ import {
   createFolderNamespaceStore,
   createFolderSettingsStore,
 } from "./folder/index.ts";
+import { parse, serialize } from "./serialize.ts";
 import type { SettingsStore } from "./settings-store.ts";
 import type { NamespaceRegistryStore } from "./namespace-store.ts";
 import {
@@ -177,6 +180,17 @@ export interface UseStorageBackend {
   activeNamespace: string;
   /** Make a namespace active, swapping which document the app reads/writes. */
   switchNamespace: (slug: string) => void;
+  /**
+   * Write a checklist into another namespace's document, returning whether the
+   * target write succeeded. Best-effort: a failed write (offline, locked)
+   * resolves `false` and leaves the source untouched, so the caller only drops
+   * its local copy on success. The list's folder link is dropped — the target
+   * namespace has its own folders.
+   */
+  moveChecklistToNamespace: (
+    checklist: Checklist,
+    targetSlug: string,
+  ) => Promise<boolean>;
   /** Create a namespace from a display name and switch to it. */
   createNamespace: (name: string, appearance?: NamespaceAppearance) => void;
   /** Change a namespace's display name (its data stays put). */
@@ -382,45 +396,54 @@ export function useStorageBackend(): UseStorageBackend {
     folderHandleLoaded,
   ]);
 
-  // The unwrapped, namespace-scoped backend. Cloud adapters get fresh
-  // tokens on every change so a reconnect rebuilds them; the Dropbox
-  // adapter persists any silently-refreshed access token back to
-  // localStorage and state via the selection's `onAccessTokenRefreshed`.
-  const inner = useMemo<StorageAdapter>(() => {
-    switch (selection.kind) {
-      // Cloud backends mirror their bytes into a local cache so the document
-      // can be unlocked, read, and edited offline (the cache holds the
-      // encrypted envelope when encryption is on). Folder / browser are
-      // already on-device, so they need no mirror.
-      case "dropbox":
-        return withLocalCache(
-          createDropboxAdapter(selection.auth, fetch, activeNamespace),
-          {
-            storage: globalThis.localStorage,
-            key: localCacheKey("dropbox", activeNamespace),
-          },
-        );
-      case "gdrive":
-        return withLocalCache(
-          createGdriveAdapter(selection.token, fetch, activeNamespace),
-          {
-            storage: globalThis.localStorage,
-            key: localCacheKey("gdrive", activeNamespace),
-          },
-        );
-      case "folder":
-        return createFolderAdapter({
-          directoryHandle: selection.handle,
-          namespace: activeNamespace,
-          onPermissionLost: markFolderPermissionLost,
-        });
-      case "browser":
-        return new BrowserLocalStorageAdapter(
-          globalThis.localStorage,
-          activeNamespace,
-        );
-    }
-  }, [selection, activeNamespace, markFolderPermissionLost]);
+  // Build the unwrapped, namespace-scoped backend for any slug. Factored out
+  // of the `inner` memo so a cross-namespace move can spin up an adapter
+  // pointed at the *target* namespace's document without switching the active
+  // one. Cloud adapters get fresh tokens on every change so a reconnect
+  // rebuilds them; the Dropbox adapter persists any silently-refreshed access
+  // token back to localStorage and state via the selection's
+  // `onAccessTokenRefreshed`.
+  const makeInner = useCallback(
+    (slug: string): StorageAdapter => {
+      switch (selection.kind) {
+        // Cloud backends mirror their bytes into a local cache so the document
+        // can be unlocked, read, and edited offline (the cache holds the
+        // encrypted envelope when encryption is on). Folder / browser are
+        // already on-device, so they need no mirror.
+        case "dropbox":
+          return withLocalCache(
+            createDropboxAdapter(selection.auth, fetch, slug),
+            {
+              storage: globalThis.localStorage,
+              key: localCacheKey("dropbox", slug),
+            },
+          );
+        case "gdrive":
+          return withLocalCache(
+            createGdriveAdapter(selection.token, fetch, slug),
+            {
+              storage: globalThis.localStorage,
+              key: localCacheKey("gdrive", slug),
+            },
+          );
+        case "folder":
+          return createFolderAdapter({
+            directoryHandle: selection.handle,
+            namespace: slug,
+            onPermissionLost: markFolderPermissionLost,
+          });
+        case "browser":
+          return new BrowserLocalStorageAdapter(globalThis.localStorage, slug);
+      }
+    },
+    [selection, markFolderPermissionLost],
+  );
+
+  // The active namespace's scoped backend — the document the app reads/writes.
+  const inner = useMemo<StorageAdapter>(
+    () => makeInner(activeNamespace),
+    [makeInner, activeNamespace],
+  );
 
   // The active backend's root settings store — the same selection as
   // `inner` but rooted at the app folder (no namespace) and independent of
@@ -747,6 +770,45 @@ export function useStorageBackend(): UseStorageBackend {
     setActiveNamespaceState(slug);
   }, []);
 
+  // Write a checklist into another namespace's document (the sidebar
+  // drag-to-namespace). Loads the target's document, prepends the list (de-
+  // duped by id), and saves — best-effort: if the target write fails (offline
+  // cloud, locked) the list is left where it is and the caller keeps its local
+  // copy. The caller removes the list from the source document only on success.
+  const moveChecklistToNamespace = useCallback(
+    async (checklist: Checklist, targetSlug: string): Promise<boolean> => {
+      if (locked) return false;
+      if (targetSlug === activeNamespace) return false;
+      if (!namespaces.some((n) => n.slug === targetSlug)) return false;
+
+      // The target namespace has its own folders, so the source folder link is
+      // meaningless there — drop it on the way over.
+      const moved = setChecklistFolder(checklist, null);
+
+      // Build an adapter pointed at the target namespace, wrapped in the same
+      // encryption envelope the active session uses so the bytes land readable.
+      const target = wrapForActive(makeInner(targetSlug));
+      const prev = await target.load().catch(() => null);
+      const doc = parse(prev?.text ?? null);
+      doc.checklists = [
+        moved,
+        ...doc.checklists.filter((c) => c.id !== moved.id),
+      ];
+      try {
+        await target.save(serialize(doc), prev?.revision);
+      } catch (err) {
+        log.warn(
+          `moveChecklistToNamespace: target save failed (${targetSlug})`,
+          err,
+        );
+        return false;
+      }
+      log.info(`moveChecklistToNamespace: ${checklist.id} → ${targetSlug}`);
+      return true;
+    },
+    [locked, activeNamespace, namespaces, wrapForActive, makeInner],
+  );
+
   const createNamespace = useCallback(
     (name: string, appearance?: NamespaceAppearance) => {
       const created = registryAddNamespace(name);
@@ -855,6 +917,7 @@ export function useStorageBackend(): UseStorageBackend {
     namespaces,
     activeNamespace,
     switchNamespace,
+    moveChecklistToNamespace,
     createNamespace,
     renameNamespace,
     setNamespaceAppearance,

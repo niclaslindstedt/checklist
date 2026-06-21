@@ -49,6 +49,7 @@ function makeStorageStub(): UseStorageBackend {
     namespaces: [{ slug: "default", name: "Default" }],
     activeNamespace: "default",
     switchNamespace: vi.fn(),
+    moveChecklistToNamespace: vi.fn(async () => true),
     createNamespace: vi.fn(),
     renameNamespace: vi.fn(),
     setNamespaceAppearance: vi.fn(),

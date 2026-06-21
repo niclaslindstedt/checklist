@@ -25,6 +25,7 @@ import {
   EyeOffGlyph,
   FlaskGlyph,
   FolderGlyph,
+  FolderInputGlyph,
   GlobeGlyph,
   HashGlyph,
   LayersGlyph,
@@ -376,6 +377,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     tier: "pro",
     glyph: SparklesGlyph,
     hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "relocated",
+    tier: "pro",
+    glyph: FolderInputGlyph,
     trigger: { kind: "manual" },
   },
   {
