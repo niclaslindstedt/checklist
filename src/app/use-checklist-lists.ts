@@ -104,6 +104,14 @@ export interface ChecklistLists {
   moveChecklistToFolder: (id: string, folderId: string | null) => void;
   /** Append a fresh checklist already filed inside `folderId`, and select it. */
   addChecklistInFolder: (folderId: string) => void;
+  /**
+   * Drop a checklist from this namespace's document after its bytes have been
+   * written into another namespace (the sidebar drag-to-namespace move — the
+   * storage write happens in `App`). Records the removal on the undo timeline
+   * under a "moved" label and re-points the selection. A no-op when it would
+   * leave no active list behind (the caller guards this too, before writing).
+   */
+  detachChecklistToNamespace: (id: string, namespaceName: string) => void;
 }
 
 export function useChecklistLists(deps: {
@@ -345,6 +353,29 @@ export function useChecklistLists(deps: {
     [docRef, commit, t],
   );
 
+  const detachChecklistToNamespace = useCallback(
+    (id: string, namespaceName: string) => {
+      const prev = docRef.current;
+      const remaining = prev.checklists.filter((c) => c.id !== id);
+      if (remaining.length === prev.checklists.length) return;
+      // The views always need at least one *active* list to render — refuse a
+      // move that would strip this namespace of its last one. (App guards this
+      // before the target write, so this is the belt-and-braces backstop.)
+      if (!remaining.some((c) => !c.archived)) return;
+      // The list lives on in the target namespace now, so frame the undo entry
+      // as a move rather than a deletion. Undo restores the local copy; the
+      // copy already written into the target namespace is left in place.
+      commit(
+        { ...prev, checklists: remaining },
+        t("toast.listMovedToNamespace", { name: namespaceName }),
+      );
+      if (id === activeId) {
+        setActiveId(remaining.find((c) => !c.archived)?.id ?? null);
+      }
+    },
+    [docRef, commit, t, activeId],
+  );
+
   const summarize = (c: Checklist): ChecklistSummary => {
     const { checked, total } = progress(c);
     const summary: ChecklistSummary = {
@@ -397,6 +428,7 @@ export function useChecklistLists(deps: {
       removeFolder,
       moveChecklistToFolder,
       addChecklistInFolder,
+      detachChecklistToNamespace,
     }),
     [
       activeList,
@@ -414,6 +446,7 @@ export function useChecklistLists(deps: {
       removeFolder,
       moveChecklistToFolder,
       addChecklistInFolder,
+      detachChecklistToNamespace,
     ],
   );
 }

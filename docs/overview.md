@@ -1184,9 +1184,8 @@ lists follow, and a compact segmented action bar at the foot carries **New
 list**, **New folder**, and **Archive** (`BarButton`s, replacing the old
 section-header `+` and full-width Archive row). `FolderEditRow` is the inline
 name input for creating or renaming a folder. Moving an existing list into a
-folder is a right-click menu entry on a computer and a swipe-revealed "move"
-button (opening the same folder menu) on touch; the collapse state is
-device-local component state, not persisted.
+folder is a **drag gesture** (see *Drag a list…* below), not a menu entry; the
+collapse state is device-local component state, not persisted.
 
 On the **file/cloud backends** a folder is a *real directory*. The codec
 (`src/storage/markdown/codec.ts`) files a grouped list into
@@ -1207,6 +1206,50 @@ inside a document and as a standalone sidecar (`parseFolders` /
 `serializeFolders`), dropping malformed entries and duplicate ids. Two
 achievements ride the feature: **Pigeonholed** (create a folder) and **Filed
 Away** (move a list into one).
+
+### Drag a list between folders, namespaces, and the archive
+
+A checklist row in the side menu is **draggable**: pick it up and drop it onto
+a folder to file it, onto the ungrouped zone to take it back out, onto another
+**namespace** to send it there, or onto the **Archive** button to archive it.
+This is the only way lists move between folders and namespaces — the old
+right-click/swipe "move to folder" affordances are gone; the swipe strip now
+carries only delete, and the right-click menu only archive + delete.
+
+Two pointer paths back one gesture, ported from the `notes` sibling
+(`src/ui/checklist-drag.tsx` + `src/ui/checklist-drag-context.ts`):
+
+- **Desktop** uses native HTML5 drag (`draggable` + `dragstart`/`drop`). The
+  row stamps its id onto `dataTransfer` (`CHECKLIST_DND_TYPE`); each drop target
+  wires `onDragOver`/`onDrop` and lights an accent highlight while a list hovers
+  it (`dropTarget` state in `SideMenu.tsx`).
+- **Touch** has no HTML5 drag, so `useTouchChecklistDrag` provides the
+  equivalent: a **press-and-hold** (320 ms, aborting if the finger travels first
+  so it doesn't fight swipe-to-delete or scroll) picks the list up, captures the
+  pointer, blocks page scroll, and hit-tests `elementFromPoint` against the
+  `data-checklist-drop` attribute each target carries. A floating **chip**
+  (`ChecklistDragProvider`'s ghost) tracks the fingertip, and the hovered
+  target reads `useChecklistDropKey` to paint the same highlight.
+
+Both paths commit through one resolver: `ChecklistDragProvider`'s `onDrop`
+(exposed to the desktop handlers via `OnDropContext` so neither path forks the
+logic). It hands the target **key** to `onChecklistDrop` in `src/app/App.tsx`,
+which maps it to an action — `CHECKLIST_DROP_ROOT` / a folder id →
+`moveChecklistToFolder`, `CHECKLIST_DROP_ARCHIVE` → `archiveChecklist`,
+`ns:<slug>` → the cross-namespace move.
+
+The **cross-namespace move** is the only genuinely new write. Because each
+namespace is its own document, App writes the list into the *target*
+namespace's document first — `storage.moveChecklistToNamespace` builds an
+adapter scoped to the target slug (the `makeInner` factory in
+`useStorageBackend.ts`, wrapped in the active encryption envelope), loads,
+prepends the list (its folder link dropped, since the target has its own
+folders), and saves — and only on success drops the list from the *source*
+document via `detachChecklistToNamespace` (`use-checklist-lists.ts`). A failed
+target write (offline cloud, locked store) leaves the list where it is. The
+source move refuses to strip a namespace of its last active list, since the
+views always need one to show. The gesture unlocks the **Relocated**
+achievement.
 
 ### Namespaces
 

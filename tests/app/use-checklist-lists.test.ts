@@ -291,6 +291,39 @@ describe("useChecklist multi-list verbs", () => {
     act(() => result.current.renameChecklist(id, "   "));
     expect(result.current.checklists[0]!.name).toBe("Checklist");
   });
+
+  it("detaches a moved list from this namespace's document", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const first = result.current.activeChecklistId;
+    act(() => result.current.addChecklist());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const second = result.current.activeChecklistId;
+
+    // Detach the active (second) list — it left for another namespace, so it
+    // drops out of this document and the selection re-points at the survivor.
+    act(() => result.current.detachChecklistToNamespace(second, "Work"));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(1));
+    expect(result.current.activeChecklistId).toBe(first);
+    expect(parse(adapter.stored()).checklists).toHaveLength(1);
+
+    // Recoverable via undo (the target-namespace copy is left in place).
+    act(() => result.current.undo());
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+  });
+
+  it("refuses to detach the last remaining active list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const only = result.current.activeChecklistId;
+    act(() => result.current.detachChecklistToNamespace(only, "Work"));
+    expect(result.current.checklists).toHaveLength(1);
+    expect(result.current.activeChecklistId).toBe(only);
+  });
 });
 
 describe("useChecklist folder verbs", () => {

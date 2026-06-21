@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock, useAchievementWatcher } from "../achievements/index.ts";
 import { useDevSeed } from "../dev/useDevSeed.ts";
@@ -25,6 +25,12 @@ import {
   type View,
 } from "../ui/nav-context.ts";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
+import { ChecklistDragProvider } from "../ui/checklist-drag.tsx";
+import {
+  CHECKLIST_DROP_ARCHIVE,
+  CHECKLIST_DROP_NS_PREFIX,
+  CHECKLIST_DROP_ROOT,
+} from "../ui/checklist-drag-context.ts";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
 import {
@@ -258,6 +264,72 @@ function AppShell() {
     [removeNs, namespaces, push, t],
   );
 
+  // Move a checklist into another namespace (the sidebar drag): write its bytes
+  // into the target namespace's document first, then drop it from this one —
+  // so a failed target write (offline cloud, locked) leaves the list where it
+  // is. Refuses to strip the source namespace of its last active list, since
+  // the views always need one to show.
+  const { moveChecklistToNamespace: writeToNamespace } = storage;
+  const {
+    snapshot: docSnapshot,
+    detachChecklistToNamespace,
+    archiveChecklist,
+    moveChecklistToFolder,
+  } = checklist;
+  const moveChecklistToNamespace = useCallback(
+    async (id: string, slug: string) => {
+      const target = docSnapshot.checklists.find((c) => c.id === id);
+      if (!target) return;
+      const activeCount = docSnapshot.checklists.filter(
+        (c) => !c.archived,
+      ).length;
+      if (!target.archived && activeCount <= 1) {
+        push({ message: t("toast.listKeepLast"), kind: "info" });
+        return;
+      }
+      if (!(await writeToNamespace(target, slug))) {
+        push({ message: t("toast.listMoveFailed"), kind: "error" });
+        return;
+      }
+      const name = namespaces.find((n) => n.slug === slug)?.name ?? slug;
+      detachChecklistToNamespace(id, name);
+      unlock("relocated");
+      push({
+        message: t("toast.listMovedToNamespace", { name }),
+        kind: "success",
+      });
+    },
+    [
+      docSnapshot,
+      writeToNamespace,
+      detachChecklistToNamespace,
+      namespaces,
+      push,
+      t,
+    ],
+  );
+
+  // Resolve a sidebar drag's drop target (a `data-checklist-drop` key) to the
+  // right action: the ungrouped zone / a folder id files the list, the Archive
+  // button archives it, a `ns:<slug>` row moves it to that namespace. Routed
+  // through a ref so the provider's `onDrop` keeps a stable identity (it feeds
+  // a context every draggable row subscribes to) while still seeing the latest
+  // closures here.
+  const dropHandlerRef = useRef<(id: string, key: string) => void>(() => {});
+  dropHandlerRef.current = (id: string, key: string) => {
+    if (key === CHECKLIST_DROP_ROOT) moveChecklistToFolder(id, null);
+    else if (key === CHECKLIST_DROP_ARCHIVE) archiveChecklist(id);
+    else if (key.startsWith(CHECKLIST_DROP_NS_PREFIX)) {
+      void moveChecklistToNamespace(
+        id,
+        key.slice(CHECKLIST_DROP_NS_PREFIX.length),
+      );
+    } else moveChecklistToFolder(id, key);
+  };
+  const onChecklistDrop = useCallback((id: string, key: string) => {
+    dropHandlerRef.current(id, key);
+  }, []);
+
   // The active namespace's chosen glyph (if any) re-badges the app: it
   // stands in for the header wordmark logo and the browser-tab favicon.
   // Without a glyph, both fall back to the bundled checklist mark.
@@ -386,7 +458,13 @@ function AppShell() {
       disableItemNotes: settings.disableItemNotes,
       showItemCount: settings.showItemCount,
     }),
-    [checklist, sync, logoSrc, settings.disableItemNotes, settings.showItemCount],
+    [
+      checklist,
+      sync,
+      logoSrc,
+      settings.disableItemNotes,
+      settings.showItemCount,
+    ],
   );
   // Just the unseen count for the header trophy badge — kept off the
   // checklist context (whose stability lets the memoised list skip settings
@@ -437,17 +515,19 @@ function AppShell() {
             the menu isn't pinned, SideMenu renders only `position: fixed`
             layers (the floating button and the overlay drawer), which sit
             outside the flex flow — so the view keeps the full width. */}
-          <div className="flex h-full">
-            <SideMenu
-              namespaces={storage.namespaces}
-              activeNamespace={storage.activeNamespace}
-              onSwitchNamespace={storage.switchNamespace}
-              onRemoveNamespace={removeNamespace}
-            />
-            <main className="relative h-full min-w-0 flex-1">
-              {view === "archive" ? <ArchiveView /> : <ChecklistView />}
-            </main>
-          </div>
+          <ChecklistDragProvider onDrop={onChecklistDrop}>
+            <div className="flex h-full">
+              <SideMenu
+                namespaces={storage.namespaces}
+                activeNamespace={storage.activeNamespace}
+                onSwitchNamespace={storage.switchNamespace}
+                onRemoveNamespace={removeNamespace}
+              />
+              <main className="relative h-full min-w-0 flex-1">
+                {view === "archive" ? <ArchiveView /> : <ChecklistView />}
+              </main>
+            </div>
+          </ChecklistDragProvider>
           <SettingsModalHost
             settings={settings}
             onSave={saveSettingsDraft}

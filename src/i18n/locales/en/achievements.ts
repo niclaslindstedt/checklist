@@ -217,6 +217,10 @@ const achievements = {
       learnMore:
         "A namespace can wear its own glyph and accent colour; the chosen mark badges the side menu and the browser-tab favicon so you can tell your worlds apart at a glance.",
     },
+    relocated: {
+      name: "Relocated",
+      condition: "Drag a checklist into another namespace.",
+    },
     localVault: {
       name: "Local Vault",
       condition: "Store your lists in a local folder.",

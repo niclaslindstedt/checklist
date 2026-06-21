@@ -211,6 +211,10 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "En namnrymd kan bära sin egen symbol och accentfärg; det valda märket pryder sidomenyn och favikonen i webbläsarfliken så att du skiljer dina världar åt vid en blick.",
     },
+    relocated: {
+      name: "Omflyttad",
+      condition: "Dra en checklista till en annan namnrymd.",
+    },
     localVault: {
       name: "Lokalt valv",
       condition: "Spara dina listor i en lokal mapp.",

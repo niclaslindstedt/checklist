@@ -1,9 +1,8 @@
 import {
   useEffect,
   useId,
-  useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
+  type DragEvent as ReactDragEvent,
   type ReactNode,
 } from "react";
 
@@ -25,19 +24,14 @@ import { useNav } from "./nav-context.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
-import { useSwipeReveal } from "./hooks/useSwipeReveal.ts";
 import {
   ArchiveIcon,
-  CaretRightIcon,
   ChecklistIcon,
-  ChevronDownIcon,
   CodeIcon,
   CogIcon,
   FolderIcon,
-  FolderOpenIcon,
   HeartIcon,
   MenuIcon,
-  PencilIcon,
   PlusIcon,
   RedoIcon,
   ShieldIcon,
@@ -47,8 +41,33 @@ import {
 } from "./icons.tsx";
 import type { ContextMenuItem } from "./hooks/useContextMenu.ts";
 import { useModalDispatch } from "./modal-bus.ts";
+import { ChecklistDragItem } from "./checklist-drag.tsx";
+import {
+  CHECKLIST_DROP_ARCHIVE,
+  CHECKLIST_DROP_ATTR,
+  CHECKLIST_DROP_ROOT,
+  checklistDropNamespaceKey,
+  useChecklistDrop,
+  useChecklistDropKey,
+} from "./checklist-drag-context.ts";
+import {
+  BarButton,
+  ChecklistRowStrip,
+  EditButton,
+  FolderEditRow,
+  FolderRow,
+  MenuButton,
+  MenuLink,
+  NavItem,
+  SectionHeader,
+  SwipeToRemove,
+} from "./SideMenuRows.tsx";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 import { TrophyButton } from "./achievements/TrophyButton.tsx";
+
+// The dataTransfer MIME the desktop HTML5 drag stamps the list id onto, so a
+// drop reads back which checklist was dragged.
+const CHECKLIST_DND_TYPE = "application/x-checklist-id";
 
 // The navigation drawer. On viewports narrower than the smallest iPad it
 // collapses to a single floating button the user can drag to either side
@@ -133,7 +152,6 @@ export function SideMenu({
     createFolder,
     renameFolder,
     removeFolder,
-    moveChecklistToFolder,
     addChecklistInFolder,
   } = useChecklistContext();
   // Sidebar folder UI state, all device-local: which folders are collapsed
@@ -162,6 +180,47 @@ export function SideMenu({
     open: openMenu,
     close: closeMenu,
   } = useContextMenu();
+
+  // Desktop HTML5 drag-to-move state. `draggingChecklist` gates the drop
+  // targets (so a stray dragover from outside doesn't light them up) and
+  // `dropTarget` drives the hover highlight — a folder id, a namespace key,
+  // `CHECKLIST_DROP_ROOT` for "out of any folder", or `CHECKLIST_DROP_ARCHIVE`.
+  // The touch long-press path reports its hovered target via `activeDropKey`,
+  // and both paths commit through the same `onDrop` resolver (`App`).
+  const onDrop = useChecklistDrop();
+  const activeDropKey = useChecklistDropKey();
+  const [draggingChecklist, setDraggingChecklist] = useState<string | null>(
+    null,
+  );
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  function startChecklistDrag(e: ReactDragEvent, id: string) {
+    e.dataTransfer.setData(CHECKLIST_DND_TYPE, id);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingChecklist(id);
+  }
+  function endChecklistDrag() {
+    setDraggingChecklist(null);
+    setDropTarget(null);
+  }
+  function allowDropOn(e: ReactDragEvent, key: string) {
+    if (!draggingChecklist) return;
+    e.preventDefault();
+    // Folders nest inside the ungrouped root drop zone, so stop the hover from
+    // bubbling up and lighting the root highlight at the same time.
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    if (dropTarget !== key) setDropTarget(key);
+  }
+  function commitDrop(e: ReactDragEvent, key: string) {
+    e.preventDefault();
+    // A drop on a folder/namespace must not also bubble to the root zone
+    // (which would immediately move the list back out to the top level).
+    e.stopPropagation();
+    const id = e.dataTransfer.getData(CHECKLIST_DND_TYPE) || draggingChecklist;
+    endChecklistDrag();
+    if (id) onDrop(id, key);
+  }
 
   // Mirror the live drag state up so the parent can gate pull-to-refresh
   // off while the button is being dragged.
@@ -194,34 +253,14 @@ export function SideMenu({
 
   const onRight = position.side === "right";
 
-  // The "move to folder" entries for a checklist's actions menu: one per other
-  // folder, plus "Remove from folder" when it's currently grouped. Empty when
-  // there's nowhere to move it (no folders, and it's already ungrouped).
-  function moveMenuItems(c: ChecklistSummary): ContextMenuItem[] {
-    const items: ContextMenuItem[] = [];
-    for (const f of folders) {
-      if (f.id === c.folderId) continue;
-      items.push({
-        label: t("nav.moveToFolder", { name: f.name }),
-        icon: <FolderIcon className="h-4 w-4" />,
-        onSelect: () => moveChecklistToFolder(c.id, f.id),
-      });
-    }
-    if (c.folderId) {
-      items.push({
-        label: t("nav.removeFromFolder"),
-        icon: <FolderIcon className="h-4 w-4" />,
-        onSelect: () => moveChecklistToFolder(c.id, null),
-      });
-    }
-    return items;
-  }
-
   // One checklist row in the switcher. `indent` nudges it right when it sits
-  // inside an expanded folder. Desktop gets a right-click actions menu
-  // (archive / move / remove); touch gets a swipe strip (move / delete). The
-  // last remaining list with nowhere to move renders as a plain, action-less
-  // row — the views always need one list to show.
+  // inside an expanded folder. Every row is draggable — drop it on a folder,
+  // the ungrouped zone, a namespace, or the Archive button to move it (see
+  // `checklist-drag.tsx`); that's the only way lists move between folders and
+  // namespaces. On top of that, desktop gets a right-click menu (archive /
+  // remove) and touch a swipe-to-delete strip. The last remaining list can't
+  // be archived or removed (the views always need one to show), so it carries
+  // no menu/strip — but it stays draggable.
   function renderChecklistRow(c: ChecklistSummary, indent = false): ReactNode {
     const row = (
       <NavItem
@@ -237,45 +276,46 @@ export function SideMenu({
       />
     );
     const canRemove = checklists.length > 1;
-    const moveItems = moveMenuItems(c);
-    if (!canRemove && moveItems.length === 0) {
-      return <div key={c.id}>{row}</div>;
-    }
+    const draggable = (inner: ReactNode): ReactNode => (
+      <ChecklistDragItem
+        key={c.id}
+        checklistId={c.id}
+        title={c.name}
+        enabled={!desktop}
+        draggable={desktop}
+        dragging={draggingChecklist === c.id}
+        onDragStart={desktop ? (e) => startChecklistDrag(e, c.id) : undefined}
+        onDragEnd={desktop ? endChecklistDrag : undefined}
+      >
+        {inner}
+      </ChecklistDragItem>
+    );
+    if (!canRemove) return draggable(row);
     if (desktop) {
-      const actions: ContextMenuItem[] = [];
-      if (canRemove) {
-        actions.push({
+      const actions: ContextMenuItem[] = [
+        {
           label: t("app.archive"),
           icon: <ArchiveIcon className="h-4 w-4" />,
           onSelect: () => archiveChecklist(c.id),
-        });
-      }
-      actions.push(...moveItems);
-      if (canRemove) {
-        actions.push({
+        },
+        {
           label: t("nav.removeChecklist"),
           icon: <TrashIcon className="h-4 w-4" />,
           danger: true,
           onSelect: () => removeChecklist(c.id),
-        });
-      }
-      return (
-        <div key={c.id} onContextMenu={(e) => openMenu(actions, e)}>
-          {row}
-        </div>
+        },
+      ];
+      return draggable(
+        <div onContextMenu={(e) => openMenu(actions, e)}>{row}</div>,
       );
     }
-    return (
+    return draggable(
       <ChecklistRowStrip
-        key={c.id}
-        canRemove={canRemove}
-        moveLabel={moveItems.length > 0 ? t("nav.moveTo") : undefined}
         removeLabel={t("nav.removeChecklist")}
-        onMove={(e) => openMenu(moveItems, e)}
         onRemove={() => removeChecklist(c.id)}
       >
         {row}
-      </ChecklistRowStrip>
+      </ChecklistRowStrip>,
     );
   }
 
@@ -300,12 +340,13 @@ export function SideMenu({
     const expanded = !collapsedFolders.has(f.id);
     const inside = checklists.filter((c) => c.folderId === f.id);
     return (
-      <div key={f.id}>
+      <div key={f.id} {...{ [CHECKLIST_DROP_ATTR]: f.id }}>
         <FolderRow
           name={f.name}
           count={f.count}
           expanded={expanded}
           desktop={desktop}
+          isDropTarget={dropTarget === f.id || activeDropKey === f.id}
           renameLabel={t("nav.renameFolder")}
           deleteLabel={t("nav.deleteFolder")}
           addLabel={t("nav.newChecklist")}
@@ -316,6 +357,9 @@ export function SideMenu({
             addChecklistInFolder(f.id);
             navigate("checklist");
           }}
+          onDragOver={(e) => allowDropOn(e, f.id)}
+          onDragLeave={() => setDropTarget(null)}
+          onDrop={(e) => commitDrop(e, f.id)}
           openMenu={openMenu}
         />
         {expanded && inside.map((c) => renderChecklistRow(c, true))}
@@ -352,11 +396,22 @@ export function SideMenu({
         ) : (
           <FolderIcon className="h-5 w-5" />
         );
+        // Every namespace but the active one is a drop target: dropping a
+        // checklist onto it moves the list into that namespace.
+        const droppable = ns.slug !== activeNamespace;
+        const nsKey = checklistDropNamespaceKey(ns.slug);
         const row = (
           <NavItem
             icon={icon}
             label={ns.name}
             active={ns.slug === activeNamespace}
+            dropId={droppable ? nsKey : undefined}
+            isDropTarget={
+              droppable && (dropTarget === nsKey || activeDropKey === nsKey)
+            }
+            onDragOver={droppable ? (e) => allowDropOn(e, nsKey) : undefined}
+            onDragLeave={droppable ? () => setDropTarget(null) : undefined}
+            onDrop={droppable ? (e) => commitDrop(e, nsKey) : undefined}
             onClick={() => {
               onSwitchNamespace(ns.slug);
               close();
@@ -381,18 +436,35 @@ export function SideMenu({
       {/* The Checklists heading carries no inline "+" any more — New list,
           New folder, and Archive all live on the compact action bar below. */}
       <SectionHeader label={t("nav.checklists")} border />
-      {folders.map(renderFolder)}
-      {ungroupedChecklists.map((c) => renderChecklistRow(c))}
-      {creatingFolder && (
-        <FolderEditRow
-          placeholder={t("nav.folderName")}
-          onCommit={(name) => {
-            createFolder(name);
-            setCreatingFolder(false);
-          }}
-          onCancel={() => setCreatingFolder(false)}
-        />
-      )}
+      {/* The whole folders + ungrouped region is the root drop zone — dropping
+          a list here (outside any folder) returns it to the top level. Folders
+          nest inside as their own drop targets (their dragover stops
+          propagation so the root highlight doesn't also light up). */}
+      <div
+        {...{ [CHECKLIST_DROP_ATTR]: CHECKLIST_DROP_ROOT }}
+        onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ROOT)}
+        onDragLeave={() => setDropTarget(null)}
+        onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ROOT)}
+        className={
+          dropTarget === CHECKLIST_DROP_ROOT ||
+          activeDropKey === CHECKLIST_DROP_ROOT
+            ? "rounded-sm bg-accent/10"
+            : undefined
+        }
+      >
+        {folders.map(renderFolder)}
+        {ungroupedChecklists.map((c) => renderChecklistRow(c))}
+        {creatingFolder && (
+          <FolderEditRow
+            placeholder={t("nav.folderName")}
+            onCommit={(name) => {
+              createFolder(name);
+              setCreatingFolder(false);
+            }}
+            onCancel={() => setCreatingFolder(false)}
+          />
+        )}
+      </div>
       {/* New list / New folder / Archive share one compact segmented bar
           instead of full-width rows (the way Undo / Redo do at the foot),
           saving vertical space. The three cells split the width evenly; the
@@ -418,6 +490,14 @@ export function SideMenu({
             label={t("nav.archive")}
             active={current === "archive"}
             badge={archivedCount > 0 ? archivedCount : undefined}
+            dropId={CHECKLIST_DROP_ARCHIVE}
+            isDropTarget={
+              dropTarget === CHECKLIST_DROP_ARCHIVE ||
+              activeDropKey === CHECKLIST_DROP_ARCHIVE
+            }
+            onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ARCHIVE)}
+            onDragLeave={() => setDropTarget(null)}
+            onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ARCHIVE)}
             onClick={() => navigate("archive")}
           />
         </div>
@@ -567,603 +647,5 @@ export function SideMenu({
         </div>
       )}
     </>
-  );
-}
-
-// A section label with an optional trailing action pinned to its trailing
-// edge. For Checklists the action is a "+" that adds a new list; for the
-// Namespace heading it's a cogwheel, because that action opens the full
-// manage-and-create dialog rather than adding one inline. The first section
-// omits the top border; every later one draws one to separate it from the
-// rows above.
-function SectionHeader({
-  label,
-  border = false,
-  onAdd,
-  addLabel,
-  addIcon = <PlusIcon className="h-4 w-4" />,
-}: {
-  label: string;
-  border?: boolean;
-  onAdd?: () => void;
-  addLabel?: string;
-  addIcon?: ReactNode;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-2 px-5 pt-3 pb-1 ${
-        border ? "border-t border-line" : ""
-      }`}
-    >
-      <span className="text-xs font-semibold tracking-wide text-muted uppercase">
-        {label}
-      </span>
-      {onAdd && (
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label={addLabel}
-          title={addLabel}
-          className="-mr-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
-        >
-          {addIcon}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function NavItem({
-  icon,
-  label,
-  active,
-  badge,
-  disabled = false,
-  indent = false,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  active: boolean;
-  badge?: number;
-  disabled?: boolean;
-  /** Nudge the row right one level — used by lists nested inside a folder. */
-  indent?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      aria-current={active ? "page" : undefined}
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 py-[var(--density-row-py)] text-left text-sm ${
-        indent ? "pr-5 pl-10" : "px-5"
-      } ${
-        disabled
-          ? "cursor-not-allowed text-muted/50"
-          : active
-            ? "cursor-pointer bg-accent/20 font-semibold text-fg-bright shadow-[inset_3px_0_0_var(--color-accent)]"
-            : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
-      }`}
-    >
-      <span
-        className={
-          disabled ? "text-muted/50" : active ? "text-accent" : "text-muted"
-        }
-      >
-        {icon}
-      </span>
-      <span className="flex-1">{label}</span>
-      {badge !== undefined && (
-        <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted tabular-nums">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-// Undo / redo render as a side-by-side pair rather than full-width rows so
-// the two fit on one line at the foot of the drawer. Each is a self-contained
-// bordered button (icon + label, centred) that dims and goes inert at the
-// ends of the timeline, where there is nothing to revert or re-apply.
-function EditButton({
-  icon,
-  label,
-  disabled = false,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-md border border-line py-2.5 text-sm ${
-        disabled
-          ? "cursor-not-allowed text-muted opacity-40"
-          : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
-      }`}
-    >
-      <span className={disabled ? "" : "text-muted"}>{icon}</span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-// Wraps a drawer row so a left swipe latches it open to reveal a trailing
-// trash button (see `useSwipeReveal`). `confirmLabel`, when given, makes the
-// removal a two-tap action: the first tap on the trash arms a confirming
-// state (the button reads `confirmLabel`) and only the second tap commits —
-// the double confirmation a namespace deletion warrants. A checklist passes
-// no `confirmLabel`, so its single tap removes straight away (recoverable
-// via undo). The sliding foreground carries its own surface background so it
-// covers the action while closed.
-const REMOVE_ACTION_W = 96;
-
-function SwipeToRemove({
-  actionLabel,
-  confirmLabel,
-  onRemove,
-  children,
-}: {
-  /** Accessible label for the trash button in its resting state. */
-  actionLabel: string;
-  /** When set, removal needs a second confirming tap reading this label. */
-  confirmLabel?: string;
-  onRemove: () => void | Promise<void>;
-  children: ReactNode;
-}) {
-  const swipe = useSwipeReveal(REMOVE_ACTION_W);
-  const [confirming, setConfirming] = useState(false);
-
-  // Closing the row (a tap on an open row, or a swipe back) disarms the
-  // confirm step so it never lingers half-armed for the next open.
-  useEffect(() => {
-    if (!swipe.open) setConfirming(false);
-  }, [swipe.open]);
-
-  function act() {
-    if (confirmLabel && !confirming) {
-      setConfirming(true);
-      return;
-    }
-    setConfirming(false);
-    swipe.close();
-    void onRemove();
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={act}
-          aria-label={confirming ? confirmLabel : actionLabel}
-          style={{ width: REMOVE_ACTION_W }}
-          className="flex h-full items-center justify-center bg-danger text-xs font-semibold tracking-wide text-white uppercase"
-        >
-          {confirming ? confirmLabel : <TrashIcon className="h-5 w-5" />}
-        </button>
-      </div>
-      <div
-        {...swipe.handlers}
-        style={{ transform: `translateX(${swipe.offset}px)` }}
-        className={`relative bg-surface [touch-action:pan-y] ${
-          swipe.animating ? "transition-transform duration-200" : ""
-        }`}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// Footer rows reuse the NavItem geometry (px-5, the density vertical
-// padding, gap-3, h-5 icons) so the relocated burger menu reads as one
-// continuous list with the rows above it. A plain button for in-app
-// actions, an anchor for the links.
-function MenuButton({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
-    >
-      <span className="text-muted">{icon}</span>
-      <span className="flex-1">{label}</span>
-    </button>
-  );
-}
-
-function MenuLink({
-  icon,
-  label,
-  href,
-  external,
-  sublabel,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  href: string;
-  external?: boolean;
-  /** Secondary line beneath the label (e.g. the app version). */
-  sublabel?: string;
-  onClick?: () => void;
-}) {
-  return (
-    <a
-      role="menuitem"
-      href={href}
-      target={external ? "_blank" : undefined}
-      rel={external ? "noreferrer noopener" : undefined}
-      onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
-    >
-      <span className="text-muted">{icon}</span>
-      <span className="flex flex-1 flex-col">
-        <span>{label}</span>
-        {sublabel && (
-          <span className="text-xs text-muted tabular-nums">{sublabel}</span>
-        )}
-      </span>
-    </a>
-  );
-}
-
-// The minimal shape `useContextMenu().open` accepts — a React pointer event
-// satisfies it, so a row hands its event straight through. Declared here so
-// the folder row can take `openMenu` as a prop without importing the hook's
-// internal event type.
-type OpenMenu = (
-  items: ContextMenuItem[],
-  e: { preventDefault: () => void; clientX: number; clientY: number },
-) => void;
-
-// One checklist row's touch action strip: a left swipe latches open a trailing
-// strip with a "move to folder" button (opens the folder menu) and/or a trash
-// button. Which buttons show depends on what's possible — a list with nowhere
-// to move shows only trash, the last remaining list shows only move. Desktop
-// uses a right-click menu instead and never renders this.
-function ChecklistRowStrip({
-  canRemove,
-  moveLabel,
-  removeLabel,
-  onMove,
-  onRemove,
-  children,
-}: {
-  canRemove: boolean;
-  /** Set when the list has somewhere to move; absent hides the move button. */
-  moveLabel?: string;
-  removeLabel: string;
-  onMove: (e: ReactMouseEvent) => void;
-  onRemove: () => void;
-  children: ReactNode;
-}) {
-  const width = (moveLabel ? 48 : 0) + (canRemove ? 48 : 0);
-  const swipe = useSwipeReveal(width);
-  return (
-    <div className="relative overflow-hidden">
-      <div
-        className={`absolute inset-0 flex items-center justify-end ${
-          swipe.offset < 0 ? "" : "invisible"
-        }`}
-      >
-        <div className="flex h-full" style={{ width }}>
-          {moveLabel && (
-            <button
-              type="button"
-              onClick={(e) => {
-                swipe.close();
-                onMove(e);
-              }}
-              aria-label={moveLabel}
-              className="flex h-full w-12 items-center justify-center bg-surface-3 text-fg-bright"
-            >
-              <FolderIcon className="h-5 w-5" />
-            </button>
-          )}
-          {canRemove && (
-            <button
-              type="button"
-              onClick={() => {
-                swipe.close();
-                onRemove();
-              }}
-              aria-label={removeLabel}
-              className="flex h-full w-12 items-center justify-center bg-danger text-white"
-            >
-              <TrashIcon className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-      </div>
-      <div
-        {...swipe.handlers}
-        style={{ transform: `translateX(${swipe.offset}px)` }}
-        className={`relative bg-surface [touch-action:pan-y] ${
-          swipe.animating ? "transition-transform duration-200" : ""
-        }`}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// A folder group header: a collapse toggle (caret + folder glyph + name +
-// count) plus a trailing "+" that starts a new list filed inside the folder.
-// Desktop right-click offers Rename / Delete; touch reveals an Edit / Delete
-// strip on a left swipe (a folder has no archive analogue, so a right swipe is
-// inert). The open glyph + accent tint mark an expanded folder.
-function FolderRow({
-  name,
-  count,
-  expanded,
-  desktop,
-  renameLabel,
-  deleteLabel,
-  addLabel,
-  onToggle,
-  onRename,
-  onDelete,
-  onAdd,
-  openMenu,
-}: {
-  name: string;
-  count: number;
-  expanded: boolean;
-  desktop: boolean;
-  renameLabel: string;
-  deleteLabel: string;
-  addLabel: string;
-  onToggle: () => void;
-  onRename: () => void;
-  onDelete: () => void;
-  onAdd: () => void;
-  openMenu: OpenMenu;
-}) {
-  const swipe = useSwipeReveal(REMOVE_ACTION_W);
-  const header = (
-    // The toggle and the "+" are siblings, not nested buttons: tapping the
-    // label expands the folder; the far-right "+" starts a list inside it.
-    <div className="flex w-full min-w-0 items-center">
-      <button
-        type="button"
-        aria-expanded={expanded}
-        onClick={onToggle}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 py-[var(--density-row-py)] pr-1 pl-3 text-left text-fg hover:text-fg-bright"
-      >
-        <span className="text-muted">
-          {expanded ? (
-            <ChevronDownIcon className="h-4 w-4" />
-          ) : (
-            <CaretRightIcon className="h-4 w-4" />
-          )}
-        </span>
-        <span className={expanded ? "text-accent" : "text-muted"}>
-          {expanded ? (
-            <FolderOpenIcon className="h-5 w-5" />
-          ) : (
-            <FolderIcon className="h-5 w-5" />
-          )}
-        </span>
-        <span className="flex-1 truncate">{name}</span>
-        {count > 0 && (
-          <span className="shrink-0 rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted tabular-nums">
-            {count}
-          </span>
-        )}
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onAdd();
-        }}
-        aria-label={addLabel}
-        title={addLabel}
-        className="mr-1 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
-      >
-        <PlusIcon className="h-4 w-4" />
-      </button>
-    </div>
-  );
-
-  if (desktop) {
-    return (
-      <div
-        onContextMenu={(e) =>
-          openMenu(
-            [
-              {
-                label: renameLabel,
-                icon: <PencilIcon className="h-4 w-4" />,
-                onSelect: onRename,
-              },
-              {
-                label: deleteLabel,
-                icon: <TrashIcon className="h-4 w-4" />,
-                onSelect: onDelete,
-                danger: true,
-              },
-            ],
-            e,
-          )
-        }
-        className="text-sm hover:bg-surface-2"
-      >
-        {header}
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative overflow-hidden text-sm">
-      <div
-        aria-hidden={swipe.offset >= 0}
-        className={`absolute inset-0 flex items-center justify-end ${
-          swipe.offset < 0 ? "" : "invisible"
-        }`}
-      >
-        <div className="flex h-full" style={{ width: REMOVE_ACTION_W }}>
-          <button
-            type="button"
-            onClick={() => {
-              swipe.close();
-              onRename();
-            }}
-            aria-label={renameLabel}
-            className="flex h-full flex-1 items-center justify-center bg-surface-3 text-fg-bright"
-          >
-            <PencilIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              swipe.close();
-              onDelete();
-            }}
-            aria-label={deleteLabel}
-            className="flex h-full flex-1 items-center justify-center bg-danger text-white"
-          >
-            <TrashIcon className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-      <div
-        {...swipe.handlers}
-        style={{ transform: `translateX(${swipe.offset}px)` }}
-        className={`relative bg-surface [touch-action:pan-y] ${
-          swipe.animating ? "transition-transform duration-200" : ""
-        }`}
-      >
-        {header}
-      </div>
-    </div>
-  );
-}
-
-// The inline folder name editor, used both for creating a folder (empty) and
-// renaming one (seeded with its name). Commits on Enter or blur with a
-// non-empty trimmed name; an empty name (or Escape) cancels — which is what
-// makes a freshly-added, never-named folder simply vanish on defocus. The
-// `committed` latch stops the blur that follows an Enter from firing twice.
-function FolderEditRow({
-  initial = "",
-  placeholder,
-  onCommit,
-  onCancel,
-}: {
-  initial?: string;
-  placeholder: string;
-  onCommit: (name: string) => void;
-  onCancel: () => void;
-}) {
-  const [value, setValue] = useState(initial);
-  const [committed, setCommitted] = useState(false);
-  const ref = useRef<HTMLInputElement>(null);
-  // Focus (and select) on mount — the row only appears on an explicit
-  // "new folder" / "rename" action, so it takes focus straight away.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.focus();
-    el.select();
-  }, []);
-  function finish() {
-    if (committed) return;
-    setCommitted(true);
-    const name = value.trim();
-    if (name) onCommit(name);
-    else onCancel();
-  }
-  return (
-    <div className="flex items-center gap-2 py-[var(--density-row-py)] pr-2 pl-3">
-      <span className="text-muted">
-        <FolderIcon className="h-5 w-5" />
-      </span>
-      <input
-        ref={ref}
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={finish}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            finish();
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            setCommitted(true);
-            onCancel();
-          }
-        }}
-        className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-fg-bright outline-none placeholder:text-muted/60"
-      />
-    </div>
-  );
-}
-
-// New list / New folder / Archive render as a compact segmented bar instead of
-// full-width rows, saving vertical space the way Undo / Redo do. The cells sit
-// flush against one another (the parent owns the border, rounding, and inner
-// `divide-x` dividers) and split the width evenly. The buttons are icon-only
-// (the label rides on `aria-label` / `title`); the active view tints accent,
-// and Archive carries its count as a corner badge.
-function BarButton({
-  icon,
-  label,
-  active = false,
-  badge,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  active?: boolean;
-  badge?: number;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      aria-current={active ? "page" : undefined}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={`relative flex flex-1 cursor-pointer items-center justify-center py-2.5 ${
-        active
-          ? "bg-surface-2 text-fg-bright"
-          : "text-fg hover:bg-surface-2 hover:text-fg-bright"
-      }`}
-    >
-      <span className={active ? "text-accent" : "text-muted"}>{icon}</span>
-      {badge !== undefined && (
-        <span className="absolute top-0.5 right-0.5 rounded-full bg-surface-3 px-1 py-0.5 text-[10px] leading-none text-muted tabular-nums">
-          {badge}
-        </span>
-      )}
-    </button>
   );
 }
