@@ -29,7 +29,6 @@ import { useSwipeReveal } from "./hooks/useSwipeReveal.ts";
 import {
   ArchiveIcon,
   CaretRightIcon,
-  CheckIcon,
   ChecklistIcon,
   ChevronDownIcon,
   CodeIcon,
@@ -226,13 +225,7 @@ export function SideMenu({
   function renderChecklistRow(c: ChecklistSummary, indent = false): ReactNode {
     const row = (
       <NavItem
-        icon={
-          c.id === activeChecklistId ? (
-            <CheckIcon className="h-5 w-5" />
-          ) : (
-            <ChecklistIcon className="h-5 w-5" />
-          )
-        }
+        icon={<ChecklistIcon className="h-5 w-5" />}
         label={c.name}
         active={c.id === activeChecklistId && current === "checklist"}
         badge={c.remaining > 0 ? c.remaining : undefined}
@@ -346,8 +339,9 @@ export function SideMenu({
       {namespaces.map((ns) => {
         // A namespace that has picked an icon or a colour shows its own
         // glyph, tinted to its accent — only the glyph is coloured, never
-        // the row's text. One left untouched keeps the plain check (active)
-        // / folder (inactive) treatment.
+        // the row's text. One left untouched gets the plain folder fallback;
+        // the active namespace reads from the row's accent highlight (and the
+        // icon's accent tint) rather than a swapped-in checkmark.
         const customised = Boolean(ns.glyph || ns.color);
         const icon = customised ? (
           <NamespaceGlyph
@@ -355,8 +349,6 @@ export function SideMenu({
             className="h-5 w-5"
             style={ns.color ? { color: ns.color } : undefined}
           />
-        ) : ns.slug === activeNamespace ? (
-          <CheckIcon className="h-5 w-5" />
         ) : (
           <FolderIcon className="h-5 w-5" />
         );
@@ -652,7 +644,7 @@ function NavItem({
         disabled
           ? "cursor-not-allowed text-muted/50"
           : active
-            ? "cursor-pointer bg-surface-2 font-semibold text-fg-bright"
+            ? "cursor-pointer bg-accent/20 font-semibold text-fg-bright shadow-[inset_3px_0_0_var(--color-accent)]"
             : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
       }`}
     >
