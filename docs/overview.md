@@ -654,7 +654,8 @@ the switcher hides any archived as a whole (see
 
 The side menu (`src/ui/SideMenu.tsx`) renders the switcher: a
 "Checklists" section listing every active list by name (the active one
-marked, a check glyph standing in for its icon), each row switching the
+marked by an accent-tinted highlight and left border rather than a
+swapped-in check glyph), each row switching the
 active list and navigating to the checklist view, with the section
 heading's trailing "+" creating a new list. The header **Checklist
 title** is the rename surface for the active list.
@@ -1266,7 +1267,9 @@ of the grid to avoid a duplicate).
 
 In the **side menu** a customised namespace renders its own glyph tinted to
 its accent — only the glyph is coloured, never the row text — while an
-untouched one keeps the plain check (active) / folder (inactive) icon. When
+untouched one keeps the plain folder icon. The active namespace is marked
+by the row's accent-tinted highlight and left border (and the icon's accent
+tint), not by a swapped-in checkmark. When
 the active namespace has a glyph, that glyph (in its colour) **replaces the
 app logo**: `namespace-favicon.ts` resolves the header wordmark slot
 (`namespaceLogoSrc`, threaded through `ChecklistContext` as `logoSrc` and
