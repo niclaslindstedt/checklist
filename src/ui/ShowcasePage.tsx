@@ -81,9 +81,9 @@ export function ShowcasePage() {
           <ul className="ml-5 list-disc space-y-1.5">
             <li>
               <strong className="text-fg-bright">Capture quickly</strong> — type
-              and press Enter to add an item, tap to check it off, swipe (or
-              right-click on a computer) to archive or delete an item — or a
-              whole checklist — step between items without leaving the keyboard,
+              and press Enter to add one item after another without leaving the
+              keyboard, tap to check it off, swipe (or right-click on a
+              computer) to archive or delete an item — or a whole checklist —
               and optionally sort checked items to the bottom so what&apos;s
               left stands out.
             </li>

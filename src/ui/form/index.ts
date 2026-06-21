@@ -5,6 +5,5 @@
 export { Button, type ButtonVariant } from "./Button.tsx";
 export { Checkbox } from "./Checkbox.tsx";
 export { ClearableInput } from "./ClearableInput.tsx";
-export { ContentEditable } from "./ContentEditable.tsx";
 export { focusAtEnd } from "./caret.ts";
 export { SelectPicker, type SelectOption } from "./SelectPicker.tsx";

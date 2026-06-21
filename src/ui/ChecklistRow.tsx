@@ -11,7 +11,6 @@ import type { DropMode } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
-import type { ActiveEditor } from "./edit-nav.ts";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
@@ -87,10 +86,10 @@ type Props = {
   /** Tell the parent the auto title-edit has been consumed; clears the flag. */
   onAutoEditTitleConsumed?: () => void;
   /**
-   * Report the editor opening (with a `commit` handle) or closing (`null`) so
-   * the view can drive the keyboard nav bar. See `edit-nav.ts`.
+   * Report the id of the item whose editor is open (or `null` when it closes)
+   * so the view can hide the add button while a row is being edited.
    */
-  onActiveEditorChange?: (handle: ActiveEditor | null) => void;
+  onActiveEditorChange?: (editingId: string | null) => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
   /** Nesting depth — indents the row one step per level. */
@@ -165,15 +164,14 @@ function ChecklistRowImpl({
     setEditing(true);
   }, []);
 
-  // Tag the editor's commit handle with this row's id before handing it up, so
-  // the view's nav bar knows which item is open. Stable across renders (both
-  // deps are referentially stable), so the editor registers exactly once.
-  const reportActive = useCallback(
-    (commit: (() => void) | null) => {
-      onActiveEditorChange?.(commit ? { id: item.id, commit } : null);
-    },
-    [onActiveEditorChange, item.id],
-  );
+  // Tell the view which item is being edited (or that editing has ended) so it
+  // can hide the add button while the keyboard is up. Clears on unmount too, so
+  // deleting the open row never leaves the button hidden.
+  useEffect(() => {
+    if (!editing) return;
+    onActiveEditorChange?.(item.id);
+    return () => onActiveEditorChange?.(null);
+  }, [editing, item.id, onActiveEditorChange]);
 
   // The composer just created this item with Shift+Enter and wants it opened
   // straight into its body editor. Honour it once, then tell the parent it's
@@ -248,7 +246,6 @@ function ChecklistRowImpl({
           notesDisabled={notesDisabled}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
-          onActiveChange={reportActive}
           onAddAfter={onAddAfter}
           onBackspaceEmpty={
             onBackspaceEmpty ? () => onBackspaceEmpty(item.id) : undefined

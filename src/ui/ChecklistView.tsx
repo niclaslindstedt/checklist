@@ -1,6 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react";
 
-import { unlock } from "../achievements/bus.ts";
 import { findItem, flattenForDisplay } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -10,13 +9,11 @@ import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
 import { DragGhostRow } from "./DragGhostRow.tsx";
-import { EditNavBar } from "./EditNavBar.tsx";
 import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { ghostPlacement } from "./dragGhostPlacement.ts";
-import type { ActiveEditor } from "./edit-nav.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
@@ -199,24 +196,9 @@ function ChecklistViewImpl() {
     [addItem],
   );
 
-  // The editor currently open, registered by its row. Drives the keyboard nav
-  // bar: which item is being edited (so we can find the one above/below) and
-  // the `commit` to flush its edit before jumping. Up/down reuse the same
-  // `editTitleOfId` hand-off the Backspace-erase flow uses to move editing
-  // between rows.
-  const [activeEditor, setActiveEditor] = useState<ActiveEditor | null>(null);
-  const editIndex = activeEditor
-    ? rows.findIndex((r) => r.item.id === activeEditor.id)
-    : -1;
-  const canPrev = editIndex > 0;
-  const canNext = editIndex >= 0 && editIndex < rows.length - 1;
-  const moveEdit = (target: number) => {
-    const targetId = rows[target]?.item.id;
-    if (!activeEditor || !targetId) return;
-    activeEditor.commit();
-    setEditTitleOfId(targetId);
-    unlock("lineWalker");
-  };
+  // The id of the row whose editor is open (null when none). The add button
+  // hides while a row is being edited so it doesn't crowd the keyboard.
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const draftRow = drafting ? (
     <AddItemForm
@@ -294,7 +276,7 @@ function ChecklistViewImpl() {
                   onAutoEditConsumed={clearEditBody}
                   autoEditTitle={item.id === editTitleOfId}
                   onAutoEditTitleConsumed={clearEditTitle}
-                  onActiveEditorChange={setActiveEditor}
+                  onActiveEditorChange={setEditingId}
                   notesDisabled={disableItemNotes}
                   depth={depth}
                   hasChildren={hasChildren}
@@ -338,22 +320,12 @@ function ChecklistViewImpl() {
         {addItemPosition === "bottom" && draftRow}
       </div>
 
-      {!drafting && (
+      {!drafting && !editingId && (
         <AddItemButton
           onActivate={startDraft}
           onArchiveFinished={archiveFinished}
           onDeleteFinished={deleteFinished}
           finishedCount={checkedCount}
-        />
-      )}
-
-      {activeEditor && (
-        <EditNavBar
-          canPrev={canPrev}
-          canNext={canNext}
-          onPrev={() => moveEdit(editIndex - 1)}
-          onNext={() => moveEdit(editIndex + 1)}
-          onDone={() => activeEditor.commit()}
         />
       )}
 

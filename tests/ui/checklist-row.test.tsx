@@ -14,12 +14,10 @@ import type { DragHandleProps } from "../../src/ui/hooks/useListReorder.ts";
 
 const noop = (): void => {};
 
-// The editor's title/note are contenteditable, not inputs, so they have no
-// `value` / change event: set the text and fire the `input` the field listens
-// on. (See `ContentEditable`.)
+// Type into the editor's native input/textarea by setting its value and firing
+// the change the controlled field listens on.
 function setText(el: HTMLElement, text: string): void {
-  el.textContent = text;
-  fireEvent.input(el);
+  fireEvent.change(el, { target: { value: text } });
 }
 
 const dragHandleProps: DragHandleProps = {
@@ -365,19 +363,17 @@ describe("ChecklistRow editing", () => {
     expect(onAutoEditTitleConsumed).toHaveBeenCalledTimes(1);
   });
 
-  it("registers and clears its active-editor handle as editing opens and closes", () => {
+  it("reports its item id as editing opens and clears it as it closes", () => {
     const onActiveEditorChange = vi.fn();
     renderRow({ onActiveEditorChange });
 
-    // No editor mounted yet, so nothing is registered.
+    // No editor mounted yet, so nothing is reported.
     expect(onActiveEditorChange).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const handle = onActiveEditorChange.mock.calls.at(-1)?.[0];
-    expect(handle?.id).toBe("i1");
-    expect(typeof handle?.commit).toBe("function");
+    expect(onActiveEditorChange).toHaveBeenLastCalledWith("i1");
 
-    // Closing the editor (Escape) clears the handle.
+    // Closing the editor (Escape) clears the reported id.
     fireEvent.keyDown(screen.getByLabelText("Edit item"), { key: "Escape" });
     expect(onActiveEditorChange).toHaveBeenLastCalledWith(null);
   });
