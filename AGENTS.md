@@ -416,6 +416,7 @@ Alongside the drift-sync skills above, the repo ships manual playbooks for recur
 | Skill | When to run |
 |---|---|
 | `commit`            | Commit staged changes, push, and open/update a PR with a conventional-commit title. |
+| `copy-feature`      | Bring a feature, look, modal, or behaviour over from the sibling `budget` repo — clone it, study the feature in place, and re-implement it adapted to the checklist domain. |
 | `release`           | Cut a new semver release: pre-flight checks, dispatch `release.yml`, verify the deploy, roll back. |
 | `write-changeset`   | Before opening a PR, decide whether it needs a `.changes/unreleased/` fragment, a parent-fragment edit, or the `no-changelog` label. |
 | `debug-from-logs`   | When the user pastes diagnostic output (console errors, stack traces, `make test` / `make build` failures) — trace it to a root cause and add regression coverage. |
