@@ -1607,8 +1607,19 @@ A conflict here means a genuine **cross-device** divergence — another
 device pushed a newer revision between this device's last load and its
 save. (A device can no longer conflict with itself: saves are serialized
 so a mid-flight edit queues rather than racing the in-flight write — see
-"Sync status / save state".) When a save loses that race, the adapter
-throws `ConflictError` and the hook turns it into a `ConflictState`.
+"Sync status / save state".) The directory adapter goes one step further
+to suppress **phantom** conflicts: on a flaky link a save can commit to
+the backend while its response is lost, so the device never learns the
+new revision and the next save sees the aggregate revision "move" even
+though no other device touched the data. Before raising `ConflictError`
+the adapter reconstructs the remote document and compares it against the
+bytes about to be written (projected through the same markdown round trip
+so regenerated item ids line up); when they're identical the earlier
+write is what moved the revision, so it adopts the new revision and
+reports success instead of interrupting the user. Only a genuinely
+different remote still conflicts. When a save loses that race, the
+adapter throws `ConflictError` and the hook turns it into a
+`ConflictState`.
 `ConflictResolutionModal` (`src/ui/ConflictResolutionModal.tsx`) is the
 non-dismissable prompt: it summarises the local and remote documents
 side by side and makes the user pick. "Keep mine" re-saves this
