@@ -150,6 +150,37 @@ describe("withLocalCache", () => {
     });
   });
 
+  it("serves the mirror synchronously for an instant first paint", async () => {
+    const storage = memoryStorage();
+    const inner = scriptedAdapter();
+    inner.setLoad(async () => ({ text: '{"v":1}', revision: "r1" }));
+    const cached = withLocalCache(inner, { storage, key });
+
+    // Nothing mirrored yet — the sync fast path has nothing to hand back.
+    expect(cached.capabilities.has("loadSync")).toBe(true);
+    expect(cached.loadSync?.()).toBeNull();
+
+    // After a live load primes the mirror, the next reload can read it
+    // synchronously — bytes and revision, with no `offline` flag (the
+    // live load that follows on mount settles connectivity).
+    await cached.load();
+    expect(cached.loadSync?.()).toEqual({ text: '{"v":1}', revision: "r1" });
+    expect(cached.loadSync?.()?.offline).toBeUndefined();
+  });
+
+  it("drops the sync mirror once the remote goes empty", async () => {
+    const storage = memoryStorage();
+    const inner = scriptedAdapter();
+    inner.setLoad(async () => ({ text: '{"v":1}', revision: "r1" }));
+    const cached = withLocalCache(inner, { storage, key });
+    await cached.load();
+    expect(cached.loadSync?.()).not.toBeNull();
+
+    inner.setLoad(async () => null);
+    await cached.load();
+    expect(cached.loadSync?.()).toBeNull();
+  });
+
   it("caches an offline save's bytes and re-throws so the engine retries", async () => {
     const storage = memoryStorage();
     const inner = scriptedAdapter();

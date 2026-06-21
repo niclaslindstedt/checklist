@@ -115,10 +115,18 @@ export function withLocalCache(
     }
   }
 
-  // Forward the inner capabilities verbatim. The cache could answer a
-  // synchronous read, but a live load is always preferred over a possibly
-  // stale mirror, and the cloud adapters carry no `loadSync` anyway.
+  // Advertise the synchronous fast path on top of the inner capabilities.
+  // The cloud adapters carry no `loadSync` of their own — every byte they
+  // hold is a network round-trip away — so on reload the first paint would
+  // show an empty list until `load()` resolves. The mirror already sits in
+  // localStorage, so we can hand back that (possibly stale) copy
+  // synchronously for an instant first paint; the `load()` the sync engine
+  // fires on mount replaces it with the live document a moment later. The
+  // encryption wrapper strips this capability back off (decryption is async,
+  // so a sync read of the cached envelope can't be turned into plaintext) —
+  // so this only takes effect for an unencrypted cloud backend.
   const capabilities = new Set<AdapterCapability>(inner.capabilities);
+  capabilities.add("loadSync");
 
   return {
     id: inner.id,
@@ -126,6 +134,15 @@ export function withLocalCache(
     saveDebounceMs: inner.saveDebounceMs,
     capabilities,
     getRevision: inner.getRevision ? () => inner.getRevision!() : undefined,
+
+    loadSync(): StoredSnapshot | null {
+      const cached = readCache();
+      if (!cached) return null;
+      // No `offline` flag: this is a head-start for the first paint, not a
+      // statement about connectivity. The `load()` that follows on mount
+      // does the live round-trip and sets `offline` from its outcome.
+      return { text: cached.text, revision: cached.revision };
+    },
 
     async load(): Promise<StoredSnapshot | null> {
       try {
