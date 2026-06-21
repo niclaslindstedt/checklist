@@ -26,6 +26,7 @@
 // first and raises `ConflictError` when the aggregate moved past the
 // caller's `baseRevision`.
 
+import { createLogger } from "../dev/logger.ts";
 import type { Folder, Snapshot } from "../domain/types.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import { ConflictError } from "./adapter.ts";
@@ -53,6 +54,14 @@ export const BLOB_FILE_NAME = "checklist.json";
 // the plaintext path; when encryption is on the whole document (folders
 // included) rides the single `checklist.json` blob instead.
 export const FOLDERS_FILE_NAME = "folders.json";
+
+const log = createLogger("directory");
+
+// How many recent local writes to remember for phantom-conflict detection.
+// One lost-response write plus the burst of edits the user makes before the
+// device next reaches the backend stays well inside this; bounded so the
+// buffer can't grow without limit across a long session.
+const MAX_RECENT_WRITES = 50;
 
 function isMarkdownPath(path: string): boolean {
   return path.endsWith(".md");
@@ -92,6 +101,24 @@ export function createDirectoryAdapter(
   // change, and so enabling encryption knows whether a stale sidecar needs
   // clearing.
   let lastFoldersJson: string | null = null;
+
+  // Load-equivalent forms (see `loadEquivalent`) of the documents this adapter
+  // has attempted to write this session, newest last. A flaky link can land a
+  // write server-side while losing the response, so the device keeps basing on
+  // the stale revision; when a later save sees the aggregate revision "move",
+  // the remote holds one of *these* — our own earlier write, not another
+  // device's edit. Matching the remote against this whole history (not only the
+  // bytes currently being written) is what stops a burst of edits made *after*
+  // the lost response from surfacing a phantom conflict over the user's own
+  // work — the single-device case where the local document has already moved
+  // ahead of what actually landed. Plaintext only: encrypted envelopes carry a
+  // random IV, so two envelopes of the same document never compare equal.
+  const recentWrites: string[] = [];
+  function rememberWrite(equivalent: string): void {
+    if (recentWrites[recentWrites.length - 1] === equivalent) return;
+    recentWrites.push(equivalent);
+    if (recentWrites.length > MAX_RECENT_WRITES) recentWrites.shift();
+  }
 
   // Read the folder registry sidecar, tolerating a missing / corrupt file by
   // yielding no folders. Records the canonical bytes so the next save can tell
@@ -206,6 +233,12 @@ export function createDirectoryAdapter(
     text: string,
     baseRevision?: string,
   ): Promise<StoredSnapshot> {
+    // The canonical form of the bytes we're about to write, for phantom-
+    // conflict comparison and the write history. Null for an encrypted
+    // envelope — its random IV makes byte comparison meaningless.
+    const writingEquivalent = isEncryptedEnvelope(text)
+      ? null
+      : loadEquivalent(text);
     const before = await store.list();
     if (baseRevision !== undefined) {
       const current = aggregateRevision(before);
@@ -223,18 +256,41 @@ export function createDirectoryAdapter(
         // with a raw network error, or a post-write re-list that fails): the
         // write lands, yet the client never learns the new revision and keeps
         // basing on the stale one. So the next save sees the revision "move"
-        // and would surface a conflict over the user's own edit. If the remote
-        // already holds exactly the document we're about to write, that earlier
-        // write is what moved it — adopt the new revision and report success
-        // instead of interrupting the user. (Plaintext only: two AES-GCM
-        // envelopes of the same document differ by their random IV, so an
-        // encrypted blob can't be compared this way and always conflicts.)
-        if (!isEncryptedEnvelope(text) && loadEquivalent(text) === remoteDoc) {
-          return { text, revision: current };
+        // and would surface a conflict over the user's own edit.
+        if (writingEquivalent !== null) {
+          if (writingEquivalent === remoteDoc) {
+            // The remote already holds exactly the document we're about to
+            // write: our own lost-response write of *these* bytes is what moved
+            // the revision. Adopt it and report success — nothing left to write.
+            log.info(
+              "save: remote already holds these bytes — adopting revision",
+            );
+            rememberWrite(writingEquivalent);
+            return { text, revision: current };
+          }
+          if (recentWrites.includes(remoteDoc)) {
+            // The remote holds an *earlier* write of ours (the lost-response
+            // one) and the user has since edited further, so the local document
+            // has moved ahead of what landed. Still not another device — write
+            // the newer bytes over the moved revision instead of conflicting.
+            log.info(
+              "save: remote holds an earlier local write — writing newer bytes over it",
+            );
+            // fall through to the write below, which re-bases on `before`.
+          } else {
+            log.warn(
+              "save: remote moved to an unrecognised document — real conflict",
+            );
+            throw new ConflictError({ text: remoteDoc, revision: current });
+          }
+        } else {
+          // Encrypted: can't tell our own re-encryption from another device's
+          // edit, so any revision move is treated as a genuine conflict.
+          throw new ConflictError({ text: remoteDoc, revision: current });
         }
-        throw new ConflictError({ text: remoteDoc, revision: current });
       }
     }
+    if (writingEquivalent !== null) rememberWrite(writingEquivalent);
 
     const existingMd = new Set(
       before.map((e) => e.path).filter(isMarkdownPath),

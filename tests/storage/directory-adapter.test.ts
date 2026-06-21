@@ -218,17 +218,70 @@ describe("directory adapter", () => {
     expect(resolved.revision).toBe(landed.revision);
   });
 
-  // The guard must not over-reach: a genuinely different remote document (a
-  // real other-device edit, written as valid markdown) still conflicts.
-  it("still raises a ConflictError when the remote holds a genuinely different document", async () => {
+  // The deeper phantom-conflict case: a lost-response write lands, and the
+  // user keeps editing before the device next reaches the backend, so the
+  // local document has moved *ahead* of what's on the remote. The remote then
+  // holds an earlier write of ours — not another device — so the newer bytes
+  // must be written over it rather than surfacing a conflict.
+  it("writes newer edits over a lost-response write instead of conflicting", async () => {
     const { adapter } = build();
     const first = await adapter.save(serialize(snapshot));
-    // Another device renames the list and saves on top of our base revision.
-    const otherDevice = {
+    // The user adds "Eggs" → docB. Its save lands server-side but the response
+    // is lost, so the device keeps basing on `first.revision`.
+    const withEggs = {
+      ...snapshot,
+      checklists: [
+        {
+          ...snapshot.checklists[0]!,
+          items: [
+            ...snapshot.checklists[0]!.items,
+            { id: "2", title: "Eggs", checked: false },
+          ],
+        },
+      ],
+    };
+    const landed = await adapter.save(serialize(withEggs), first.revision);
+    expect(landed.revision).not.toBe(first.revision);
+    // The user adds "Bread" → docC, still basing on the stale `first.revision`
+    // (the device never learned `landed.revision`). The remote holds docB —
+    // our own earlier write — so this writes docC through, no ConflictError.
+    const withBread = {
+      ...withEggs,
+      checklists: [
+        {
+          ...withEggs.checklists[0]!,
+          items: [
+            ...withEggs.checklists[0]!.items,
+            { id: "3", title: "Bread", checked: false },
+          ],
+        },
+      ],
+    };
+    const resolved = await adapter.save(serialize(withBread), first.revision);
+    expect(resolved.revision).not.toBe(landed.revision);
+    const loaded = await adapter.load();
+    expect(
+      parse(loaded!.text).checklists[0]!.items.map((i) => i.title),
+    ).toEqual(["Milk", "Eggs", "Bread"]);
+  });
+
+  // The guard must not over-reach: a genuinely different remote document from
+  // another device (a separate adapter over the same backend, with its own
+  // write history) still conflicts.
+  it("still raises a ConflictError when the remote holds a genuinely different document", async () => {
+    const { store, adapter } = build();
+    const first = await adapter.save(serialize(snapshot));
+    // A second device — a distinct adapter sharing the backend — renames the
+    // list and saves on top of our base revision.
+    const otherDevice = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "Memory",
+    });
+    const theirs = {
       ...snapshot,
       checklists: [{ ...snapshot.checklists[0]!, name: "Their list" }],
     };
-    await adapter.save(serialize(otherDevice), first.revision);
+    await otherDevice.save(serialize(theirs), first.revision);
     // We try to save our (different) document on the stale base — a real clash.
     await expect(
       adapter.save(serialize(snapshot), first.revision),
