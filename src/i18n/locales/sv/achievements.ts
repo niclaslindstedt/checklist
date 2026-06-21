@@ -141,10 +141,6 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Dra en post och släpp den mitt på en annan för att lägga den under som en underpunkt — släpp nära en kant för att i stället lägga den bredvid. En förälder drar in sina barn och får en pil för att fälla ihop dem; att bocka av föräldern bockar av hela gruppen, och avbockade poster sjunker till botten inom varje egen underlista.",
     },
-    lineWalker: {
-      name: "Radvandrare",
-      condition: "Hoppa mellan rader med tangentbordets navigeringsrad.",
-    },
     cleanSlate: {
       name: "Rent bord",
       condition: "Ta bort en checklista.",

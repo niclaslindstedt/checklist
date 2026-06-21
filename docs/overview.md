@@ -102,10 +102,16 @@ raw plain text. The title tap is swallowed after a swipe (the
 `src/ui/ChecklistRowEditor.tsx` — the in-place editor a row swaps to. It
 keeps the row's `Checkbox` so the line still reads as the same item (and
 the whole row is tinted `bg-surface-2` to signal the active edit); the
-title is one line, the body an optional note beneath it, both plain text.
-Both are `ContentEditable` (a contenteditable `div`), not native
-input/textarea, so iOS doesn't stack its own form-assistant bar above the
-app's keyboard nav bar — see **Keyboard nav bar**. Enter in the title commits
+title is one line (a native `<input>`), the body an optional note beneath it
+(a native `<textarea>`), both plain text. The native fields mean iOS draws its
+own keyboard accessory bar (previous / next / Done) above the keyboard, and
+that is the only bar on screen — the app no longer draws its own. While an
+editor is open the row reports its id up (`onActiveEditorChange`) so
+`ChecklistView` hides the add button (`editingId`) and it doesn't crowd the
+keyboard, and the editor scrolls itself into view above the keyboard on mount
+(and again when the keyboard's appearance resizes the visual viewport), since
+the visual-viewport-pinned shell stops iOS from auto-scrolling the field up.
+Enter in the title commits
 and immediately opens a fresh
 add-item draft (`onAddAfter`, wired to the view's `startDraft`) so one
 item flows straight into the next — the same draft row the add button
@@ -137,37 +143,6 @@ through and the empty line is only cleaned up on blur. `removeEmpty`
 (`use-checklist-edits.ts`) raises no toast — the row vanishes where the
 cursor already is — but still records an undo step labelled
 `toast.emptyItemRemoved`, so a mis-erase is recoverable.
-
-### Keyboard nav bar
-
-`src/ui/EditNavBar.tsx` — a small pill that floats just above the soft
-keyboard while an item is being edited, mirroring iOS's own form-assistant
-bar: an up / down pair on the left and a check on the right. The up and down
-buttons commit the open edit and move editing to the item above or below; the
-check commits and closes (dismissing the keyboard). It's a touch affordance,
-so it only shows on touch layouts (`sm:hidden`), and it rides above the
-keyboard for free by living in-flow at the bottom of the visual-viewport-pinned
-shell (see **App shell** / `useViewportHeight`) rather than doing any fixed
-positioning of its own.
-
-The bar coordinates with the open editor through `ActiveEditor`
-(`src/ui/edit-nav.ts`): the mounted `ChecklistRowEditor` registers a
-`{ id, commit }` handle (via its `onActiveChange` prop, tagged with the row's
-id in `ChecklistRow`), and `ChecklistView` holds it as `activeEditor`. From
-that it knows which item is open (so it can find the neighbour and disable up at
-the top / down at the bottom) and how to flush the in-progress text before
-jumping. Moving reuses the same `editTitleOfId` hand-off the Backspace-erase
-flow uses: `moveEdit` calls `activeEditor.commit()` then points the target row
-at its title editor. Each button keeps its press inside the editor
-(`onMouseDown` preventDefault) so the tap never blurs the input out from under
-the bar mid-click. Jumping with the bar unlocks the **Line Walker**
-achievement (`unlock("lineWalker")`).
-
-This is the *only* nav bar on screen because the editor's fields are
-contenteditable rather than native input/textarea: iOS renders its own
-form-assistant bar (a second up/down/done bar) for native controls — which a
-web page can neither reprogram nor hide — but not for contenteditable. See
-`ContentEditable` (`src/ui/form/ContentEditable.tsx`).
 
 ### Markdown renderer
 

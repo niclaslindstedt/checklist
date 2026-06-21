@@ -8,15 +8,13 @@ import { renderWithChecklist } from "./context-harness.tsx";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
-// The row editor's title/note are contenteditable, not inputs: set the text and
-// fire the `input` the field listens on, and find the open editor by its
+// Type into the editor's native input/textarea, and find the open editor by its
 // textbox role (the view-mode title is a button with the same label).
 function setText(el: HTMLElement, text: string): void {
-  el.textContent = text;
-  fireEvent.input(el);
+  fireEvent.change(el, { target: { value: text } });
 }
 const titleEditor = () =>
-  screen.getByRole("textbox", { name: "Edit item" }) as HTMLElement;
+  screen.getByRole("textbox", { name: "Edit item" }) as HTMLInputElement;
 
 const items: ChecklistItem[] = [
   { id: "i1", title: "Buy milk", checked: false },
@@ -180,7 +178,7 @@ describe("ChecklistView", () => {
       expect(
         screen
           .getAllByRole("textbox", { name: "Edit item" })
-          .map((el) => el.textContent),
+          .map((el) => (el as HTMLInputElement).value),
       ).toContain("Milk");
     });
 
@@ -211,89 +209,36 @@ describe("ChecklistView", () => {
     });
   });
 
-  describe("keyboard nav bar", () => {
-    const threeItems: ChecklistItem[] = [
+  describe("add button while editing", () => {
+    const twoItems: ChecklistItem[] = [
       { id: "i1", title: "Milk", checked: false },
       { id: "i2", title: "Bread", checked: false },
-      { id: "i3", title: "Cucumber", checked: false },
     ];
 
-    it("stays hidden until an item is being edited", () => {
-      renderView({ items: threeItems });
+    it("hides the add button while a row is being edited", () => {
+      renderView({ items: twoItems });
+
+      // Visible at rest.
+      expect(screen.getByRole("button", { name: "Add item" })).toBeTruthy();
+
+      // Editing a row hides it so it doesn't crowd the keyboard.
+      fireEvent.click(screen.getByText("Bread"));
+      expect(screen.queryByRole("button", { name: "Add item" })).toBeNull();
+
+      // Closing the editor (Escape) brings it back.
+      fireEvent.keyDown(titleEditor(), { key: "Escape" });
+      expect(screen.getByRole("button", { name: "Add item" })).toBeTruthy();
+    });
+
+    it("does not render an app-drawn keyboard nav bar", () => {
+      // The editor relies on the platform's native keyboard bar instead.
+      renderView({ items: twoItems });
+      fireEvent.click(screen.getByText("Bread"));
+
       expect(
         screen.queryByRole("button", { name: "Edit next item" }),
       ).toBeNull();
-      fireEvent.click(screen.getByText("Bread"));
-      expect(
-        screen.getByRole("button", { name: "Edit next item" }),
-      ).toBeTruthy();
-    });
-
-    it("commits the edit and moves editing down to the next item", () => {
-      const editItem = vi.fn();
-      renderView({ items: threeItems, editItem });
-
-      fireEvent.click(screen.getByText("Bread"));
-      expect(titleEditor().textContent).toBe("Bread");
-      fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
-
-      // The open edit is committed before the jump, and the row below opens.
-      expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread" });
-      expect(titleEditor().textContent).toBe("Cucumber");
-    });
-
-    it("commits the edit and moves editing up to the previous item", () => {
-      const editItem = vi.fn();
-      renderView({ items: threeItems, editItem });
-
-      fireEvent.click(screen.getByText("Bread"));
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit previous item" }),
-      );
-
-      expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread" });
-      expect(titleEditor().textContent).toBe("Milk");
-    });
-
-    it("disables up at the top of the list and down at the bottom", () => {
-      renderView({ items: threeItems });
-
-      fireEvent.click(screen.getByText("Milk"));
-      expect(
-        (
-          screen.getByRole("button", {
-            name: "Edit previous item",
-          }) as HTMLButtonElement
-        ).disabled,
-      ).toBe(true);
-
-      // Move down to the last item; now the down button is the disabled one.
-      fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
-      fireEvent.click(screen.getByRole("button", { name: "Edit next item" }));
-      expect(
-        (
-          screen.getByRole("button", {
-            name: "Edit next item",
-          }) as HTMLButtonElement
-        ).disabled,
-      ).toBe(true);
-    });
-
-    it("commits and closes the editor from the done button", () => {
-      const editItem = vi.fn();
-      renderView({ items: threeItems, editItem });
-
-      fireEvent.click(screen.getByText("Bread"));
-      const input = titleEditor();
-      setText(input, "Bread!");
-      fireEvent.click(screen.getByRole("button", { name: "Done editing" }));
-
-      expect(editItem).toHaveBeenCalledWith("i2", { title: "Bread!" });
-      // The editor and the bar are both gone — editing is finished.
-      expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
-      expect(
-        screen.queryByRole("button", { name: "Edit next item" }),
-      ).toBeNull();
+      expect(screen.queryByRole("button", { name: "Done editing" })).toBeNull();
     });
   });
 
