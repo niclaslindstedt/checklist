@@ -3,4 +3,4 @@ type: Added
 title: Sub-items
 ---
 
-Drag one item onto another to nest it as a sub-item — a shrunken copy follows your finger while a ghost preview snaps into the exact spot it'll land, clearly indented under the parent when it becomes a sub-item; parents fold their children, and checking a parent checks the whole group.
+Drag one item onto another to nest it as a sub-item — or, while editing an item, tap "Add sub-item" to start adding straight underneath it (Enter keeps adding within that sub-list); parents fold their children, and checking a parent checks the whole group.

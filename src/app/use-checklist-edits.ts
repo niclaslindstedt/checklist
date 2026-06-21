@@ -43,16 +43,20 @@ export interface ChecklistEdits {
    * Add an item to the active list. Returns the new item's id so a caller
    * can act on the freshly-created row — the composer uses it to jump
    * straight into editing the new item's body (Shift+Enter). Returns null
-   * when the title was blank, so nothing was added.
+   * when the title was blank, so nothing was added. Pass `parentId` to nest
+   * the new item as a sub-item of an existing one (the in-row "add sub-item"
+   * composer) instead of adding it at the top level.
    */
-  addItem: (title: string) => string | null;
+  addItem: (title: string, parentId?: string) => string | null;
   /**
    * Import a pasted markdown checklist as fresh items appended to the
    * active list (existing items are kept). Returns how many items were
    * added — zero when the text held no task/bullet lines, which the
-   * composer uses to tell a checklist paste from ordinary text.
+   * composer uses to tell a checklist paste from ordinary text. Pass
+   * `parentId` to append the imported items under an existing item (a paste
+   * into the in-row sub-item composer).
    */
-  importItems: (markdown: string) => number;
+  importItems: (markdown: string, parentId?: string) => number;
   /**
    * Edit an existing item's text in place — its `title`, its `notes` body,
    * or both. Only the fields supplied are touched; an empty `notes` clears
@@ -179,7 +183,7 @@ export function useChecklistEdits(deps: {
   );
 
   const addItem = useCallback(
-    (title: string): string | null => {
+    (title: string, parentId?: string): string | null => {
       const trimmed = title.trim();
       if (!trimmed) return null;
       const id = newId();
@@ -190,16 +194,20 @@ export function useChecklistEdits(deps: {
           { id, title: trimmed },
           now(),
           addItemPositionRef.current,
+          parentId,
         ),
         t("toast.itemAdded", { title: trimmed }),
       );
+      // Adding a sub-item builds the tree the same way the drag-to-nest
+      // gesture does, so it earns the same "Nest Egg" trophy.
+      if (parentId) unlock("nestEgg");
       return id;
     },
     [commit, t],
   );
 
   const importItems = useCallback(
-    (markdown: string): number => {
+    (markdown: string, parentId?: string): number => {
       const parsed = parseItemsFromMarkdown(markdown);
       if (parsed.length === 0) return 0;
       // Rebuild the imported tree as fresh items, minting an id per node so a
@@ -220,9 +228,10 @@ export function useChecklistEdits(deps: {
       const items: ChecklistItem[] = parsed.map(toItem);
       const count = flattenItems(items).length;
       const label = t("toast.itemsImported", { count });
-      commit(addItemsOp(listRef.current, items, now()), label);
+      commit(addItemsOp(listRef.current, items, now(), parentId), label);
       notify(label, "success");
       unlock("pasteList");
+      if (parentId) unlock("nestEgg");
       return count;
     },
     [commit, notify, t],

@@ -21,6 +21,7 @@ const app = {
   editTitlePlaceholder: "Item text…",
   notePlaceholder: "Add a note… (markdown supported)",
   addNote: "Add a note",
+  addSubitem: "Add sub-item",
   showNote: "Show note",
   hideNote: "Hide note",
   showSubitems: "Show sub-items",

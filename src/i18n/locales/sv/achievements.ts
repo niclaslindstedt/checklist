@@ -147,9 +147,9 @@ const achievements: AchievementsCatalog = {
     nestEgg: {
       name: "Underpunkt",
       condition:
-        "Släpp en post på en annan för att göra den till en underpunkt.",
+        "Gör en post till en underpunkt — dra den på en annan, eller använd Lägg till underpunkt.",
       learnMore:
-        "Dra en post och släpp den mitt på en annan för att lägga den under som en underpunkt — släpp nära en kant för att i stället lägga den bredvid. En förälder drar in sina barn och får en pil för att fälla ihop dem; att bocka av föräldern bockar av hela gruppen, och avbockade poster sjunker till botten inom varje egen underlista.",
+        "Dra en post och släpp den mitt på en annan för att lägga den under som en underpunkt — släpp nära en kant för att i stället lägga den bredvid. Eller, medan du redigerar en post, tryck på Lägg till underpunkt för att starta en inmatning direkt under den. En förälder drar in sina barn och får en pil för att fälla ihop dem; att bocka av föräldern bockar av hela gruppen, och avbockade poster sjunker till botten inom varje egen underlista.",
     },
     cleanSlate: {
       name: "Rent bord",

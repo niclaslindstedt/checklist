@@ -368,6 +368,58 @@ describe("ChecklistView", () => {
     });
   });
 
+  describe("sub-item composer", () => {
+    it("opens a nested composer and adds children under the parent", () => {
+      const addItem = vi.fn().mockReturnValue("k1");
+      renderView({ addItem });
+
+      // Edit the item, then tap "Add sub-item".
+      fireEvent.click(screen.getByText("Buy milk"));
+      fireEvent.click(screen.getByRole("button", { name: "Add sub-item" }));
+
+      // A composer is now open; an item typed into it lands under "i1".
+      const input = screen.getByLabelText("Add item");
+      fireEvent.change(input, { target: { value: "Skimmed" } });
+      fireEvent.submit(input.closest("form")!);
+      expect(addItem).toHaveBeenCalledWith("Skimmed", "i1");
+    });
+
+    it("hides the floating add button while a sub-item composer is open", () => {
+      renderView();
+      fireEvent.click(screen.getByText("Buy milk"));
+      fireEvent.click(screen.getByRole("button", { name: "Add sub-item" }));
+      // The composer's own "Add item" field is present, but the floating
+      // add *button* is gone so it doesn't crowd the keyboard.
+      expect(screen.queryByRole("button", { name: "Add item" })).toBeNull();
+    });
+
+    it("keeps Enter on a nested row inside its sub-list", () => {
+      // Editing a child and pressing Enter opens a sibling sub-item composer
+      // under the same parent — it does not jump out to a top-level draft.
+      const addItem = vi.fn().mockReturnValue("k2");
+      const nested: ChecklistItem[] = [
+        {
+          id: "p",
+          title: "Clothes",
+          checked: false,
+          children: [{ id: "k", title: "T-shirts", checked: false }],
+        },
+      ];
+      renderView({ items: nested, addItem });
+
+      fireEvent.click(screen.getByText("T-shirts"));
+      const input = titleEditor();
+      setText(input, "T-shirts");
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      // The composer is open; the next item lands under "p", not at the top.
+      const composer = screen.getByLabelText("Add item");
+      fireEvent.change(composer, { target: { value: "Socks" } });
+      fireEvent.submit(composer.closest("form")!);
+      expect(addItem).toHaveBeenCalledWith("Socks", "p");
+    });
+  });
+
   describe("import by paste", () => {
     function openComposer(importItems: (md: string) => number) {
       renderView({ items: [], importItems });

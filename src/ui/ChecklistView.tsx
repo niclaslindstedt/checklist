@@ -170,8 +170,31 @@ function ChecklistViewImpl() {
   // it, Enter / blur-with-text commits through `addItem`, and an empty blur
   // just unmounts it again — so a blank item is never created.
   const [drafting, setDrafting] = useState(false);
-  const startDraft = useCallback(() => setDrafting(true), []);
+
+  // The id of the item a sub-item composer is open under (null when none). The
+  // editor's "Add sub-item" button and Enter on a nested row open it; new items
+  // land as children of this item, so a checklist tree grows without dragging.
+  const [childDraftParentId, setChildDraftParentId] = useState<string | null>(
+    null,
+  );
+  const closeChildDraft = useCallback(() => setChildDraftParentId(null), []);
+  const startDraft = useCallback(() => {
+    setChildDraftParentId(null);
+    setDrafting(true);
+  }, []);
   const closeDraft = useCallback(() => setDrafting(false), []);
+  const startChildDraft = useCallback((parentId: string) => {
+    setDrafting(false);
+    setChildDraftParentId(parentId);
+    // Make sure the parent's sub-list is showing, else the composer (and the
+    // children it adds) would be tucked behind a collapsed caret.
+    setCollapsed((prev) => {
+      if (!prev.has(parentId)) return prev;
+      const next = new Set(prev);
+      next.delete(parentId);
+      return next;
+    });
+  }, []);
 
   // When the composer adds an item via Shift+Enter, it hands the new row's
   // id here so that row opens straight into its body editor. The row clears
@@ -206,6 +229,63 @@ function ChecklistViewImpl() {
     [addItem],
   );
 
+  // The sub-item composer's verbs, bound to the parent it's open under so each
+  // entry lands as a child of that item. A null parent (composer closed) makes
+  // them inert.
+  const addChildItem = useCallback(
+    (title: string) =>
+      childDraftParentId ? addItem(title, childDraftParentId) : null,
+    [addItem, childDraftParentId],
+  );
+  const importChildItems = useCallback(
+    (markdown: string) =>
+      childDraftParentId ? importItems(markdown, childDraftParentId) : 0,
+    [importItems, childDraftParentId],
+  );
+  const addChildAndEditBody = useCallback(
+    (title: string) => {
+      if (!childDraftParentId) return;
+      const id = addItem(title, childDraftParentId);
+      if (id) setEditBodyOfId(id);
+      setChildDraftParentId(null);
+    },
+    [addItem, childDraftParentId],
+  );
+
+  // Each item's parent id (top-level items omitted), so a nested row can keep
+  // Enter inside its sub-list — see `ChecklistRow`'s `parentId` / `onAddChild`.
+  const parentOf = useMemo(() => {
+    const map = new Map<string, string>();
+    const walk = (list: readonly ChecklistItem[], parent: string | null) => {
+      for (const it of list) {
+        if (parent) map.set(it.id, parent);
+        if (it.children) walk(it.children, it.id);
+      }
+    };
+    walk(items, null);
+    return map;
+  }, [items]);
+
+  // Where the sub-item composer splices into the flattened rows, and at what
+  // depth. A "top" add-position sits the composer right under the parent
+  // (before its existing children); "bottom" sits it after the whole subtree —
+  // matching where `addItem` actually drops the new child. -1 when closed.
+  const childDraftDepth = useMemo(() => {
+    if (childDraftParentId === null) return 0;
+    const row = rows.find((r) => r.item.id === childDraftParentId);
+    return row ? row.depth + 1 : 0;
+  }, [rows, childDraftParentId]);
+  const childDraftIndex = useMemo(() => {
+    if (childDraftParentId === null) return -1;
+    const parentIdx = rows.findIndex((r) => r.item.id === childDraftParentId);
+    if (parentIdx === -1) return -1;
+    if (addItemPosition === "top") return parentIdx + 1;
+    const parentDepth = rows[parentIdx]!.depth;
+    let i = parentIdx + 1;
+    while (i < rows.length && rows[i]!.depth > parentDepth) i++;
+    return i;
+  }, [rows, childDraftParentId, addItemPosition]);
+
   // The id of the row whose editor is open (null when none). The add button
   // hides while a row is being edited so it doesn't crowd the keyboard.
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -219,6 +299,20 @@ function ChecklistViewImpl() {
       notesDisabled={disableItemNotes}
     />
   ) : null;
+
+  // The sub-item composer, spliced into the row list at `childDraftIndex`.
+  const childDraftRow =
+    childDraftParentId !== null ? (
+      <AddItemForm
+        key="__child_draft"
+        onAdd={addChildItem}
+        onAddWithBody={addChildAndEditBody}
+        onImport={importChildItems}
+        onClose={closeChildDraft}
+        notesDisabled={disableItemNotes}
+        depth={childDraftDepth}
+      />
+    ) : null;
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
@@ -282,6 +376,8 @@ function ChecklistViewImpl() {
                   onRemoveEmpty={removeEmpty}
                   onBackspaceEmpty={backspaceEmpty}
                   onAddAfter={startDraft}
+                  onAddChild={startChildDraft}
+                  parentId={parentOf.get(item.id)}
                   autoEditBody={item.id === editBodyOfId}
                   onAutoEditConsumed={clearEditBody}
                   autoEditTitle={item.id === editTitleOfId}
@@ -307,16 +403,20 @@ function ChecklistViewImpl() {
                   onContextMenu={desktop ? openRowMenu : undefined}
                 />
               );
-              return ghost && draggedItem && ghost.index === i
-                ? [
-                    <DragGhostRow
-                      key="__drag_ghost"
-                      item={draggedItem}
-                      depth={ghost.depth}
-                    />,
-                    row,
-                  ]
-                : [row];
+              const out: React.ReactNode[] = [];
+              if (ghost && draggedItem && ghost.index === i) {
+                out.push(
+                  <DragGhostRow
+                    key="__drag_ghost"
+                    item={draggedItem}
+                    depth={ghost.depth}
+                  />,
+                );
+              }
+              out.push(row);
+              // Splice the sub-item composer in after the row it sits below.
+              if (i === childDraftIndex - 1) out.push(childDraftRow);
+              return out;
             })}
             {ghost && draggedItem && ghost.index === rows.length && (
               <DragGhostRow
@@ -330,7 +430,7 @@ function ChecklistViewImpl() {
         {addItemPosition === "bottom" && draftRow}
       </div>
 
-      {!drafting && !editingId && (
+      {!drafting && !editingId && childDraftParentId === null && (
         <AddItemButton
           onActivate={startDraft}
           onArchiveFinished={archiveFinished}

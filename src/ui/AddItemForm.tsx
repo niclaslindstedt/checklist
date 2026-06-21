@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { useT } from "../i18n";
+import { INDENT_PER_LEVEL } from "./ChecklistRow.tsx";
 import { ClearableInput } from "./form/index.ts";
 
 // The composer: the inline draft row opened by the floating add button
@@ -29,6 +30,7 @@ export function AddItemForm({
   onImport,
   onClose,
   notesDisabled = false,
+  depth = 0,
 }: {
   onAdd: (title: string) => void;
   /**
@@ -40,6 +42,12 @@ export function AddItemForm({
   onClose: () => void;
   /** When set, item notes are off — Shift+Enter falls back to a plain add. */
   notesDisabled?: boolean;
+  /**
+   * Nesting depth — indents the composer one step per level so a sub-item
+   * draft lines up under the children it's adding to (mirrors `ChecklistRow`).
+   * 0 (the default) is the top-level composer.
+   */
+  depth?: number;
 }) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,8 +87,15 @@ export function AddItemForm({
     }
   };
 
+  const indent = depth * INDENT_PER_LEVEL;
+
   return (
     <form
+      style={
+        indent
+          ? { paddingLeft: `calc(var(--density-row-px) + ${indent}px)` }
+          : undefined
+      }
       className="flex min-h-11 items-center gap-3 border-b border-line px-[var(--density-row-px)] py-[var(--density-row-py)]"
       onSubmit={(e) => {
         e.preventDefault();

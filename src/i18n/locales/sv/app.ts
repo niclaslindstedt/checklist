@@ -15,6 +15,7 @@ const app: AppCatalog = {
   editTitlePlaceholder: "Radtext…",
   notePlaceholder: "Lägg till en anteckning… (markdown stöds)",
   addNote: "Lägg till en anteckning",
+  addSubitem: "Lägg till underpunkt",
   showNote: "Visa anteckning",
   hideNote: "Dölj anteckning",
   showSubitems: "Visa underpunkter",

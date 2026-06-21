@@ -842,9 +842,26 @@ order, which sorts within each sub-list independently
 (`visibleCount`, `checkedCount`) spans the flattened tree. The on-disk
 **markdown codec** nests sub-items with two-space indentation per level (a
 note continuation is told apart from a nested task line by whether the
-indented line itself parses as an item); templates stay flat. Nesting an
-item unlocks the **Nest Egg** achievement; a plain sibling reorder keeps
-**Reshuffle**.
+indented line itself parses as an item); templates stay flat.
+
+Dragging isn't the only way to build the tree. The in-row editor
+(`ChecklistRowEditor`) carries an **"Add sub-item"** button beside "Add a
+note": it commits the edit and asks the view to open a composer **nested
+under** that item (`onAddChild` → `startChildDraft` in `ChecklistView`,
+which also expands the parent so the draft isn't hidden behind a collapsed
+caret). The composer is the same `AddItemForm`, indented by a `depth` prop
+and bound to `addItem(title, parentId)` (the edit verb and `addItem` /
+`addItems` domain ops take an optional `parentId` that appends into the
+parent's `children`, falling back to a top-level add if the id is gone). It
+splices into the flattened rows at `childDraftIndex` — right under the
+parent for a `"top"` add-position, after the whole subtree for `"bottom"` —
+matching where the new child actually lands. **Enter while editing a nested
+row keeps the chain inside the sub-list**: `ChecklistRow` knows each row's
+`parentId` (mapped in `ChecklistView`) and routes Enter to
+`onAddChild(parentId)` rather than the top-level `onAddAfter`, so finishing
+a sub-item flows into another sibling sub-item instead of jumping back out.
+Both the drag gesture and the button unlock the **Nest Egg** achievement;
+a plain sibling reorder keeps **Reshuffle**.
 
 ### Progress / completion
 

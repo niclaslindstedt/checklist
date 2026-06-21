@@ -66,8 +66,24 @@ type Props = {
    * list.
    */
   onBackspaceEmpty?: (id: string) => boolean;
-  /** Open a fresh add-item draft — fired when Enter commits a title edit. */
+  /**
+   * Open a fresh add-item draft — fired when Enter commits a title edit on a
+   * top-level row. A nested row routes Enter to `onAddChild(parentId)` instead
+   * (see `parentId`), so finishing a sub-item flows into another sub-item
+   * rather than jumping back out to the top level.
+   */
   onAddAfter?: () => void;
+  /**
+   * Open a sub-item composer nested under the given item — fired by the
+   * editor's "Add sub-item" button (`onAddChild(item.id)`) and, for a nested
+   * row, by Enter (`onAddChild(parentId)`). Omitted when nesting isn't offered.
+   */
+  onAddChild?: (parentId: string) => void;
+  /**
+   * This row's parent id, or undefined for a top-level row. Lets a nested
+   * row keep Enter "inside" its sub-list by adding another sibling sub-item.
+   */
+  parentId?: string;
   /**
    * Open this row straight into its body editor as soon as it mounts — the
    * composer sets it on the row it just created via Shift+Enter so a new
@@ -127,6 +143,8 @@ function ChecklistRowImpl({
   onRemoveEmpty,
   onBackspaceEmpty,
   onAddAfter,
+  onAddChild,
+  parentId,
   autoEditBody = false,
   onAutoEditConsumed,
   autoEditTitle = false,
@@ -163,6 +181,15 @@ function ChecklistRowImpl({
     setEditFocusBody(focusBody);
     setEditing(true);
   }, []);
+
+  // Enter after committing a title edit chains into the next draft. A nested
+  // row keeps that draft inside its own sub-list (another sibling sub-item)
+  // instead of jumping out to a top-level draft, so building out a sub-list
+  // flows the same way the top level does.
+  const handleAddAfter = useCallback(() => {
+    if (parentId && onAddChild) onAddChild(parentId);
+    else onAddAfter?.();
+  }, [parentId, onAddChild, onAddAfter]);
 
   // Tell the view which item is being edited (or that editing has ended) so it
   // can hide the add button while the keyboard is up. Clears on unmount too, so
@@ -246,7 +273,8 @@ function ChecklistRowImpl({
           notesDisabled={notesDisabled}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
-          onAddAfter={onAddAfter}
+          onAddAfter={handleAddAfter}
+          onAddChild={onAddChild ? () => onAddChild(item.id) : undefined}
           onBackspaceEmpty={
             onBackspaceEmpty ? () => onBackspaceEmpty(item.id) : undefined
           }
