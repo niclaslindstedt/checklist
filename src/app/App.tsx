@@ -26,6 +26,7 @@ import {
 } from "../ui/nav-context.ts";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { ChecklistDragProvider } from "../ui/checklist-drag.tsx";
+import { ReportDragActivityContext } from "../ui/drag-activity.ts";
 import {
   CHECKLIST_DROP_ARCHIVE,
   CHECKLIST_DROP_NS_PREFIX,
@@ -136,6 +137,10 @@ function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   // True while the floating menu button is being dragged to a new edge.
   const [menuButtonDragging, setMenuButtonDragging] = useState(false);
+  // True while a pointer drag (reordering items, or filing a checklist) owns
+  // the screen — reported up from the drag sources via `ReportDragActivityContext`
+  // so pull-to-refresh can stand down for its duration.
+  const [dragActive, setDragActive] = useState(false);
   const [view, setView] = useState<View>("checklist");
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -412,11 +417,16 @@ function AppShell() {
 
   // Pull-to-refresh: a downward drag from the top of the list re-reads the
   // active backend (see `useChecklist.reload`). Gated off while a modal
-  // owns the screen, and while the floating menu button is being dragged —
-  // dragging it downward would otherwise arm a refresh at the same time.
+  // owns the screen, while the floating menu button is being dragged, and
+  // while a checklist or item is being drag-reordered — dragging any of them
+  // downward would otherwise arm a refresh at the same time.
   const ptr = usePullToRefresh(refresh, {
     enabled:
-      !anyModalOpen && !menuOpen && !menuButtonDragging && view === "checklist",
+      !anyModalOpen &&
+      !menuOpen &&
+      !menuButtonDragging &&
+      !dragActive &&
+      view === "checklist",
   });
 
   // When the floating button is hidden, an inward swipe from the drawer's
@@ -509,60 +519,62 @@ function AppShell() {
   );
 
   return (
-    <NavContext.Provider value={navValue}>
-      <ChecklistContext.Provider value={checklistValue}>
-        <AchievementsContext.Provider value={achievementsValue}>
-          <PullToRefreshIndicator
-            state={ptr.state}
-            pullDistance={ptr.pullDistance}
-          />
-          {/* A flex row so the pinned sidebar docks beside the content. When
+    <ReportDragActivityContext.Provider value={setDragActive}>
+      <NavContext.Provider value={navValue}>
+        <ChecklistContext.Provider value={checklistValue}>
+          <AchievementsContext.Provider value={achievementsValue}>
+            <PullToRefreshIndicator
+              state={ptr.state}
+              pullDistance={ptr.pullDistance}
+            />
+            {/* A flex row so the pinned sidebar docks beside the content. When
             the menu isn't pinned, SideMenu renders only `position: fixed`
             layers (the floating button and the overlay drawer), which sit
             outside the flex flow — so the view keeps the full width. */}
-          <ChecklistDragProvider onDrop={onChecklistDrop}>
-            <div className="flex h-full">
-              <SideMenu
-                namespaces={storage.namespaces}
-                activeNamespace={storage.activeNamespace}
-                onSwitchNamespace={storage.switchNamespace}
-                onRemoveNamespace={removeNamespace}
-              />
-              <main className="relative h-full min-w-0 flex-1">
-                {view === "archive" ? <ArchiveView /> : <ChecklistView />}
-              </main>
-            </div>
-          </ChecklistDragProvider>
-          <SettingsModalHost
-            settings={settings}
-            onSave={saveSettingsDraft}
-            onPreviewAppearance={setAppearancePreview}
-            storage={storage}
-          />
-          <ChangelogModalHost />
-          <SyncDetailsModalHost />
-          <NamespacesModalHost
-            storage={storage}
-            onCreate={createNamespace}
-            onRemove={removeNamespace}
-          />
-          <AchievementsModalHost settings={settings} />
-          <AchievementsUnlockModalHost
-            settings={settings}
-            onClear={clearUnseenAchievements}
-          />
-          <ConflictResolutionModal
-            open={checklist.conflict !== null}
-            local={checklist.snapshot}
-            remote={checklist.conflict?.remote ?? checklist.snapshot}
-            onResolve={(keep) => {
-              unlock("peacemaker");
-              checklist.resolveConflict(keep);
-            }}
-          />
-          <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
-        </AchievementsContext.Provider>
-      </ChecklistContext.Provider>
-    </NavContext.Provider>
+            <ChecklistDragProvider onDrop={onChecklistDrop}>
+              <div className="flex h-full">
+                <SideMenu
+                  namespaces={storage.namespaces}
+                  activeNamespace={storage.activeNamespace}
+                  onSwitchNamespace={storage.switchNamespace}
+                  onRemoveNamespace={removeNamespace}
+                />
+                <main className="relative h-full min-w-0 flex-1">
+                  {view === "archive" ? <ArchiveView /> : <ChecklistView />}
+                </main>
+              </div>
+            </ChecklistDragProvider>
+            <SettingsModalHost
+              settings={settings}
+              onSave={saveSettingsDraft}
+              onPreviewAppearance={setAppearancePreview}
+              storage={storage}
+            />
+            <ChangelogModalHost />
+            <SyncDetailsModalHost />
+            <NamespacesModalHost
+              storage={storage}
+              onCreate={createNamespace}
+              onRemove={removeNamespace}
+            />
+            <AchievementsModalHost settings={settings} />
+            <AchievementsUnlockModalHost
+              settings={settings}
+              onClear={clearUnseenAchievements}
+            />
+            <ConflictResolutionModal
+              open={checklist.conflict !== null}
+              local={checklist.snapshot}
+              remote={checklist.conflict?.remote ?? checklist.snapshot}
+              onResolve={(keep) => {
+                unlock("peacemaker");
+                checklist.resolveConflict(keep);
+              }}
+            />
+            <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
+          </AchievementsContext.Provider>
+        </ChecklistContext.Provider>
+      </NavContext.Provider>
+    </ReportDragActivityContext.Provider>
   );
 }

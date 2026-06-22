@@ -12,6 +12,7 @@ import {
   CHECKLIST_DROP_ROOT,
   checklistDropNamespaceKey,
 } from "../../src/ui/checklist-drag-context.ts";
+import { ReportDragActivityContext } from "../../src/ui/drag-activity.ts";
 
 // jsdom implements neither pointer capture nor hit-testing; stub both so the
 // long-press gesture can run. `elementFromPoint` is re-pointed per test.
@@ -154,5 +155,36 @@ describe("checklist long-press drag", () => {
     fireEvent.pointerUp(wrapper, { pointerId: 1 });
 
     expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  // While a list is picked up, the drag must report itself so the
+  // document-level pull-to-refresh stands down — dragging a list downward to a
+  // drop target would otherwise arm a refresh at the same time.
+  it("reports drag activity while a list is held, and clears it on drop", () => {
+    const report = vi.fn();
+    const { getByTestId } = render(
+      <ReportDragActivityContext.Provider value={report}>
+        <ChecklistDragProvider onDrop={() => {}}>
+          <ChecklistDragItem checklistId="c1" title="My list" enabled>
+            <button data-testid="list">My list</button>
+          </ChecklistDragItem>
+          <div
+            data-testid="root"
+            {...{ [CHECKLIST_DROP_ATTR]: CHECKLIST_DROP_ROOT }}
+          >
+            Ungrouped
+          </div>
+        </ChecklistDragProvider>
+      </ReportDragActivityContext.Provider>,
+    );
+    const wrapper = getByTestId("list").parentElement!;
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(getByTestId("root"));
+
+    fireEvent.pointerDown(wrapper, touch);
+    act(() => void vi.advanceTimersByTime(400));
+    expect(report).toHaveBeenLastCalledWith(true);
+
+    act(() => fireEvent.pointerUp(wrapper, { pointerId: 1 }));
+    expect(report).toHaveBeenLastCalledWith(false);
   });
 });
