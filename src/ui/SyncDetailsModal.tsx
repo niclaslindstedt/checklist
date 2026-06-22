@@ -624,6 +624,11 @@ function SyncLogPanel({ t }: { t: TFunction }) {
     () => all.filter((e) => SYNC_LOG_SCOPES.has(e.scope)),
     [all],
   );
+  // Render newest-first so the most recent round-trip is at the top, where a
+  // reader looks first — no scrolling to the bottom to see what just happened.
+  // The copied text stays chronological (oldest-first), the natural order to
+  // read a pasted log top to bottom.
+  const ordered = useMemo(() => entries.slice().reverse(), [entries]);
 
   async function handleCopy() {
     try {
@@ -661,7 +666,7 @@ function SyncLogPanel({ t }: { t: TFunction }) {
         </button>
       </div>
       <ul className="flex max-h-44 flex-col overflow-y-auto rounded border border-line bg-surface-2 font-mono text-xs">
-        {entries.map((entry, idx) => (
+        {ordered.map((entry, idx) => (
           <li
             key={`${entry.ts}-${idx}`}
             className={`flex flex-col gap-0.5 border-b border-l-2 border-line px-2.5 py-1.5 last:border-b-0 ${railClass(

@@ -10,8 +10,12 @@ import {
 
 import type { SaveStatus } from "../../src/app/use-checklist.ts";
 import { SyncDetailsModal } from "../../src/ui/SyncDetailsModal.tsx";
+import { clearLogs, createLogger } from "../../src/dev/logger.ts";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  clearLogs();
+});
 
 function renderModal(
   overrides: Partial<React.ComponentProps<typeof SyncDetailsModal>> = {},
@@ -173,5 +177,24 @@ describe("SyncDetailsModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /View sync log/ }));
     // Expanding shows the log panel (empty-state copy when nothing matched).
     expect(screen.getByText(/No sync activity logged yet/i)).toBeTruthy();
+  });
+
+  it("renders the sync log newest-first, so the latest entry is at the top", () => {
+    const log = createLogger("dropbox");
+    log.info("first entry");
+    log.info("second entry");
+    log.info("third entry");
+
+    renderModal({ status: "saved" });
+    fireEvent.click(screen.getByRole("button", { name: /View sync log/ }));
+
+    const items = screen
+      .getAllByRole("listitem")
+      .map((li) => li.textContent ?? "");
+    const firstAt = items.findIndex((t) => t.includes("first entry"));
+    const thirdAt = items.findIndex((t) => t.includes("third entry"));
+    // The most recent push ("third") sits above the oldest ("first").
+    expect(thirdAt).toBeLessThan(firstAt);
+    expect(thirdAt).toBe(0);
   });
 });
