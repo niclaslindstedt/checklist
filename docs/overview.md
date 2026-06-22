@@ -207,7 +207,10 @@ deliberately summoned.
 `src/ui/AddItemForm.tsx` — the inline composer row opened by
 `AddItemButton`. It renders where the new item will land — styled like a
 real `ChecklistRow` so the spot reads as the item being created — and
-grabs focus so the soft keyboard comes straight up. Enter adds the item,
+grabs focus so the soft keyboard comes straight up. Its leading columns
+mirror a row's: a "+" fills the caret slot and a dimmed, inert checkbox
+fills the checkbox slot, so the typed text lines up exactly with the item
+titles below and previews where the new item's checkbox will sit. Enter adds the item,
 clears the field, and keeps focus so the user can type item after item
 without re-tapping — a plain-text-editor feel. **Shift+Enter** instead
 adds the item and jumps straight into editing its body — mirroring the

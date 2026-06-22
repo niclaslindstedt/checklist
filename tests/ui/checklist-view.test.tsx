@@ -55,6 +55,20 @@ describe("ChecklistView", () => {
     expect(addItem).toHaveBeenCalledWith("New thing");
   });
 
+  it("renders a dimmed checkbox placeholder in the composer so the input aligns with item titles", () => {
+    renderView({ items: [] });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const form = screen.getByLabelText("Add item").closest("form")!;
+    // The composer mirrors a row's leading columns: the "+" caret slot plus a
+    // dimmed, inert checkbox box (rounded border, no native input) standing in
+    // for where the new item's checkbox will land.
+    const placeholder = form.querySelector(".rounded-sm");
+    expect(placeholder).not.toBeNull();
+    expect(placeholder!.className).toContain("opacity-40");
+    // It's purely decorative — no focusable/announced checkbox in the composer.
+    expect(form.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
   it("adds the item and opens its body editor on Shift+Enter in the composer", () => {
     // addItem returns the new row's id; the view hands that to the row so it
     // opens straight into its body editor. Seed the item so that row exists.
