@@ -54,6 +54,27 @@ class FlakyFileStore extends MemoryFileStore {
   }
 }
 
+// A store whose reads drop the first N times before succeeding — models a
+// flaky link where individual file downloads intermittently fail with the
+// raw `TypeError` a `fetch` rejects with. The per-file retry should ride
+// these out so an all-or-nothing load doesn't collapse to "offline".
+class FlakyReadFileStore extends MemoryFileStore {
+  failuresLeft: number;
+  reads = 0;
+  constructor(failuresLeft: number) {
+    super();
+    this.failuresLeft = failuresLeft;
+  }
+  override async read(path: string): Promise<string | null> {
+    this.reads += 1;
+    if (this.failuresLeft > 0) {
+      this.failuresLeft -= 1;
+      throw new TypeError("Load failed");
+    }
+    return super.read(path);
+  }
+}
+
 // A MemoryFileStore that lists its files in reverse insertion order. The cloud
 // backends don't guarantee `list()` returns files in the order they were
 // written — and the in-memory document's order can come from the offline cache,
@@ -172,6 +193,56 @@ describe("directory adapter", () => {
     };
     const adapter = createDirectoryAdapter(store, { id: "dev", label: "mem" });
     await expect(adapter.probe!()).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it("retries a dropped file read so a flaky link doesn't collapse the whole load", async () => {
+    // Seed a document, then make the next two reads fail with a raw network
+    // error. Without per-file retry the all-or-nothing load would reject and
+    // fall back to the cache ("offline"); with it, the reads ride out the
+    // blips and the load returns the live document.
+    const seed = new MemoryFileStore();
+    await createDirectoryAdapter(seed, {
+      id: "dev",
+      label: "mem",
+      retryDelaysMs: [],
+    }).save(serialize(snapshot));
+
+    const flaky = new FlakyReadFileStore(2);
+    // Copy the seeded files into the flaky store.
+    for (const entry of await seed.list()) {
+      await flaky.write(entry.path, (await seed.read(entry.path)) ?? "");
+    }
+    flaky.failuresLeft = 2; // drop the first two reads of the load
+
+    const adapter = createDirectoryAdapter(flaky, {
+      id: "dev",
+      label: "mem",
+      retryDelaysMs: [1, 1, 1], // tiny delays keep the test fast
+    });
+    const loaded = await adapter.load();
+    expect(loaded).not.toBeNull();
+    expect(parse(loaded!.text).checklists[0]!.name).toBe("Groceries");
+  });
+
+  it("still fails (offline) when a read keeps dropping past the retry budget", async () => {
+    const seed = new MemoryFileStore();
+    await createDirectoryAdapter(seed, {
+      id: "dev",
+      label: "mem",
+      retryDelaysMs: [],
+    }).save(serialize(snapshot));
+    const flaky = new FlakyReadFileStore(0);
+    for (const entry of await seed.list()) {
+      await flaky.write(entry.path, (await seed.read(entry.path)) ?? "");
+    }
+    flaky.failuresLeft = 99; // never recovers within the budget
+
+    const adapter = createDirectoryAdapter(flaky, {
+      id: "dev",
+      label: "mem",
+      retryDelaysMs: [1, 1], // two retries, then give up
+    });
+    await expect(adapter.load()).rejects.toBeInstanceOf(TypeError);
   });
 
   it("writes one markdown file per checklist and template", async () => {
@@ -372,9 +443,15 @@ describe("directory adapter", () => {
   // own earlier write instead of surfacing a phantom conflict.
   it("remembers a write attempted while offline so a later save doesn't conflict over it", async () => {
     const store = new FlakyFileStore();
+    // Disable the per-file network-error retry here: this test models a
+    // *lost-response* write (the request commits server-side but the client
+    // never learns), simulated by a single `list()` throw. Retry would ride
+    // that one throw out and defeat the simulation; the phantom-conflict
+    // protection it exercises is independent of the retry wrapper.
     const adapter = createDirectoryAdapter(store, {
       id: "dev",
       label: "Memory",
+      retryDelaysMs: [],
     });
     const first = await adapter.save(serialize(snapshot));
 
