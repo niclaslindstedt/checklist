@@ -64,8 +64,8 @@ it reads its items and actions from `useChecklistContext`
 (`src/ui/checklist-context.ts`). The `SyncInfo` type defined there carries
 everything `SyncStatus` and the cloud-sync details modal need — backend,
 namespace, provider name, save status, failure detail, dirty flag,
-`onSave`, `onOpenDetails`, `onReconnect` — and is null for the local
-backend.
+`onSave`, `onOpenDetails`, `onReconnect`, `onCheckConnection` — and is null
+for the local backend.
 
 ### Checklist row
 
@@ -438,7 +438,10 @@ shows the failure reason captured verbatim into `statusDetail` (set in
 `use-checklist-sync.ts` from the thrown error's `message`), so a broken
 save is no longer a silent red icon. It also offers a Reconnect button on
 `auth-error` (wired to `SyncInfo.onReconnect`, which re-issues OAuth for
-Dropbox / Google Drive), a Save now / Try again button, the provider name
+Dropbox / Google Drive), a Save now / Try again button, a **Check
+connection** button while `offline` (wired to `SyncInfo.onCheckConnection`
+— see [Check connection](#check-connection)) that re-probes the backend
+and shows the outcome as a live status line, the provider name
 and file location, and an "Open in <provider>" link out to the backend's
 web UI (omitted for the local folder, which has no URL). The provider
 path / URL are derived from `SyncInfo.backend` + `namespace` via the
@@ -1573,6 +1576,36 @@ unreachable **and** nothing is cached yet (a brand-new device offline),
 the load throws `OfflineUnavailableError`, which `UnlockGate` maps to a
 "you're offline" message instead of the misleading "wrong passphrase".
 Opening the lists while offline unlocks the **Off the Grid** achievement.
+
+What the app *counts* as offline lives in `isOfflineError`: a raw `fetch`
+`TypeError` (the request never reached the host — DNS failure, refused
+connection, airplane mode). It deliberately does **not** consult
+`navigator.onLine`, whose `false` readings are unreliable across platforms
+(Linux network-manager quirks, VPNs, captive portals) and used to declare
+the app offline while connectivity was fine. The typed adapter signals
+(`Auth` / `Conflict` / `RateLimit`) are never offline; a plain backend
+error (a 5xx surfaced generically) isn't either.
+
+### Check connection
+
+Because the offline state is a heuristic — and because nothing automatic
+clears it until the next save lands or a pull-to-refresh succeeds — the
+sync-details modal (`SyncDetailsModal`) shows a **Check connection** button
+whenever `offline` is true, so the user can actively re-test reachability
+and see *what's happening* rather than tapping a button that seems inert.
+It calls `useChecklist.checkConnection` (`src/app/use-checklist-sync.ts`),
+which fires `StorageAdapter.probe` — a lightweight reachability call (a
+directory listing with no file bodies, implemented once in
+`createDirectoryAdapter` so all three file backends share it and exposed
+through the `withLocalCache` / `withEncryption` wrappers). The result is a
+`ConnectionProbeResult` the button renders as a live status line: `online`
+(the probe reached the backend — the engine re-reads the live document,
+clearing `offline`, and flushes any edit queued during the outage),
+`offline` (still unreachable — the user stays on the local copy), or
+`auth-error` (the backend answered but refused the session, which is the
+opposite of offline — the flag clears and the modal routes to the
+**Reconnect** button). Each outcome is phrased in `sync.check*` strings
+(English and Swedish).
 
 ### OAuth (PKCE)
 

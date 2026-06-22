@@ -35,6 +35,17 @@ const sync = {
   tryAgain: "Try again",
   saveNow: "Save now",
 
+  // The "Check connection" affordance shown while offline, plus the live
+  // status messages it cycles through so the user sees *what's happening*
+  // instead of a button that seems to do nothing.
+  checkConnection: "Check connection",
+  checkPinging: "Reaching {name}…",
+  checkOnline: "Back online — syncing your changes.",
+  checkStillOffline:
+    "Still can't reach {name}. Your edits are saved on this device and will sync automatically once you're back online.",
+  checkAuthExpired:
+    "Your session with {name} has expired — reconnect to continue.",
+
   // Per-state heading shown in the modal's status block, plus the
   // explanatory "what / why" line beneath it.
   syncingNow: "Saving your changes…",

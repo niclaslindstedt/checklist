@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactElement } from "react";
 
 import { useT, type TFunction } from "../i18n";
-import type { SaveStatus } from "../app/use-checklist.ts";
+import type {
+  ConnectionProbeResult,
+  SaveStatus,
+} from "../app/use-checklist.ts";
 import type { BackendId } from "../storage/backend-preference.ts";
 import { DROPBOX_APP_FOLDER, dropboxWebUrl } from "../storage/dropbox/index.ts";
 import {
@@ -47,6 +50,10 @@ type Props = {
   // redirect runs and surface the failure instead of swallowing it. Null
   // when the backend has no reconnect gesture (the local folder).
   onReconnect: (() => Promise<void>) | null;
+  // Actively re-probe backend reachability — wired to the "Check connection"
+  // button shown while offline. Resolves with what the probe found so the
+  // button can report it; recovery (re-read + flush) happens engine-side.
+  onCheckConnection: () => Promise<ConnectionProbeResult>;
   onClose: () => void;
 };
 
@@ -189,11 +196,17 @@ export function SyncDetailsModal({
   offline,
   onSaveNow,
   onReconnect,
+  onCheckConnection,
   onClose,
 }: Props) {
   const t = useT();
   const [reconnectPending, setReconnectPending] = useState(false);
   const [reconnectError, setReconnectError] = useState<string | null>(null);
+  // Live state of the "Check connection" probe so the user sees what's
+  // happening — a spinner while it reaches the backend, then the outcome.
+  const [checkPending, setCheckPending] = useState(false);
+  const [checkMessage, setCheckMessage] = useState<string | null>(null);
+  const [checkTone, setCheckTone] = useState<StatusView["tone"]>("busy");
 
   // Reset the inline reconnect state whenever the modal closes or the
   // session leaves the auth-error state, so a stale spinner / error never
@@ -207,6 +220,15 @@ export function SyncDetailsModal({
   useEffect(() => {
     if (status !== "auth-error") setReconnectError(null);
   }, [status]);
+  // Drop the connection-check result once the modal closes or we're no
+  // longer offline (a successful check, or sync recovering on its own), so a
+  // stale "still offline" line never lingers behind a now-synced state.
+  useEffect(() => {
+    if (!open || !offline) {
+      setCheckPending(false);
+      setCheckMessage(null);
+    }
+  }, [open, offline]);
 
   const view = providerView(backend, namespace);
   // The "Open in …" link names the destination service itself — Dropbox,
@@ -239,11 +261,41 @@ export function SyncDetailsModal({
     }
   };
 
+  const handleCheckConnection = async () => {
+    if (checkPending) return;
+    setCheckPending(true);
+    // Show progress straight away so the button never looks inert.
+    setCheckTone("busy");
+    setCheckMessage(t("sync.checkPinging", { name: baseProviderName }));
+    try {
+      const result = await onCheckConnection();
+      if (result === "online") {
+        setCheckTone("ok");
+        setCheckMessage(t("sync.checkOnline"));
+      } else if (result === "auth-error") {
+        setCheckTone("warn");
+        setCheckMessage(t("sync.checkAuthExpired", { name: baseProviderName }));
+      } else {
+        setCheckTone("flag");
+        setCheckMessage(
+          t("sync.checkStillOffline", { name: baseProviderName }),
+        );
+      }
+    } catch (err) {
+      setCheckTone("err");
+      setCheckMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCheckPending(false);
+    }
+  };
+
   const showSaveNow =
     !busy &&
     !showReconnect &&
     (status === "error" || (dirty && status !== "conflict"));
   const saveLabel = status === "error" ? t("sync.tryAgain") : t("sync.saveNow");
+
+  const CheckIcon: IconComponent = checkPending ? SpinnerIcon : RefreshIcon;
 
   const reconnectLabel =
     reconnectError !== null
@@ -320,6 +372,34 @@ export function SyncDetailsModal({
               {reconnectError && (
                 <p className="text-xs break-words text-danger">
                   {reconnectError}
+                </p>
+              )}
+            </>
+          )}
+
+          {offline && (
+            <>
+              <button
+                type="button"
+                onClick={handleCheckConnection}
+                disabled={checkPending}
+                aria-busy={checkPending || undefined}
+                className={`inline-flex items-center justify-center gap-1.5 self-start rounded border border-flag bg-flag/10 px-3 py-1.5 text-sm font-bold text-flag hover:bg-flag/20 disabled:cursor-not-allowed disabled:opacity-70 ${
+                  checkPending ? "" : "cursor-pointer"
+                }`}
+              >
+                <CheckIcon
+                  className={`h-3.5 w-3.5 ${checkPending ? "animate-spin" : ""}`}
+                />
+                {t("sync.checkConnection")}
+              </button>
+              {checkMessage && (
+                <p
+                  className={`text-xs break-words ${TONE_TEXT[checkTone]}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {checkMessage}
                 </p>
               )}
             </>

@@ -29,7 +29,8 @@
 import { createLogger } from "../dev/logger.ts";
 import type { Folder, Snapshot } from "../domain/types.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
-import { ConflictError } from "./adapter.ts";
+import { AuthError, ConflictError } from "./adapter.ts";
+import { isOfflineError } from "./cache/index.ts";
 import { isEncryptedEnvelope } from "./crypto.ts";
 import type { FileEntry, FileStore } from "./file-store.ts";
 import { snapshotToFiles } from "./markdown/codec.ts";
@@ -440,12 +441,32 @@ export function createDirectoryAdapter(
     return { text, revision: aggregateRevision(after) };
   }
 
+  // Cheap reachability check: a single directory listing, no file bodies.
+  // Resolves true when the backend answered, false when the request couldn't
+  // reach it (offline). A lapsed session re-throws `AuthError` so the caller
+  // routes to Reconnect rather than parking in the offline state; any other
+  // unexpected failure also counts as "not reachable" so the UI doesn't claim
+  // we're back online on a backend that's still erroring.
+  async function probe(): Promise<boolean> {
+    try {
+      await store.list();
+      return true;
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      if (!isOfflineError(err)) {
+        log.warn("probe: backend reachable but errored", err);
+      }
+      return false;
+    }
+  }
+
   return {
     id: options.id,
     label: options.label,
     saveDebounceMs: options.saveDebounceMs,
-    capabilities: new Set(),
+    capabilities: new Set(["probe"]),
     load,
     save,
+    probe,
   };
 }

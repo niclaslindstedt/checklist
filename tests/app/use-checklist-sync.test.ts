@@ -13,6 +13,7 @@ import { addItem, createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot } from "../../src/domain/types.ts";
 import { useChecklist } from "../../src/app/use-checklist.ts";
 import {
+  AuthError,
   ConflictError,
   RateLimitError,
   type StorageAdapter,
@@ -445,5 +446,91 @@ describe("useChecklist throttle / transient-retry recovery", () => {
     expect(parse(serverText).checklists[0]!.items.map((i) => i.title)).toEqual([
       "a",
     ]);
+  });
+});
+
+describe("useChecklist checkConnection (active reachability re-probe)", () => {
+  // A cloud-like adapter with a toggleable reachability probe and a save /
+  // load counter, so a test can drive the offline → online recovery the
+  // "Check connection" button performs.
+  function probeAdapter() {
+    let text: string | null = null;
+    let rev = 0;
+    let reachable = true;
+    let probeImpl: () => Promise<boolean> = async () => reachable;
+    const calls = { saves: 0, loads: 0, probes: 0 };
+    const adapter: StorageAdapter & {
+      setReachable: (v: boolean) => void;
+      setProbe: (fn: () => Promise<boolean>) => void;
+      calls: typeof calls;
+    } = {
+      id: "dropbox",
+      label: "Dropbox",
+      capabilities: new Set(["probe"]),
+      load: async () => {
+        calls.loads += 1;
+        return text === null ? null : { text, revision: String(rev) };
+      },
+      save: async (next: string) => {
+        calls.saves += 1;
+        text = next;
+        rev += 1;
+        return { text, revision: String(rev) };
+      },
+      probe: async () => {
+        calls.probes += 1;
+        return probeImpl();
+      },
+      saveDebounceMs: 0,
+      setReachable: (v: boolean) => void (reachable = v),
+      setProbe: (fn: () => Promise<boolean>) => void (probeImpl = fn),
+      calls,
+    };
+    return adapter;
+  }
+
+  it("reports offline when the probe can't reach the backend", async () => {
+    const adapter = probeAdapter();
+    adapter.setReachable(false);
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.checkConnection();
+    });
+    expect(outcome).toBe("offline");
+    expect(adapter.calls.probes).toBe(1);
+  });
+
+  it("reports online and re-reads the backend when reachable", async () => {
+    const adapter = probeAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const loadsBefore = adapter.calls.loads;
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.checkConnection();
+    });
+    expect(outcome).toBe("online");
+    // A live re-read happened (reload), which is what clears the offline flag.
+    expect(adapter.calls.loads).toBeGreaterThan(loadsBefore);
+  });
+
+  it("reports auth-error and parks the session in reauth when the probe is refused", async () => {
+    const adapter = probeAdapter();
+    adapter.setProbe(async () => {
+      throw new AuthError("401");
+    });
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.checkConnection();
+    });
+    expect(outcome).toBe("auth-error");
+    expect(result.current.status).toBe("auth-error");
   });
 });

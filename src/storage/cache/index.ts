@@ -65,11 +65,18 @@ export function isOfflineError(err: unknown): boolean {
   ) {
     return false;
   }
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    return true;
-  }
   // `fetch` rejects with a TypeError when the request can't be made at all
-  // (DNS failure, connection refused, airplane mode).
+  // (DNS failure, connection refused, airplane mode) — the one reliable
+  // signal that the request never reached the host.
+  //
+  // `navigator.onLine` is deliberately NOT consulted: it is unreliable
+  // across platforms — it routinely reports `false` with perfectly working
+  // connectivity (Linux network-manager quirks, VPNs, captive portals),
+  // which is exactly what made the app declare "you're offline" when it
+  // wasn't. A failed `fetch` already throws here when the network is truly
+  // down, and the active reachability probe (see `StorageAdapter.probe`) is
+  // what confirms — and recovers from — the offline state, so the flaky
+  // flag earns its keep nowhere.
   return err instanceof TypeError;
 }
 
@@ -134,6 +141,9 @@ export function withLocalCache(
     saveDebounceMs: inner.saveDebounceMs,
     capabilities,
     getRevision: inner.getRevision ? () => inner.getRevision!() : undefined,
+    // Reachability is a property of the live backend, not the mirror — pass
+    // the probe straight through so "Check connection" hits the real network.
+    probe: inner.probe ? () => inner.probe!() : undefined,
 
     loadSync(): StoredSnapshot | null {
       const cached = readCache();

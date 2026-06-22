@@ -37,6 +37,17 @@ import { newId, now } from "./side-effects.ts";
 
 const log = createLogger("checklist");
 
+/**
+ * Outcome of an active reachability probe (the "Check connection" gesture
+ * on the offline glyph):
+ * - `online` — the backend answered; the document was re-read and any edit
+ *   that piled up offline was pushed.
+ * - `offline` — still unreachable; the user stays on the local copy.
+ * - `auth-error` — the session lapsed (not an outage); the UI routes to
+ *   Reconnect instead.
+ */
+export type ConnectionProbeResult = "online" | "offline" | "auth-error";
+
 /** The name a freshly-minted checklist carries until the user renames it. */
 export const DEFAULT_LIST_NAME = "Checklist";
 
@@ -109,6 +120,13 @@ export interface ChecklistSync {
   offline: boolean;
   /** Re-read the document from the active backend, replacing what's on screen. */
   reload: () => Promise<void>;
+  /**
+   * Actively re-check backend reachability with a lightweight probe (the
+   * "Check connection" affordance shown while offline). On success it clears
+   * the offline state, re-reads the live document, and flushes any edit that
+   * queued during the outage. See `ConnectionProbeResult`.
+   */
+  checkConnection: () => Promise<ConnectionProbeResult>;
   /** Flush any debounced save immediately (the "save now" affordance). */
   saveNow: () => void;
   /** Resolve an open conflict by keeping this device's copy or the remote's. */
@@ -500,6 +518,51 @@ export function useChecklistSync(deps: {
     resetHistory.current(reloaded);
   }, [flushSave, resetHistory]);
 
+  // Actively re-check reachability — the offline glyph's "Check connection"
+  // gesture. Trusting `navigator.onLine` to flip back is unreliable (it's the
+  // same flag that wrongly reported us offline), so this hits the network
+  // with the adapter's lightweight probe and recovers from a real reconnect:
+  // on success it re-reads the live document (clearing `offline`) and flushes
+  // any edit queued during the outage. A lapsed session surfaces as a
+  // reconnect prompt rather than a misleading "still offline".
+  const checkConnection =
+    useCallback(async (): Promise<ConnectionProbeResult> => {
+      const adapter = adapterRef.current;
+      if (!adapter.probe) {
+        // No probe (the local backends) — just re-pull; there's nothing to be
+        // offline from.
+        await reload();
+        return "online";
+      }
+      log.info("checkConnection: probing backend reachability");
+      let reachable: boolean;
+      try {
+        reachable = await adapter.probe();
+      } catch (err) {
+        if (err instanceof AuthError) {
+          // Reaching the backend and being refused is the opposite of offline —
+          // clear the flag so the UI surfaces Reconnect instead of "offline".
+          log.warn("checkConnection: session lapsed — needs reconnect");
+          setOffline(false);
+          setStatus("auth-error");
+          setStatusDetail(null);
+          return "auth-error";
+        }
+        log.warn("checkConnection: probe threw — treating as offline", err);
+        return "offline";
+      }
+      if (!reachable) {
+        log.info("checkConnection: backend still unreachable");
+        return "offline";
+      }
+      log.info("checkConnection: backend reachable — re-reading and flushing");
+      // A live read clears `offline` and adopts whatever the backend now holds;
+      // then push any edit that piled up locally during the outage.
+      await reload();
+      flushSaveRef.current();
+      return "online";
+    }, [reload]);
+
   // When connectivity returns, flush whatever edit piled up offline so it
   // syncs to the backend without the user lifting a finger. The browser's
   // `online` event is the trigger; a successful save clears the offline flag
@@ -568,6 +631,7 @@ export function useChecklistSync(deps: {
     offline,
     loaded,
     reload,
+    checkConnection,
     saveNow,
     resolveConflict,
   };

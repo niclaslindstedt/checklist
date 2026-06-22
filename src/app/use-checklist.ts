@@ -37,6 +37,7 @@ import {
 } from "./use-checklist-lists.ts";
 import {
   type ConflictState,
+  type ConnectionProbeResult,
   type SaveStatus,
   useChecklistSync,
 } from "./use-checklist-sync.ts";
@@ -45,7 +46,12 @@ import { useUndoRedo } from "./use-undo-redo.ts";
 // Re-exported from the persistence engine so consumers (SyncStatus, the
 // checklist context, the conflict modal) keep importing the save-state
 // types from the hook's barrel.
-export type { ChecklistSummary, ConflictState, SaveStatus };
+export type {
+  ChecklistSummary,
+  ConflictState,
+  ConnectionProbeResult,
+  SaveStatus,
+};
 
 export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   /** The full in-memory document (used by the conflict summary). */
@@ -76,6 +82,12 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
    * for the cloud backends (Google Drive / Dropbox).
    */
   reload: () => Promise<void>;
+  /**
+   * Actively re-check backend reachability with a lightweight probe — the
+   * "Check connection" affordance shown while offline. Clears offline,
+   * re-reads, and flushes queued edits on success. See `ConnectionProbeResult`.
+   */
+  checkConnection: () => Promise<ConnectionProbeResult>;
   /** Set when a save collided with a newer remote revision; else null. */
   conflict: ConflictState | null;
   /** Resolve an open conflict by keeping this device's copy or the remote's. */
@@ -236,6 +248,7 @@ export function useChecklist(
       ...lists,
       ...edits,
       reload: sync.reload,
+      checkConnection: sync.checkConnection,
       conflict: sync.conflict,
       resolveConflict: sync.resolveConflict,
       status: sync.status,
@@ -258,6 +271,7 @@ export function useChecklist(
       lists,
       edits,
       sync.reload,
+      sync.checkConnection,
       sync.conflict,
       sync.resolveConflict,
       sync.status,

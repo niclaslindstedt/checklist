@@ -39,7 +39,11 @@ export type AdapterCapability =
   | "watch"
   // `getRevision()` is implemented — the current revision token can be
   // fetched without downloading the full body.
-  | "getRevision";
+  | "getRevision"
+  // `probe()` is implemented — backend reachability can be re-checked with
+  // a cheap call (no file bodies), so the UI can confirm an "offline" state
+  // and recover from it rather than waiting for the next save / reload.
+  | "probe";
 
 export type StorageAdapter = {
   // Stable identifier so device-local settings (auth tokens, last-used
@@ -81,6 +85,18 @@ export type StorageAdapter = {
   // transferring the file body. Present iff `capabilities` carries
   // `"getRevision"`.
   getRevision?(): Promise<string | null>;
+
+  // Optional lightweight reachability probe — "can I reach the backend
+  // right now?" — without transferring any file body. Cloud adapters
+  // implement it as a single cheap metadata call (a directory listing).
+  // Resolves `true` when the backend answered, `false` when it was
+  // unreachable (offline). A lapsed session is *not* "offline": the probe
+  // re-throws `AuthError` so the UI can route to Reconnect instead of
+  // parking in the offline state. Present iff `capabilities` carries
+  // `"probe"`. Used by the "Check connection" affordance to confirm — and
+  // recover from — an offline state actively, rather than trusting the
+  // unreliable `navigator.onLine` flag.
+  probe?(): Promise<boolean>;
 
   // Optional subscription to out-of-band remote changes. Cloud adapters
   // that support long-poll or push wake the app when another device
