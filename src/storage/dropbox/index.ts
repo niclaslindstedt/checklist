@@ -182,6 +182,10 @@ export function createDropboxNamespaceStore(
 type AuthedFetch = (
   url: string,
   build: (token: string) => RequestInit,
+  // Optional human label for the sync log (e.g. `download checklists/x.md`).
+  // The file store passes the relative path so a failure names the file —
+  // never the access token or contents. Defaults to the URL's host + path.
+  label?: string,
 ) => Promise<Response>;
 
 // Build the bearer-token fetch the file store runs on: issue with the
@@ -235,19 +239,71 @@ function createAuthedFetch(
   return async function authedFetch(
     url: string,
     build: (token: string) => RequestInit,
+    labelOverride?: string,
   ): Promise<Response> {
-    let res = await fetchImpl(url, build(currentAccessToken));
+    // Per-request diagnostics: which endpoint / file (never the token or the
+    // file contents), how long it ran, and how it ended. This is what tells
+    // sync failures apart on a flaky link: a download that *throws* after
+    // several seconds is a timeout / dropped connection; one that throws in
+    // tens of ms is a refused / blocked request (CORS, Private Relay); a load
+    // that logs five `→ 200` downloads and one `threw` is an intermittent
+    // per-request drop, not the whole host being unreachable; and a single
+    // file that always throws while the rest succeed points at that file
+    // (e.g. a path-encoding bug on the nested-folder entry).
+    const label = labelOverride
+      ? `${requestLabel(url)} ${labelOverride}`
+      : requestLabel(url);
+    const started = performance.now();
+    const elapsed = () => Math.round(performance.now() - started);
+    let res: Response;
+    try {
+      res = await fetchImpl(url, build(currentAccessToken));
+    } catch (err) {
+      log.warn(`${label} threw after ${elapsed()}ms: ${describeError(err)}`);
+      throw err;
+    }
     if (res.status === 401) {
       log.info("401 — attempting silent refresh");
       const fresh = await refreshOnce();
-      if (fresh) res = await fetchImpl(url, build(fresh));
+      if (fresh) {
+        try {
+          res = await fetchImpl(url, build(fresh));
+        } catch (err) {
+          log.warn(
+            `${label} threw after ${elapsed()}ms (post-refresh): ${describeError(err)}`,
+          );
+          throw err;
+        }
+      }
     }
     if (res.status === 401) {
       const body = await readErrorBody(res);
       throw new AuthError(`Dropbox auth failed: 401 ${body}`);
     }
+    const line = `${label} → ${res.status} (${elapsed()}ms)`;
+    if (res.ok) log.info(line);
+    else log.warn(line);
     return res;
   };
+}
+
+// `host/path` of a request URL for the sync log — identifies the endpoint
+// (which host, which operation) without ever logging the access token, the
+// `Dropbox-API-Arg` file path, or any body.
+function requestLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.host}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+// A compact "Name: message" for a thrown value, so a bare WebKit
+// `TypeError: Load failed` (a network-level failure) is legible in the log.
+function describeError(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  return String(err);
 }
 
 function createDropboxFileStore(
@@ -310,13 +366,17 @@ function createDropboxFileStore(
     },
 
     async read(path: string): Promise<string | null> {
-      const res = await authedFetch(DOWNLOAD_ENDPOINT, (token) => ({
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Dropbox-API-Arg": dropboxApiArg({ path: `${rootPath}/${path}` }),
-        },
-      }));
+      const res = await authedFetch(
+        DOWNLOAD_ENDPOINT,
+        (token) => ({
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Dropbox-API-Arg": dropboxApiArg({ path: `${rootPath}/${path}` }),
+          },
+        }),
+        `download ${path}`,
+      );
       if (res.status === 409) return null;
       if (!res.ok) {
         const detail = await readErrorBody(res);
@@ -326,19 +386,23 @@ function createDropboxFileStore(
     },
 
     async write(path: string, text: string): Promise<void> {
-      const res = await authedFetch(UPLOAD_ENDPOINT, (token) => ({
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Dropbox-API-Arg": dropboxApiArg({
-            path: `${rootPath}/${path}`,
-            mode: "overwrite",
-            mute: true,
-          }),
-          "Content-Type": "application/octet-stream",
-        },
-        body: text,
-      }));
+      const res = await authedFetch(
+        UPLOAD_ENDPOINT,
+        (token) => ({
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Dropbox-API-Arg": dropboxApiArg({
+              path: `${rootPath}/${path}`,
+              mode: "overwrite",
+              mute: true,
+            }),
+            "Content-Type": "application/octet-stream",
+          },
+          body: text,
+        }),
+        `upload ${path}`,
+      );
       if (res.status === 429) {
         throw new RateLimitError(
           parseRetryAfterMs(res.headers, RATE_LIMIT_FALLBACK_MS),
