@@ -101,6 +101,39 @@ describe("ChecklistView", () => {
     expect(screen.getByLabelText("Add item")).toBeTruthy();
   });
 
+  it("defers Enter to accept a pending autocorrect suggestion before adding", () => {
+    // On a soft keyboard the autocorrect suggestion is still composing when
+    // Enter arrives, so the field holds the raw, un-corrected text. The add
+    // must wait for the composition to commit so the corrected word lands —
+    // exactly as tapping Space would have accepted it.
+    const addItem = vi.fn();
+    renderView({ items: [], addItem });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const input = screen.getByLabelText("Add item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "teh" } });
+    // Enter while the IME is composing: nothing is added yet.
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(addItem).not.toHaveBeenCalled();
+    // The suggestion is applied and the composition ends — now the corrected
+    // text is what gets added.
+    fireEvent.compositionEnd(input, { target: { value: "the" } });
+    expect(addItem).toHaveBeenCalledTimes(1);
+    expect(addItem).toHaveBeenCalledWith("the");
+  });
+
+  it("adds immediately on a plain Enter with no pending composition", () => {
+    // The deferral is gated on an active composition; a normal hardware-key
+    // Enter still commits the typed text on the spot.
+    const addItem = vi.fn();
+    renderView({ items: [], addItem });
+    fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "New thing" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(addItem).toHaveBeenCalledTimes(1);
+    expect(addItem).toHaveBeenCalledWith("New thing");
+  });
+
   it("opens a composer below the edited row on Enter and adds after it", () => {
     const editItem = vi.fn();
     const addItemAfter = vi.fn().mockReturnValue("i2");

@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CompositionEvent,
+  type KeyboardEvent,
+} from "react";
 
 import { useT } from "../i18n";
 import { INDENT_PER_LEVEL } from "./ChecklistRow.tsx";
@@ -54,30 +60,23 @@ export function AddItemForm({
   // Set when a commit has already fired (Shift+Enter, which closes the
   // composer) so the trailing blur doesn't add the same item a second time.
   const committed = useRef(false);
+  // Set when Enter is pressed while the soft keyboard is still composing an
+  // autocorrect suggestion: the add is deferred to `compositionend` (below)
+  // so the corrected text — not the raw keystrokes — is what lands.
+  const pendingSubmit = useRef<{ withBody: boolean } | null>(null);
   const t = useT();
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const addAndContinue = () => {
-    const trimmed = value.trim();
+  // Add the item described by `raw`. Shift+Enter (`withBody`) commits and
+  // hands off to editing the body, closing the composer; a plain add clears
+  // the field and keeps focus so the next item can be typed straight away.
+  const commit = (raw: string, withBody: boolean) => {
+    const trimmed = raw.trim();
     if (!trimmed) return;
-    onAdd(trimmed);
-    setValue("");
-    inputRef.current?.focus();
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
-    // Own the Enter key outright so the native form submit never double-fires
-    // alongside this handler — `onSubmit` stays only as a non-keyboard path.
-    e.preventDefault();
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    // Shift+Enter adds the item and hands off to editing its body; with notes
-    // switched off there's no body to edit, so it falls through to a plain add.
-    if (e.shiftKey && !notesDisabled) {
+    if (withBody) {
       committed.current = true;
       onAddWithBody(trimmed);
     } else {
@@ -85,6 +84,42 @@ export function AddItemForm({
       setValue("");
       inputRef.current?.focus();
     }
+  };
+
+  const addAndContinue = () => {
+    // A composition-deferred Enter will be flushed by `onCompositionEnd` with
+    // the corrected text; don't also add the stale value here.
+    if (pendingSubmit.current) return;
+    commit(value, false);
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    const withBody = e.shiftKey && !notesDisabled;
+    // On a soft keyboard, pressing Enter mid-autocorrect should accept the
+    // suggestion first — exactly as Space does. The keystroke arrives while
+    // the IME is still composing, so the field's value is the raw, un-
+    // corrected text; defer the add to `compositionend`, which fires once the
+    // suggestion is applied. Letting the composition commit means *not*
+    // preventing the keystroke here.
+    if (e.nativeEvent.isComposing) {
+      pendingSubmit.current = { withBody };
+      return;
+    }
+    // Own the Enter key outright so the native form submit never double-fires
+    // alongside this handler — `onSubmit` stays only as a non-keyboard path.
+    e.preventDefault();
+    commit(value, withBody);
+  };
+
+  const onCompositionEnd = (e: CompositionEvent<HTMLInputElement>) => {
+    const pending = pendingSubmit.current;
+    if (!pending) return;
+    pendingSubmit.current = null;
+    // Read the committed text straight off the field — the autocorrect has
+    // just been applied, so this holds the corrected value even though the
+    // React state hasn't caught up to the trailing `input` event yet.
+    commit(e.currentTarget.value, pending.withBody);
   };
 
   const indent = depth * INDENT_PER_LEVEL;
@@ -122,6 +157,7 @@ export function AddItemForm({
         value={value}
         onValueChange={setValue}
         onKeyDown={onKeyDown}
+        onCompositionEnd={onCompositionEnd}
         onPaste={(e) => {
           const text = e.clipboardData.getData("text");
           // Hand the paste to the importer; a non-zero count means it was a
