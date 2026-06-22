@@ -16,7 +16,9 @@ import type { MutableRefObject } from "react";
 import { unlock } from "../achievements/bus.ts";
 import {
   addItem as addItemOp,
+  addItemAfter as addItemAfterOp,
   addItems as addItemsOp,
+  addItemsAfter as addItemsAfterOp,
   archiveChecked as archiveCheckedOp,
   deleteChecked as deleteCheckedOp,
   deleteItem as deleteItemOp,
@@ -38,6 +40,26 @@ import {
 import type { Notify } from "./notify.ts";
 import { newId, now } from "./side-effects.ts";
 
+// Rebuild a parsed markdown checklist into fresh `ChecklistItem`s, minting an
+// id per node so a pasted nested list lands as nested sub-items. Shared by the
+// "append" and "insert after a row" import paths so they never drift.
+function buildImportedItems(parsed: readonly ImportedItem[]): ChecklistItem[] {
+  const toItem = (raw: ImportedItem): ChecklistItem => {
+    const item: ChecklistItem = {
+      id: newId(),
+      title: raw.title,
+      checked: raw.checked,
+    };
+    if (raw.required) item.required = true;
+    if (raw.notes) item.notes = raw.notes;
+    if (raw.children && raw.children.length > 0) {
+      item.children = raw.children.map(toItem);
+    }
+    return item;
+  };
+  return parsed.map(toItem);
+}
+
 export interface ChecklistEdits {
   /**
    * Add an item to the active list. Returns the new item's id so a caller
@@ -49,6 +71,15 @@ export interface ChecklistEdits {
    */
   addItem: (title: string, parentId?: string) => string | null;
   /**
+   * Add an item immediately after the sibling `afterId` — the
+   * "press a row, hit Enter, keep adding right there" flow that drops new
+   * items directly under the one just edited rather than at the top or
+   * bottom. The new item lands at `afterId`'s own depth. Returns the new
+   * id (so the composer can chain the next add below it), or null for a
+   * blank title.
+   */
+  addItemAfter: (title: string, afterId: string) => string | null;
+  /**
    * Import a pasted markdown checklist as fresh items appended to the
    * active list (existing items are kept). Returns how many items were
    * added — zero when the text held no task/bullet lines, which the
@@ -57,6 +88,18 @@ export interface ChecklistEdits {
    * into the in-row sub-item composer).
    */
   importItems: (markdown: string, parentId?: string) => number;
+  /**
+   * Import a pasted markdown checklist as fresh items inserted immediately
+   * after the sibling `afterId` — the paste counterpart of `addItemAfter`,
+   * used by the composer opened below an edited row. Returns the number of
+   * items added (zero when the text wasn't a checklist) alongside the id of
+   * the last item inserted, so the composer can chain the next add below the
+   * pasted block.
+   */
+  importItemsAfter: (
+    markdown: string,
+    afterId: string,
+  ) => { count: number; lastId: string | null };
   /**
    * Edit an existing item's text in place — its `title`, its `notes` body,
    * or both. Only the fields supplied are touched; an empty `notes` clears
@@ -206,26 +249,26 @@ export function useChecklistEdits(deps: {
     [commit, t],
   );
 
+  const addItemAfter = useCallback(
+    (title: string, afterId: string): string | null => {
+      const trimmed = title.trim();
+      if (!trimmed) return null;
+      const id = newId();
+      // No toast: the new row appears in place, right below the edited one.
+      commit(
+        addItemAfterOp(listRef.current, { id, title: trimmed }, afterId, now()),
+        t("toast.itemAdded", { title: trimmed }),
+      );
+      return id;
+    },
+    [commit, t],
+  );
+
   const importItems = useCallback(
     (markdown: string, parentId?: string): number => {
       const parsed = parseItemsFromMarkdown(markdown);
       if (parsed.length === 0) return 0;
-      // Rebuild the imported tree as fresh items, minting an id per node so a
-      // pasted nested list lands as nested sub-items.
-      const toItem = (raw: ImportedItem): ChecklistItem => {
-        const item: ChecklistItem = {
-          id: newId(),
-          title: raw.title,
-          checked: raw.checked,
-        };
-        if (raw.required) item.required = true;
-        if (raw.notes) item.notes = raw.notes;
-        if (raw.children && raw.children.length > 0) {
-          item.children = raw.children.map(toItem);
-        }
-        return item;
-      };
-      const items: ChecklistItem[] = parsed.map(toItem);
+      const items = buildImportedItems(parsed);
       const count = flattenItems(items).length;
       const label = t("toast.itemsImported", { count });
       commit(addItemsOp(listRef.current, items, now(), parentId), label);
@@ -233,6 +276,26 @@ export function useChecklistEdits(deps: {
       unlock("pasteList");
       if (parentId) unlock("nestEgg");
       return count;
+    },
+    [commit, notify, t],
+  );
+
+  const importItemsAfter = useCallback(
+    (
+      markdown: string,
+      afterId: string,
+    ): { count: number; lastId: string | null } => {
+      const parsed = parseItemsFromMarkdown(markdown);
+      if (parsed.length === 0) return { count: 0, lastId: null };
+      const items = buildImportedItems(parsed);
+      const count = flattenItems(items).length;
+      const label = t("toast.itemsImported", { count });
+      commit(addItemsAfterOp(listRef.current, items, afterId, now()), label);
+      notify(label, "success");
+      unlock("pasteList");
+      // The last top-level item is the new anchor, so the composer's next
+      // add chains below the pasted block instead of above it.
+      return { count, lastId: items[items.length - 1]!.id };
     },
     [commit, notify, t],
   );
@@ -375,7 +438,9 @@ export function useChecklistEdits(deps: {
   return useMemo(
     () => ({
       addItem,
+      addItemAfter,
       importItems,
+      importItemsAfter,
       editItem,
       toggle,
       remove,
@@ -389,7 +454,9 @@ export function useChecklistEdits(deps: {
     }),
     [
       addItem,
+      addItemAfter,
       importItems,
+      importItemsAfter,
       editItem,
       toggle,
       remove,

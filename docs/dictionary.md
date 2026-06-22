@@ -86,7 +86,7 @@ names. Honour these when naming a new file, key, or string.
 | **Active checklist** / **active list** / **remember the open list**           | `activeList`, `activeChecklistId` (`src/app/use-checklist-lists.ts`); per-namespace device cursor `getActiveChecklistId` / `setActiveChecklistId` (`src/storage/namespaces.ts`); `withActiveList` (`src/app/use-checklist-sync.ts`). [→](overview.md#active-checklist--active-list) |
 | **Checklist switcher** / **multiple checklists** / **switch checklist** / **add checklist** / **rename checklist** / **remove checklist** | `useChecklistLists` (`src/app/use-checklist-lists.ts`); `nextChecklistName`, `renameChecklist`, `createChecklist` (`src/domain/checklists.ts`); the checklists section in `src/ui/SideMenu.tsx`. [→](overview.md#checklist-switcher--multiple-checklists) |
 | **use-checklist hook** / **app state**            | `useChecklist`, `UseChecklist` (`src/app/use-checklist.ts`). [→](overview.md#use-checklist-hook)   |
-| **Add item**                                      | `addItem` (`src/domain/checklists.ts`). [→](overview.md#add-item)                                  |
+| **Add item**                                      | `addItem`, `addItemAfter` / `addItemsAfter` (`src/domain/checklists.ts`); `addItemAfter` / `importItemsAfter` verbs (`src/app/use-checklist-edits.ts`); `startAfterDraft`, `afterDraftIndex` (`src/ui/ChecklistView.tsx`); `onAddAfter` (`src/ui/ChecklistRow.tsx`). [→](overview.md#add-item)                                  |
 | **Edit item** / **change item text** / **edit a note** | `editItem` (`src/domain/checklists.ts`); verb in `src/app/use-checklist-edits.ts`. [→](overview.md#edit-item) |
 | **Remove empty item** / **don't keep empty items** / **backspace to erase a line** / **back up to the line above** | `removeEmpty` (`src/app/use-checklist-edits.ts`); `submitEdit` / `onBackspaceEmpty` (`src/ui/ChecklistRow.tsx`); `onBackspaceEmpty` (`src/ui/ChecklistRowEditor.tsx`); `backspaceEmpty` + `editTitleOfId` (`src/ui/ChecklistView.tsx`). [→](overview.md#edit-item) |
 | **Import items** / **paste a checklist** / **paste to import** | `importItems` (`src/app/use-checklist-edits.ts`); `parseItemsFromMarkdown` (`src/storage/markdown/codec.ts`); `addItems` (`src/domain/checklists.ts`). [→](overview.md#import-items--paste-a-checklist) |
@@ -207,7 +207,7 @@ names. Honour these when naming a new file, key, or string.
 
 | Term                              | Refers to                                                                          |
 | --------------------------------- | --------------------------------------------------------------------------------- |
-| **Add an item**                   | `AddItemButton` → inline `AddItemForm` → `addItem`. [→](overview.md#add-an-item)   |
+| **Add an item**                   | `AddItemButton` → inline `AddItemForm` → `addItem` (top/bottom); press a row + Enter → `onAddAfter` → `addItemAfter` (below that row). [→](overview.md#add-an-item)   |
 | **Check / uncheck an item**       | row checkbox → `toggleItem`. [→](overview.md#check--uncheck-an-item)               |
 | **Edit an item / its body**       | press the row → `ChecklistRowEditor` → `editItem`. [→](overview.md#edit-item)      |
 | **Delete an item**                | swipe-left (or right-click → menu, desktop) → `deleteItem`. [→](overview.md#delete-an-item) |

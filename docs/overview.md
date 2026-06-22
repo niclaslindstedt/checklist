@@ -120,9 +120,14 @@ Revealing the body with "Add a note" eases it open with a short grow + fade
 (`note-reveal` in `theme.css`) rather than popping in with a hard reflow.
 Enter in the title commits
 and immediately opens a fresh
-add-item draft (`onAddAfter`, wired to the view's `startDraft`) so one
-item flows straight into the next — the same draft row the add button
-opens. **Shift+Enter** (or the "Add a note" affordance shown when there's
+add-item draft **directly below the row just edited**
+(`onAddAfter(item.id)`, wired to the view's `startAfterDraft`): the new
+item lands as that row's next sibling, at its own depth, so adding items
+walks straight down from wherever you're working instead of jumping to the
+top or bottom — that top/bottom landing is reserved for the floating add
+button (`addItemPosition`). Each entry in that run inserts after the
+previous one (the composer advances its anchor to the id `addItemAfter`
+returns), so a streak of Enters stays in order. **Shift+Enter** (or the "Add a note" affordance shown when there's
 no body yet) reveals and focuses the body field so a note can be added
 without leaving the keyboard instead of starting a new item. ⌘/Ctrl+Enter
 commits from the body (a bare Enter is a newline there); Escape cancels;
@@ -856,12 +861,14 @@ parent's `children`, falling back to a top-level add if the id is gone). It
 splices into the flattened rows at `childDraftIndex` — right under the
 parent for a `"top"` add-position, after the whole subtree for `"bottom"` —
 matching where the new child actually lands. **Enter while editing a nested
-row keeps the chain inside the sub-list**: `ChecklistRow` knows each row's
-`parentId` (mapped in `ChecklistView`) and routes Enter to
-`onAddChild(parentId)` rather than the top-level `onAddAfter`, so finishing
-a sub-item flows into another sibling sub-item instead of jumping back out.
-Both the drag gesture and the button unlock the **Nest Egg** achievement;
-a plain sibling reorder keeps **Reshuffle**.
+row keeps the chain inside the sub-list**: Enter opens the "after this row"
+draft (`onAddAfter(item.id)` → `startAfterDraft`), which inserts the new
+item as the edited row's next sibling at its own depth — for a sub-item
+that means another sibling sub-item under the same parent, so finishing one
+flows into the next instead of jumping back out. (The explicit "Add
+sub-item" button is still the way to step *into* a row and start a fresh
+child.) Both the drag gesture and the button unlock the **Nest Egg**
+achievement; a plain sibling reorder keeps **Reshuffle**.
 
 ### Progress / completion
 
@@ -1839,6 +1846,10 @@ with the app** whenever a feature or a data-access path changes — see "The
 Tap the floating `AddItemButton`, type into the inline `AddItemForm`
 composer that opens, and press Enter (or tap away to commit). Lands at
 the top or bottom per `addItemPosition`; an empty draft is discarded.
+To add **in the middle of an existing list**, press an item to edit it
+and hit Enter — the composer opens directly below that row and each new
+item lands as its next sibling (`addItemAfter`), so you choose where new
+entries go instead of always appending.
 
 ### Check / uncheck an item
 

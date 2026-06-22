@@ -87,17 +87,53 @@ describe("ChecklistView", () => {
     expect(screen.getByLabelText("Add item")).toBeTruthy();
   });
 
-  it("opens a fresh composer after committing an item edit with Enter", () => {
+  it("opens a composer below the edited row on Enter and adds after it", () => {
     const editItem = vi.fn();
-    renderView({ editItem });
+    const addItemAfter = vi.fn().mockReturnValue("i2");
+    renderView({ editItem, addItemAfter });
     // Edit the existing item, then press Enter in the title.
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const titleInput = titleEditor();
     setText(titleInput, "Buy oat milk");
     fireEvent.keyDown(titleInput, { key: "Enter" });
     expect(editItem).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
-    // The add-item draft is now open, focused and ready for the next item.
-    expect(screen.getByLabelText("Add item")).toBeTruthy();
+    // The add-item draft is now open below the edited row; an item typed into
+    // it lands right after "i1" rather than at the top or bottom of the list.
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "Buy bread" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(addItemAfter).toHaveBeenCalledWith("Buy bread", "i1");
+  });
+
+  it("chains successive adds below the row, in order", () => {
+    // Each add returns the new item's id, which becomes the next anchor, so a
+    // run of entries inserts after one another rather than stacking reversed.
+    // The added rows are seeded so the composer (which follows the anchor) has
+    // a live row to sit below after each add, mirroring the real document.
+    const ids = ["a", "b"];
+    const addItemAfter = vi.fn().mockImplementation(() => ids.shift() ?? null);
+    const items: ChecklistItem[] = [
+      { id: "i1", title: "First", checked: false },
+      { id: "a", title: "A", checked: false },
+      { id: "b", title: "B", checked: false },
+    ];
+    renderView({ items, addItemAfter });
+
+    fireEvent.click(screen.getByText("First"));
+    const titleInput = titleEditor();
+    setText(titleInput, "First");
+    fireEvent.keyDown(titleInput, { key: "Enter" });
+
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "A" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.change(input, { target: { value: "B" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(addItemAfter.mock.calls).toEqual([
+      ["A", "i1"],
+      ["B", "a"],
+    ]);
   });
 
   it("commits the typed text when the composer loses focus", () => {
@@ -394,9 +430,10 @@ describe("ChecklistView", () => {
     });
 
     it("keeps Enter on a nested row inside its sub-list", () => {
-      // Editing a child and pressing Enter opens a sibling sub-item composer
-      // under the same parent — it does not jump out to a top-level draft.
-      const addItem = vi.fn().mockReturnValue("k2");
+      // Editing a child and pressing Enter opens a composer directly below that
+      // child — the new item lands as its next sibling (after "k", at the same
+      // depth), not at the top level and not at the bottom of the parent.
+      const addItemAfter = vi.fn().mockReturnValue("k2");
       const nested: ChecklistItem[] = [
         {
           id: "p",
@@ -405,18 +442,18 @@ describe("ChecklistView", () => {
           children: [{ id: "k", title: "T-shirts", checked: false }],
         },
       ];
-      renderView({ items: nested, addItem });
+      renderView({ items: nested, addItemAfter });
 
       fireEvent.click(screen.getByText("T-shirts"));
       const input = titleEditor();
       setText(input, "T-shirts");
       fireEvent.keyDown(input, { key: "Enter" });
 
-      // The composer is open; the next item lands under "p", not at the top.
+      // The composer is open; the next item is inserted right after "k".
       const composer = screen.getByLabelText("Add item");
       fireEvent.change(composer, { target: { value: "Socks" } });
       fireEvent.submit(composer.closest("form")!);
-      expect(addItem).toHaveBeenCalledWith("Socks", "p");
+      expect(addItemAfter).toHaveBeenCalledWith("Socks", "k");
     });
   });
 
