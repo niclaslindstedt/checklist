@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from "@testing-library/react";
@@ -11,9 +13,20 @@ import {
 import type { SaveStatus } from "../../src/app/use-checklist.ts";
 import { SyncDetailsModal } from "../../src/ui/SyncDetailsModal.tsx";
 import { clearLogs, createLogger } from "../../src/dev/logger.ts";
+import { useDevMode } from "../../src/dev/useDevMode.ts";
+
+// The sync log only surfaces in developer mode (and logging is a no-op
+// otherwise), so the log tests flip dev mode on through the real hook —
+// which also activates the logger's gate.
+function setDevMode(on: boolean) {
+  const { result, unmount } = renderHook(() => useDevMode());
+  act(() => result.current.setDevMode(on));
+  unmount();
+}
 
 afterEach(() => {
   cleanup();
+  setDevMode(false);
   clearLogs();
 });
 
@@ -170,7 +183,14 @@ describe("SyncDetailsModal", () => {
     expect(screen.getByText("Off")).toBeTruthy();
   });
 
-  it("reveals the always-on sync log on demand", () => {
+  it("hides the sync log for non-developers", () => {
+    renderModal({ status: "saved" });
+    // Dev mode is off by default, so the developer-only log is absent.
+    expect(screen.queryByRole("button", { name: /View sync log/ })).toBeNull();
+  });
+
+  it("reveals the sync log on demand in developer mode", () => {
+    setDevMode(true);
     renderModal({ status: "saved" });
     // Collapsed by default.
     expect(screen.queryByText(/sync activity logged/i)).toBeNull();
@@ -180,6 +200,7 @@ describe("SyncDetailsModal", () => {
   });
 
   it("renders the sync log newest-first, so the latest entry is at the top", () => {
+    setDevMode(true);
     const log = createLogger("dropbox");
     log.info("first entry");
     log.info("second entry");

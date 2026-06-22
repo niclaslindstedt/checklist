@@ -459,14 +459,16 @@ checklist's original, it lays out, top to bottom:
 - **Details** — a two-column grid pairing the backend (cloud / folder
   glyph) with the at-rest **Encryption** state (On / Off, read off the
   provider label's `(encrypted)` suffix), then the on-disk file location.
-- **Sync log** — a collapsible panel reading the cloud-sync scopes straight
-  from the in-memory log ring buffer (`getLogs` / `subscribeToLogs`,
-  filtered to a `SYNC_LOG_SCOPES` allowlist). Entries render newest-first,
-  so the most recent round-trip sits at the top where a reader looks first
-  (the Copy button still emits them oldest-first, the natural order to read
-  a pasted log). It shows even when the developer-mode capture toggle is off
-  (capture only governs persistence across reloads, not the live buffer) —
-  so a non-developer can read what sync is doing without entering dev mode.
+- **Sync log** — a collapsible panel, shown **only in developer mode**,
+  reading the cloud-sync scopes straight from the in-memory log ring buffer
+  (`getLogs` / `subscribeToLogs`, filtered to a `SYNC_LOG_SCOPES`
+  allowlist). Entries render newest-first, so the most recent round-trip
+  sits at the top where a reader looks first (the Copy button still emits
+  them oldest-first, the natural order to read a pasted log). The log is a
+  developer diagnostic — for a regular user logging is disabled entirely
+  (see [Logger / log capture](#logger--log-capture)), so the panel is
+  hidden; a developer sees it whether or not capture is on (capture only
+  governs persistence across reloads, not the live buffer).
 
 An "Open in <provider>" link (omitted for the local folder, which has no
 URL) closes it out; the provider path / URL are derived from
@@ -1809,12 +1811,17 @@ touching real data. Toggles live in the Developer settings tab.
 ### Logger / log capture
 
 `src/dev/logger.ts` — the in-app logger: a bounded ring buffer (500
-entries) with no console sink. `createLogger(scope)` returns an
+entries) with no console sink. Logging is a developer-only diagnostic —
+a push only records while **developer mode or capture is on**; with both
+off (a regular user) the logger is a no-op, since no surface (the Logs
+settings tab, the sync-details log panel) is reachable to read it.
+`useDevMode` keeps the logger's view of dev mode in step via
+`setDevModeEnabled`. `createLogger(scope)` returns an
 `info` / `warn` / `error` logger; when "Capture logs" is on the buffer
-mirrors to localStorage so it survives a reload, and the Logs settings
-tab — gated on capture being enabled — appears. The Logs settings tab
-(`src/ui/settings/tabs/logs.tsx`) renders it with a level filter and
-copy / clear actions.
+also mirrors to localStorage so it survives a reload, and the Logs
+settings tab — gated on capture being enabled — appears. The Logs
+settings tab (`src/ui/settings/tabs/logs.tsx`) renders it with a level
+filter and copy / clear actions.
 
 ## i18n
 

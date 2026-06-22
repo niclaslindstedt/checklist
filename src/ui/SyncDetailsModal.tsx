@@ -19,6 +19,7 @@ import {
   type LogEntry,
   type LogLevel,
 } from "../dev/logger.ts";
+import { useDevMode } from "../dev/useDevMode.ts";
 import { DROPBOX_APP_FOLDER, dropboxWebUrl } from "../storage/dropbox/index.ts";
 import {
   GDRIVE_APP_FOLDER_NAME,
@@ -52,9 +53,10 @@ import { Modal } from "./Modal.tsx";
 // headline status and *why* a save failed (plus Reconnect / Save now / Try
 // again, a compact Reload glyph, and — while offline — a Check connection
 // re-probe); the backend, its at-rest encryption state, and the on-disk file
-// location; and an always-on sync log read straight from the in-memory ring
-// buffer, so a non-developer can see the round-trip without turning on
-// developer-mode capture.
+// location; and — in developer mode only — a sync log read straight from the
+// in-memory ring buffer. The log is a developer diagnostic, so it's hidden
+// for regular users (logging is a no-op for them too); a developer sees it
+// whether or not capture is on (capture only governs persistence).
 
 type Props = {
   open: boolean;
@@ -261,6 +263,9 @@ export function SyncDetailsModal({
 }: Props) {
   const t = useT();
   const titleId = useId();
+  // The sync log is a developer diagnostic — only surfaced in developer
+  // mode (logging is a no-op for everyone else).
+  const { devMode } = useDevMode();
   const [reconnectPending, setReconnectPending] = useState(false);
   const [reconnectError, setReconnectError] = useState<string | null>(null);
   // Live state of the "Check connection" probe so the user sees what's
@@ -532,26 +537,30 @@ export function SyncDetailsModal({
           </div>
         </section>
 
-        {/* Always-on sync log — works even with capture disabled. */}
-        <section className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setLogOpen((v) => !v)}
-            aria-expanded={logOpen}
-            className="flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2.5 py-1.5 text-left hover:border-accent"
-          >
-            <ScrollTextIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
-            <span className="flex-1 text-xs font-bold text-fg">
-              {logOpen ? t("sync.hideSyncLog") : t("sync.viewSyncLog")}
-            </span>
-            {logOpen ? (
-              <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted" />
-            ) : (
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />
-            )}
-          </button>
-          {logOpen && <SyncLogPanel t={t} />}
-        </section>
+        {/* Developer-only sync log. In developer mode the in-memory buffer
+            is live whether or not capture (persistence) is on; for regular
+            users logging is disabled, so this section is hidden. */}
+        {devMode && (
+          <section className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setLogOpen((v) => !v)}
+              aria-expanded={logOpen}
+              className="flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2.5 py-1.5 text-left hover:border-accent"
+            >
+              <ScrollTextIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
+              <span className="flex-1 text-xs font-bold text-fg">
+                {logOpen ? t("sync.hideSyncLog") : t("sync.viewSyncLog")}
+              </span>
+              {logOpen ? (
+                <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />
+              )}
+            </button>
+            {logOpen && <SyncLogPanel t={t} />}
+          </section>
+        )}
       </div>
 
       <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-surface-3 px-4 py-3">
@@ -604,10 +613,11 @@ function Detail({
   );
 }
 
-// The inline sync log. Reads the in-memory ring buffer directly (the same
-// buffer the Logs settings tab shows) so a sync issue is legible here even
-// when the developer-mode capture toggle — which only governs persistence
-// across reloads — is off. Subscribes only while expanded.
+// The inline sync log (developer mode only). Reads the in-memory ring
+// buffer directly (the same buffer the Logs settings tab shows) so a sync
+// issue is legible here whether or not the capture toggle — which only
+// governs persistence across reloads — is on. Subscribes only while
+// expanded.
 function SyncLogPanel({ t }: { t: TFunction }) {
   const [version, setVersion] = useState(0);
   const [copyStatus, setCopyStatus] = useState<null | "copied" | "failed">(

@@ -10,6 +10,10 @@
 // off forcibly turns capture off too, otherwise logs would keep landing
 // in localStorage while the tabs are hidden.
 //
+// Logging itself is gated on either flag: the logger only records while
+// dev mode or capture is on (see `logger.ts`), so this hook keeps the
+// logger's view of dev mode in sync via `setDevModeEnabled`.
+//
 // State is owned at module scope with a pub/sub layer so multiple
 // instances of the hook stay in sync in the same render — flipping the
 // toggle in the General tab needs to update the modal's tab list
@@ -21,9 +25,12 @@
 import { useEffect, useState } from "react";
 
 import { unlock } from "../achievements/bus.ts";
-import { isCaptureEnabled, setCaptureEnabled } from "./logger.ts";
-
-const DEV_MODE_KEY = "checklist:dev:mode";
+import {
+  DEV_MODE_KEY,
+  isCaptureEnabled,
+  setCaptureEnabled,
+  setDevModeEnabled,
+} from "./logger.ts";
 
 function readBool(key: string): boolean {
   try {
@@ -62,6 +69,8 @@ function setDevModeGlobal(next: boolean): void {
   if (devModeState !== next) {
     devModeState = next;
     writeBool(DEV_MODE_KEY, next);
+    // Keep the logger's gate in step: dev mode alone activates logging.
+    setDevModeEnabled(next);
     if (next) unlock("underTheHood");
   }
   // Force capture off whenever dev mode flips off — otherwise logs would
@@ -89,6 +98,7 @@ if (typeof window !== "undefined") {
       const next = readBool(DEV_MODE_KEY);
       if (next !== devModeState) {
         devModeState = next;
+        setDevModeEnabled(next);
         if (!next && captureLogsState) {
           captureLogsState = false;
           setCaptureEnabled(false);

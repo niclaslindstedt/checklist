@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
-import { clearLogs, getLogs } from "../../src/dev/logger.ts";
+import { clearLogs, getLogs, setDevModeEnabled } from "../../src/dev/logger.ts";
 import { ConflictError, RateLimitError } from "../../src/storage/adapter.ts";
 import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
@@ -214,6 +214,9 @@ describe("gdrive adapter (markdown file store)", () => {
   });
 
   it("logs the endpoint, file, timing and error when a download fails (sync diagnostics)", async () => {
+    // Logging is a developer diagnostic — gated on dev mode / capture — so
+    // turn it on to exercise the sync-diagnostics buffer.
+    setDevModeEnabled(true);
     clearLogs();
     const sim = new DriveSim();
     // Seed a document through a healthy adapter…

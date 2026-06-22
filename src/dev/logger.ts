@@ -1,9 +1,13 @@
-// In-app logger. Every call pushes an entry into a bounded in-memory
-// ring buffer; when "Capture logs" is enabled in the Developer settings
-// tab, the buffer is also mirrored to localStorage so a reload preserves
-// the history. The Logs settings tab reads from the same buffer and
-// subscribes to updates so entries appear live. Cloned from the budget
-// project's `utils/logger.ts`.
+// In-app logger. Logging is a developer-only diagnostic: a call only
+// records when developer mode is on *or* "Capture logs" is enabled —
+// with both off (a regular user) the logger is a no-op, since no surface
+// (the Logs settings tab, the sync-details log panel) is reachable to
+// read it. When active, every call pushes an entry into a bounded
+// in-memory ring buffer; when "Capture logs" is enabled in the Developer
+// settings tab, the buffer is also mirrored to localStorage so a reload
+// preserves the history. The Logs settings tab reads from the same buffer
+// and subscribes to updates so entries appear live. Cloned from the
+// budget project's `utils/logger.ts`.
 //
 // Deliberately writes to NO console sink — the local-first app runs in a
 // browser tab where the user can't always reach devtools (notably on
@@ -19,6 +23,11 @@
 
 const CAPTURE_LOGS_KEY = "checklist:dev:captureLogs";
 const LOGS_KEY = "checklist:dev:logs";
+// The canonical home for this key is `useDevMode`, which imports it from
+// here — the logger needs it to decide, at first import, whether logging
+// is active before any React has rendered. Defined here (the lower-level
+// module) to keep a single source of truth without a circular import.
+export const DEV_MODE_KEY = "checklist:dev:mode";
 const MAX_LOG_ENTRIES = 500;
 
 export type LogLevel = "info" | "warn" | "error";
@@ -36,12 +45,17 @@ export type Logger = {
   error: (...args: unknown[]) => void;
 };
 
-// In-memory ring buffer. Always written to, regardless of capture state —
-// the cost is one push + a possible shift, bounded at MAX_LOG_ENTRIES.
-// The localStorage mirror is the part gated by the capture flag.
+// In-memory ring buffer. Written to whenever logging is active (developer
+// mode or capture on) — the cost is one push + a possible shift, bounded
+// at MAX_LOG_ENTRIES. The localStorage mirror is the part gated by the
+// capture flag specifically.
 const buffer: LogEntry[] = [];
 const subscribers = new Set<() => void>();
 let captureEnabled = readCaptureFlag();
+// Mirrors the developer-mode flag. Capture being on always implies dev
+// mode is on too (`useDevMode` forces capture off when dev mode goes off),
+// but we track both so the predicate reads plainly.
+let devModeEnabled = readDevModeFlag();
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Debounce localStorage writes so a burst of logs doesn't thrash the
@@ -77,6 +91,17 @@ function safeRemoveLocal(key: string): void {
 
 function readCaptureFlag(): boolean {
   return safeReadLocal(CAPTURE_LOGS_KEY) === "true";
+}
+
+function readDevModeFlag(): boolean {
+  return safeReadLocal(DEV_MODE_KEY) === "true";
+}
+
+// Logging only records for developers: when capture is on, or when
+// developer mode is enabled. With both off there's no surface that can
+// ever show the buffer, so a push is a no-op.
+function loggingActive(): boolean {
+  return captureEnabled || devModeEnabled;
 }
 
 function isLogEntry(v: unknown): v is LogEntry {
@@ -159,6 +184,7 @@ function notify(): void {
 }
 
 function push(level: LogLevel, scope: string, args: unknown[]): void {
+  if (!loggingActive()) return;
   const entry: LogEntry = {
     ts: Date.now(),
     level,
@@ -208,6 +234,14 @@ export function setCaptureEnabled(enabled: boolean): void {
 
 export function isCaptureEnabled(): boolean {
   return captureEnabled;
+}
+
+// Tell the logger whether developer mode is on. Called by `useDevMode`
+// whenever the flag flips (and from another tab's storage event), so a
+// developer sees live logs without also turning capture on, while a
+// regular user pays nothing for logging.
+export function setDevModeEnabled(enabled: boolean): void {
+  devModeEnabled = enabled;
 }
 
 export function getLogs(): LogEntry[] {

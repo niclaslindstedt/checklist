@@ -146,13 +146,16 @@ stay in `localStorage` only.
 The **Settings → General** tab has a **Developer mode** switch that
 reveals the **Developer** tab; the **Logs** tab appears alongside it only
 once the Developer tab's **Capture logs** toggle is on — there's nothing
-to show until logs are being kept. These flags are device-local
-diagnostics — they live outside the appearance blob so they never travel
-with a shared list.
+to show until logs are being kept. The in-app logger is itself a
+developer diagnostic: it only records while developer mode or capture is
+on, so the cloud sync-log panel in the sync-details dialog is shown only
+in developer mode, and for a regular user logging is disabled outright.
+These flags are device-local diagnostics — they live outside the
+appearance blob so they never travel with a shared list.
 
 | Key (in `localStorage`)       | Type       | Default | Effect |
 |-------------------------------|------------|---------|--------|
-| `checklist:dev:mode`          | `boolean`  | `false` | Whether developer mode (the Developer tab, and the Logs tab once capture is on) is exposed. |
+| `checklist:dev:mode`          | `boolean`  | `false` | Whether developer mode (the Developer tab, the Logs tab once capture is on, and the sync-details log panel) is exposed. Also activates the in-app logger — it records nothing while this and capture are both off. |
 | `checklist:dev:captureLogs`   | `boolean`  | `false` | When `true`, the in-app logger mirrors its ring buffer to `localStorage` so the **Logs** tab survives a reload, and the **Logs** tab is shown. Forced off when developer mode is turned off. |
 | `checklist:dev:logs`          | JSON array | (unset) | The persisted log entries, present only while capture is on. |
 
