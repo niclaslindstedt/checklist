@@ -157,6 +157,10 @@ function ChecklistRowImpl({
   onContextMenu,
 }: Props) {
   const indent = depth * INDENT_PER_LEVEL;
+  // A sub-item reads as a genuine child line: smaller title text and a smaller
+  // checkbox square than its parent. The shrink is purely visual — the tap
+  // padding and the row's min height stay put, so the touch target is unchanged.
+  const nested = depth > 0;
   const archive = useCallback(() => onArchive(item.id), [onArchive, item.id]);
   const swipe = useRowSwipe(archive);
   const t = useT();
@@ -370,6 +374,7 @@ function ChecklistRowImpl({
             checked={item.checked}
             onChange={() => onToggle(item.id)}
             ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
+            size={nested ? "sm" : "md"}
             className="p-2.5 -m-2.5"
           />
           <button
@@ -378,8 +383,8 @@ function ChecklistRowImpl({
             aria-label={t("app.editItem")}
             aria-expanded={hasBody ? expanded : undefined}
             className={`min-w-0 flex-1 truncate text-left ${
-              item.checked ? "text-muted line-through" : "text-fg"
-            }`}
+              nested ? "text-sm" : ""
+            } ${item.checked ? "text-muted line-through" : "text-fg"}`}
           >
             {item.title}
           </button>
@@ -425,7 +430,9 @@ function ChecklistRowImpl({
                 enterEdit(true);
               }
             }}
-            className="-mt-1 ml-8 cursor-text pb-1 text-sm text-muted"
+            className={`-mt-1 ml-8 cursor-text pb-1 text-muted ${
+              nested ? "text-xs" : "text-sm"
+            }`}
           >
             {renderMarkdown(item.notes!)}
           </div>

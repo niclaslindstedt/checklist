@@ -504,6 +504,42 @@ describe("ChecklistRow sub-items", () => {
     expect(fg.style.paddingLeft).toContain("64px"); // 2 × 32
   });
 
+  // A sub-item should read as a genuine child line: smaller title text and a
+  // smaller checkbox square than a top-level row.
+  it("renders a top-level row at full size", () => {
+    renderRow();
+    const box = screen
+      .getByLabelText("Check item")
+      .parentElement!.querySelector("span[aria-hidden]") as HTMLElement;
+    expect(box.className).toContain("h-5");
+    expect(box.className).toContain("w-5");
+    const title = screen.getByRole("button", { name: "Edit item" });
+    expect(title.className).not.toContain("text-sm");
+  });
+
+  it("shrinks the title and checkbox of a nested row", () => {
+    renderRow({ depth: 1 });
+    const box = screen
+      .getByLabelText("Check item")
+      .parentElement!.querySelector("span[aria-hidden]") as HTMLElement;
+    // The drawn square is smaller…
+    expect(box.className).toContain("h-4");
+    expect(box.className).toContain("w-4");
+    // …and the title text steps down a size.
+    const title = screen.getByRole("button", { name: "Edit item" });
+    expect(title.className).toContain("text-sm");
+  });
+
+  it("keeps the full tap target on a nested checkbox", () => {
+    // Only the visual box shrinks — the padding that grows the hit area is
+    // unchanged, so a sub-item's checkbox is just as easy to hit.
+    renderRow({ depth: 1 });
+    const label = screen.getByLabelText("Check item")
+      .parentElement as HTMLElement;
+    expect(label.className).toContain("p-2.5");
+    expect(label.className).toContain("-m-2.5");
+  });
+
   it("tints the row when it is the active 'into' drop target", () => {
     const { container } = renderRow({ dropMode: "into" });
     expect(container.querySelector("li")!.className).toContain("ring-accent");
