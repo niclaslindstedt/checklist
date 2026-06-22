@@ -8,6 +8,7 @@ import {
 } from "../../src/storage/adapter.ts";
 import {
   OfflineUnavailableError,
+  describeStorageError,
   isOfflineError,
   localCacheKey,
   withLocalCache,
@@ -85,6 +86,36 @@ describe("isOfflineError", () => {
     } finally {
       if (original) Object.defineProperty(navigator, "onLine", original);
     }
+  });
+});
+
+describe("describeStorageError", () => {
+  it("names the cryptic WebKit network error as a reachability failure", () => {
+    // "Load failed" is what Safari/iOS throws for a dead network — opaque on
+    // its own, so the phrase must spell out the meaning and keep the raw
+    // wording for the record.
+    const out = describeStorageError(new TypeError("Load failed"));
+    expect(out).toBe(
+      "backend unreachable — network request failed (Load failed)",
+    );
+  });
+
+  it("names the Chromium network error the same way", () => {
+    expect(describeStorageError(new TypeError("Failed to fetch"))).toBe(
+      "backend unreachable — network request failed (Failed to fetch)",
+    );
+  });
+
+  it("passes a descriptive backend error through verbatim", () => {
+    // A 5xx surfaced generically already says what happened — don't dress it
+    // up as a network outage.
+    expect(describeStorageError(new Error("Dropbox upload failed: 503"))).toBe(
+      "Dropbox upload failed: 503",
+    );
+  });
+
+  it("stringifies a non-Error throw", () => {
+    expect(describeStorageError("boom")).toBe("boom");
   });
 });
 

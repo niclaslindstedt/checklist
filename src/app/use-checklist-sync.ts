@@ -26,7 +26,10 @@ import {
   RateLimitError,
   type StorageAdapter,
 } from "../storage/adapter.ts";
-import { isOfflineError } from "../storage/cache/index.ts";
+import {
+  describeStorageError,
+  isOfflineError,
+} from "../storage/cache/index.ts";
 import {
   backoffDelayMs,
   isRetryableSaveError,
@@ -333,12 +336,19 @@ export function useChecklistSync(deps: {
             const waitMs = backoffDelayMs(transientRetries.current);
             transientRetries.current += 1;
             log.warn(
-              `save failed — retrying in ${waitMs}ms (attempt ${transientRetries.current}/${MAX_TRANSIENT_SAVE_RETRIES})`,
-              err,
+              `save failed — retrying in ${waitMs}ms (attempt ${transientRetries.current}/${MAX_TRANSIENT_SAVE_RETRIES}): ${describeStorageError(err)}`,
             );
             armResave(next, waitMs);
           } else {
-            log.error("save failed", err);
+            // Echoing a bare network `TypeError` ("Load failed" on WebKit)
+            // tells nobody anything — log the meaning, and keep the raw
+            // error object only for unexpected failures whose stack is
+            // worth capturing (a network outage's isn't).
+            if (isOfflineError(err)) {
+              log.error(`save failed — ${describeStorageError(err)}`);
+            } else {
+              log.error(`save failed — ${describeStorageError(err)}`, err);
+            }
             transientRetries.current = 0;
             // Re-queue the failed snapshot (unless a newer edit already
             // superseded it) so the "Try again" affordance has bytes to push.
@@ -347,9 +357,11 @@ export function useChecklistSync(deps: {
             // finds an empty queue and silently no-ops.
             if (pendingDoc.current === null) pendingDoc.current = next;
             setStatus("error");
-            // Capture the failure reason verbatim so the details modal can
-            // show *why* the save failed instead of a bare "Sync failed".
-            setStatusDetail(err instanceof Error ? err.message : String(err));
+            // Capture the failure reason so the details modal can show *why*
+            // the save failed instead of a bare "Sync failed" — and a clear
+            // "backend unreachable" instead of the cryptic "Load failed" a
+            // raw network error would otherwise put in front of the user.
+            setStatusDetail(describeStorageError(err));
           }
         });
     },
@@ -463,7 +475,7 @@ export function useChecklistSync(deps: {
         if (cancelled) return;
         // Offline with nothing cached (or a transient backend error): keep an
         // empty document on screen rather than hanging on the loading state.
-        log.warn("initial load failed", err);
+        log.warn(`initial load failed — ${describeStorageError(err)}`);
         if (isOfflineError(err)) setOffline(true);
         setLoaded(true);
       });
@@ -510,7 +522,7 @@ export function useChecklistSync(deps: {
     } catch (err) {
       // Pulling to refresh while offline with nothing cached: leave what's on
       // screen and flag offline rather than blanking the list.
-      log.warn("reload failed", err);
+      log.warn(`reload failed — ${describeStorageError(err)}`);
       if (isOfflineError(err)) {
         setOffline(true);
         reloadEndedOfflineRef.current = true;
