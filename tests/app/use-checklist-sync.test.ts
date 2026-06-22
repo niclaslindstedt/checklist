@@ -457,11 +457,13 @@ describe("useChecklist checkConnection (active reachability re-probe)", () => {
     let text: string | null = null;
     let rev = 0;
     let reachable = true;
+    let loadOffline = false;
     let probeImpl: () => Promise<boolean> = async () => reachable;
     const calls = { saves: 0, loads: 0, probes: 0 };
     const adapter: StorageAdapter & {
       setReachable: (v: boolean) => void;
       setProbe: (fn: () => Promise<boolean>) => void;
+      setLoadOffline: (v: boolean) => void;
       calls: typeof calls;
     } = {
       id: "dropbox",
@@ -469,7 +471,12 @@ describe("useChecklist checkConnection (active reachability re-probe)", () => {
       capabilities: new Set(["probe"]),
       load: async () => {
         calls.loads += 1;
-        return text === null ? null : { text, revision: String(rev) };
+        if (text === null) return null;
+        // `loadOffline` models the cache wrapper serving a stale copy: the
+        // bytes come back flagged offline even though the call resolved.
+        return loadOffline
+          ? { text, revision: String(rev), offline: true }
+          : { text, revision: String(rev) };
       },
       save: async (next: string) => {
         calls.saves += 1;
@@ -484,6 +491,7 @@ describe("useChecklist checkConnection (active reachability re-probe)", () => {
       saveDebounceMs: 0,
       setReachable: (v: boolean) => void (reachable = v),
       setProbe: (fn: () => Promise<boolean>) => void (probeImpl = fn),
+      setLoadOffline: (v: boolean) => void (loadOffline = v),
       calls,
     };
     return adapter;
@@ -516,6 +524,29 @@ describe("useChecklist checkConnection (active reachability re-probe)", () => {
     expect(outcome).toBe("online");
     // A live re-read happened (reload), which is what clears the offline flag.
     expect(adapter.calls.loads).toBeGreaterThan(loadsBefore);
+    expect(result.current.offline).toBe(false);
+  });
+
+  it("reports offline (not a misleading online) when the probe reaches the backend but the load still serves the cache", async () => {
+    // The probe is a cheap metadata listing; the document load is the real
+    // test. If it still falls back to the offline cache, reporting "online"
+    // would leave a success message contradicting the offline status card —
+    // the "says offline but reads back online" bug.
+    const adapter = probeAdapter();
+    // Prime a cached document, then make every load come back flagged offline
+    // while the probe keeps succeeding.
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      result.current.addItem("note");
+    });
+    adapter.setLoadOffline(true);
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.checkConnection();
+    });
+    expect(outcome).toBe("offline");
+    expect(result.current.offline).toBe(true);
   });
 
   it("reports auth-error and parks the session in reauth when the probe is refused", async () => {

@@ -199,6 +199,11 @@ export function useChecklistSync(deps: {
   // drain a queued edit on completion, but `flushSave` is built on top of
   // `performSave`, so the cycle is broken through a ref.
   const flushSaveRef = useRef<() => void>(() => {});
+  // Whether the most recent `reload()` settled on the offline cache rather
+  // than a live read. `checkConnection` reads it right after awaiting a
+  // reload so a probe that reached the backend but a document load that
+  // still served the cache is reported honestly as "offline", not "online".
+  const reloadEndedOfflineRef = useRef(false);
   // A scheduled re-save during a cooldown: either a rate-limit throttle
   // (HTTP 429) waiting out the backend's `Retry-After`, or a transient
   // backend hiccup backing off before another attempt. Non-null means a
@@ -495,6 +500,9 @@ export function useChecklistSync(deps: {
     saveGeneration.current += 1;
     inFlight.current = false;
     pendingDoc.current = null;
+    // Recorded for `checkConnection`: whether this reload settled on the
+    // offline cache. A non-offline error below leaves it false.
+    reloadEndedOfflineRef.current = false;
     log.info("reload: re-reading active backend");
     let stored;
     try {
@@ -503,11 +511,16 @@ export function useChecklistSync(deps: {
       // Pulling to refresh while offline with nothing cached: leave what's on
       // screen and flag offline rather than blanking the list.
       log.warn("reload failed", err);
-      if (isOfflineError(err)) setOffline(true);
+      if (isOfflineError(err)) {
+        setOffline(true);
+        reloadEndedOfflineRef.current = true;
+      }
       return;
     }
     revisionRef.current = stored?.revision;
-    setOffline(stored?.offline ?? false);
+    const endedOffline = stored?.offline ?? false;
+    reloadEndedOfflineRef.current = endedOffline;
+    setOffline(endedOffline);
     if (stored?.offline) unlock("offGrid");
     setConflict(null);
     setStatus("idle");
@@ -556,9 +569,19 @@ export function useChecklistSync(deps: {
         return "offline";
       }
       log.info("checkConnection: backend reachable — re-reading and flushing");
-      // A live read clears `offline` and adopts whatever the backend now holds;
-      // then push any edit that piled up locally during the outage.
+      // The probe (a metadata listing) reached the backend, but the document
+      // load is the real test: re-read, and if it *still* falls back to the
+      // cache, the connection isn't usable yet — report offline rather than a
+      // misleading "online" that the lingering offline state would contradict.
       await reload();
+      if (reloadEndedOfflineRef.current) {
+        log.info("checkConnection: probe ok but load still cached — offline");
+        return "offline";
+      }
+      // Live read succeeded and cleared `offline`; push any edit that piled up
+      // locally during the outage. The save is fire-and-forget — if the write
+      // path is still flaky it re-flags offline on its own and the status card
+      // follows, so we don't claim a sticky "back online".
       flushSaveRef.current();
       return "online";
     }, [reload]);

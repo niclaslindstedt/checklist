@@ -40,7 +40,6 @@ const sync = {
   // instead of a button that seems to do nothing.
   checkConnection: "Check connection",
   checkPinging: "Reaching {name}…",
-  checkOnline: "Back online — syncing your changes.",
   checkStillOffline:
     "Still can't reach {name}. Your edits are saved on this device and will sync automatically once you're back online.",
   checkAuthExpired:
