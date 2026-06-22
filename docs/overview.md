@@ -863,7 +863,11 @@ Rows render from `flattenForDisplay(items, collapsed)`
 `{ item, depth, hasChildren }` rows; `ChecklistRow` indents by `depth` and,
 when `hasChildren`, shows a **disclosure caret** (`CaretRightIcon`,
 `src/ui/icons/action.tsx`) — deliberately a different glyph from the note-body
-chevron — that collapses/expands the sub-list. Collapse is **local view
+chevron — that collapses/expands the sub-list. A nested row (`depth > 0`) also
+reads as a **genuine child line**: its title steps down to `text-sm`, its note
+body to `text-xs`, and its checkbox draws the smaller `size="sm"` square (the
+`Checkbox` `size` prop shrinks only the drawn box, not the tap padding) — so a
+sub-item looks subordinate while staying just as easy to hit. Collapse is **local view
 state** in `ChecklistView` (a `Set` of collapsed ids, expanded by default),
 exactly like a revealed note body, so it isn't persisted.
 

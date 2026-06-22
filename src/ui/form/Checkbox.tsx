@@ -23,6 +23,13 @@ type Props = {
    * focus the label on tap, so the field would otherwise lose focus.
    */
   onMouseDown?: (e: MouseEvent<HTMLLabelElement>) => void;
+  /**
+   * Visual size of the box itself — **not** the touch target, which the
+   * caller sizes via padding in `className`. `"sm"` shrinks only the drawn
+   * square (and its tick) so a sub-item's box reads as smaller than its
+   * parent's while staying just as easy to hit.
+   */
+  size?: "md" | "sm";
 };
 
 export function Checkbox({
@@ -31,7 +38,10 @@ export function Checkbox({
   ariaLabel,
   className,
   onMouseDown,
+  size = "md",
 }: Props) {
+  const boxSize = size === "sm" ? "h-4 w-4" : "h-5 w-5";
+  const tickSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
   return (
     // The label wraps a focusable checkbox, so it is interactive in practice;
     // the press hook (used by the row editor to keep an open field focused) is
@@ -50,10 +60,10 @@ export function Checkbox({
       />
       <span
         aria-hidden
-        className="flex h-5 w-5 items-center justify-center rounded-sm border-2 border-muted text-page-bg transition-colors peer-checked:border-accent peer-checked:bg-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+        className={`flex ${boxSize} items-center justify-center rounded-sm border-2 border-muted text-page-bg transition-colors peer-checked:border-accent peer-checked:bg-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent`}
       >
         <CheckIcon
-          className={`h-3.5 w-3.5 ${checked ? "opacity-100" : "opacity-0"}`}
+          className={`${tickSize} ${checked ? "opacity-100" : "opacity-0"}`}
         />
       </span>
     </label>
