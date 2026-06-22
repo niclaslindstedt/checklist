@@ -212,7 +212,11 @@ mirror a row's: a "+" fills the caret slot and a dimmed, inert checkbox
 fills the checkbox slot, so the typed text lines up exactly with the item
 titles below and previews where the new item's checkbox will sit. Enter adds the item,
 clears the field, and keeps focus so the user can type item after item
-without re-tapping — a plain-text-editor feel. **Shift+Enter** instead
+without re-tapping — a plain-text-editor feel. On a soft keyboard an Enter
+that arrives while the IME is still composing an autocorrect suggestion is
+deferred (via `onCompositionEnd`) so the add accepts the corrected word —
+exactly as tapping Space would have — instead of committing the raw
+keystrokes. **Shift+Enter** instead
 adds the item and jumps straight into editing its body — mirroring the
 in-row editor, where Shift+Enter on a title reveals the note field — so a
 thought that needs more than a one-line title flows on without re-tapping
