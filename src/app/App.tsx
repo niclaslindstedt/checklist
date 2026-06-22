@@ -394,6 +394,7 @@ function AppShell() {
             onSave: checklist.saveNow,
             onOpenDetails: openSyncDetails,
             onReconnect,
+            onCheckConnection: checklist.checkConnection,
           }
         : null,
     [
@@ -405,6 +406,7 @@ function AppShell() {
       checklist.dirty,
       checklist.offline,
       checklist.saveNow,
+      checklist.checkConnection,
       openSyncDetails,
       onReconnect,
     ],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
-import { ConflictError } from "../../src/storage/adapter.ts";
+import { AuthError, ConflictError } from "../../src/storage/adapter.ts";
 import { encryptText, isEncryptedEnvelope } from "../../src/storage/crypto.ts";
 import {
   BLOB_FILE_NAME,
@@ -145,6 +145,33 @@ describe("directory adapter", () => {
   it("returns null before anything is written", async () => {
     const { adapter } = build();
     expect(await adapter.load()).toBeNull();
+  });
+
+  it("advertises the reachability probe", () => {
+    const { adapter } = build();
+    expect(adapter.capabilities.has("probe")).toBe(true);
+    expect(typeof adapter.probe).toBe("function");
+  });
+
+  it("probe resolves true when a listing succeeds", async () => {
+    const { adapter } = build();
+    expect(await adapter.probe!()).toBe(true);
+  });
+
+  it("probe resolves false when the backend is unreachable", async () => {
+    const store = new FlakyFileStore();
+    const adapter = createDirectoryAdapter(store, { id: "dev", label: "mem" });
+    store.failNextList(); // a raw network error, the way an offline fetch fails
+    expect(await adapter.probe!()).toBe(false);
+  });
+
+  it("probe re-throws an auth error so the UI routes to reconnect, not offline", async () => {
+    const store = new MemoryFileStore();
+    store.list = async () => {
+      throw new AuthError("401");
+    };
+    const adapter = createDirectoryAdapter(store, { id: "dev", label: "mem" });
+    await expect(adapter.probe!()).rejects.toBeInstanceOf(AuthError);
   });
 
   it("writes one markdown file per checklist and template", async () => {

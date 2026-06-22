@@ -28,6 +28,14 @@ const sync: SyncCatalog = {
   tryAgain: "Försök igen",
   saveNow: "Spara nu",
 
+  checkConnection: "Kontrollera anslutningen",
+  checkPinging: "Når {name}…",
+  checkOnline: "Online igen — synkar dina ändringar.",
+  checkStillOffline:
+    "Kan fortfarande inte nå {name}. Dina ändringar är sparade på den här enheten och synkas automatiskt när du är online igen.",
+  checkAuthExpired:
+    "Din session med {name} har gått ut — återanslut för att fortsätta.",
+
   syncingNow: "Sparar dina ändringar…",
   failedHeading: "Synk misslyckades",
   failedDetailFallback:

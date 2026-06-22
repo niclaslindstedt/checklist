@@ -65,6 +65,27 @@ describe("isOfflineError", () => {
     expect(isOfflineError(new AuthError("401"))).toBe(false);
     expect(isOfflineError(new RateLimitError(1000))).toBe(false);
   });
+
+  it("does not treat a non-network error as offline (no false positive)", () => {
+    // A plain Error (a 5xx surfaced generically, a parse failure) is the
+    // backend erroring, not the network being down — must not read as offline.
+    expect(isOfflineError(new Error("Drive list failed: 500"))).toBe(false);
+  });
+
+  it("ignores navigator.onLine, which false-reports offline on many setups", () => {
+    // The unreliable flag must no longer turn an otherwise non-network error
+    // into a spurious "you're offline" — the regression this change fixes.
+    const original = Object.getOwnPropertyDescriptor(navigator, "onLine");
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => false,
+    });
+    try {
+      expect(isOfflineError(new Error("backend hiccup"))).toBe(false);
+    } finally {
+      if (original) Object.defineProperty(navigator, "onLine", original);
+    }
+  });
 });
 
 describe("withLocalCache", () => {
@@ -179,6 +200,24 @@ describe("withLocalCache", () => {
     inner.setLoad(async () => null);
     await cached.load();
     expect(cached.loadSync?.()).toBeNull();
+  });
+
+  it("forwards the reachability probe (and its capability) to the live backend", async () => {
+    const storage = memoryStorage();
+    const inner = scriptedAdapter();
+    let probed = 0;
+    const innerWithProbe: StorageAdapter = {
+      ...inner,
+      capabilities: new Set(["probe"]),
+      probe: async () => {
+        probed += 1;
+        return true;
+      },
+    };
+    const cached = withLocalCache(innerWithProbe, { storage, key });
+    expect(cached.capabilities.has("probe")).toBe(true);
+    expect(await cached.probe?.()).toBe(true);
+    expect(probed).toBe(1);
   });
 
   it("caches an offline save's bytes and re-throws so the engine retries", async () => {

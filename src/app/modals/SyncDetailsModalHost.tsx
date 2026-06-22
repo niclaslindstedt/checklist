@@ -24,6 +24,7 @@ export function SyncDetailsModalHost() {
       offline={sync.offline}
       onSaveNow={sync.onSave}
       onReconnect={sync.onReconnect}
+      onCheckConnection={sync.onCheckConnection}
       onClose={close}
     />
   );

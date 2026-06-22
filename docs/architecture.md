@@ -95,6 +95,7 @@ interface StorageAdapter {
   load(): Promise<StoredSnapshot | null>;
   save(text: string, baseRevision?: string): Promise<StoredSnapshot>;
   getRevision?(): Promise<string | null>;
+  probe?(): Promise<boolean>;
   watch?(onRemoteChange: (s: StoredSnapshot) => void): () => void;
   readonly saveDebounceMs?: number;
 }
@@ -105,8 +106,11 @@ migration live in `src/storage/serialize.ts` and run on every load and
 save regardless of backend, so an adapter can never bypass the parse
 pipeline. `StoredSnapshot` carries the text plus an opaque `revision`
 token for optimistic concurrency (used by cloud backends) and an
-`offline` flag. Capabilities (`loadSync`, `watch`, `getRevision`) let UI
-gate on features rather than probing for methods.
+`offline` flag. Capabilities (`loadSync`, `watch`, `getRevision`,
+`probe`) let UI gate on features rather than probing for methods. `probe`
+is a lightweight reachability check — a directory listing with no file
+bodies — that the "Check connection" affordance uses to actively confirm
+(and recover from) an offline state rather than trusting `navigator.onLine`.
 
 The default adapter is `BrowserLocalStorageAdapter` (`id: "browser"`),
 which reads and writes a single JSON document in `localStorage` under
@@ -231,7 +235,16 @@ save stashes the attempted bytes locally (on the last good revision) and
 re-throws so the sync engine keeps the edit queued; the engine's `online`
 listener re-flushes it when connectivity returns. `useChecklist.offline`
 surfaces the state to the header glyph (`CloudOffIcon`) so a stale local
-copy never reads as "synced". When the backend is unreachable *and*
+copy never reads as "synced". What counts as "offline" is decided by
+`isOfflineError`: a raw `fetch` `TypeError` (the request never reached the
+host) — deliberately **not** `navigator.onLine`, whose spurious `false`
+readings on Linux / VPN / captive-portal setups used to declare the app
+offline with working connectivity. To confirm and recover from the state,
+`useChecklist.checkConnection` (the details modal's **Check connection**
+button) actively re-probes the backend with `StorageAdapter.probe`; a
+reachable result re-reads the live document and flushes the queued edit, a
+401 routes to Reconnect, and a still-unreachable result keeps the user on
+the local copy — each reported as a live status line. When the backend is unreachable *and*
 nothing is cached (a brand-new device offline), the load throws
 `OfflineUnavailableError` so the unlock gate says "you're offline" rather
 than the misleading "wrong passphrase".

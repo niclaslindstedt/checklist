@@ -27,6 +27,7 @@ function renderModal(
     offline: false,
     onSaveNow: vi.fn(),
     onReconnect: vi.fn(async () => {}),
+    onCheckConnection: vi.fn(async () => "offline" as const),
     onClose: vi.fn(),
     ...overrides,
   };
@@ -108,5 +109,30 @@ describe("SyncDetailsModal", () => {
     expect(screen.getByText(/copy saved on this device/i)).toBeTruthy();
     // The "synced" heading must not show while offline.
     expect(screen.queryByText("Synced to Dropbox")).toBeNull();
+  });
+
+  it("offers a check-connection button while offline that pings the backend", async () => {
+    const onCheckConnection = vi.fn(async () => "offline" as const);
+    renderModal({ status: "saved", offline: true, onCheckConnection });
+    fireEvent.click(screen.getByRole("button", { name: /Check connection/ }));
+    await waitFor(() => expect(onCheckConnection).toHaveBeenCalledOnce());
+    // The user is told the outcome rather than left staring at a dead button.
+    await waitFor(() =>
+      expect(screen.getByText(/Still can't reach Dropbox/)).toBeTruthy(),
+    );
+  });
+
+  it("reports a successful reconnect from the check-connection probe", async () => {
+    const onCheckConnection = vi.fn(async () => "online" as const);
+    renderModal({ status: "saved", offline: true, onCheckConnection });
+    fireEvent.click(screen.getByRole("button", { name: /Check connection/ }));
+    await waitFor(() => expect(screen.getByText(/Back online/)).toBeTruthy());
+  });
+
+  it("shows no check-connection button when not offline", () => {
+    renderModal({ status: "saved", offline: false });
+    expect(
+      screen.queryByRole("button", { name: /Check connection/ }),
+    ).toBeNull();
   });
 });

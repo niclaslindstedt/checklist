@@ -37,6 +37,7 @@ function makeSync(status: SyncInfo["status"]): SyncInfo {
     onSave: () => {},
     onOpenDetails: () => {},
     onReconnect: null,
+    onCheckConnection: async () => "offline",
   };
 }
 

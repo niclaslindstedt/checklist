@@ -49,6 +49,8 @@ export function withEncryption(
     // `load()` and tolerate the brief loading state.
 
     getRevision: inner.getRevision ? () => inner.getRevision!() : undefined,
+    // Reachability doesn't involve the passphrase — forward the probe as-is.
+    probe: inner.probe ? () => inner.probe!() : undefined,
 
     async load(): Promise<StoredSnapshot | null> {
       log.info(`load: delegate to inner [${inner.id}]`);

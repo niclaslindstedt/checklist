@@ -69,6 +69,7 @@ export function makeChecklistValue(
     reorder: noop,
     addItemPosition: "bottom",
     reload: async () => {},
+    checkConnection: async () => "online",
     conflict: null,
     resolveConflict: noop,
     status: "idle",

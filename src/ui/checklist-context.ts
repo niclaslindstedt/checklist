@@ -1,6 +1,10 @@
 import { createContext, useContext } from "react";
 
-import type { SaveStatus, UseChecklist } from "../app/use-checklist.ts";
+import type {
+  ConnectionProbeResult,
+  SaveStatus,
+  UseChecklist,
+} from "../app/use-checklist.ts";
 import type { BackendId } from "../storage/backend-preference.ts";
 
 // The checklist surface — the whole `useChecklist` return plus the
@@ -41,6 +45,12 @@ export type SyncInfo = {
    * no reconnect gesture (the local folder reconnects from settings).
    */
   onReconnect: (() => Promise<void>) | null;
+  /**
+   * Actively re-probe backend reachability — the "Check connection" button
+   * shown while offline. Resolves with what it found so the modal can show a
+   * live status, and recovers (re-read + flush queued edits) on success.
+   */
+  onCheckConnection: () => Promise<ConnectionProbeResult>;
 };
 
 export type ChecklistContextValue = UseChecklist & {

@@ -237,7 +237,7 @@ const achievements: AchievementsCatalog = {
       name: "Synkdetektiv",
       condition: "Öppna molnsynkdetaljerna från molnknappen i sidhuvudet.",
       learnMore:
-        "Ett tryck på molnglyfen i sidhuvudet öppnar synkdetaljerna: vad backend gör och, när en sparning misslyckas, exakt varför — plus ett sätt att återansluta eller försöka igen utan att lämna listan.",
+        "Ett tryck på molnglyfen i sidhuvudet öppnar synkdetaljerna: vad backend gör och, när en sparning misslyckas, exakt varför — plus ett sätt att återansluta, försöka igen eller kontrollera anslutningen utan att lämna listan.",
     },
     trustButVerify: {
       name: "Lita men kontrollera",

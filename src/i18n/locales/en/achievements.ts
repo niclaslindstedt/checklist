@@ -244,7 +244,7 @@ const achievements = {
       name: "Sync Sleuth",
       condition: "Open the cloud sync details from the header cloud button.",
       learnMore:
-        "Tapping the header cloud glyph opens the sync details: what the backend is doing and, when a save fails, exactly why — plus a way to reconnect or retry without leaving the list.",
+        "Tapping the header cloud glyph opens the sync details: what the backend is doing and, when a save fails, exactly why — plus a way to reconnect, retry, or re-check the connection without leaving the list.",
     },
     trustButVerify: {
       name: "Trust, But Verify",
