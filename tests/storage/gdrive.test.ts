@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
+import { clearLogs, getLogs } from "../../src/dev/logger.ts";
 import { ConflictError, RateLimitError } from "../../src/storage/adapter.ts";
 import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
@@ -210,6 +211,43 @@ describe("gdrive adapter (markdown file store)", () => {
     expect(sim.fileNames().length).toBe(1);
     await deleteGdriveNamespace("token", "work", sim.fetch);
     expect(sim.fileNames()).toEqual([]);
+  });
+
+  it("logs the endpoint, file, timing and error when a download fails (sync diagnostics)", async () => {
+    clearLogs();
+    const sim = new DriveSim();
+    // Seed a document through a healthy adapter…
+    await createGdriveAdapter("token", sim.fetch).save(serialize(snapshot));
+    // …then load through a fetch that drops every file download the way a
+    // flaky link rejects, while the list/search requests succeed.
+    const flakyFetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).includes("alt=media")) {
+        throw new TypeError("Load failed");
+      }
+      return sim.fetch(url, init);
+    }) as typeof fetch;
+    const adapter = createGdriveAdapter("token", flakyFetch);
+    await expect(adapter.load()).rejects.toBeInstanceOf(TypeError);
+
+    const messages = getLogs()
+      .filter((e) => e.scope === "gdrive")
+      .map((e) => e.message);
+    // The failing request is named by host + endpoint + file, with timing and
+    // the decoded error — enough to tell a timeout from a refused request and
+    // to spot a single-file culprit.
+    expect(
+      messages.some((m) =>
+        /www\.googleapis\.com\/drive\/v3\/files\/\S+ download checklists\/groceries-cl1\.md threw after \d+ms: TypeError: Load failed/.test(
+          m,
+        ),
+      ),
+    ).toBe(true);
+    // A search/list request is logged as a success, confirming the host split.
+    expect(
+      messages.some((m) =>
+        /www\.googleapis\.com\/drive\/v3\/files .+→ 200 \(\d+ms\)/.test(m),
+      ),
+    ).toBe(true);
   });
 
   it("settings store stores settings.json in the app folder, beside namespaces", async () => {

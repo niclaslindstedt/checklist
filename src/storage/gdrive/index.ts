@@ -96,6 +96,70 @@ function gdriveError(
   return status === 401 ? new AuthError(message) : new Error(message);
 }
 
+// A logged `fetch`: wraps the raw fetch with per-request sync diagnostics —
+// which endpoint / file (never the access token or the file contents), how
+// long it ran, and how it ended. Mirrors the Dropbox adapter's `authedFetch`,
+// since the two backends share the same flaky-link failure modes and this is
+// what tells them apart in the log: a download that *throws* after several
+// seconds is a timeout / dropped connection; one that throws in tens of ms is
+// a refused / blocked request (CORS, Private Relay, a content blocker, or — in
+// the installed PWA — the service worker); a load that logs several `→ 200`
+// reads and one `threw` is an intermittent per-request drop, not the whole
+// host being unreachable; and a single file that always throws while the rest
+// succeed points at that file (e.g. a path-encoding bug on a nested entry).
+type LoggedFetch = (
+  url: string,
+  init: RequestInit,
+  // Optional human label for the sync log (e.g. `download checklists/x.md`).
+  // Callers pass the relative path / operation so a failure names the file —
+  // never the access token or contents. Defaults to the URL's host + path.
+  label?: string,
+) => Promise<Response>;
+
+function createLoggedFetch(fetchImpl: FetchImpl): LoggedFetch {
+  return async function loggedFetch(
+    url: string,
+    init: RequestInit,
+    labelOverride?: string,
+  ): Promise<Response> {
+    const label = labelOverride
+      ? `${requestLabel(url)} ${labelOverride}`
+      : requestLabel(url);
+    const started = performance.now();
+    const elapsed = () => Math.round(performance.now() - started);
+    let res: Response;
+    try {
+      res = await fetchImpl(url, init);
+    } catch (err) {
+      log.warn(`${label} threw after ${elapsed()}ms: ${describeError(err)}`);
+      throw err;
+    }
+    const line = `${label} → ${res.status} (${elapsed()}ms)`;
+    if (res.ok) log.info(line);
+    else log.warn(line);
+    return res;
+  };
+}
+
+// `host/path` of a request URL for the sync log — identifies the endpoint
+// (which host, which operation) without ever logging the access token (it
+// rides in the `Authorization` header), the search query, or any body.
+function requestLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.host}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+// A compact "Name: message" for a thrown value, so a bare WebKit
+// `TypeError: Load failed` (a network-level failure) is legible in the log.
+function describeError(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  return String(err);
+}
+
 // Returns a URL that opens Drive's web UI (the app folder, or My Drive
 // when the folder id isn't known here).
 export function gdriveWebUrl(folderId: string | null): string {
@@ -154,6 +218,7 @@ function createGdriveFileStore(
   namespace: string,
 ): FileStore {
   const namespaceFolderName = namespaceCloudFolder(namespace);
+  const loggedFetch = createLoggedFetch(fetchImpl);
   // Cache folder ids by their relative directory path ("" = the namespace
   // folder, "checklists" / "templates" = its subfolders). Drive ids are
   // stable, so this only ever grows within an adapter's lifetime.
@@ -163,11 +228,14 @@ function createGdriveFileStore(
     return { Authorization: `Bearer ${token}` };
   }
 
-  async function searchOne(query: string): Promise<string | null> {
+  async function searchOne(
+    query: string,
+    label: string,
+  ): Promise<string | null> {
     const url = `${DRIVE_FILES_API}?q=${encodeURIComponent(
       query,
     )}&spaces=drive&fields=files(id)`;
-    const res = await fetchImpl(url, { headers: authHeader() });
+    const res = await loggedFetch(url, { headers: authHeader() }, label);
     if (!res.ok) {
       const body = await readErrorBody(res);
       throw gdriveError("search", res.status, body, res.headers);
@@ -183,6 +251,7 @@ function createGdriveFileStore(
     return searchOne(
       `name='${name}' and mimeType='${FOLDER_MIME_TYPE}'` +
         ` and '${parentId}' in parents and trashed=false`,
+      `find folder ${name}`,
     );
   }
 
@@ -192,11 +261,15 @@ function createGdriveFileStore(
   ): Promise<string> {
     const body: Record<string, unknown> = { name, mimeType: FOLDER_MIME_TYPE };
     if (parentId) body.parents = [parentId];
-    const res = await fetchImpl(`${DRIVE_FILES_API}?fields=id`, {
-      method: "POST",
-      headers: { ...authHeader(), "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await loggedFetch(
+      `${DRIVE_FILES_API}?fields=id`,
+      {
+        method: "POST",
+        headers: { ...authHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      `create folder ${name}`,
+    );
     if (!res.ok) {
       const detail = await readErrorBody(res);
       throw gdriveError("folder create", res.status, detail, res.headers);
@@ -242,6 +315,7 @@ function createGdriveFileStore(
     return searchOne(
       `name='${name}' and mimeType='${FOLDER_MIME_TYPE}'` +
         ` and 'root' in parents and trashed=false`,
+      `find folder ${name}`,
     );
   }
 
@@ -254,7 +328,11 @@ function createGdriveFileStore(
     const url =
       `${DRIVE_FILES_API}?q=${encodeURIComponent(query)}&spaces=drive` +
       `&fields=files(id,name,mimeType,version)`;
-    const res = await fetchImpl(url, { headers: authHeader() });
+    const res = await loggedFetch(
+      url,
+      { headers: authHeader() },
+      `list ${prefix || "(namespace root)"}`,
+    );
     if (!res.ok) {
       const body = await readErrorBody(res);
       throw gdriveError("list", res.status, body, res.headers);
@@ -283,6 +361,7 @@ function createGdriveFileStore(
     if (!dirId) return null;
     return searchOne(
       `name='${name}' and '${dirId}' in parents and trashed=false`,
+      `find ${path}`,
     );
   }
 
@@ -298,9 +377,11 @@ function createGdriveFileStore(
     async read(path: string): Promise<string | null> {
       const fileId = await findFileId(path);
       if (!fileId) return null;
-      const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}?alt=media`, {
-        headers: authHeader(),
-      });
+      const res = await loggedFetch(
+        `${DRIVE_FILES_API}/${fileId}?alt=media`,
+        { headers: authHeader() },
+        `download ${path}`,
+      );
       if (res.status === 404) return null;
       if (!res.ok) {
         const body = await readErrorBody(res);
@@ -315,15 +396,17 @@ function createGdriveFileStore(
       if (!dirId) throw new Error(`Google Drive: cannot resolve ${dir}`);
       const existing = await searchOne(
         `name='${name}' and '${dirId}' in parents and trashed=false`,
+        `find ${path}`,
       );
       if (existing) {
-        const res = await fetchImpl(
+        const res = await loggedFetch(
           `${DRIVE_UPLOAD_API}/${existing}?uploadType=media`,
           {
             method: "PATCH",
             headers: { ...authHeader(), "Content-Type": "text/markdown" },
             body: text,
           },
+          `update ${path}`,
         );
         if (!res.ok) {
           const body = await readErrorBody(res);
@@ -331,16 +414,17 @@ function createGdriveFileStore(
         }
         return;
       }
-      await createFile(dirId, name, text);
+      await createFile(dirId, name, text, path);
     },
 
     async remove(path: string): Promise<void> {
       const fileId = await findFileId(path);
       if (!fileId) return;
-      const res = await fetchImpl(`${DRIVE_FILES_API}/${fileId}`, {
-        method: "DELETE",
-        headers: authHeader(),
-      });
+      const res = await loggedFetch(
+        `${DRIVE_FILES_API}/${fileId}`,
+        { method: "DELETE", headers: authHeader() },
+        `delete ${path}`,
+      );
       if (!res.ok && res.status !== 404) {
         const body = await readErrorBody(res);
         throw gdriveError("delete", res.status, body, res.headers);
@@ -352,6 +436,9 @@ function createGdriveFileStore(
     parentId: string,
     name: string,
     text: string,
+    // Full relative path for the sync log (the leaf `name` alone wouldn't
+    // distinguish `checklists/x.md` from `templates/x.md`).
+    label: string = name,
   ): Promise<void> {
     const meta = JSON.stringify({ name, parents: [parentId] });
     const boundary = `checklist-${randomBoundary()}`;
@@ -361,7 +448,7 @@ function createGdriveFileStore(
       `--${boundary}\r\n` +
       `Content-Type: text/markdown\r\n\r\n${text}\r\n` +
       `--${boundary}--`;
-    const res = await fetchImpl(
+    const res = await loggedFetch(
       `${DRIVE_UPLOAD_API}?uploadType=multipart&fields=id`,
       {
         method: "POST",
@@ -371,6 +458,7 @@ function createGdriveFileStore(
         },
         body,
       },
+      `create ${label}`,
     );
     if (!res.ok) {
       const errBody = await readErrorBody(res);
@@ -399,14 +487,16 @@ export async function deleteGdriveNamespace(
   namespace: string,
   fetchImpl: FetchImpl = fetch,
 ): Promise<void> {
+  const loggedFetch = createLoggedFetch(fetchImpl);
   const auth = { Authorization: `Bearer ${token}` };
   const folderName = namespaceCloudFolder(namespace);
   const appQuery =
     `name='${GDRIVE_APP_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +
     ` and 'root' in parents and trashed=false`;
-  const appRes = await fetchImpl(
+  const appRes = await loggedFetch(
     `${DRIVE_FILES_API}?q=${encodeURIComponent(appQuery)}&spaces=drive&fields=files(id)`,
     { headers: auth },
+    "namespace delete: find app folder",
   );
   if (!appRes.ok) {
     const body = await readErrorBody(appRes);
@@ -421,9 +511,10 @@ export async function deleteGdriveNamespace(
   const nsQuery =
     `name='${folderName}' and mimeType='${FOLDER_MIME_TYPE}'` +
     ` and '${appId}' in parents and trashed=false`;
-  const nsRes = await fetchImpl(
+  const nsRes = await loggedFetch(
     `${DRIVE_FILES_API}?q=${encodeURIComponent(nsQuery)}&spaces=drive&fields=files(id)`,
     { headers: auth },
+    `namespace delete: find ${folderName}`,
   );
   if (!nsRes.ok) {
     const body = await readErrorBody(nsRes);
@@ -431,10 +522,11 @@ export async function deleteGdriveNamespace(
   }
   const nsId = ((await nsRes.json()) as DriveListResponse).files?.[0]?.id;
   if (!nsId) return;
-  const delRes = await fetchImpl(`${DRIVE_FILES_API}/${nsId}`, {
-    method: "DELETE",
-    headers: auth,
-  });
+  const delRes = await loggedFetch(
+    `${DRIVE_FILES_API}/${nsId}`,
+    { method: "DELETE", headers: auth },
+    `namespace delete: remove ${folderName}`,
+  );
   if (!delRes.ok && delRes.status !== 404) {
     const body = await readErrorBody(delRes);
     throw gdriveError("namespace delete", delRes.status, body);
