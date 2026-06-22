@@ -457,10 +457,12 @@ checklist's original, it lays out, top to bottom:
   provider label's `(encrypted)` suffix), then the on-disk file location.
 - **Sync log** — a collapsible panel reading the cloud-sync scopes straight
   from the in-memory log ring buffer (`getLogs` / `subscribeToLogs`,
-  filtered to a `SYNC_LOG_SCOPES` allowlist). It shows even when the
-  developer-mode capture toggle is off (capture only governs persistence
-  across reloads, not the live buffer), with a Copy button — so a
-  non-developer can read what sync is doing without entering dev mode.
+  filtered to a `SYNC_LOG_SCOPES` allowlist). Entries render newest-first,
+  so the most recent round-trip sits at the top where a reader looks first
+  (the Copy button still emits them oldest-first, the natural order to read
+  a pasted log). It shows even when the developer-mode capture toggle is off
+  (capture only governs persistence across reloads, not the live buffer) —
+  so a non-developer can read what sync is doing without entering dev mode.
 
 An "Open in <provider>" link (omitted for the local folder, which has no
 URL) closes it out; the provider path / URL are derived from
