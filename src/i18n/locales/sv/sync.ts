@@ -30,7 +30,6 @@ const sync: SyncCatalog = {
 
   checkConnection: "Kontrollera anslutningen",
   checkPinging: "Når {name}…",
-  checkOnline: "Online igen — synkar dina ändringar.",
   checkStillOffline:
     "Kan fortfarande inte nå {name}. Dina ändringar är sparade på den här enheten och synkas automatiskt när du är online igen.",
   checkAuthExpired:

@@ -335,8 +335,12 @@ export function SyncDetailsModal({
     try {
       const result = await onCheckConnection();
       if (result === "online") {
-        setCheckTone("ok");
-        setCheckMessage(t("sync.checkOnline"));
+        // No sticky "back online" line: when the connection truly holds the
+        // status card flips to Synced (and this whole offline block unmounts),
+        // which is the feedback. Keeping a success message would survive and
+        // contradict the card if the queued save then re-flags offline on a
+        // flaky write — the "says offline but reads back online" bug.
+        setCheckMessage(null);
       } else if (result === "auth-error") {
         setCheckTone("warn");
         setCheckMessage(t("sync.checkAuthExpired", { name: baseProviderName }));

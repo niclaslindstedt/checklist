@@ -123,11 +123,19 @@ describe("SyncDetailsModal", () => {
     );
   });
 
-  it("reports a successful reconnect from the check-connection probe", async () => {
+  it("clears the check message on a successful reconnect, so nothing can contradict the status card", async () => {
+    // A success leaves no sticky "back online" line — the status card flipping
+    // to Synced is the feedback. A lingering success message is exactly what
+    // would contradict the card if the queued save then re-flagged offline
+    // (the "says offline but reads back online" bug).
     const onCheckConnection = vi.fn(async () => "online" as const);
     renderModal({ status: "saved", offline: true, onCheckConnection });
     fireEvent.click(screen.getByRole("button", { name: /Check connection/ }));
-    await waitFor(() => expect(screen.getByText(/Back online/)).toBeTruthy());
+    await waitFor(() => expect(onCheckConnection).toHaveBeenCalledOnce());
+    // No success line is left behind (the "Back online — syncing your changes"
+    // copy that used to linger). The offline detail card legitimately mentions
+    // being "back online" later, so we assert on the success-only phrase.
+    expect(screen.queryByText(/syncing your changes/i)).toBeNull();
   });
 
   it("shows no check-connection button when not offline", () => {
