@@ -19,6 +19,7 @@ import {
   type StorageAdapter,
   type StoredSnapshot,
 } from "../../src/storage/adapter.ts";
+import { OFFLINE_RESUME_MS } from "../../src/storage/save-retry.ts";
 import { parse, serialize } from "../../src/storage/serialize.ts";
 
 function memoryAdapter(): StorageAdapter & { stored: () => string | null } {
@@ -273,12 +274,14 @@ describe("useChecklist offline / reconnect", () => {
     });
 
     act(() => result.current.addItem("a"));
-    // Drain the full backoff curve — the save ends up hard-errored, and the
-    // network-level failure flipped us offline.
+    // A network-level save failure flips us offline and keeps the edit queued.
+    // It must NOT surface a hard `error` (the local cache holds it) nor spin a
+    // fast retry storm — even after a long wait it sits offline, dirty, and
+    // queued, retried only on the slow gentle interval.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
-    expect(result.current.status).toBe("error");
+    expect(result.current.status).not.toBe("error");
     expect(result.current.offline).toBe(true);
     expect(result.current.dirty).toBe(true);
 
@@ -563,5 +566,78 @@ describe("useChecklist checkConnection (active reachability re-probe)", () => {
     });
     expect(outcome).toBe("auth-error");
     expect(result.current.status).toBe("auth-error");
+  });
+});
+
+describe("useChecklist offline saves resume gently instead of storming", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("caches once and retries on a slow interval — no fast 4-attempt storm, no hard error", async () => {
+    vi.useFakeTimers();
+    // A cloud adapter whose save fails with a raw network error (the way a
+    // `fetch` rejects offline) until the test flips `online`. The bug: an
+    // offline save was classified as a retryable transient error, so it spun
+    // the fast escalating backoff — several attempts within ~10s — then
+    // hard-errored and restarted, hammering a dead link for the whole outage.
+    let online = false;
+    let saveCalls = 0;
+    let serverText = serialize(emptySnapshot());
+    let serverRev = 1;
+    const adapter: StorageAdapter = {
+      id: "dropbox",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> => ({
+        text: serverText,
+        revision: String(serverRev),
+      }),
+      save: async (next: string) => {
+        saveCalls += 1;
+        if (!online) throw new TypeError("Load failed");
+        serverText = next;
+        serverRev += 1;
+        return { text: serverText, revision: String(serverRev) };
+      },
+      saveDebounceMs: 0,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    const base = saveCalls;
+    act(() => result.current.addItem("a"));
+    // Let the first (failing) save settle.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    // One attempt, flagged offline, and — crucially — not a hard error.
+    expect(saveCalls - base).toBe(1);
+    expect(result.current.offline).toBe(true);
+    expect(result.current.status).not.toBe("error");
+
+    // The old transient storm fired ~4 more attempts inside ~10s. The gentle
+    // policy fires none until the slow resume interval elapses.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(OFFLINE_RESUME_MS - 1_000);
+    });
+    expect(saveCalls - base).toBe(1);
+
+    // One slow resume attempt after the interval — still offline, still no error.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(saveCalls - base).toBe(2);
+    expect(result.current.offline).toBe(true);
+    expect(result.current.status).not.toBe("error");
+
+    // Connectivity returns; the next gentle resume lands and clears offline.
+    online = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(OFFLINE_RESUME_MS + 1_000);
+    });
+    expect(result.current.offline).toBe(false);
+    expect(result.current.status).toBe("saved");
   });
 });

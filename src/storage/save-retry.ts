@@ -29,6 +29,19 @@ import { AuthError, ConflictError, RateLimitError } from "./adapter.ts";
 // so the worst case is 1 + this many calls to `adapter.save`.
 export const MAX_TRANSIENT_SAVE_RETRIES = 4;
 
+// How long to wait before a gentle background resume of a save that failed
+// because the backend was unreachable (a raw network error / offline), as
+// opposed to a transient 5xx from a reachable backend. An offline failure is
+// handled apart from the fast escalating backoff above: `withLocalCache` has
+// already persisted the bytes, so it is never surfaced as a hard error and
+// never spends the transient budget. Instead the save is retried on this
+// single, slow, unbudgeted interval — enough that a flaky link recovers on its
+// own, without the per-couple-of-seconds storm (and the heavy re-serialization
+// each attempt drags in) the fast curve would create across a long outage. The
+// `online` event, the Check connection probe, and the next edit also resume,
+// so this interval only needs to be a gentle safety net.
+export const OFFLINE_RESUME_MS = 15_000;
+
 export type BackoffOptions = {
   // First step of the curve, in ms. attempt 0 caps at this value.
   baseMs?: number;
