@@ -144,7 +144,7 @@ describe("ChecklistRow editing", () => {
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
   });
 
-  it("opens a fresh draft after committing a title on Enter", () => {
+  it("opens a draft below this row after committing a title on Enter", () => {
     const onEdit = vi.fn();
     const onAddAfter = vi.fn();
     renderRow({ onEdit, onAddAfter });
@@ -155,7 +155,8 @@ describe("ChecklistRow editing", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
-    expect(onAddAfter).toHaveBeenCalledTimes(1);
+    // The draft is anchored to this row, so the new item lands right below it.
+    expect(onAddAfter).toHaveBeenCalledWith("i1");
   });
 
   it("does not chain a draft when Shift+Enter reveals the body", () => {
@@ -255,23 +256,9 @@ describe("ChecklistRow editing", () => {
     expect(screen.queryByRole("button", { name: "Add sub-item" })).toBeNull();
   });
 
-  it("keeps Enter inside the sub-list for a nested row", () => {
-    // A nested row (it has a parent) routes the Enter-chain to another sibling
-    // sub-item rather than jumping out to a top-level draft.
-    const onAddAfter = vi.fn();
-    const onAddChild = vi.fn();
-    renderRow({ parentId: "parent-1", onAddAfter, onAddChild });
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    const input = screen.getByLabelText("Edit item") as HTMLElement;
-    setText(input, "Kid");
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    expect(onAddChild).toHaveBeenCalledWith("parent-1");
-    expect(onAddAfter).not.toHaveBeenCalled();
-  });
-
-  it("chains a top-level draft from Enter on a top-level row", () => {
+  it("routes Enter to the after-this-row draft, not the sub-item composer", () => {
+    // Enter always opens the draft below this row (a sibling at its own depth);
+    // the sub-item composer is reserved for the explicit "Add sub-item" button.
     const onAddAfter = vi.fn();
     const onAddChild = vi.fn();
     renderRow({ onAddAfter, onAddChild });
@@ -281,7 +268,7 @@ describe("ChecklistRow editing", () => {
     setText(input, "Top");
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(onAddAfter).toHaveBeenCalledTimes(1);
+    expect(onAddAfter).toHaveBeenCalledWith("i1");
     expect(onAddChild).not.toHaveBeenCalled();
   });
 

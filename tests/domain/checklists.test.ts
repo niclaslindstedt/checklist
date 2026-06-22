@@ -3,7 +3,9 @@ import {
   activeChecklists,
   activeItems,
   addItem,
+  addItemAfter,
   addItems,
+  addItemsAfter,
   archiveChecked,
   archivedByChecklist,
   archivedChecklists,
@@ -334,6 +336,92 @@ describe("addItems", () => {
       "ghost",
     );
     expect(next.items.map((i) => i.id)).toEqual(["i0", "i1"]);
+  });
+});
+
+describe("addItemAfter", () => {
+  const base = createChecklist("c1", "List", NOW);
+  const seeded = (() => {
+    let c = addItem(base, { id: "a", title: "A" }, NOW);
+    c = addItem(c, { id: "b", title: "B" }, NOW);
+    c = addItem(c, { id: "c", title: "C" }, NOW);
+    return c;
+  })();
+
+  it("inserts a trimmed, unchecked item right after the sibling", () => {
+    const next = addItemAfter(seeded, { id: "x", title: "  X  " }, "a", NOW);
+    expect(next.items.map((i) => i.id)).toEqual(["a", "x", "b", "c"]);
+    expect(next.items[1]).toEqual({ id: "x", title: "X", checked: false });
+    expect(next.updatedAt).toBe(NOW);
+    // Immutable — the source list is untouched.
+    expect(seeded.items.map((i) => i.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("inserts after the last item, landing at the bottom", () => {
+    const next = addItemAfter(seeded, { id: "x", title: "X" }, "c", NOW);
+    expect(next.items.map((i) => i.id)).toEqual(["a", "b", "c", "x"]);
+  });
+
+  it("inserts as a sibling at the nested item's own depth", () => {
+    let c = addItem(base, { id: "p", title: "Parent" }, NOW);
+    c = addItem(c, { id: "k1", title: "Kid 1" }, NOW, "bottom", "p");
+    c = addItem(c, { id: "k2", title: "Kid 2" }, NOW, "bottom", "p");
+    // Insert after k1 — it lands between the two children, not at the top level.
+    const next = addItemAfter(c, { id: "kx", title: "Kid X" }, "k1", NOW);
+    expect(next.items.map((i) => i.id)).toEqual(["p"]);
+    expect(next.items[0]?.children?.map((i) => i.id)).toEqual([
+      "k1",
+      "kx",
+      "k2",
+    ]);
+  });
+
+  it("falls back to a bottom append when the afterId is unknown", () => {
+    const next = addItemAfter(seeded, { id: "x", title: "X" }, "ghost", NOW);
+    expect(next.items.map((i) => i.id)).toEqual(["a", "b", "c", "x"]);
+  });
+});
+
+describe("addItemsAfter", () => {
+  const base = createChecklist("c1", "List", NOW);
+  const seeded = (() => {
+    let c = addItem(base, { id: "a", title: "A" }, NOW);
+    c = addItem(c, { id: "b", title: "B" }, NOW);
+    return c;
+  })();
+
+  it("splices many items after the sibling, in order", () => {
+    const next = addItemsAfter(
+      seeded,
+      [
+        { id: "x", title: "X", checked: false },
+        { id: "y", title: "Y", checked: true, notes: "note" },
+      ],
+      "a",
+      NOW,
+    );
+    expect(next.items.map((i) => i.id)).toEqual(["a", "x", "y", "b"]);
+    // Checked state and notes survive the splice (unlike addItem).
+    expect(next.items[2]).toEqual({
+      id: "y",
+      title: "Y",
+      checked: true,
+      notes: "note",
+    });
+  });
+
+  it("is a no-op (same reference) when given no items", () => {
+    expect(addItemsAfter(seeded, [], "a", NOW)).toBe(seeded);
+  });
+
+  it("falls back to a bottom append when the afterId is unknown", () => {
+    const next = addItemsAfter(
+      seeded,
+      [{ id: "x", title: "X", checked: false }],
+      "ghost",
+      NOW,
+    );
+    expect(next.items.map((i) => i.id)).toEqual(["a", "b", "x"]);
   });
 });
 

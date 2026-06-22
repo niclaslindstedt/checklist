@@ -42,7 +42,9 @@ function ChecklistViewImpl() {
     visibleCount,
     checkedCount,
     addItem,
+    addItemAfter,
     importItems,
+    importItemsAfter,
     editItem,
     toggle,
     remove,
@@ -172,19 +174,33 @@ function ChecklistViewImpl() {
   const [drafting, setDrafting] = useState(false);
 
   // The id of the item a sub-item composer is open under (null when none). The
-  // editor's "Add sub-item" button and Enter on a nested row open it; new items
-  // land as children of this item, so a checklist tree grows without dragging.
+  // editor's "Add sub-item" button opens it; new items land as children of this
+  // item, so a checklist tree grows without dragging.
   const [childDraftParentId, setChildDraftParentId] = useState<string | null>(
     null,
   );
+
+  // The item an "after this row" composer sits below (null when none). Enter on
+  // a row editor opens it anchored to that row; each item the composer adds
+  // lands directly after the anchor, and the anchor then advances to the new
+  // item so successive entries walk straight down the list (see `addAfterItem`).
+  const [afterDraftAnchorId, setAfterDraftAnchorId] = useState<string | null>(
+    null,
+  );
+
   const closeChildDraft = useCallback(() => setChildDraftParentId(null), []);
+  const closeAfterDraft = useCallback(() => setAfterDraftAnchorId(null), []);
+  // The three composer kinds are mutually exclusive — opening one closes the
+  // others so only a single draft row is ever live.
   const startDraft = useCallback(() => {
     setChildDraftParentId(null);
+    setAfterDraftAnchorId(null);
     setDrafting(true);
   }, []);
   const closeDraft = useCallback(() => setDrafting(false), []);
   const startChildDraft = useCallback((parentId: string) => {
     setDrafting(false);
+    setAfterDraftAnchorId(null);
     setChildDraftParentId(parentId);
     // Make sure the parent's sub-list is showing, else the composer (and the
     // children it adds) would be tucked behind a collapsed caret.
@@ -194,6 +210,11 @@ function ChecklistViewImpl() {
       next.delete(parentId);
       return next;
     });
+  }, []);
+  const startAfterDraft = useCallback((afterId: string) => {
+    setDrafting(false);
+    setChildDraftParentId(null);
+    setAfterDraftAnchorId(afterId);
   }, []);
 
   // When the composer adds an item via Shift+Enter, it hands the new row's
@@ -252,19 +273,38 @@ function ChecklistViewImpl() {
     [addItem, childDraftParentId],
   );
 
-  // Each item's parent id (top-level items omitted), so a nested row can keep
-  // Enter inside its sub-list — see `ChecklistRow`'s `parentId` / `onAddChild`.
-  const parentOf = useMemo(() => {
-    const map = new Map<string, string>();
-    const walk = (list: readonly ChecklistItem[], parent: string | null) => {
-      for (const it of list) {
-        if (parent) map.set(it.id, parent);
-        if (it.children) walk(it.children, it.id);
-      }
-    };
-    walk(items, null);
-    return map;
-  }, [items]);
+  // The after-an-item composer's verbs, bound to the anchor it sits below. Each
+  // add inserts after the anchor and then makes the new item the anchor, so a
+  // run of entries chains downward in order rather than stacking up reversed
+  // above the original row. A null anchor (composer closed) makes them inert.
+  const addAfterItem = useCallback(
+    (title: string) => {
+      if (afterDraftAnchorId === null) return;
+      const id = addItemAfter(title, afterDraftAnchorId);
+      if (id) setAfterDraftAnchorId(id);
+    },
+    [addItemAfter, afterDraftAnchorId],
+  );
+  const addAfterAndEditBody = useCallback(
+    (title: string) => {
+      if (afterDraftAnchorId === null) return;
+      const id = addItemAfter(title, afterDraftAnchorId);
+      if (id) setEditBodyOfId(id);
+      setAfterDraftAnchorId(null);
+    },
+    [addItemAfter, afterDraftAnchorId],
+  );
+  const importAfterItems = useCallback(
+    (markdown: string): number => {
+      if (afterDraftAnchorId === null) return 0;
+      const { count, lastId } = importItemsAfter(markdown, afterDraftAnchorId);
+      // Advance the anchor past the pasted block so a typed follow-up lands
+      // below it, not wedged back in above.
+      if (lastId) setAfterDraftAnchorId(lastId);
+      return count;
+    },
+    [importItemsAfter, afterDraftAnchorId],
+  );
 
   // Where the sub-item composer splices into the flattened rows, and at what
   // depth. A "top" add-position sits the composer right under the parent
@@ -285,6 +325,25 @@ function ChecklistViewImpl() {
     while (i < rows.length && rows[i]!.depth > parentDepth) i++;
     return i;
   }, [rows, childDraftParentId, addItemPosition]);
+
+  // Where the after-an-item composer splices into the flattened rows, and at
+  // what depth. It sits at the anchor's own depth (a sibling) and lands just
+  // past the anchor's whole subtree — exactly where `addItemAfter` drops the
+  // new sibling. -1 / 0 when closed.
+  const afterDraftDepth = useMemo(() => {
+    if (afterDraftAnchorId === null) return 0;
+    const row = rows.find((r) => r.item.id === afterDraftAnchorId);
+    return row ? row.depth : 0;
+  }, [rows, afterDraftAnchorId]);
+  const afterDraftIndex = useMemo(() => {
+    if (afterDraftAnchorId === null) return -1;
+    const anchorIdx = rows.findIndex((r) => r.item.id === afterDraftAnchorId);
+    if (anchorIdx === -1) return -1;
+    const anchorDepth = rows[anchorIdx]!.depth;
+    let i = anchorIdx + 1;
+    while (i < rows.length && rows[i]!.depth > anchorDepth) i++;
+    return i;
+  }, [rows, afterDraftAnchorId]);
 
   // The id of the row whose editor is open (null when none). The add button
   // hides while a row is being edited so it doesn't crowd the keyboard.
@@ -311,6 +370,21 @@ function ChecklistViewImpl() {
         onClose={closeChildDraft}
         notesDisabled={disableItemNotes}
         depth={childDraftDepth}
+      />
+    ) : null;
+
+  // The after-an-item composer, spliced in just below its anchor row at the
+  // anchor's own depth (see `afterDraftIndex`).
+  const afterDraftRow =
+    afterDraftAnchorId !== null ? (
+      <AddItemForm
+        key="__after_draft"
+        onAdd={addAfterItem}
+        onAddWithBody={addAfterAndEditBody}
+        onImport={importAfterItems}
+        onClose={closeAfterDraft}
+        notesDisabled={disableItemNotes}
+        depth={afterDraftDepth}
       />
     ) : null;
 
@@ -375,9 +449,8 @@ function ChecklistViewImpl() {
                   onEdit={editItem}
                   onRemoveEmpty={removeEmpty}
                   onBackspaceEmpty={backspaceEmpty}
-                  onAddAfter={startDraft}
+                  onAddAfter={startAfterDraft}
                   onAddChild={startChildDraft}
-                  parentId={parentOf.get(item.id)}
                   autoEditBody={item.id === editBodyOfId}
                   onAutoEditConsumed={clearEditBody}
                   autoEditTitle={item.id === editTitleOfId}
@@ -416,6 +489,8 @@ function ChecklistViewImpl() {
               out.push(row);
               // Splice the sub-item composer in after the row it sits below.
               if (i === childDraftIndex - 1) out.push(childDraftRow);
+              // Likewise the after-an-item composer, just below its anchor.
+              if (i === afterDraftIndex - 1) out.push(afterDraftRow);
               return out;
             })}
             {ghost && draggedItem && ghost.index === rows.length && (
@@ -430,14 +505,17 @@ function ChecklistViewImpl() {
         {addItemPosition === "bottom" && draftRow}
       </div>
 
-      {!drafting && !editingId && childDraftParentId === null && (
-        <AddItemButton
-          onActivate={startDraft}
-          onArchiveFinished={archiveFinished}
-          onDeleteFinished={deleteFinished}
-          finishedCount={checkedCount}
-        />
-      )}
+      {!drafting &&
+        !editingId &&
+        childDraftParentId === null &&
+        afterDraftAnchorId === null && (
+          <AddItemButton
+            onActivate={startDraft}
+            onArchiveFinished={archiveFinished}
+            onDeleteFinished={deleteFinished}
+            finishedCount={checkedCount}
+          />
+        )}
 
       {menuState && (
         <ContextMenu

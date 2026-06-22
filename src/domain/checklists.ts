@@ -290,6 +290,89 @@ export function addItems(
 }
 
 /**
+ * Splice `nodes` into the tree immediately after the sibling `afterId`,
+ * wherever it sits — at the top level or nested in some item's children — so
+ * the inserted items become `afterId`'s next siblings at its own depth.
+ * Returns null when `afterId` isn't in the tree, so a caller can fall back to
+ * a plain append rather than dropping the items.
+ */
+function spliceAfter(
+  items: readonly ChecklistItem[],
+  nodes: readonly ChecklistItem[],
+  afterId: string,
+): ChecklistItem[] | null {
+  const idx = items.findIndex((it) => it.id === afterId);
+  if (idx !== -1) {
+    const next = [...items];
+    next.splice(idx + 1, 0, ...nodes);
+    return next;
+  }
+  let done = false;
+  const next = items.map((it) => {
+    if (done || !it.children) return it;
+    const kids = spliceAfter(it.children, nodes, afterId);
+    if (kids) {
+      done = true;
+      return withChildren(it, kids);
+    }
+    return it;
+  });
+  return done ? next : null;
+}
+
+/**
+ * Add a fresh, unchecked item immediately after the sibling `afterId` — the
+ * "press an item, hit Enter, keep adding right there" flow, which drops new
+ * items directly under the one being edited instead of at the top or bottom.
+ * The new item lands at `afterId`'s own depth (its next sibling), nested or
+ * top-level alike. An `afterId` that isn't in the tree falls back to a
+ * bottom append so the item is never silently lost.
+ */
+export function addItemAfter(
+  checklist: Checklist,
+  item: { id: string; title: string },
+  afterId: string,
+  now: string,
+): Checklist {
+  const next: ChecklistItem = {
+    id: item.id,
+    title: item.title.trim(),
+    checked: false,
+  };
+  const inserted = spliceAfter(checklist.items, [next], afterId);
+  if (!inserted) {
+    return { ...checklist, items: [...checklist.items, next], updatedAt: now };
+  }
+  return { ...checklist, items: inserted, updatedAt: now };
+}
+
+/**
+ * Insert several items at once immediately after the sibling `afterId`,
+ * preserving each one's checked state / `required` flag / `notes` the way
+ * `addItems` does — the "paste a markdown checklist into the after-an-item
+ * composer" path. The items keep their given order and land at `afterId`'s
+ * depth. An unknown `afterId` (or an empty `items`) falls back to a bottom
+ * append; an empty list returns the same checklist untouched.
+ */
+export function addItemsAfter(
+  checklist: Checklist,
+  items: readonly ChecklistItem[],
+  afterId: string,
+  now: string,
+): Checklist {
+  if (items.length === 0) return checklist;
+  const inserted = spliceAfter(checklist.items, items, afterId);
+  if (!inserted) {
+    return {
+      ...checklist,
+      items: [...checklist.items, ...items],
+      updatedAt: now,
+    };
+  }
+  return { ...checklist, items: inserted, updatedAt: now };
+}
+
+/**
  * Edit an existing item's text in place — its `title` and/or its `notes`
  * body. Only the fields present in `fields` are touched, so editing the
  * title never disturbs the note and vice versa. The title is trimmed and a
