@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ConflictError } from "../../src/storage/adapter.ts";
+import { clearLogs, getLogs } from "../../src/dev/logger.ts";
 import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
 import {
@@ -167,6 +168,43 @@ describe("dropbox adapter (markdown file store)", () => {
     expect(sim.paths().length).toBe(1);
     await deleteDropboxNamespace("token", "work", sim.fetch);
     expect(sim.paths()).toEqual([]);
+  });
+
+  it("logs the endpoint, file, timing and error when a download fails (sync diagnostics)", async () => {
+    clearLogs();
+    const sim = new DropboxSim();
+    // Seed a document through a healthy adapter…
+    await createDropboxAdapter("token", sim.fetch).save(serialize(snapshot));
+    // …then load through a fetch that drops every file download (the content
+    // host) the way a flaky link rejects, while the list (api host) succeeds.
+    const flakyFetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).includes("/files/download")) {
+        throw new TypeError("Load failed");
+      }
+      return sim.fetch(url, init);
+    }) as typeof fetch;
+    const adapter = createDropboxAdapter("token", flakyFetch);
+    await expect(adapter.load()).rejects.toBeInstanceOf(TypeError);
+
+    const messages = getLogs()
+      .filter((e) => e.scope === "dropbox")
+      .map((e) => e.message);
+    // The failing request is named by host + endpoint + file, with timing and
+    // the decoded error — enough to tell a timeout from a refused request and
+    // to spot a single-file culprit.
+    expect(
+      messages.some((m) =>
+        /content\.dropboxapi\.com\/2\/files\/download download checklists\/groceries-cl1\.md threw after \d+ms: TypeError: Load failed/.test(
+          m,
+        ),
+      ),
+    ).toBe(true);
+    // The list (api host) is logged as a success, confirming the host split.
+    expect(
+      messages.some((m) =>
+        /api\.dropboxapi\.com\/2\/files\/list_folder → 200 \(\d+ms\)/.test(m),
+      ),
+    ).toBe(true);
   });
 
   it("settings store reads/writes /settings.json at the app-folder root", async () => {
