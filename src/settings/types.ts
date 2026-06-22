@@ -42,6 +42,12 @@ export type Settings = {
   // the stored document order is never reordered, so unchecking an item drops
   // it straight back where it sat.
   sortCheckedToBottom: boolean;
+  // Whether checked items glide into their new spot when they sort to the
+  // bottom, instead of jumping there in one frame. On by default; the opt-out
+  // (Appearance) makes the re-sort instant. Only has any visible effect while
+  // `sortCheckedToBottom` is on — with the sort off, nothing moves to animate.
+  // A FLIP transition driven by the checklist view; honours reduce-motion.
+  animateSortChecked: boolean;
   // Where the floating navigation button sits after the user drags it.
   menuButtonPosition: MenuButtonPosition;
   // Whether the floating navigation button is shown. Only honoured in the

@@ -17,6 +17,7 @@ import { ghostPlacement } from "./dragGhostPlacement.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
+import { useReorderFlip } from "./hooks/useReorderFlip.ts";
 import { ArchiveIcon, TrashIcon } from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
@@ -62,6 +63,7 @@ function ChecklistViewImpl() {
     logoSrc,
     disableItemNotes,
     showItemCount,
+    animateReorder,
   } = useChecklistContext();
   const t = useT();
   const activeName =
@@ -101,6 +103,16 @@ function ChecklistViewImpl() {
     [items],
   );
   const reorderCtl = useListReorder(reorder, canDrop);
+
+  // Slide rows into place when the displayed order changes — a checked item
+  // sinking to the bottom. Suspended while a pointer drag owns the row
+  // transforms, and off entirely unless the user has the sort + its animation
+  // enabled (see `animateReorder`).
+  useReorderFlip(
+    reorderCtl.containerRef,
+    animateReorder,
+    reorderCtl.draggingId !== null,
+  );
 
   // A background save can collide with another device mid-drag, raising the
   // non-dismissable conflict modal over the list. Tear the drag down when that

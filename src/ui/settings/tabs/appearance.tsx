@@ -137,6 +137,15 @@ export function AppearanceTab({
         </Field>
       </Section>
 
+      <Section title={t("settings.appearance.motion")}>
+        <ToggleRow
+          label={t("settings.appearance.animateSortChecked")}
+          hint={t("settings.appearance.animateSortCheckedHint")}
+          checked={settings.animateSortChecked}
+          onChange={(v) => onUpdate("animateSortChecked", v)}
+        />
+      </Section>
+
       {isCustom && (
         <>
           <Section title={t("settings.appearance.colours")}>

@@ -158,7 +158,9 @@ describe("validateSettings", () => {
   it("shows the item count by default and honours an explicit boolean", () => {
     expect(defaultSettings().showItemCount).toBe(true);
     expect(validateSettings({}).showItemCount).toBe(true);
-    expect(validateSettings({ showItemCount: false }).showItemCount).toBe(false);
+    expect(validateSettings({ showItemCount: false }).showItemCount).toBe(
+      false,
+    );
   });
 
   it("falls back to a shown item count on a non-boolean value", () => {
@@ -177,6 +179,20 @@ describe("validateSettings", () => {
     expect(
       validateSettings({ sortCheckedToBottom: "yes" }).sortCheckedToBottom,
     ).toBe(false);
+  });
+
+  it("animates the checked re-sort by default and honours an explicit boolean", () => {
+    expect(defaultSettings().animateSortChecked).toBe(true);
+    expect(validateSettings({}).animateSortChecked).toBe(true);
+    expect(
+      validateSettings({ animateSortChecked: false }).animateSortChecked,
+    ).toBe(false);
+  });
+
+  it("falls back to the default animateSortChecked on a non-boolean value", () => {
+    expect(
+      validateSettings({ animateSortChecked: "yes" }).animateSortChecked,
+    ).toBe(true);
   });
 
   it("enables achievements by default and honours an explicit boolean", () => {

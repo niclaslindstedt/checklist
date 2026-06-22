@@ -80,6 +80,10 @@ const settings: SettingsCatalog = {
     fontFamily: "Typsnittsfamilj",
     textSize: "Textstorlek",
     colours: "Färger",
+    motion: "Rörelse",
+    animateSortChecked: "Animera sorterade poster",
+    animateSortCheckedHint:
+      "När ”Sortera bockade poster längst ned” är på, låt dem glida på plats i stället för att hoppa. Har ingen effekt när den sorteringen är av.",
     shapeMotion: "Form och rörelse",
     cornerRadius: "Hörnradie",
     density: "Täthet",

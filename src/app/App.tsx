@@ -458,6 +458,8 @@ function AppShell() {
       logoSrc,
       disableItemNotes: settings.disableItemNotes,
       showItemCount: settings.showItemCount,
+      animateReorder:
+        settings.sortCheckedToBottom && settings.animateSortChecked,
     }),
     [
       checklist,
@@ -465,6 +467,8 @@ function AppShell() {
       logoSrc,
       settings.disableItemNotes,
       settings.showItemCount,
+      settings.sortCheckedToBottom,
+      settings.animateSortChecked,
     ],
   );
   // Just the unseen count for the header trophy badge — kept off the
