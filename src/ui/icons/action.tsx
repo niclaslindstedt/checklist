@@ -101,6 +101,27 @@ export function ChevronUpIcon({ className }: IconProps) {
   );
 }
 
+// The slim ">" twin of `ChevronDownIcon` — the collapsed-state caret on the
+// cloud-sync command centre's sync-log disclosure (rotates to the down chevron
+// when expanded).
+export function ChevronRightIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="m6 4 4 4-4 4" />
+    </svg>
+  );
+}
+
 // A small filled disclosure triangle — the toggle on a row that has
 // sub-items. Deliberately distinct from `ChevronDownIcon` (the slim note-body
 // caret) so the two reveals read differently: this one is a solid triangle

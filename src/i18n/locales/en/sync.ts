@@ -66,6 +66,20 @@ const sync = {
   offlineHeading: "Offline",
   offlineDetail:
     "Can't reach {name} right now, so you're working on the copy saved on this device. Any changes are kept locally and sync automatically when you're back online.",
+
+  // The cloud-sync command centre: the compact Reload glyph, the
+  // backend / encryption details grid, and the always-on sync log.
+  reloadFromBackend: "Reload from the backend",
+  backend: "Backend",
+  encryptionLabel: "Encryption",
+  encryptionOn: "On",
+  encryptionOff: "Off",
+  viewSyncLog: "View sync log",
+  hideSyncLog: "Hide sync log",
+  syncLogEmpty: "No sync activity logged yet.",
+  copyLog: "Copy",
+  copied: "Copied",
+  copyFailed: "Copy failed",
 } as const;
 
 export type SyncCatalog = Widen<typeof sync>;

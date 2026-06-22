@@ -104,6 +104,37 @@ Trace the whole dependency cone of the feature:
 - i18n keys under `src/i18n/locales/{en,sv}/`.
 - npm dependencies it imports (check `/tmp/budget/package.json`).
 
+### Read the feature's history for the *why*, not just the *what*
+
+The current source tells you what the feature does; its **git history tells you
+why it's shaped that way** — the design intent, the trap it avoids, the
+behaviours it deliberately changed. Read it before porting so you re-create the
+reasoning, not just the lines. Find the commits that built the feature and read
+each one's message **and** the artifacts that carry the rationale:
+
+```sh
+cd /tmp/<sibling>
+# Commits that touched the feature's files, newest first:
+git log --oneline -30 -- src/ui/<Component>.tsx src/storage/<x>.ts
+# The full message + diff for the one that introduced it:
+git show <hash>
+```
+
+> **Learning, baked in:** these repos **squash-merge**, so a commit's body is
+> usually *empty* — the subject line is just the PR title (`feat(sync): … (#118)`).
+> The real rationale lives in the artifacts that PR shipped: the
+> **`.changes/unreleased/*.md` changeset fragment** (the user-facing "what
+> changed and why" in one sentence) and the **`docs/overview.md` / `docs/*.md`
+> diff** in the same commit (the design narrative). Read those with
+> `git show <hash> -- .changes/ docs/` when the commit body is bare. If the PR
+> number is referenced (`(#118)`) and you have network, the GitHub PR
+> description can add context — but the in-repo changeset + docs diff are
+> authoritative and always reachable.
+
+When the user names a specific commit or PR ("the redesigned action bar from
+#112"), `git show` that commit (clone without `--depth 1` so it's reachable) and
+read its message, changeset, and docs diff before porting the code.
+
 ## Step 2 — Map budget paths to checklist paths
 
 The layouts line up by **concern**, but budget and checklist use different

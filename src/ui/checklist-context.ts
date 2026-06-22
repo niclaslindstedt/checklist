@@ -38,6 +38,8 @@ export type SyncInfo = {
   /** True when the backend is unreachable and we're on the on-device copy. */
   offline: boolean;
   onSave: () => void;
+  /** Re-read the document from the backend — the modal's Reload glyph. */
+  onReload: () => void;
   onOpenDetails: () => void;
   /**
    * Re-issue OAuth for the active cloud backend, shown as a "Reconnect"
