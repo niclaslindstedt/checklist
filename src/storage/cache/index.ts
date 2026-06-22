@@ -80,6 +80,23 @@ export function isOfflineError(err: unknown): boolean {
   return err instanceof TypeError;
 }
 
+// Turn a save/load failure into a human-readable phrase for the in-app
+// logger and the cloud-sync details modal. The raw signal a dead network
+// throws is a bare `TypeError` whose `.message` is engine-specific and
+// cryptic — WebKit/Safari says "Load failed", Chromium says "Failed to
+// fetch" — so a log line that just echoes it tells the user nothing about
+// *why* their save didn't land. Recognise that case and say plainly that
+// the backend was unreachable, keeping the engine's wording in parentheses
+// for the record. Every other error already carries a descriptive message
+// (e.g. "Dropbox upload failed: 503 …"), so pass it through verbatim.
+export function describeStorageError(err: unknown): string {
+  if (isOfflineError(err)) {
+    const raw = err instanceof Error ? err.message : String(err);
+    return `backend unreachable — network request failed (${raw})`;
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 type CachedBytes = { text: string; revision?: string };
 
 /** Build the per-(backend, namespace) localStorage key the cache lives under. */
