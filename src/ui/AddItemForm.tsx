@@ -35,6 +35,7 @@ export function AddItemForm({
   onAddWithBody,
   onImport,
   onClose,
+  onBackspaceEmpty,
   notesDisabled = false,
   depth = 0,
 }: {
@@ -46,6 +47,17 @@ export function AddItemForm({
   onAddWithBody: (title: string) => void;
   onImport: (markdown: string) => number;
   onClose: () => void;
+  /**
+   * Backspace was pressed in the still-empty composer, so the user means to
+   * dismiss the draft row and back up into the line above it — mirroring the
+   * in-row editor, where backspacing an empty title erases the line and moves
+   * editing up. Return true if the caller handled it (closed the composer and
+   * opened the line above for editing); the composer then swallows the
+   * keystroke and stands down so the trailing blur doesn't fire again. Return
+   * false (e.g. the composer sits at the very top, nothing above) to let the
+   * keypress fall through untouched.
+   */
+  onBackspaceEmpty?: () => boolean;
   /** When set, item notes are off — Shift+Enter falls back to a plain add. */
   notesDisabled?: boolean;
   /**
@@ -94,6 +106,16 @@ export function AddItemForm({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // Backspace in the empty composer erases the draft row and backs editing
+    // up into the line above. If the caller takes it, swallow the keystroke
+    // and mark the composer committed so the unmount-blur doesn't also close.
+    if (e.key === "Backspace" && value === "") {
+      if (onBackspaceEmpty?.()) {
+        e.preventDefault();
+        committed.current = true;
+      }
+      return;
+    }
     if (e.key !== "Enter") return;
     const withBody = e.shiftKey && !notesDisabled;
     // On a soft keyboard, pressing Enter mid-autocorrect should accept the

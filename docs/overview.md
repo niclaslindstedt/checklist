@@ -150,8 +150,13 @@ body) goes further: it removes the line and reopens the line above in its
 title editor with the cursor at the end (`onBackspaceEmpty` →
 `ChecklistView.backspaceEmpty` → `removeEmpty` + an `autoEditTitle` handoff
 to the previous row), so holding backspace walks up the list erasing lines.
-At the top line there's nothing above to back into, so the keypress falls
-through and the empty line is only cleaned up on blur. `removeEmpty`
+The add-item composer (`AddItemForm`) backs up the same way: **Backspace** in
+the still-empty draft dismisses it and reopens the line directly above where
+it was spliced in (`onBackspaceEmpty` → `ChecklistView.backspaceDraft`),
+covering all three composer positions — the top/bottom draft, the after-an-
+item draft, and the sub-item draft. At the top line there's nothing above to
+back into, so the keypress falls through and the empty line is only cleaned
+up on blur. `removeEmpty`
 (`use-checklist-edits.ts`) raises no toast — the row vanishes where the
 cursor already is — but still records an undo step labelled
 `toast.emptyItemRemoved`, so a mis-erase is recoverable.
