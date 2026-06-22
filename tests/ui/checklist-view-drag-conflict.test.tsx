@@ -35,6 +35,7 @@ function makeSync(status: SyncInfo["status"]): SyncInfo {
     dirty: false,
     offline: false,
     onSave: () => {},
+    onReload: () => {},
     onOpenDetails: () => {},
     onReconnect: null,
     onCheckConnection: async () => "offline",

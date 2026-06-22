@@ -54,6 +54,18 @@ const sync: SyncCatalog = {
   offlineHeading: "Offline",
   offlineDetail:
     "Kan inte nå {name} just nu, så du arbetar med kopian som är sparad på den här enheten. Ändringar behålls lokalt och synkas automatiskt när du är online igen.",
+
+  reloadFromBackend: "Läs om från backend",
+  backend: "Backend",
+  encryptionLabel: "Kryptering",
+  encryptionOn: "På",
+  encryptionOff: "Av",
+  viewSyncLog: "Visa synklogg",
+  hideSyncLog: "Dölj synklogg",
+  syncLogEmpty: "Ingen synkaktivitet loggad ännu.",
+  copyLog: "Kopiera",
+  copied: "Kopierad",
+  copyFailed: "Kopiering misslyckades",
 };
 
 export default sync;

@@ -23,6 +23,7 @@ export function SyncDetailsModalHost() {
       dirty={sync.dirty}
       offline={sync.offline}
       onSaveNow={sync.onSave}
+      onReload={sync.onReload}
       onReconnect={sync.onReconnect}
       onCheckConnection={sync.onCheckConnection}
       onClose={close}

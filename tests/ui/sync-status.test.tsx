@@ -15,7 +15,6 @@ function renderStatus(
     status: "idle" as SaveStatus,
     dirty: false,
     offline: false,
-    onSave: vi.fn(),
     onOpenDetails: vi.fn(),
     ...overrides,
   };
@@ -24,36 +23,34 @@ function renderStatus(
 }
 
 describe("SyncStatus", () => {
+  // The glyph is one predictable way in: whatever the state, tapping it opens
+  // the command-centre modal. It never doubles as a save button and is never
+  // disabled — that dual-action / disabled-while-saving behaviour was the
+  // "why won't it tap?" trap this redesign removed.
   it("shows a synced glyph and opens details when in sync", () => {
-    const { onOpenDetails, onSave } = renderStatus({
-      status: "saved",
-      dirty: false,
-    });
-    const btn = screen.getByRole("button", { name: /Synced to Dropbox/ });
+    const { onOpenDetails } = renderStatus({ status: "saved", dirty: false });
+    fireEvent.click(screen.getByRole("button", { name: /Synced to Dropbox/ }));
+    expect(onOpenDetails).toHaveBeenCalledOnce();
+  });
+
+  it("opens details (not an inline save) when there are unsaved edits", () => {
+    const { onOpenDetails } = renderStatus({ dirty: true });
+    fireEvent.click(screen.getByRole("button", { name: /Unsaved changes/ }));
+    expect(onOpenDetails).toHaveBeenCalledOnce();
+  });
+
+  it("stays clickable and opens details while saving", () => {
+    const { onOpenDetails } = renderStatus({ status: "saving" });
+    const btn = screen.getByRole("button") as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(btn.getAttribute("aria-busy")).toBe("true");
     fireEvent.click(btn);
     expect(onOpenDetails).toHaveBeenCalledOnce();
-    expect(onSave).not.toHaveBeenCalled();
-  });
-
-  it("shows an upload glyph and saves when there are unsaved edits", () => {
-    const { onSave, onOpenDetails } = renderStatus({ dirty: true });
-    const btn = screen.getByRole("button", { name: /Unsaved changes/ });
-    fireEvent.click(btn);
-    expect(onSave).toHaveBeenCalledOnce();
-    expect(onOpenDetails).not.toHaveBeenCalled();
-  });
-
-  it("is disabled and busy while saving", () => {
-    renderStatus({ status: "saving" });
-    const btn = screen.getByRole("button") as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
-    expect(btn.getAttribute("aria-busy")).toBe("true");
   });
 
   it("surfaces a conflict over the dirty upload glyph", () => {
     const { onOpenDetails } = renderStatus({ status: "conflict", dirty: true });
-    const btn = screen.getByRole("button", { name: /conflict/i });
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByRole("button", { name: /conflict/i }));
     expect(onOpenDetails).toHaveBeenCalledOnce();
   });
 
@@ -67,15 +64,11 @@ describe("SyncStatus", () => {
   it("shows an offline glyph instead of a synced one when on the local copy", () => {
     // Offline must win over an otherwise "synced" idle state so a stale
     // local copy never reads as in-sync with the cloud.
-    const { onOpenDetails } = renderStatus({
-      status: "saved",
-      offline: true,
-    });
+    const { onOpenDetails } = renderStatus({ status: "saved", offline: true });
     expect(
       screen.queryByRole("button", { name: /Synced to Dropbox/ }),
     ).toBeNull();
-    const btn = screen.getByRole("button", { name: /Offline/i });
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByRole("button", { name: /Offline/i }));
     expect(onOpenDetails).toHaveBeenCalledOnce();
   });
 });

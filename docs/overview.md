@@ -421,34 +421,53 @@ feeds it the active list's name (resolved from `checklists` +
 cloud-sync state: an upload glyph with an accent ring when there are
 unsaved edits, a spinner while saving, a green cloud-check when synced,
 and a coloured cloud-alert for the conflict / auth / throttle / error
-states. Tapping the upload glyph saves now (`onSave`); any other state
-opens the cloud-sync details modal (`onOpenDetails`, see "Cloud sync
-modal"). Rendered only when a real cloud backend is active — `App` passes
-a non-null `SyncInfo` only for Dropbox / Google Drive / the local folder,
-never for the browser backend or while fake data overrides the adapter.
+states. Whatever the state — including mid-save — tapping it always opens
+the cloud-sync details modal (`onOpenDetails`, see "Cloud sync modal"),
+the command centre where Save now / Reconnect / Reload / Check connection
+live. The glyph never doubles as a save button and is never disabled, so
+it's one predictable way in (the old tap-to-save-when-dirty / disabled-
+while-saving behaviour was the "why won't it tap?" trap). Rendered only
+when a real cloud backend is active — `App` passes a non-null `SyncInfo`
+only for Dropbox / Google Drive / the local folder, never for the browser
+backend or while fake data overrides the adapter.
 
 ### Cloud sync modal
 
 `src/ui/SyncDetailsModal.tsx` (hosted by
 `src/app/modals/SyncDetailsModalHost.tsx`, opened by the bus command
-`{ kind: "sync-details" }`) — the dialog the header cloud glyph opens.
-Ported from the budget project's `SyncDetailsModal`, it spells out what
-the sync is doing and, when a save failed, **why**: the `error` state
-shows the failure reason captured verbatim into `statusDetail` (set in
-`use-checklist-sync.ts` from the thrown error's `message`), so a broken
-save is no longer a silent red icon. It also offers a Reconnect button on
-`auth-error` (wired to `SyncInfo.onReconnect`, which re-issues OAuth for
-Dropbox / Google Drive), a Save now / Try again button, a **Check
-connection** button while `offline` (wired to `SyncInfo.onCheckConnection`
-— see [Check connection](#check-connection)) that re-probes the backend
-and shows the outcome as a live status line, the provider name
-and file location, and an "Open in <provider>" link out to the backend's
-web UI (omitted for the local folder, which has no URL). The provider
-path / URL are derived from `SyncInfo.backend` + `namespace` via the
-backends' web-URL helpers (`dropboxWebUrl`, `gdriveWebUrl`). Its content
-is short and opens no soft keyboard, so it renders as a compact
-`centered` card on every viewport rather than the full-screen mobile
-sheet.
+`{ kind: "sync-details" }`) — the cloud-sync **command centre** the header
+glyph always opens, the one place that answers "what is sync doing right
+now". Ported from the notes project's redesigned modal (#118) over
+checklist's original, it lays out, top to bottom:
+
+- **Status** — the headline state (saving / error / throttled / offline /
+  in-sync) and, when a save failed, **why**: the `error` state shows the
+  failure reason captured verbatim into `statusDetail` (set in
+  `use-checklist-sync.ts` from the thrown error's `message`), so a broken
+  save is no longer a silent red icon. Alongside the status card sits a
+  compact **Reload** glyph (`SyncInfo.onReload`, re-reads the backend
+  whatever the state). Below it: a Reconnect button on `auth-error`
+  (`SyncInfo.onReconnect`, re-issues OAuth for Dropbox / Google Drive), a
+  Save now / Try again button, and — while `offline` — a **Check
+  connection** button (`SyncInfo.onCheckConnection`, see
+  [Check connection](#check-connection)) that re-probes the backend and
+  shows the outcome as a live status line.
+- **Details** — a two-column grid pairing the backend (cloud / folder
+  glyph) with the at-rest **Encryption** state (On / Off, read off the
+  provider label's `(encrypted)` suffix), then the on-disk file location.
+- **Sync log** — a collapsible panel reading the cloud-sync scopes straight
+  from the in-memory log ring buffer (`getLogs` / `subscribeToLogs`,
+  filtered to a `SYNC_LOG_SCOPES` allowlist). It shows even when the
+  developer-mode capture toggle is off (capture only governs persistence
+  across reloads, not the live buffer), with a Copy button — so a
+  non-developer can read what sync is doing without entering dev mode.
+
+An "Open in <provider>" link (omitted for the local folder, which has no
+URL) closes it out; the provider path / URL are derived from
+`SyncInfo.backend` + `namespace` via the backends' web-URL helpers
+(`dropboxWebUrl`, `gdriveWebUrl`). Its content is short and opens no soft
+keyboard, so it renders as a compact `centered` card on every viewport
+rather than the full-screen mobile sheet.
 
 ### Modal
 

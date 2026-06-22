@@ -26,6 +26,7 @@ function renderModal(
     dirty: false,
     offline: false,
     onSaveNow: vi.fn(),
+    onReload: vi.fn(),
     onReconnect: vi.fn(async () => {}),
     onCheckConnection: vi.fn(async () => "offline" as const),
     onClose: vi.fn(),
@@ -134,5 +135,35 @@ describe("SyncDetailsModal", () => {
     expect(
       screen.queryByRole("button", { name: /Check connection/ }),
     ).toBeNull();
+  });
+
+  // Command-centre surfaces ported from notes #118.
+  it("offers a reload glyph (whatever the state) that re-reads the backend", () => {
+    const { onReload } = renderModal({ status: "saved" });
+    fireEvent.click(
+      screen.getByRole("button", { name: /Reload from the backend/ }),
+    );
+    expect(onReload).toHaveBeenCalledOnce();
+  });
+
+  it("shows the backend and at-rest encryption state in the details grid", () => {
+    renderModal({ status: "saved", providerName: "Dropbox (encrypted)" });
+    expect(screen.getByText("Encryption")).toBeTruthy();
+    // The (encrypted) suffix flips the encryption detail to On.
+    expect(screen.getByText("On")).toBeTruthy();
+  });
+
+  it("reads Off when the backend isn't encrypted", () => {
+    renderModal({ status: "saved", providerName: "Dropbox" });
+    expect(screen.getByText("Off")).toBeTruthy();
+  });
+
+  it("reveals the always-on sync log on demand", () => {
+    renderModal({ status: "saved" });
+    // Collapsed by default.
+    expect(screen.queryByText(/sync activity logged/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /View sync log/ }));
+    // Expanding shows the log panel (empty-state copy when nothing matched).
+    expect(screen.getByText(/No sync activity logged yet/i)).toBeTruthy();
   });
 });
