@@ -17,7 +17,10 @@
 
 import { createLogger } from "../../dev/logger.ts";
 import type { StorageAdapter } from "../adapter.ts";
-import { createDirectoryAdapter } from "../directory-adapter.ts";
+import {
+  browserWriteLog,
+  createDirectoryAdapter,
+} from "../directory-adapter.ts";
 import type { FileEntry, FileStore } from "../file-store.ts";
 import { DEFAULT_NAMESPACE_SLUG } from "../namespaces.ts";
 import { fileSettingsStore, type SettingsStore } from "../settings-store.ts";
@@ -187,6 +190,7 @@ export function createFolderAdapter(
     id: "folder",
     label: "Local folder",
     saveDebounceMs: SAVE_DEBOUNCE_MS,
+    writeLog: browserWriteLog("folder", namespace),
   });
 }
 
