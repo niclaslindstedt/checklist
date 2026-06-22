@@ -130,6 +130,19 @@ describe("ChecklistRow swipe action layers", () => {
   });
 });
 
+describe("ChecklistRow checkbox tap target", () => {
+  it("pads the checkbox hit area without enlarging the visual box", () => {
+    renderRow();
+    // The label wraps the (sr-only) input; padding plus a counteracting
+    // negative margin grow the tappable area while keeping the layout — and
+    // the visual box's own size — unchanged.
+    const label = screen.getByLabelText("Check item")
+      .parentElement as HTMLElement;
+    expect(label.className).toContain("p-2.5");
+    expect(label.className).toContain("-m-2.5");
+  });
+});
+
 describe("ChecklistRow editing", () => {
   it("edits a note-less item straight away and commits the title on Enter", () => {
     const onEdit = vi.fn();

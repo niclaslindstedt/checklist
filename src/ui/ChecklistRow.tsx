@@ -362,10 +362,15 @@ function ChecklistRowImpl({
               </button>
             )}
           </span>
+          {/* Pad the tap target out to ~40px without growing the visual box:
+              the padding enlarges the clickable label and the matching negative
+              margin pulls the layout back, so the checkbox still sits in the
+              same spot and stays h-5/w-5 — easier to hit on touch. */}
           <Checkbox
             checked={item.checked}
             onChange={() => onToggle(item.id)}
             ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
+            className="p-2.5 -m-2.5"
           />
           <button
             type="button"
