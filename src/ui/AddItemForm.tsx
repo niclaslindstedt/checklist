@@ -102,15 +102,21 @@ export function AddItemForm({
         addAndContinue();
       }}
     >
-      {/* Sized to match the checkbox in `ChecklistRow` (h-5 w-5) so the
-          glyph sits centred above the checkbox column and the input text
-          lines up with the item titles below. */}
+      {/* Mirror a `ChecklistRow`'s leading columns so the input text lands in
+          the same column as the item titles below: the "+" fills the caret
+          slot, and a dimmed, inert checkbox fills the checkbox slot — both
+          sized h-5 w-5 like the row. The dimmed box previews where the new
+          item's checkbox will sit once it's added. */}
       <span
         aria-hidden
         className="flex h-5 w-5 shrink-0 items-center justify-center text-lg leading-none text-muted"
       >
         +
       </span>
+      <span
+        aria-hidden
+        className="h-5 w-5 shrink-0 rounded-sm border-2 border-muted opacity-40"
+      />
       <ClearableInput
         ref={inputRef}
         value={value}
