@@ -409,17 +409,26 @@ export default defineConfig({
           "**/opendyslexic-*.woff2",
         ],
         cleanupOutdatedCaches: true,
-        // App shell is precached; cloud-storage hosts use networkFirst.
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) =>
-              url.hostname === "www.googleapis.com" ||
-              url.hostname === "api.dropboxapi.com" ||
-              url.hostname === "content.dropboxapi.com",
-            handler: "NetworkFirst",
-            options: { cacheName: "cloud-storage" },
-          },
-        ],
+        // No runtime caching for the cloud-storage hosts (Dropbox / Google
+        // Drive). The service worker must NOT intercept those API calls:
+        //
+        // 1. They are almost all authenticated POSTs (Dropbox `list_folder` /
+        //    `download` / `upload`; Drive uploads). A Workbox caching strategy
+        //    runs `Cache.put()`, which rejects for non-GET requests — and that
+        //    rejection can make the SW's `respondWith` reject, surfacing to the
+        //    page as a bare `TypeError: Load failed`. The symptom: cloud sync
+        //    fails *only in the installed PWA* (where the SW is active) while
+        //    the very same requests work in a normal browser tab — i.e. the
+        //    "Check connection says offline but the network is fine" report.
+        // 2. Caching authenticated, account-scoped API responses at the SW
+        //    layer is wrong anyway (stale / cross-account risk), and offline
+        //    reads are already handled by the app's own on-device mirror
+        //    (`withLocalCache`, localStorage) — not by the SW.
+        //
+        // Leaving `runtimeCaching` empty means these requests match no route
+        // and fall straight through to the network, exactly as in a plain tab.
+        // Do not re-add a rule for these hosts.
+        runtimeCaching: [],
       },
     }),
     injectHomeSeo(),
