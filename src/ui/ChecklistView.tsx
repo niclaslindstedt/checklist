@@ -13,6 +13,7 @@ import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
+import { useReportDragActivity } from "./drag-activity.ts";
 import { ghostPlacement } from "./dragGhostPlacement.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
@@ -123,6 +124,18 @@ function ChecklistViewImpl() {
   useEffect(() => {
     if (conflicted) cancelDrag();
   }, [conflicted, cancelDrag]);
+
+  // A live reorder drag owns the screen — report it so the document-level
+  // pull-to-refresh stands down. Dragging a row downward would otherwise arm a
+  // refresh at the same time.
+  const reportDrag = useReportDragActivity();
+  const reordering = reorderCtl.draggingId !== null;
+  useEffect(() => {
+    reportDrag(reordering);
+    return () => {
+      if (reordering) reportDrag(false);
+    };
+  }, [reordering, reportDrag]);
 
   // Desktop swaps each row's swipe-to-reveal gesture for a right-click menu
   // carrying the same archive / delete actions. `openMenu` is referentially

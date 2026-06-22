@@ -1649,7 +1649,10 @@ screen, resetting the undo history to the freshly-loaded baseline. It's
 a near-no-op round trip for the local backend but the real "pick up
 another device's edit" pull for the cloud backends. The gesture is
 `usePullToRefresh` (touch-only, suppressed while a modal owns the
-screen); the visual is `PullToRefreshIndicator`.
+screen, while the floating menu button is being dragged, and while a
+checklist or item is being drag-reordered — each drag reports itself
+through `ReportDragActivityContext` so a downward drag can't arm a
+refresh at the same time); the visual is `PullToRefreshIndicator`.
 
 ### Conflict resolution
 
@@ -1932,7 +1935,8 @@ Walks the whole-document timeline.
 
 Drag down from the top of the list (`usePullToRefresh` →
 `useChecklist.reload`) to re-read the backend — meaningful for the cloud
-backends.
+backends. Stands down while a checklist or item is being drag-reordered
+so the reorder gesture can't double as a refresh.
 
 ### Open settings
 

@@ -30,6 +30,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -38,6 +39,7 @@ import {
 } from "react";
 
 import { ChecklistIcon } from "./icons.tsx";
+import { useReportDragActivity } from "./drag-activity.ts";
 import {
   ActionsContext,
   DropKeyContext,
@@ -67,6 +69,18 @@ export function ChecklistDragProvider({
   // rebuilt (which would re-fire the touch handlers' closures).
   const checklistIdRef = useRef<string | null>(null);
   const dropKeyRef = useRef<string | null>(null);
+
+  // While a list is picked up, report the drag so the document-level
+  // pull-to-refresh stands down — dragging a list downward to a target would
+  // otherwise arm a refresh at the same time.
+  const reportDrag = useReportDragActivity();
+  const isDragging = dragging !== null;
+  useEffect(() => {
+    reportDrag(isDragging);
+    return () => {
+      if (isDragging) reportDrag(false);
+    };
+  }, [isDragging, reportDrag]);
 
   // Sit the chip just above the fingertip, horizontally centred on it.
   const applyGhostTransform = useCallback((el: HTMLDivElement) => {
