@@ -101,6 +101,19 @@ export type DirectoryAdapterOptions = {
    * only exercise the in-memory path, and on platforms without `localStorage`.
    */
   writeLog?: WriteLogStore;
+  /**
+   * Per-file network-error retry schedule, in ms — one entry per *retry*
+   * after the first attempt. A `load` fans out into one `list` plus a read
+   * per file and is all-or-nothing, so on a flaky link a single dropped
+   * request (a raw `TypeError`, the way `fetch` rejects when a request can't
+   * complete) would fail the whole load even though the others succeeded.
+   * Retrying each individual `FileStore` op a few times on a *network* error
+   * (never a typed Auth/Conflict/RateLimit signal) lets the load/save ride
+   * out an intermittent request instead of collapsing. Defaults to a short
+   * bounded curve; tests pass `[]` (or tiny delays) to stay fast. The local
+   * folder backend never raises network errors, so this is inert there.
+   */
+  retryDelaysMs?: readonly number[];
 };
 
 /** Per-(backend, namespace) persistence for the phantom-conflict write log. */
@@ -142,11 +155,57 @@ function fingerprint(s: string): string {
   return `${s.length}:${h1.toString(36)}:${h2.toString(36)}`;
 }
 
+// Default per-file retry curve: three retries on a network error, backing
+// off ~0.3s → 0.6s → 1.2s. Bounded so a genuinely-down backend still fails
+// quickly enough to fall back to the offline cache, while a single dropped
+// request on a flaky link gets a few chances to land.
+const DEFAULT_RETRY_DELAYS_MS: readonly number[] = [300, 600, 1200];
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// Wrap a `FileStore` so each operation retries on a *network* error (a raw
+// `TypeError` — never a typed Auth/Conflict/RateLimit signal, which carry
+// their own upstream handling). All four ops are idempotent (overwrite write,
+// missing-tolerant remove, pure read/list), so a retry can never corrupt
+// state. This is what lets an all-or-nothing `load` (one `list` + N parallel
+// reads) survive one request dropping on a flaky link instead of collapsing
+// the whole load to "offline".
+function withFileStoreRetry(
+  inner: FileStore,
+  delaysMs: readonly number[],
+): FileStore {
+  async function run<T>(op: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await op();
+      } catch (err) {
+        if (!isOfflineError(err) || attempt >= delaysMs.length) throw err;
+        await sleep(delaysMs[attempt]!);
+      }
+    }
+  }
+  return {
+    list: () => run(() => inner.list()),
+    read: (path) => run(() => inner.read(path)),
+    write: (path, text) => run(() => inner.write(path, text)),
+    remove: (path) => run(() => inner.remove(path)),
+  };
+}
+
 export function createDirectoryAdapter(
-  store: FileStore,
+  rawStore: FileStore,
   options: DirectoryAdapterOptions,
 ): StorageAdapter {
   const { writeLog } = options;
+  // Every `FileStore` access below goes through the retrying wrapper so a
+  // flaky per-request failure doesn't doom a whole load / save (see
+  // `withFileStoreRetry`). `probe` deliberately calls the raw store so the
+  // reachability check stays a single quick request, not a retried one.
+  const store = withFileStoreRetry(
+    rawStore,
+    options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS,
+  );
 
   // The canonical JSON of the folder registry as it currently stands on disk
   // (null = no `folders.json` sidecar exists). Set on every load and after
@@ -441,7 +500,9 @@ export function createDirectoryAdapter(
     return { text, revision: aggregateRevision(after) };
   }
 
-  // Cheap reachability check: a single directory listing, no file bodies.
+  // Cheap reachability check: a single directory listing, no file bodies and
+  // no retry (the raw store) so it stays one quick request — the retrying
+  // store is for the all-or-nothing load/save, not this yes/no probe.
   // Resolves true when the backend answered, false when the request couldn't
   // reach it (offline). A lapsed session re-throws `AuthError` so the caller
   // routes to Reconnect rather than parking in the offline state; any other
@@ -449,7 +510,7 @@ export function createDirectoryAdapter(
   // we're back online on a backend that's still erroring.
   async function probe(): Promise<boolean> {
     try {
-      await store.list();
+      await rawStore.list();
       return true;
     } catch (err) {
       if (err instanceof AuthError) throw err;
