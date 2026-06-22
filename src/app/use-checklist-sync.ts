@@ -31,6 +31,7 @@ import {
   backoffDelayMs,
   isRetryableSaveError,
   MAX_TRANSIENT_SAVE_RETRIES,
+  OFFLINE_RESUME_MS,
 } from "../storage/save-retry.ts";
 import { parse, serialize } from "../storage/serialize.ts";
 import { newId, now } from "./side-effects.ts";
@@ -284,12 +285,29 @@ export function useChecklistSync(deps: {
         .catch((err: unknown) => {
           inFlight.current = false;
           if (saveGeneration.current !== generation) return;
-          // A network-level save failure means we've dropped offline since
-          // the last good round-trip — reflect it so the header shows the
-          // local-copy state while the edit waits to re-sync. `withLocalCache`
-          // has already stashed the bytes; the retry below (and the `online`
-          // listener) will push them when the connection returns.
-          if (isOfflineError(err)) setOffline(true);
+          // Offline (a raw network error) is handled apart from the typed
+          // signals and the transient-retry storm below. `withLocalCache` has
+          // already persisted the attempted bytes, so the edit is safe and
+          // will re-sync — there is nothing to surface as an error. Crucially
+          // we do NOT spend the fast escalating backoff here: on a long outage
+          // that would re-run the heavy phantom-conflict serialization and hit
+          // a dead link every couple of seconds for the whole duration. Mark
+          // offline (the glyph shows the local-copy state), keep the edit
+          // queued, and arm a single gentle resume on a slow interval. The
+          // `online` event, the Check connection probe, and the next edit also
+          // resume, so this is just a safety net for a flaky link the browser
+          // never reports as fully offline.
+          if (isOfflineError(err)) {
+            log.info(
+              `save: offline — cached locally, gentle resume in ${OFFLINE_RESUME_MS}ms`,
+            );
+            setOffline(true);
+            // Not a transient failure — reset the budget so a real 5xx after
+            // reconnect starts its curve fresh.
+            transientRetries.current = 0;
+            armResave(next, OFFLINE_RESUME_MS);
+            return;
+          }
           if (err instanceof ConflictError) {
             log.warn("save: remote moved — surfacing conflict");
             setStatus("conflict");
@@ -595,6 +613,13 @@ export function useChecklistSync(deps: {
     if (typeof window === "undefined") return;
     const onOnline = () => {
       log.info("connectivity restored — flushing queued save");
+      // Cancel the gentle offline resume cooldown so the flush isn't blocked
+      // by the cooldown guard and waits out the slow interval — connectivity
+      // is back, so push now.
+      if (retryTimer.current !== null) {
+        clearTimeout(retryTimer.current);
+        retryTimer.current = null;
+      }
       flushSaveRef.current();
     };
     window.addEventListener("online", onOnline);
