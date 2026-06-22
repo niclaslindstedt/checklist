@@ -67,6 +67,13 @@ export type ChecklistContextValue = UseChecklist & {
    * synced `Settings`; on by default.
    */
   showItemCount: boolean;
+  /**
+   * Whether the checklist view should animate rows sliding into place when
+   * the displayed order changes (a checked item sinking to the bottom). True
+   * only when both checked-sorting and its animation are enabled in the
+   * synced `Settings`; the view feeds it to the FLIP hook.
+   */
+  animateReorder: boolean;
 };
 
 export const ChecklistContext = createContext<ChecklistContextValue | null>(

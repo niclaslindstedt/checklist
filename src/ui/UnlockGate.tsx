@@ -62,10 +62,7 @@ export function UnlockGate({ open, onUnlock }: Props) {
       >
         <div className="flex items-center gap-2 text-accent">
           <ShieldIcon className="h-6 w-6" />
-          <h1
-            id="unlock-title"
-            className="text-base font-bold text-fg-bright"
-          >
+          <h1 id="unlock-title" className="text-base font-bold text-fg-bright">
             {t("settings.storage.unlockTitle")}
           </h1>
         </div>

@@ -15,10 +15,7 @@ import { useEffect } from "react";
 // Matches `w-64` on the pinned `<nav>` in `SideMenu`.
 const SIDEBAR_WIDTH = "16rem";
 
-export function useSidebarInset(
-  pinned: boolean,
-  side: "left" | "right",
-): void {
+export function useSidebarInset(pinned: boolean, side: "left" | "right"): void {
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty(

@@ -84,6 +84,10 @@ const settings = {
     fontFamily: "Font family",
     textSize: "Text size",
     colours: "Colours",
+    motion: "Motion",
+    animateSortChecked: "Animate sorted items",
+    animateSortCheckedHint:
+      "When “Sort checked items to the bottom” is on, slide them into place instead of jumping. Has no effect while that sorting is off.",
     shapeMotion: "Shape & motion",
     cornerRadius: "Corner radius",
     density: "Density",

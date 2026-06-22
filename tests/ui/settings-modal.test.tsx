@@ -116,6 +116,17 @@ describe("SettingsModal", () => {
     );
   });
 
+  it("commits an animateSortChecked toggle from the Theme tab on Save", () => {
+    const { onSave } = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: "Theme" }));
+    // On by default — toggling it off should ride through Save.
+    fireEvent.click(screen.getByLabelText("Animate sorted items"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ animateSortChecked: false }),
+    );
+  });
+
   it("commits a disableAchievements toggle from the General tab on Save", () => {
     const { onSave } = renderModal();
     fireEvent.click(screen.getByLabelText("Disable achievements"));

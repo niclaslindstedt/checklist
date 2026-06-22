@@ -38,6 +38,11 @@ export const DEFAULT_ADD_ITEM_POSITION: AddItemPosition = "bottom";
 // the bottom of the active list as a view-only sort.
 export const DEFAULT_SORT_CHECKED_TO_BOTTOM = false;
 
+// The sink-to-bottom re-sort is animated by default — checked items glide to
+// their new spot. The opt-out makes it instant. Only visible while
+// `sortCheckedToBottom` is on.
+export const DEFAULT_ANIMATE_SORT_CHECKED = true;
+
 // The floating navigation button starts pinned to the left edge, halfway
 // down — where it lived before it became draggable.
 export const DEFAULT_MENU_BUTTON_POSITION: MenuButtonPosition = {
@@ -74,6 +79,7 @@ export function defaultSettings(): Settings {
     customTheme: DEFAULT_CUSTOM_THEME,
     addItemPosition: DEFAULT_ADD_ITEM_POSITION,
     sortCheckedToBottom: DEFAULT_SORT_CHECKED_TO_BOTTOM,
+    animateSortChecked: DEFAULT_ANIMATE_SORT_CHECKED,
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
     disableToasts: DEFAULT_DISABLE_TOASTS,
@@ -199,6 +205,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.sortCheckedToBottom === "boolean"
         ? raw.sortCheckedToBottom
         : DEFAULT_SORT_CHECKED_TO_BOTTOM,
+    animateSortChecked:
+      typeof raw.animateSortChecked === "boolean"
+        ? raw.animateSortChecked
+        : DEFAULT_ANIMATE_SORT_CHECKED,
     menuButtonPosition: validMenuButtonPosition(raw.menuButtonPosition),
     showMenuButton:
       typeof raw.showMenuButton === "boolean"

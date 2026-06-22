@@ -1047,6 +1047,25 @@ backend; the markdown-backed folder / cloud stores don't round-trip
 `checkedAt`, so after a reload the checked group falls back to document
 order there.
 
+### Animate sorted items
+
+When checked-sorting is on, checking an item moves its row past the
+still-unchecked ones in a single frame. The **Animate sorted items**
+toggle on the Appearance tab (`animateSortChecked` on the synced
+`Settings`, on by default) makes that re-sort glide instead: `ChecklistView`
+feeds `useReorderFlip` (`src/ui/hooks/useReorderFlip.ts`) the
+`animateReorder` context flag — true only when both `sortCheckedToBottom`
+**and** `animateSortChecked` are on — and the hook runs a FLIP transition
+(measure the new row offsets in a `useLayoutEffect` before paint, diff them
+against the previous commit's snapshot via the pure `reorderFlips` helper,
+and play each moved row from its old offset to rest through the Web
+Animations API). It stays out of the pointer drag-to-reorder gesture
+(`useListReorder` owns the row transforms then, so the hook is suspended for
+the drag and skips the first commit after it) and honours reduce-motion —
+both the in-app Custom-theme toggle (`data-reduce-motion` on `<html>`) and
+the OS `prefers-reduced-motion` preference short-circuit the animation,
+since Web Animations aren't covered by the reduce-motion stylesheet guard.
+
 ### Disable item notes
 
 The **Disable item notes** toggle on the Lists tab
@@ -1078,8 +1097,10 @@ it unlocks the **Lost Count** achievement.
 ### Appearance / theme tab
 
 `src/ui/settings/tabs/appearance.tsx` — the theme picker (light/dark
-mode + variant), font family, text size, and — when the Custom theme is
-selected — the per-colour overrides and the shape/motion controls
+mode + variant), font family, text size, the always-visible **Motion**
+section (the **Animate sorted items** toggle — see "Animate sorted items"),
+and — when the Custom theme is selected — the per-colour overrides and the
+shape/motion controls
 (corner radius, density, border width, reduce-motion). The **density**
 control writes the `--density-row-px` / `--density-row-py` CSS variables
 (see Theme engine) that the checklist rows and the side-menu items read

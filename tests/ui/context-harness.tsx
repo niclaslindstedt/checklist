@@ -85,6 +85,7 @@ export function makeChecklistValue(
     logoSrc: "/favicon.svg",
     disableItemNotes: false,
     showItemCount: true,
+    animateReorder: false,
     ...over,
   };
 }
