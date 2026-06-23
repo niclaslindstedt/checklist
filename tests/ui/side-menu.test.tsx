@@ -524,14 +524,48 @@ describe("SideMenu", () => {
       expect(screen.getByRole("menuitem", { name: /Loose list/ })).toBeTruthy();
     });
 
-    it("collapses a folder so its lists drop out of the tree", () => {
-      renderMenu({ nav: { open: true }, checklist: foldered });
+    it("collapses a folder but keeps the active list peeking out", () => {
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          folders: [{ id: "f1", name: "Work", count: 2 }],
+          checklists: [
+            { id: "c1", name: "Filed active", remaining: 0, folderId: "f1" },
+            { id: "c3", name: "Filed idle", remaining: 0, folderId: "f1" },
+            { id: "c2", name: "Loose list", remaining: 0 },
+          ],
+          activeChecklistId: "c1",
+        },
+      });
       const header = screen.getByRole("button", { name: /Work/ });
       fireEvent.click(header);
       expect(header.getAttribute("aria-expanded")).toBe("false");
-      expect(screen.queryByRole("menuitem", { name: /Filed list/ })).toBeNull();
+      // The idle filed list drops out of the tree…
+      expect(screen.queryByRole("menuitem", { name: /Filed idle/ })).toBeNull();
+      // …but the active one keeps peeking out, the way the active namespace
+      // stays visible under a folded namespace section.
+      expect(
+        screen.getByRole("menuitem", { name: /Filed active/ }),
+      ).toBeTruthy();
       // The ungrouped list is unaffected.
       expect(screen.getByRole("menuitem", { name: /Loose list/ })).toBeTruthy();
+    });
+
+    it("collapses a folder fully when its active list is elsewhere", () => {
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          folders: [{ id: "f1", name: "Work", count: 1 }],
+          checklists: [
+            { id: "c1", name: "Filed list", remaining: 0, folderId: "f1" },
+            { id: "c2", name: "Loose active", remaining: 0 },
+          ],
+          activeChecklistId: "c2",
+        },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Work/ }));
+      // No list in the folder is active, so nothing peeks out.
+      expect(screen.queryByRole("menuitem", { name: /Filed list/ })).toBeNull();
     });
 
     it("creates a folder via the action bar's New folder button", () => {

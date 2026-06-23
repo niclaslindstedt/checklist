@@ -168,39 +168,6 @@ export function NavItem({
   );
 }
 
-// Undo / redo render as a side-by-side pair rather than full-width rows so
-// the two fit on one line at the foot of the drawer. Each is a self-contained
-// bordered button (icon + label, centred) that dims and goes inert at the
-// ends of the timeline, where there is nothing to revert or re-apply.
-export function EditButton({
-  icon,
-  label,
-  disabled = false,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-md border border-line py-2.5 text-sm ${
-        disabled
-          ? "cursor-not-allowed text-muted opacity-40"
-          : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
-      }`}
-    >
-      <span className={disabled ? "" : "text-muted"}>{icon}</span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
 // Wraps a drawer row so a left swipe latches it open to reveal a trailing
 // trash button (see `useSwipeReveal`). `confirmLabel`, when given, makes the
 // removal a two-tap action: the first tap on the trash arms a confirming
@@ -628,17 +595,19 @@ export function FolderEditRow({
   );
 }
 
-// New list / New folder / Archive render as a compact segmented bar instead of
-// full-width rows, saving vertical space the way Undo / Redo do. The cells sit
-// flush against one another (the parent owns the border, rounding, and inner
-// `divide-x` dividers) and split the width evenly. The buttons are icon-only
-// (the label rides on `aria-label` / `title`); the active view tints accent,
-// and Archive carries its count as a corner badge.
+// The icon buttons that fill the footer action panel: New list / New folder /
+// Archive on the top row, Undo / Redo on the bottom. The cells sit flush
+// against one another (the parent owns the border, rounding, and the inner
+// `divide-x` / `divide-y` dividers) and split each row's width evenly. The
+// buttons are icon-only (the label rides on `aria-label` / `title`); the active
+// view tints accent, Archive carries its count as a corner badge, and a
+// `disabled` cell (an undo/redo end-stop) dims and goes inert.
 export function BarButton({
   icon,
   label,
   active = false,
   badge,
+  disabled = false,
   onClick,
   dropId,
   isDropTarget = false,
@@ -650,6 +619,7 @@ export function BarButton({
   label: string;
   active?: boolean;
   badge?: number;
+  disabled?: boolean;
   onClick: () => void;
   // Drop-target wiring so the Archive button accepts a dragged checklist.
   dropId?: string;
@@ -665,17 +635,20 @@ export function BarButton({
       aria-current={active ? "page" : undefined}
       aria-label={label}
       title={label}
+      disabled={disabled}
       onClick={onClick}
       {...(dropId !== undefined ? { [CHECKLIST_DROP_ATTR]: dropId } : {})}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`relative flex flex-1 cursor-pointer items-center justify-center py-2.5 ${
-        isDropTarget
-          ? "bg-accent/15 text-fg-bright"
-          : active
-            ? "bg-surface-2 text-fg-bright"
-            : "text-fg hover:bg-surface-2 hover:text-fg-bright"
+      className={`relative flex flex-1 items-center justify-center py-2.5 ${
+        disabled
+          ? "cursor-not-allowed text-muted opacity-40"
+          : isDropTarget
+            ? "cursor-pointer bg-accent/15 text-fg-bright"
+            : active
+              ? "cursor-pointer bg-surface-2 text-fg-bright"
+              : "cursor-pointer text-fg hover:bg-surface-2 hover:text-fg-bright"
       }`}
     >
       <span className={active ? "text-accent" : "text-muted"}>{icon}</span>
