@@ -2,11 +2,12 @@
 // Get a sibling repo's working tree into a local folder so the
 // copy-feature skill can read it. Three ways in, tried in order:
 //
-//   1. GitLab mirror clone — the siblings push-mirror themselves to
-//      gitlab.com (see each repo's .github/workflows/mirror-gitlab.yml).
-//      gitlab.com is reachable over plain `git` even in the scoped web
-//      sandbox where github.com is blocked, so this is a real clone
-//      *with history* — preferred whenever the mirror exists.
+//   1. Mirror clone — the siblings push-mirror themselves to an external
+//      git host (see each repo's .github/workflows/mirror.yml). That host
+//      (GitLab, Codeberg / Gitea, Bitbucket, ...) is typically reachable
+//      over plain `git` even in the scoped web sandbox where github.com
+//      is blocked, so this is a real clone *with history* — preferred
+//      whenever a mirror is configured (env MIRROR_BASE).
 //
 //   2. GitHub clone — fast and also has history, but github.com egress
 //      is denied with HTTP 403 in a scoped sandbox (a host-level block;
@@ -24,10 +25,15 @@
 //   node clone-sibling.mjs budget /tmp/b         # -> /tmp/b       @ main
 //   node clone-sibling.mjs notes /tmp/notes dev  # -> /tmp/notes   @ dev
 //
-// Override the GitLab mirror namespace with GITLAB_OWNER (defaults to the
-// GitHub owner). Set GITLAB_TOKEN (a GitLab read token) when the mirror is
-// a *private* project — it is embedded in the clone URL so the anonymous
-// clone of a private mirror doesn't fail; a public mirror needs no token.
+// Mirror config (provider-agnostic) — all via env:
+//   MIRROR_BASE   host+namespace of the mirror, no scheme and no repo,
+//                 e.g. `gitlab.com/niclaslindstedt` or
+//                 `codeberg.org/team`. Unset → skip step 1 entirely.
+//   MIRROR_TOKEN  a read token/PAT, embedded in the clone URL so a
+//                 *private* mirror still clones; a public mirror needs none.
+//   MIRROR_USER   basic-auth username paired with the token (default
+//                 `oauth2`; `x-token-auth` for Bitbucket, your username
+//                 for Gitea/Codeberg, etc.).
 // The resolved destination path is printed to STDOUT on success; all
 // progress and diagnostics go to STDERR so the path can be captured
 // cleanly (`DEST=$(node clone-sibling.mjs notes)`).
@@ -56,7 +62,6 @@ if (!repoArg) {
 const [owner, repo] = repoArg.includes("/")
   ? repoArg.split("/")
   : [DEFAULT_OWNER, repoArg];
-const gitlabOwner = process.env.GITLAB_OWNER || owner;
 const dest = destArg || `/tmp/${repo}`;
 const ref = refArg || "main";
 
@@ -91,13 +96,17 @@ function tryGitClone(url) {
   return false;
 }
 
-// A GitLab read token (env GITLAB_TOKEN) is embedded into the mirror URL
-// so a *private* mirror can still be cloned; without it the clone is
-// anonymous and only works for a public mirror.
-function gitlabUrl() {
-  const token = process.env.GITLAB_TOKEN || "";
-  const auth = token ? `oauth2:${token}@` : "";
-  return `https://${auth}gitlab.com/${gitlabOwner}/${repo}.git`;
+// Build the mirror clone URL from MIRROR_BASE (any provider). Returns
+// null when no mirror is configured. A MIRROR_TOKEN is embedded so a
+// *private* mirror still clones; without it the clone is anonymous and
+// only works for a public mirror.
+function mirrorUrl() {
+  const base = process.env.MIRROR_BASE;
+  if (!base) return null;
+  const token = process.env.MIRROR_TOKEN || "";
+  const user = process.env.MIRROR_USER || "oauth2";
+  const auth = token ? `${user}:${token}@` : "";
+  return `https://${auth}${base.replace(/\/+$/, "")}/${repo}.git`;
 }
 
 function curlText(url) {
@@ -151,10 +160,11 @@ function fetchViaRaw() {
   }
 }
 
-// GitLab mirror first (reachable + has history), then GitHub, then the
-// raw fallback for the file contents.
+// Mirror first when configured (reachable + has history), then GitHub,
+// then the raw fallback for the file contents.
+const mirror = mirrorUrl();
 if (
-  !tryGitClone(gitlabUrl()) &&
+  (!mirror || !tryGitClone(mirror)) &&
   !tryGitClone(`https://github.com/${owner}/${repo}.git`)
 ) {
   fetchViaRaw();

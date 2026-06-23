@@ -57,17 +57,23 @@ node .agent/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
 node .agent/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
 ```
 
-The script tries three sources in order: the sibling's **GitLab mirror**
-(`gitlab.com` is reachable over plain `git` even in the scoped sandbox, so this
-is a real clone *with history*), then **github.com** (works in permissive
-sessions, 403-blocked in the scoped sandbox), then a **raw fallback** that
-fetches every file over `raw.githubusercontent.com`. The siblings keep the
-GitLab mirror current via their own `.github/workflows/mirror-gitlab.yml`.
-**Don't hand-clone or hand-curl around a failure; the script already encodes
-which paths work.**
+The script tries three sources in order: the sibling's **mirror** on an
+external git host (set via `MIRROR_BASE`; that host is typically reachable over
+plain `git` even in the scoped sandbox where github.com is blocked, so it's a
+real clone *with history*), then **github.com** (works in permissive sessions,
+403-blocked in the scoped sandbox), then a **raw fallback** that fetches every
+file over `raw.githubusercontent.com`. The siblings keep the mirror current via
+their own `.github/workflows/mirror.yml`. **Don't hand-clone or hand-curl
+around a failure; the script already encodes which paths work.**
+
+> **Mirror config (provider-agnostic).** Set `MIRROR_BASE` (host+namespace,
+> e.g. `gitlab.com/niclaslindstedt` or `codeberg.org/team`) to enable step 1;
+> add `MIRROR_TOKEN` (+ optional `MIRROR_USER`, default `oauth2`) when the
+> mirror is private. With none set, the script just falls through to github →
+> raw.
 
 > **Caveat — only the raw fallback lacks git history.** If the script logged
-> "Cloned …" (GitLab or GitHub), `git log`/`git show` work in the checkout. If
+> "Cloned …" (mirror or GitHub), `git log`/`git show` work in the checkout. If
 > it logged "Falling back to raw.githubusercontent.com" (no mirror, github
 > blocked), there's no history — read the *why* (Step 1) from the PR's shipped
 > artifacts instead: the `.changes/unreleased/*.md` fragment and the `docs/`
