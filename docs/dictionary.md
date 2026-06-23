@@ -62,6 +62,7 @@ names. Honour these when naming a new file, key, or string.
 | **Floating menu button** / **drag button** / **sidebar button** | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`; `showButton` in `nav-context.ts`. [→](overview.md#floating-menu-button) |
 | **Edge swipe to open** / **swipe in from the edge**     | `useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`). [→](overview.md#edge-swipe-to-open) |
 | **Suppress edge swipe-back** / **iOS PWA back-swipe** / **right swipe back** | `useSuppressEdgeSwipeBack` (`src/ui/hooks/useSuppressEdgeSwipeBack.ts`). [→](overview.md#suppress-edge-swipe-back) |
+| **About menu** / **About dropdown** / **the project links** | The footer "About" row + its upward-flipping `FloatingPanel` (source / privacy / "what's new") in `src/ui/SideMenu.tsx`; `menu.about` string. [→](overview.md#side-menu) |
 | **Header menu** / **burger menu**                      | `src/ui/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                    |
 | **Checklist title** / **the list name** / **rename the list** | `src/ui/ChecklistTitle.tsx`. [→](overview.md#checklist-title)                                       |
 | **Sync status** / **cloud glyph** / **sync icon**      | `src/ui/SyncStatus.tsx`. [→](overview.md#sync-status)                                                    |

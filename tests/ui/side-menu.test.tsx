@@ -219,9 +219,35 @@ describe("SideMenu", () => {
         activeNamespace: "default",
       },
     });
+    // The namespace list folds shut by default — only the active one shows
+    // until the heading is expanded.
+    expect(screen.queryByRole("menuitem", { name: /Family/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Namespace" }));
     fireEvent.click(screen.getByRole("menuitem", { name: /Family/ }));
     expect(onSwitchNamespace).toHaveBeenCalledWith("family");
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it("folds the namespace list shut by default, showing only the active one", () => {
+    renderMenu({
+      nav: { open: true },
+      props: {
+        namespaces: [
+          { slug: "default", name: "Default" },
+          { slug: "family", name: "Family" },
+        ],
+        activeNamespace: "default",
+      },
+    });
+    // Collapsed: the active namespace stays visible so the user keeps context.
+    expect(screen.getByRole("menuitem", { name: /Default/ })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: /Family/ })).toBeNull();
+    // Expanding reveals the rest; collapsing hides them again.
+    const heading = screen.getByRole("button", { name: "Namespace" });
+    fireEvent.click(heading);
+    expect(screen.getByRole("menuitem", { name: /Family/ })).toBeTruthy();
+    fireEvent.click(heading);
+    expect(screen.queryByRole("menuitem", { name: /Family/ })).toBeNull();
   });
 
   it("removes a checklist from its swipe-revealed trash (single tap)", () => {
@@ -270,6 +296,8 @@ describe("SideMenu", () => {
         activeNamespace: "default",
       },
     });
+    // Expand the folded namespace list to reach the inactive "Family" row.
+    fireEvent.click(screen.getByRole("button", { name: "Namespace" }));
     // The default namespace is not removable, only "Family".
     const trash = screen.getByRole("button", { name: "Delete namespace" });
     // First tap arms the confirm step; nothing is removed yet.
@@ -300,25 +328,34 @@ describe("SideMenu", () => {
     expect(screen.getByTestId("open-modal").textContent).toBe("namespaces");
   });
 
-  it("opens settings and changelog from the relocated footer menu", () => {
+  it("opens settings from the footer and changelog from the About menu", () => {
     const close = vi.fn();
     renderMenu({ nav: { open: true, close } });
     fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("settings");
     expect(close).toHaveBeenCalledTimes(1);
+    // "What's new" now lives behind the About dropdown.
+    expect(screen.queryByRole("menuitem", { name: "What's new" })).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "About" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "What's new" }));
     expect(screen.getByTestId("open-modal").textContent).toBe("changelog");
     expect(close).toHaveBeenCalledTimes(2);
   });
 
-  it("exposes the project links and reads bottom-up (settings last)", () => {
+  it("hides the project links behind the About dropdown, settings last", () => {
     renderMenu({ nav: { open: true } });
+    // Settings sits at the very foot of the footer; the project links are
+    // folded away until About is opened.
     const labels = screen
       .getAllByRole("menuitem")
       .map((el) => el.textContent?.trim());
-    // Settings sits at the very foot of the inverted footer, after the
-    // links and changelog.
     expect(labels[labels.length - 1]).toContain("Settings");
+    expect(
+      screen.queryByRole("menuitem", { name: "Privacy policy" }),
+    ).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: /View source/ })).toBeNull();
+    // Opening About reveals them.
+    fireEvent.click(screen.getByRole("menuitem", { name: "About" }));
     expect(
       screen.getByRole("menuitem", { name: "Privacy policy" }),
     ).toBeTruthy();
@@ -327,6 +364,7 @@ describe("SideMenu", () => {
 
   it("shows the build version as a subtitle under View source", () => {
     renderMenu({ nav: { open: true } });
+    fireEvent.click(screen.getByRole("menuitem", { name: "About" }));
     const source = screen.getByRole("menuitem", { name: /View source/ });
     // build-env's __BUILD_LABEL__ resolves to the package version in the
     // test build, so the subtitle renders as a second line in the item.
@@ -557,6 +595,9 @@ describe("SideMenu", () => {
           activeNamespace: "default",
         },
       });
+      // Expand the namespace list so the inactive "Work" row (a drop target)
+      // is rendered.
+      fireEvent.click(screen.getByRole("button", { name: "Namespace" }));
       // The inactive namespace accepts a dropped list; the active one doesn't.
       expect(
         container.querySelector('[data-checklist-drop="ns:work"]'),

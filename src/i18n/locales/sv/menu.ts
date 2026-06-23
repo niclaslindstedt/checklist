@@ -6,6 +6,7 @@ const menu: MenuCatalog = {
   privacy: "Integritetspolicy",
   source: "Visa källkod",
   donate: "Donera",
+  about: "Om",
 };
 
 export default menu;
