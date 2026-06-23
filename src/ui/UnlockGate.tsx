@@ -2,6 +2,9 @@ import { useState, type FormEvent } from "react";
 
 import { useT } from "../i18n";
 import { OfflineUnavailableError } from "../storage/cache/index.ts";
+import type { EncryptionProgress } from "../storage/useStorageBackend.ts";
+import { CipherGlyph } from "./CipherGlyph.tsx";
+import { UNLOCK_STEP_MESSAGE_KEY } from "./encryption-progress.ts";
 import { Button, ClearableInput } from "./form/index.ts";
 import { ShieldIcon } from "./icons.tsx";
 
@@ -20,7 +23,10 @@ import { ShieldIcon } from "./icons.tsx";
 type Props = {
   open: boolean;
   /** Resolves on success; rejects with a message on the wrong passphrase. */
-  onUnlock: (password: string) => Promise<void>;
+  onUnlock: (
+    password: string,
+    onProgress?: EncryptionProgress,
+  ) => Promise<void>;
 };
 
 export function UnlockGate({ open, onUnlock }: Props) {
@@ -28,14 +34,22 @@ export function UnlockGate({ open, onUnlock }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The phase line the unlock flow reports while it checks the passphrase and
+  // decrypts the document, named in unlock-specific terms (see
+  // UNLOCK_STEP_MESSAGE_KEY) so the gate hints at what's happening instead of
+  // sitting blank.
+  const [step, setStep] = useState<string | null>(null);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!password || busy) return;
     setBusy(true);
     setError(null);
+    setStep(null);
+    const onProgress: EncryptionProgress = (s) =>
+      setStep(t(UNLOCK_STEP_MESSAGE_KEY[s]));
     try {
-      await onUnlock(password);
+      await onUnlock(password, onProgress);
       setPassword("");
     } catch (err) {
       // Distinguish "can't reach your cloud and there's no offline copy yet"
@@ -48,6 +62,7 @@ export function UnlockGate({ open, onUnlock }: Props) {
       );
     } finally {
       setBusy(false);
+      setStep(null);
     }
   };
 
@@ -90,6 +105,16 @@ export function UnlockGate({ open, onUnlock }: Props) {
         >
           {t("settings.storage.unlock")}
         </Button>
+        {busy && step && (
+          <div
+            role="status"
+            aria-label={t("settings.storage.unlockStatusAria")}
+            className="flex items-center gap-2 rounded-[var(--radius)] border border-line bg-surface-2 px-2.5 py-1.5"
+          >
+            <CipherGlyph className="shrink-0 text-xs text-accent" />
+            <span className="truncate text-xs text-muted">{step}</span>
+          </div>
+        )}
       </form>
     </div>
   );

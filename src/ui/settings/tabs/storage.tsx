@@ -1,12 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import { useT, type MessageKey } from "../../../i18n";
+import { useT } from "../../../i18n";
 import type { BackendId } from "../../../storage/backend-preference.ts";
 import type {
   EncryptionProgress,
-  EncryptionProgressStep,
   UseStorageBackend,
 } from "../../../storage/useStorageBackend.ts";
+import { CipherGlyph } from "../../CipherGlyph.tsx";
+import { STEP_MESSAGE_KEY } from "../../encryption-progress.ts";
 import { Button, ClearableInput } from "../../form/index.ts";
 import { ShieldIcon, SpinnerIcon } from "../../icons.tsx";
 import {
@@ -14,17 +15,6 @@ import {
   type EncryptionLogEntry,
 } from "../EncryptionLogModal.tsx";
 import { Section } from "../shared.tsx";
-
-// Maps each progress phase the storage layer reports to the catalog string the
-// status bar flashes. Module-level so the record is built once, not per render.
-const STEP_MESSAGE_KEY: Record<EncryptionProgressStep, MessageKey> = {
-  reading: "settings.storage.encryptionStepReading",
-  derivingKey: "settings.storage.encryptionStepDerivingKey",
-  encrypting: "settings.storage.encryptionStepEncrypting",
-  decrypting: "settings.storage.encryptionStepDecrypting",
-  saving: "settings.storage.encryptionStepSaving",
-  finalizing: "settings.storage.encryptionStepFinalizing",
-};
 
 // Storage settings: pick the backend that persists the document (this
 // device / Dropbox / Google Drive) and toggle at-rest encryption.
@@ -424,7 +414,7 @@ function EncryptionSection({
           aria-label={t("settings.storage.encryptionStatusAria")}
           className="flex items-center gap-2 rounded-[var(--radius)] border border-line bg-surface-2 px-2.5 py-1.5"
         >
-          <SpinnerIcon className="h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
+          <CipherGlyph className="shrink-0 text-xs text-accent" />
           <span className="truncate text-xs text-muted">{current.text}</span>
         </div>
       )}

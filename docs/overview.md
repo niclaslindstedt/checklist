@@ -1615,7 +1615,20 @@ with a JSON discriminator (`isEncryptedEnvelope`) so encrypted and
 plaintext documents share one storage slot. When encryption is on but
 no passphrase is held (fresh load / reload), `UnlockGate`
 (`src/ui/UnlockGate.tsx`) is the full-screen gate that blocks the app
-until the user supplies the passphrase.
+until the user supplies the passphrase. While it checks the passphrase
+and decrypts, the gate flashes a phase status line — named in
+unlock-specific terms ("Checking your passphrase…", "Decrypting your
+lists…", "Unlocking your lists…") via `UNLOCK_STEP_MESSAGE_KEY`
+(`src/ui/encryption-progress.ts`) — beside a `CipherGlyph`
+(`src/ui/CipherGlyph.tsx`): a short run of monospace cipher characters
+that continuously re-scramble in place of a spinner, evoking bytes being
+enciphered. The same shared `STEP_MESSAGE_KEY` map and `CipherGlyph` drive
+the [storage tab](#storage-tab)'s encryption status bar, so the toggle and
+the gate name the same phases identically. `CipherGlyph` honours
+reduce-motion both ways (the OS `prefers-reduced-motion` preference and the
+in-app toggle the theme engine mirrors onto
+`<html data-reduce-motion="true">`), holding a static frame when motion is
+off.
 
 Toggling the mode rewrites the document at rest: `enableEncryption`
 re-wraps the existing lists into ciphertext and `disableEncryption`
@@ -1628,7 +1641,9 @@ returns that instead of the envelope — so the
 `decryptEnvelope` underneath) take an optional `onProgress` callback that
 fires once per phase (`reading → derivingKey →
 encrypting`/`decrypting → saving → finalizing`); the
-[storage tab](#storage-tab) feeds it into its status bar.
+[storage tab](#storage-tab) feeds it into its status bar. `unlock` threads
+the same callback through (`reading → derivingKey → decrypting →
+finalizing`) so the unlock gate can flash its status line.
 
 ### Offline cache / local copy
 

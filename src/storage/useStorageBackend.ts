@@ -172,8 +172,12 @@ export interface UseStorageBackend {
    * `onProgress` (optional) fires once per phase so the UI can show progress.
    */
   disableEncryption: (onProgress?: EncryptionProgress) => Promise<void>;
-  /** Supply the passphrase for an already-encrypted store; throws if wrong. */
-  unlock: (password: string) => Promise<void>;
+  /**
+   * Supply the passphrase for an already-encrypted store; throws if wrong.
+   * `onProgress` (optional) fires once per phase so the unlock gate can flash a
+   * status line while the passphrase is checked and the document decrypts.
+   */
+  unlock: (password: string, onProgress?: EncryptionProgress) => Promise<void>;
   /** Namespaces known on this device (default always first). */
   namespaces: Namespace[];
   /** The active namespace's slug. */
@@ -740,7 +744,7 @@ export function useStorageBackend(): UseStorageBackend {
   );
 
   const unlock = useCallback(
-    async (candidate: string) => {
+    async (candidate: string, onProgress?: EncryptionProgress) => {
       if (!candidate) throw new Error("Passphrase is required");
       // Verify by decrypting the stored envelope. For a cloud backend the
       // load falls back to the on-device cache when offline, so the
@@ -748,6 +752,7 @@ export function useStorageBackend(): UseStorageBackend {
       // ciphertext. If the backend is unreachable *and* nothing is cached,
       // map it to a distinct error so the gate says "you're offline" instead
       // of the misleading "wrong passphrase".
+      onProgress?.("reading");
       let snap: StoredSnapshot | null;
       try {
         snap = await inner.load();
@@ -756,10 +761,12 @@ export function useStorageBackend(): UseStorageBackend {
         throw new OfflineUnavailableError();
       }
       // Plaintext-at-rest (the re-wrap never ran) can't be verified, so it
-      // unlocks optimistically.
+      // unlocks optimistically. `decryptEnvelope` reports the `derivingKey`
+      // and `decrypting` phases itself.
       if (snap && isEncryptedEnvelope(snap.text)) {
-        await decryptEnvelope(snap.text, candidate); // throws on wrong pass
+        await decryptEnvelope(snap.text, candidate, onProgress); // throws on wrong pass
       }
+      onProgress?.("finalizing");
       setPassword(candidate);
     },
     [inner],

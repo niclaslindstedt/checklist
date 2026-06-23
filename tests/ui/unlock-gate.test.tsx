@@ -9,7 +9,16 @@ import {
 } from "@testing-library/react";
 
 import { OfflineUnavailableError } from "../../src/storage/cache/index.ts";
+import type { EncryptionProgress } from "../../src/storage/useStorageBackend.ts";
 import { UnlockGate } from "../../src/ui/UnlockGate.tsx";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 afterEach(() => {
   cleanup();
@@ -39,7 +48,9 @@ describe("UnlockGate", () => {
       target: { value: "hunter2" },
     });
     fireEvent.submit(screen.getByRole("form"));
-    expect(onUnlock).toHaveBeenCalledWith("hunter2");
+    // The gate now hands the flow a progress callback so it can flash a status
+    // line while the passphrase is checked and the document decrypts.
+    expect(onUnlock).toHaveBeenCalledWith("hunter2", expect.any(Function));
   });
 
   it("shows a wrong-passphrase message when unlock rejects generically", async () => {
@@ -75,5 +86,61 @@ describe("UnlockGate", () => {
       expect(alert).toMatch(/offline copy|reach your cloud/i);
       expect(alert).not.toMatch(/wrong passphrase/i);
     });
+  });
+
+  it("flashes what's happening and disables the button while unlocking", async () => {
+    const gate = deferred<void>();
+    const onUnlock = vi.fn(
+      (_pass: string, onProgress?: EncryptionProgress) => {
+        // The storage layer brackets the load with these phases; the gate maps
+        // the last one to the status line shown during the wait.
+        onProgress?.("derivingKey");
+        onProgress?.("decrypting");
+        return gate.promise;
+      },
+    );
+    render(<UnlockGate open onUnlock={onUnlock} />);
+
+    fireEvent.change(screen.getByLabelText(/passphrase/i), {
+      target: { value: "hunter2" },
+    });
+    fireEvent.submit(screen.getByRole("form"));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toContain("Decrypting your lists…");
+    expect(
+      (screen.getByRole("button", { name: "Unlock" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    gate.resolve();
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+  });
+
+  it("names the phases in unlock-specific terms", async () => {
+    const gate = deferred<void>();
+    const onUnlock = vi.fn(
+      (_pass: string, onProgress?: EncryptionProgress) => {
+        onProgress?.("derivingKey");
+        return gate.promise;
+      },
+    );
+    render(<UnlockGate open onUnlock={onUnlock} />);
+    fireEvent.change(screen.getByLabelText(/passphrase/i), {
+      target: { value: "hunter2" },
+    });
+    fireEvent.submit(screen.getByRole("form"));
+
+    const status = await screen.findByRole("status");
+    // Not the generic "Deriving encryption key…" the encryption toggle uses.
+    expect(status.textContent).toContain("Checking your passphrase…");
+
+    gate.resolve();
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+  });
+
+  it("shows no status bar before unlock is pressed", () => {
+    render(<UnlockGate open onUnlock={vi.fn(async () => {})} />);
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
