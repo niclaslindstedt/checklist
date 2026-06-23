@@ -512,12 +512,7 @@ export function FolderRow({
   }
 
   return (
-    <div
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      className={`relative overflow-hidden text-sm ${dropClass}`}
-    >
+    <div className="relative overflow-hidden text-sm">
       <div
         aria-hidden={swipe.offset >= 0}
         className={`absolute inset-0 flex items-center justify-end ${
@@ -549,12 +544,20 @@ export function FolderRow({
           </button>
         </div>
       </div>
+      {/* The drop highlight lives on this foreground layer, not the wrapper:
+          its `bg-surface` is opaque and would otherwise paint over an accent
+          tint set on an ancestor, so a folder hovered by a dragged list would
+          never light up. When it's the drop target the accent tint replaces
+          the surface fill (and adds the ring) right where it's visible. */}
       <div
         {...swipe.handlers}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
         style={{ transform: `translateX(${swipe.offset}px)` }}
-        className={`relative bg-surface [touch-action:pan-y] ${
-          swipe.animating ? "transition-transform duration-200" : ""
-        }`}
+        className={`relative [touch-action:pan-y] ${
+          isDropTarget ? dropClass : "bg-surface"
+        } ${swipe.animating ? "transition-transform duration-200" : ""}`}
       >
         {header}
       </div>

@@ -390,6 +390,14 @@ export function SideMenu({
 
   const ungroupedChecklists = checklists.filter((c) => !c.folderId);
 
+  // A list dragged onto the ungrouped zone (out of any folder) is hovering the
+  // root drop target. Folders always render above the loose lists, so the
+  // "no folder" landing area is the contiguous region below them — which is
+  // exactly what we frame with a border so the user can see where the list
+  // will land. When there are no folders that region is the whole list.
+  const rootActive =
+    dropTarget === CHECKLIST_DROP_ROOT || activeDropKey === CHECKLIST_DROP_ROOT;
+
   // The drawer's body — identical whether it slides in over a backdrop
   // (narrow viewports) or sits docked as a permanent sidebar (pinned). Only
   // the framing `<nav>` differs between the two, so the rows live here once.
@@ -484,25 +492,33 @@ export function SideMenu({
         onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ROOT)}
         onDragLeave={() => setDropTarget(null)}
         onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ROOT)}
-        className={`min-h-0 flex-1 overflow-y-auto ${
-          dropTarget === CHECKLIST_DROP_ROOT ||
-          activeDropKey === CHECKLIST_DROP_ROOT
-            ? "bg-accent/10"
-            : ""
-        }`}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         {folders.map(renderFolder)}
-        {ungroupedChecklists.map((c) => renderChecklistRow(c))}
-        {creatingFolder && (
-          <FolderEditRow
-            placeholder={t("nav.folderName")}
-            onCommit={(name) => {
-              createFolder(name);
-              setCreatingFolder(false);
-            }}
-            onCancel={() => setCreatingFolder(false)}
-          />
-        )}
+        {/* The loose (no-folder) lists, and the empty space below them, are the
+            root landing zone. While a list hovers it we frame the whole region
+            with an accent border so it's obvious the drop lands here, outside
+            every folder — `flex-1` stretches the frame down to fill the rest of
+            the scroll area, not just the rows. */}
+        <div
+          className={`flex-1 ${
+            rootActive
+              ? "m-1 rounded-md bg-accent/10 ring-1 ring-accent/50 ring-inset"
+              : ""
+          }`}
+        >
+          {ungroupedChecklists.map((c) => renderChecklistRow(c))}
+          {creatingFolder && (
+            <FolderEditRow
+              placeholder={t("nav.folderName")}
+              onCommit={(name) => {
+                createFolder(name);
+                setCreatingFolder(false);
+              }}
+              onCancel={() => setCreatingFolder(false)}
+            />
+          )}
+        </div>
       </div>
       {/* New list / New folder / Archive share one compact segmented bar
           instead of full-width rows (the way Undo / Redo do at the foot),
