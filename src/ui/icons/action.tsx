@@ -123,9 +123,9 @@ export function ChevronRightIcon({ className }: IconProps) {
 }
 
 // A small filled disclosure triangle — the toggle on a row that has
-// sub-items. Deliberately distinct from `ChevronDownIcon` (the slim note-body
-// caret) so the two reveals read differently: this one is a solid triangle
-// that points right when collapsed and rotates down when the sub-list is open.
+// sub-items. Deliberately distinct from `NoteIcon` (the note-body toggle) so
+// the two reveals read differently: this one is a solid triangle that points
+// right when collapsed and rotates down when the sub-list is open.
 export function CaretRightIcon({ className }: IconProps) {
   return (
     <svg
@@ -137,6 +137,27 @@ export function CaretRightIcon({ className }: IconProps) {
       className={className}
     >
       <path d="M6 4l5 4-5 4z" />
+    </svg>
+  );
+}
+
+// Three stacked text lines — the toggle on a row that carries a note body.
+// Reads as "there's written text here"; the row paints it muted when the body
+// is collapsed and in the accent colour while it's revealed.
+export function NoteIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M3 4h10M3 8h10M3 12h6" />
     </svg>
   );
 }

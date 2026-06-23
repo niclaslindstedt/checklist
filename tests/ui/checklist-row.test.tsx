@@ -176,7 +176,10 @@ describe("ChecklistRow editing", () => {
       }) as DOMRect;
 
     // jsdom does no layout, so give the container a real scrollTop store.
-    function stubScrollTop(el: HTMLElement, initial = 0): { get: () => number } {
+    function stubScrollTop(
+      el: HTMLElement,
+      initial = 0,
+    ): { get: () => number } {
       let value = initial;
       Object.defineProperty(el, "scrollTop", {
         configurable: true,
@@ -458,19 +461,33 @@ describe("ChecklistRow editing", () => {
     expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
   });
 
-  it("expands the body from the hint chevron", () => {
+  it("expands the body from the note glyph", () => {
     renderRow({ item: { ...item, notes: "**bold** note" } });
     fireEvent.click(screen.getByRole("button", { name: "Show note" }));
     expect(screen.getByText("bold").tagName).toBe("STRONG");
   });
 
-  it("renders title-only with notes disabled — no chevron, no rendered body", () => {
+  it("paints the note glyph muted when collapsed and accent when revealed", () => {
+    renderRow({ item: { ...item, notes: "a note" } });
+
+    const toggle = screen.getByRole("button", { name: "Show note" });
+    expect(toggle.className).toContain("text-muted");
+    expect(toggle.className).not.toContain("text-accent");
+
+    fireEvent.click(toggle);
+
+    const active = screen.getByRole("button", { name: "Hide note" });
+    expect(active.className).toContain("text-accent");
+    expect(active.className).not.toContain("text-muted");
+  });
+
+  it("renders title-only with notes disabled — no note glyph, no rendered body", () => {
     renderRow({
       item: { ...item, notes: "**bold** note" },
       notesDisabled: true,
     });
 
-    // The expand chevron is gone and the body never renders.
+    // The note glyph is gone and the body never renders.
     expect(screen.queryByRole("button", { name: "Show note" })).toBeNull();
     expect(screen.queryByText("bold")).toBeNull();
 
