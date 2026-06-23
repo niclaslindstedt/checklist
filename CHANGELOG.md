@@ -12,6 +12,71 @@ changelog").
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-23
+
+### Added
+
+- **Disable achievements** — A **Disable achievements** toggle on Settings → General switches the achievements system off — no unlock tracking, no celebratory toasts, and the trophy button is hidden — while keeping anything you've already earned.
+- **Learn more in the changelog** — Big features in the "What's new" changelog now carry a **Learn more** link that opens an in-app guide to the feature from its top, with a back button that returns you to your place in the release list.
+- **Working offline** — Cloud-backed lists now keep a copy on your device, so you can unlock, read, and edit them with no connection — even when encryption is on — and your changes sync back automatically when you're online again, with a Check connection button that re-pings the server and tells you what it found.
+- **Enter starts the next item** — Pressing Enter while editing an item now commits it and opens a fresh draft row directly below that item, so you can rattle off a whole list from the keyboard and slot new entries in wherever you are — just press a row and hit Enter — while the add button still appends at the top or bottom.
+- **Disable item notes** — A Lists-tab toggle switches item notes off for title-only checklists, keeping any notes you've already written.
+- **Shift+Enter to add an item with a note** — Pressing Shift+Enter in the add-item composer now creates the item and jumps straight into editing its body, so a thought that needs more than a one-line title flows on without re-tapping the new row.
+- **Showcase homepage** — A no-login page at /home introduces the app, describes what it does, and explains why it requests Google Drive or Dropbox access — and links to the privacy policy.
+- **Sort checked items to the bottom** — A Lists-setting that sinks checked items below the unchecked ones — most recently checked first, sliding smoothly into place (with an Appearance toggle to make the re-sort instant) — without reordering the list itself.
+- **Language** — Switch the app between English and Swedish from a flag picker on the General settings tab.
+- **Encryption progress feedback** — Turning encryption on or off now shows a live status bar of what it's doing and spins the button while it works, and a failed attempt becomes a tappable status line that opens the full log so you can see what went wrong.
+- **Sub-items** — Drag one item onto another to nest it as a sub-item — or, while editing an item, tap "Add sub-item" to start adding straight underneath it (Enter keeps adding within that sub-list); sub-items read as a smaller, indented child list, parents fold their children, and checking a parent checks the whole group.
+- **Right-click menus** — On a computer, right-click a checklist item or a list in the sidebar to archive or delete it — including archiving a whole list, restorable from the archive.
+- **Folders** — Group your checklists into named, collapsible folders within a namespace — and on the file and cloud backends each folder is a real directory of markdown files you can browse with any tool.
+- **Drag lists to organise** — Drag a checklist onto a folder, another namespace, or the archive to move it there — with a press-and-hold pickup on touchscreens.
+
+### Changed
+
+- **Clickable toasts with a countdown ring** — Click a toast to dismiss it immediately, and watch a circular ring fill clockwise to show how long it has left before it disappears on its own.
+- **Namespaces sync across devices** — Your list of namespaces now travels with the cloud or folder backend: connecting Dropbox, Google Drive, or a local folder on a new device adopts the namespaces already there and uploads any it had locally, so your namespaces follow you instead of starting fresh on each device.
+- **Privacy policy covers storage backends** — The privacy policy now documents the optional Local folder, Dropbox, and Google Drive backends, OAuth token storage, and end-to-end encryption — clarifying that lists leave your device only when you explicitly connect a cloud backend.
+- **Bulk delete is one tap** — Deleting all finished items from the add (+) long-press now happens on the first tap with no confirm step, since the sweep is undoable. [Learn more](feature:bulk-actions)
+- **Redesigned settings dialog** — Settings now opens with icon-marked tabs — a left rail on desktop and a header section menu on mobile — each tab grouped into labelled sections, and edits apply only when you press Save, with Cancel to discard and Reset to defaults to start over (appearance changes still preview live while you choose).
+- **Achievement unlock popup as a centered card** — The "achievement unlocked" notification now appears as a compact centered card instead of a full-screen sheet on mobile, so a single new trophy no longer fills the whole screen.
+- **Erase items with Backspace** — Editing an item down to a blank line now deletes it instead of keeping an empty row, and pressing Backspace on an emptied line — or in an empty add-item draft — backs editing up into the line above so you can keep erasing items in one stroke.
+- **Achievements moved to the side menu** — The trophy moved out of the checklist header into a side-menu row that colours and badges itself with the count of new unlocks.
+- **Background-less tab favicon** — The browser-tab favicon now shows the bare green check with no dark background, while the app and home-screen icons keep their badge.
+- **Cloud sync details as a centered card** — The cloud sync details dialog now opens as a compact centered card instead of a full-screen sheet on mobile, so its short status no longer fills the whole screen.
+- **Item count** — The list header's checked / total count is now a tidy badge with a progress ring that fills as you check items, and a new **Show item count** toggle on Settings → Lists lets you hide it.
+- **Undo / redo buttons** — The side menu's Undo and Redo now sit as a compact pair of side-by-side buttons pinned to the foot of the drawer, just above the footer divider, so they stay within thumb's reach instead of taking two full rows in an Edit section.
+- **Redesigned update-ready prompt** — The "update ready" prompt now leads with a clear headline over the incoming version and applies the update from a primary **Update** button.
+- **Accent highlight for the active list and namespace** — The active checklist and namespace in the side menu are now marked by an accent-tinted highlight and left border instead of a swapped-in checkmark, so their own icon always stays visible.
+- **Bigger checkbox tap target** — The checkbox on each list item now has a larger touch area — easier to tap on a phone — while the box itself looks exactly the same size.
+- **Aligned add-item composer** — The "Add item…" field now shows a dimmed checkbox placeholder so its text lines up exactly with where the new item will land in the list.
+- **Cloud sync command centre** — The cloud-sync glyph now always opens a redesigned details dialog — showing the backend and at-rest encryption state side by side, a one-tap Reload, and (in developer mode) a sync log (newest entries first, and now naming a dropped connection plainly instead of a cryptic "Load failed") — and tapping the glyph is the single, predictable way in whatever the sync state.
+- **Clearer note indicator** — Items that carry a note now show a note glyph instead of a chevron — grey while the note is hidden and highlighted while it's revealed, so you can tell at a glance which items have more to read.
+
+### Fixed
+
+- **Resilient cloud autosave** — Cloud sync now waits out a backend rate limit and resumes on its own, retries a transient network hiccup with exponential backoff, and — when a save does fail outright — re-pushes it when you hit Try again, instead of getting stuck or flashing a sync error.
+- **Multi-paragraph item notes** — Item notes that span more than one paragraph are no longer truncated to their first paragraph when a list is saved to and reloaded from a folder, Google Drive, or Dropbox.
+- **Keyboard staying up in modals** — Typing in a modal field (such as the unlock passphrase) no longer dismisses the on-screen keyboard on every keystroke.
+- **Changelog formatting** — The "What's new" changelog now renders its **bold** lead-ins and `code` spans as formatted text instead of showing the raw markdown asterisks and backticks.
+- **Bulk archive / delete on iOS** — The fan-out archive and delete buttons behind the add (+) long-press now respond to taps on iOS, where they were being covered by the dismiss overlay so every tap closed the menu instead of running the action.
+- **Unlock prompt within reach on mobile** — The passphrase unlock prompt now appears as a single centered card on a plain background — no full-screen sheet or dimmed dialog chrome — keeping the unlock button within thumb's reach on a phone.
+- **Bulk actions match the add button on desktop** — The archive / delete buttons behind the add (+) long-press now adopt the flat, tinted desktop styling of the add button and stay centred under it instead of drifting toward the docked sidebar.
+- **Symmetric Donate heart** — The Donate menu's heart glyph is now drawn from a balanced, symmetric shape instead of a lopsided hand-rolled path.
+- **Undo shortcuts ignored while the side menu is open** — Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z no longer reach through an open side menu to undo or redo changes to the list behind it.
+- **Cleaner "Open in" sync button** — The cloud-sync details "Open in Dropbox" button no longer trails an "(encrypted)" suffix — it names the destination service, not the at-rest encryption state.
+- **Disabling encryption removes the encrypted file** — Turning encryption off now always rewrites your lists as plaintext and deletes the leftover `checklist.json` envelope, even when a stale plaintext copy was shadowing it on a synced folder or cloud.
+- **No more accidental swipe-back in the iOS PWA** — Swiping in from the screen edge to open the sidebar in the installed iOS app no longer triggers the system's "swipe to go back" gesture and yanks the app off-screen.
+- **Centered update prompt beside the sidebar** — The "new build ready" reload prompt now centers over the content area instead of the whole window, so it no longer sits off-center next to the pinned sidebar on wide screens.
+- **Editing items on mobile** — Editing an item on a phone now keeps the row lined up with the rest of the list, opens the editor from a tap anywhere along the row (not just on the text), moves editing straight to another item when you tap it without the keyboard dropping or the add button flashing back, lets you tick its checkbox while editing, scrolls it into view above the keyboard only when it's actually hidden, and without the page or its frozen header jerking, hides the add button while you type, eases the note field open, and leaves only the system keyboard bar on screen instead of stacking a second one over it.
+- **Drag-and-drop reliability** — Dragging an item now lets you drop it back into its original spot between two other rows, and a sync conflict that surfaces mid-drag no longer freezes the screen.
+- **Instant reload on cloud backends** — Reloading the app on a Dropbox or Google Drive backend now paints the last-seen list straight away from the on-device copy instead of flashing an empty list while the live data loads from the cloud.
+- **Spurious cloud sync conflicts** — Editing a list synced to Dropbox or Google Drive on a flaky connection no longer raises false "remote changed" conflicts when the only writer is your own device, even across reloads, reconnects, and offline edits while you keep adding entries.
+- **Remembered open list** — Reloading the app or installing an update now reopens the list you were last looking at instead of snapping back to the first one, and each namespace remembers its own selection.
+- **Drag without refreshing** — Reordering items or dragging a list to a folder no longer triggers pull-to-refresh at the same time.
+- **Cloud sync in the installed app** — The installed app no longer intercepts Dropbox and Google Drive requests through its offline cache, which on some devices made every file download or upload fail with a "Load failed" error and stranded you on the local copy even with a working connection.
+- **Resilient cloud loading on a flaky link** — Reading or saving a cloud list now retries each individual file a few times when a request drops, so a single flaky download no longer fails the whole sync and strands you on the local copy when the connection is actually working.
+- **Enter accepts the autocorrect suggestion** — Pressing Enter to add an item on a soft keyboard now accepts the pending autocorrect suggestion first — just as tapping Space does — so the corrected word lands instead of the raw keystrokes.
+
 ## [1.0.1] - 2026-06-17
 
 ### Changed
