@@ -538,7 +538,7 @@ export function SideMenu({
           carries the archived count; undo/redo dim and go inert at the ends
           of the timeline but keep the drawer open so a burst of reverts can
           be applied without reopening it. */}
-      <div className="shrink-0 px-3 pt-2 pb-1">
+      <div className="shrink-0 px-3 pt-2 pb-3">
         <div className="divide-y divide-line overflow-hidden rounded-md border border-line">
           <div className="flex divide-x divide-line">
             <BarButton

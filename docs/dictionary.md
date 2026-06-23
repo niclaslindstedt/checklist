@@ -58,6 +58,7 @@ names. Honour these when naming a new file, key, or string.
 | **Add-item form** / **composer** / **draft row**       | `src/ui/AddItemForm.tsx`. [→](overview.md#add-item-form)                                                 |
 | **Archive view** / **the archive**                     | `src/ui/ArchiveView.tsx`. [→](overview.md#archive-view)                                                  |
 | **Side menu** / **drawer** / **nav** / **sidebar**     | `src/ui/SideMenu.tsx`; `View`, `useNav` (`src/ui/nav-context.ts`); pinned-from-iPad layout via `pinned` + `useMediaQuery` (`src/ui/hooks/useMediaQuery.ts`). [→](overview.md#side-menu)            |
+| **Button island** / **action bar** / **action panel** (sidebar) | The bordered New list / New folder / Archive + Undo / Redo block fixed above the side-menu footer (`shrink-0`, so the checklist list scrolls behind it); the `BarButton`s in `src/ui/SideMenu.tsx`. [→](overview.md#side-menu) |
 | **Swipe to remove** (sidebar) / **swipe a list/namespace away** | `useSwipeReveal` (`src/ui/hooks/useSwipeReveal.ts`); the `SwipeToRemove` wrapper in `src/ui/SideMenu.tsx`. [→](overview.md#swipe-to-remove-sidebar) |
 | **Floating menu button** / **drag button** / **sidebar button** | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`; `showButton` in `nav-context.ts`. [→](overview.md#floating-menu-button) |
 | **Edge swipe to open** / **swipe in from the edge**     | `useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`). [→](overview.md#edge-swipe-to-open) |
