@@ -40,8 +40,22 @@ describe("ArchiveView", () => {
 
   it("groups archived items under a header for each source checklist", () => {
     renderView();
-    expect(screen.getByRole("heading", { name: "Groceries" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Chores" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Groceries/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Chores/ })).toBeTruthy();
+  });
+
+  it("collapses and re-expands a group when its header is clicked", () => {
+    renderView();
+    const header = screen.getByRole("button", { name: /Groceries/ });
+    // Collapsing hides only that group's items; siblings stay put.
+    fireEvent.click(header);
+    expect(screen.queryByText("Old milk")).toBeNull();
+    expect(screen.getByText("Stale bread")).toBeTruthy();
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    // Clicking again brings them back.
+    fireEvent.click(header);
+    expect(screen.getByText("Old milk")).toBeTruthy();
+    expect(header.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("shows an empty state when nothing is archived", () => {

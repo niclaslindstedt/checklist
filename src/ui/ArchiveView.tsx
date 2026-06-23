@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useT } from "../i18n";
@@ -6,7 +6,14 @@ import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
-import { ChecklistIcon, CloseIcon, RestoreIcon, TrashIcon } from "./icons.tsx";
+import {
+  ChecklistIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  RestoreIcon,
+  TrashIcon,
+} from "./icons.tsx";
 
 // The archive view, reached from the left navigation drawer. Same pinned
 // shell as ChecklistView (a header with a count over an internally
@@ -16,7 +23,8 @@ import { ChecklistIcon, CloseIcon, RestoreIcon, TrashIcon } from "./icons.tsx";
 //     restorable or deletable as a unit, listed first.
 //   • Archived **items** from the active lists, grouped under a header
 //     naming the list they came from. Items restore back into whichever list
-//     owns them, not the active one.
+//     owns them, not the active one. Each group header is a disclosure button
+//     that collapses its items (local view state, default-expanded).
 //
 // No composer — things only enter the archive by being archived elsewhere.
 // On a desktop pointer each row drops its inline buttons for a right-click
@@ -40,6 +48,19 @@ function ArchiveViewImpl() {
     open: openMenu,
     close: closeMenu,
   } = useContextMenu();
+  // Which archived-item groups the user has collapsed. Default-expanded, so
+  // only the ids that have been toggled shut live here. Local view state —
+  // it doesn't travel with the document.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleGroup = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const itemCount = groups.reduce((n, g) => n + g.items.length, 0);
   const count = itemCount + archivedChecklists.length;
@@ -99,44 +120,66 @@ function ArchiveViewImpl() {
               </section>
             )}
 
-            {groups.map((group) => (
-              <section key={group.id} className="mb-2">
-                <h2 className="px-3 pt-4 pb-1 text-xs font-semibold tracking-wider text-muted uppercase first:pt-1">
-                  {group.name}
-                </h2>
-                <ul className="m-0 list-none p-0">
-                  {group.items.map((item) => (
-                    <ArchiveRow
-                      key={item.id}
-                      title={item.title}
-                      checked={item.checked}
-                      restoreLabel={t("nav.restore")}
-                      onRestore={() => unarchive(item.id)}
-                      onDelete={() => remove(item.id)}
-                      desktop={desktop}
-                      onOpenMenu={(e) =>
-                        openMenu(
-                          [
-                            {
-                              label: t("nav.restore"),
-                              icon: <RestoreIcon className="h-4 w-4" />,
-                              onSelect: () => unarchive(item.id),
-                            },
-                            {
-                              label: t("app.delete"),
-                              icon: <TrashIcon className="h-4 w-4" />,
-                              danger: true,
-                              onSelect: () => remove(item.id),
-                            },
-                          ],
-                          e,
-                        )
-                      }
-                    />
-                  ))}
-                </ul>
-              </section>
-            ))}
+            {groups.map((group) => {
+              const isCollapsed = collapsed.has(group.id);
+              return (
+                <section key={group.id} className="mb-2">
+                  <h2 className="first:pt-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      aria-expanded={!isCollapsed}
+                      className="flex w-full cursor-pointer items-center gap-1.5 px-3 pt-4 pb-1 text-left text-xs font-semibold tracking-wider text-muted uppercase first:pt-1 hover:text-fg"
+                    >
+                      {isCollapsed ? (
+                        <ChevronRightIcon className="-ml-0.5 h-3.5 w-3.5 shrink-0" />
+                      ) : (
+                        <ChevronDownIcon className="-ml-0.5 h-3.5 w-3.5 shrink-0" />
+                      )}
+                      <span className="min-w-0 flex-1 truncate">
+                        {group.name}
+                      </span>
+                      <span className="shrink-0 tabular-nums normal-case">
+                        {group.items.length}
+                      </span>
+                    </button>
+                  </h2>
+                  {!isCollapsed && (
+                    <ul className="m-0 list-none p-0">
+                      {group.items.map((item) => (
+                        <ArchiveRow
+                          key={item.id}
+                          title={item.title}
+                          checked={item.checked}
+                          restoreLabel={t("nav.restore")}
+                          onRestore={() => unarchive(item.id)}
+                          onDelete={() => remove(item.id)}
+                          desktop={desktop}
+                          onOpenMenu={(e) =>
+                            openMenu(
+                              [
+                                {
+                                  label: t("nav.restore"),
+                                  icon: <RestoreIcon className="h-4 w-4" />,
+                                  onSelect: () => unarchive(item.id),
+                                },
+                                {
+                                  label: t("app.delete"),
+                                  icon: <TrashIcon className="h-4 w-4" />,
+                                  danger: true,
+                                  onSelect: () => remove(item.id),
+                                },
+                              ],
+                              e,
+                            )
+                          }
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
           </>
         )}
       </div>
