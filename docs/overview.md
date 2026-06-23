@@ -141,6 +141,10 @@ header along with it, a 20-30px jump every time an editor opens. It moves the
 container the minimum needed, and only when the editor is actually clipped, so
 a row already on screen stays put (e.g. on a Backspace hand-off to the line
 above); only one hidden behind the keyboard moves, just far enough to clear it.
+The field is focused with `{ preventScroll: true }` (`focusAtEnd`) so the
+**browser's own** scroll-into-view never fires either — for a field near a
+clipped edge that page-level scroll jerks the whole viewport, pinned header and
+all; suppressing it leaves the list-container scroll as the only reveal.
 Revealing the body with "Add a note" eases it open with a short grow + fade
 (`note-reveal` in `theme.css`) rather than popping in with a hard reflow.
 Enter in the title commits
