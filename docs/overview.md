@@ -323,8 +323,9 @@ button slides the drawer in from that edge over a dimmed backdrop (a CSS
 `animation` that plays off the mount — the `drawer-*` keyframes in
 `styles/theme.css` — so there is no first-frame snap). **Only the
 checklist list scrolls.** The drawer is a fixed-height flex column whose
-namespace header, Checklists heading, action bar, Undo / Redo pair, and
-footer all stay put (`shrink-0`); the checklist region between them is the
+namespace header, Checklists heading, action panel (the create/navigate
+and Undo / Redo buttons), and footer all stay put (`shrink-0`); the
+checklist region between them is the
 single growing part (`flex-1 min-h-0 overflow-y-auto`), so a long list
 scrolls under stationary chrome instead of pushing the footer off-screen.
 The drawer opens with the **namespace** section — a **collapsible**
@@ -336,16 +337,20 @@ cogwheel opens `NamespacesModal`. Then the **Checklists** switcher (every
 list by name, the active one marked, click to switch + navigate; each row
 badged with that list's count of not-yet-completed items — active,
 non-archived, still unchecked — hidden when the list is empty or fully
-checked off), with the Archive view living on the action bar below rather
-than in a section of its own; the Undo / Redo actions sit as a
-side-by-side button pair just above the footer's divider. It highlights the
+checked off), with the Archive view living on the action panel below rather
+than in a section of its own. That action panel is **one bordered block**
+just above the footer's divider: a top row of New list / New folder /
+Archive and a bottom row of Undo / Redo, split by a divider so the five
+icon buttons read as a single coherent unit (`BarButton`s; undo/redo dim
+and go inert at the ends of the timeline). It highlights the
 active list and current view. A shared `SectionHeader` renders each heading
 with its optional action. Pinned to the foot are the relocated burger-menu
 rows — an optional donate link, the trophy, an **About** dropdown, and
-settings (last, under the thumb). The About row reveals the project links —
-"what's new", the source on GitHub (with the app version as a subtitle),
-and privacy — in a `FloatingPanel` that flips **upward** (there is no room
-below at the foot of the drawer). The drawer's open/current/position state
+settings (last, under the thumb). The About row — a plain footer row with
+no chevron — toggles the project links — "what's new", the source on
+GitHub (with the app version as a subtitle), and privacy — in a
+`FloatingPanel` that flips **upward** (there is no room below at the foot
+of the drawer). The drawer's open/current/position state
 comes from `useNav`
 (`src/ui/nav-context.ts`, which exports the `View` type
 `"checklist" | "archive"`) and the undo/redo/archive counts plus
@@ -1313,12 +1318,16 @@ to the side menu through the checklist context like every other list verb.
 In the side menu (`src/ui/SideMenu.tsx`) each folder renders as a collapsible
 `FolderRow` (caret + folder glyph + name + count, plus a `+` that adds a list
 straight into it); the grouped lists nest under it when expanded, ungrouped
-lists follow, and a compact segmented action bar at the foot carries **New
-list**, **New folder**, and **Archive** (`BarButton`s, replacing the old
-section-header `+` and full-width Archive row). `FolderEditRow` is the inline
-name input for creating or renaming a folder. Moving an existing list into a
-folder is a **drag gesture** (see *Drag a list…* below), not a menu entry; the
-collapse state is device-local component state, not persisted.
+lists follow, and a compact action panel at the foot carries **New list**,
+**New folder**, and **Archive** alongside **Undo** / **Redo** (`BarButton`s,
+replacing the old section-header `+` and full-width Archive row). When a
+folder is **collapsed** it still surfaces the **active list** if that list is
+filed inside it — peeked as a single nested row — the same courtesy the
+namespace section pays the active namespace, so the open list never vanishes
+behind a fold. `FolderEditRow` is the inline name input for creating or
+renaming a folder. Moving an existing list into a folder is a **drag gesture**
+(see *Drag a list…* below), not a menu entry; the collapse state is
+device-local component state, not persisted.
 
 On the **file/cloud backends** a folder is a *real directory*. The codec
 (`src/storage/markdown/codec.ts`) files a grouped list into

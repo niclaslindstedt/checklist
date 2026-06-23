@@ -28,7 +28,6 @@ import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
 import {
   ArchiveIcon,
   ChecklistIcon,
-  ChevronUpIcon,
   CodeIcon,
   CogIcon,
   FolderIcon,
@@ -56,7 +55,6 @@ import {
 import {
   BarButton,
   ChecklistRowStrip,
-  EditButton,
   FolderEditRow,
   FolderRow,
   MenuButton,
@@ -342,7 +340,10 @@ export function SideMenu({
 
   // One folder group: its header row (collapse toggle + name + count + a "+"
   // that starts a new list inside it) and, when expanded, the lists filed in
-  // it. While being renamed the header is swapped for the inline name editor.
+  // it. Collapsed, it still surfaces the active list when that list lives
+  // inside it — the same courtesy the namespace section pays the active
+  // namespace, so the user never loses sight of where the open list sits.
+  // While being renamed the header is swapped for the inline name editor.
   function renderFolder(f: FolderSummary): ReactNode {
     if (renamingFolderId === f.id) {
       return (
@@ -360,6 +361,10 @@ export function SideMenu({
     }
     const expanded = !collapsedFolders.has(f.id);
     const inside = checklists.filter((c) => c.folderId === f.id);
+    // Collapsed, peek just the active list if it's filed in this folder.
+    const activePeek = expanded
+      ? undefined
+      : inside.find((c) => c.id === activeChecklistId);
     return (
       <div key={f.id} {...{ [CHECKLIST_DROP_ATTR]: f.id }}>
         <FolderRow
@@ -383,7 +388,9 @@ export function SideMenu({
           onDrop={(e) => commitDrop(e, f.id)}
           openMenu={openMenu}
         />
-        {expanded && inside.map((c) => renderChecklistRow(c, true))}
+        {expanded
+          ? inside.map((c) => renderChecklistRow(c, true))
+          : activePeek && renderChecklistRow(activePeek, true)}
       </div>
     );
   }
@@ -520,61 +527,64 @@ export function SideMenu({
           )}
         </div>
       </div>
-      {/* New list / New folder / Archive share one compact segmented bar
-          instead of full-width rows (the way Undo / Redo do at the foot),
-          saving vertical space. The three cells split the width evenly; the
-          parent owns the border, rounding, and inner dividers. Archive lights
-          up accent while its view is showing and carries the archived count. */}
+      {/* New list / New folder / Archive and Undo / Redo share one bordered
+          panel just above the footer divider, fixed so it falls under the
+          thumb no matter how long the checklist list is. A top row of
+          create/navigate actions and a bottom row of history actions are
+          split by a divider, so the five icon buttons read as one coherent
+          block rather than two competing widgets. Each cell splits its row's
+          width evenly; the parent owns the border, rounding, and the inner
+          dividers. Archive lights up accent while its view is showing and
+          carries the archived count; undo/redo dim and go inert at the ends
+          of the timeline but keep the drawer open so a burst of reverts can
+          be applied without reopening it. */}
       <div className="shrink-0 px-3 pt-2 pb-1">
-        <div className="flex divide-x divide-line overflow-hidden rounded-md border border-line">
-          <BarButton
-            icon={<PlusIcon className="h-5 w-5" />}
-            label={t("nav.newChecklist")}
-            onClick={() => {
-              addChecklist();
-              navigate("checklist");
-            }}
-          />
-          <BarButton
-            icon={<FolderIcon className="h-5 w-5" />}
-            label={t("nav.newFolder")}
-            onClick={() => setCreatingFolder(true)}
-          />
-          <BarButton
-            icon={<ArchiveIcon className="h-5 w-5" />}
-            label={t("nav.archive")}
-            active={current === "archive"}
-            badge={archivedCount > 0 ? archivedCount : undefined}
-            dropId={CHECKLIST_DROP_ARCHIVE}
-            isDropTarget={
-              dropTarget === CHECKLIST_DROP_ARCHIVE ||
-              activeDropKey === CHECKLIST_DROP_ARCHIVE
-            }
-            onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ARCHIVE)}
-            onDragLeave={() => setDropTarget(null)}
-            onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ARCHIVE)}
-            onClick={() => navigate("archive")}
-          />
+        <div className="divide-y divide-line overflow-hidden rounded-md border border-line">
+          <div className="flex divide-x divide-line">
+            <BarButton
+              icon={<PlusIcon className="h-5 w-5" />}
+              label={t("nav.newChecklist")}
+              onClick={() => {
+                addChecklist();
+                navigate("checklist");
+              }}
+            />
+            <BarButton
+              icon={<FolderIcon className="h-5 w-5" />}
+              label={t("nav.newFolder")}
+              onClick={() => setCreatingFolder(true)}
+            />
+            <BarButton
+              icon={<ArchiveIcon className="h-5 w-5" />}
+              label={t("nav.archive")}
+              active={current === "archive"}
+              badge={archivedCount > 0 ? archivedCount : undefined}
+              dropId={CHECKLIST_DROP_ARCHIVE}
+              isDropTarget={
+                dropTarget === CHECKLIST_DROP_ARCHIVE ||
+                activeDropKey === CHECKLIST_DROP_ARCHIVE
+              }
+              onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ARCHIVE)}
+              onDragLeave={() => setDropTarget(null)}
+              onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ARCHIVE)}
+              onClick={() => navigate("archive")}
+            />
+          </div>
+          <div className="flex divide-x divide-line">
+            <BarButton
+              icon={<UndoIcon className="h-5 w-5" />}
+              label={t("nav.undo")}
+              disabled={!canUndo}
+              onClick={undo}
+            />
+            <BarButton
+              icon={<RedoIcon className="h-5 w-5" />}
+              label={t("nav.redo")}
+              disabled={!canRedo}
+              onClick={redo}
+            />
+          </div>
         </div>
-      </div>
-      {/* Undo / redo: a pair of side-by-side buttons just above the footer's
-          divider, fixed so they fall under the thumb regardless of how long
-          the checklist list is. Two columns share one row to save vertical
-          space; each keeps the drawer open so a burst of reverts can be
-          applied without reopening it. */}
-      <div className="flex shrink-0 gap-2 px-3 pt-3 pb-1">
-        <EditButton
-          icon={<UndoIcon className="h-5 w-5" />}
-          label={t("nav.undo")}
-          disabled={!canUndo}
-          onClick={undo}
-        />
-        <EditButton
-          icon={<RedoIcon className="h-5 w-5" />}
-          label={t("nav.redo")}
-          disabled={!canRedo}
-          onClick={redo}
-        />
       </div>
       {/* The relocated burger menu, fixed at the foot of the drawer: Donate,
           the trophy, an "About" dropdown that folds away the project links
@@ -596,7 +606,8 @@ export function SideMenu({
         <TrophyButton onSelect={close} />
         {/* About: a single row that reveals the project links in an
             upward-flipping dropdown (there's no room below at the foot of the
-            drawer). The chevron points up to signal that. */}
+            drawer). It reads as a plain footer row — no chevron — and just
+            toggles the panel open and shut. */}
         <button
           ref={aboutRef}
           type="button"
@@ -610,7 +621,6 @@ export function SideMenu({
             <HelpCircleIcon className="h-5 w-5" />
           </span>
           <span className="flex-1">{t("menu.about")}</span>
-          <ChevronUpIcon className="h-4 w-4 text-muted" />
         </button>
         <MenuButton
           icon={<CogIcon className="h-5 w-5" />}
