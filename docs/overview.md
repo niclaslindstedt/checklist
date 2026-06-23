@@ -72,7 +72,8 @@ for the local backend.
 `src/ui/ChecklistRow.tsx` — one item line, with a three-layer
 swipe-to-reveal interaction driven by `useRowSwipe`. The foreground
 holds a `Checkbox`, the title (struck through when checked), a body-hint
-chevron (only on items that carry a note), and a grip handle for
+note glyph (only on items that carry a note — muted while the body is
+collapsed, accent-coloured while it's revealed), and a grip handle for
 vertical reordering. Swiping **left** latches open a Delete button
 (two-step, so a delete is never a single flick); swiping **right**
 archives the row (hidden, not destroyed). The two action layers are
@@ -84,8 +85,9 @@ right, so without it the trailing-edge Delete button would be bared as
 the row clears the screen on its way to the archive.
 
 **Editing the text — reveal, then edit.** An item with a markdown
-**body** (`notes`) shows a chevron to the right of its title. Tapping the
-title (or the chevron) expands the body **rendered as markdown** (via
+**body** (`notes`) shows a note glyph to the right of its title (muted when
+the body is hidden, accent-coloured while it's revealed). Tapping the
+title (or the glyph) expands the body **rendered as markdown** (via
 `renderMarkdown`, see [Markdown renderer](#markdown-renderer)); a
 `pointerdown` outside the row collapses it again. While expanded, tapping
 the title opens the in-place editor (`ChecklistRowEditor`, see
@@ -98,7 +100,7 @@ raw plain text. The title tap is swallowed after a swipe (the
 `useRowSwipe` `onClickCapture` guard), so a drag never drops into edit.
 The whole row line is the tap target, not just the title glyphs: a click
 on the row that doesn't land on a real control (the checkbox, caret,
-chevron, grip, or the title button) is treated as a title tap, so the dead
+note glyph, grip, or the title button) is treated as a title tap, so the dead
 space beside the text and the row's vertical padding open the editor too
 instead of just blurring an open one. The row line also `preventDefault`s
 its `mousedown` (the same trick the editor `Checkbox` uses): pressing a row
@@ -1144,8 +1146,8 @@ The **Disable item notes** toggle on the Lists tab
 beneath an item's title off across the checklist — items become
 title-only. The flag rides the checklist context (`disableItemNotes` on
 `ChecklistContextValue`, set by `App` from the settings) to every
-`ChecklistRow`, which then treats the item as bodyless: the expand
-chevron and the rendered markdown never show, and the in-place
+`ChecklistRow`, which then treats the item as bodyless: the note glyph
+and the rendered markdown never show, and the in-place
 `ChecklistRowEditor` drops its note textarea, the "Add note" affordance,
 and the Shift+Enter reveal so editing only touches the title. Notes
 already written stay in the document untouched — flipping the toggle back

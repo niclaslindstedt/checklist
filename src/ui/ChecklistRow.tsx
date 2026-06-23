@@ -14,7 +14,7 @@ import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
-import { CaretRightIcon, ChevronDownIcon, GripIcon } from "./icons.tsx";
+import { CaretRightIcon, GripIcon, NoteIcon } from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 
 // Horizontal step per nesting level. A sub-item sits this much further right
@@ -28,8 +28,10 @@ export const INDENT_PER_LEVEL = 32;
 // handle on the trailing edge starts a vertical drag-to-reorder instead.
 //
 // Text editing follows a reveal-then-edit model:
-//   • An item with a body shows a chevron to the right of its title. Tapping
-//     the title (or the chevron) expands the body, rendered as markdown.
+//   • An item with a body shows a note glyph to the right of its title. Tapping
+//     the title (or the glyph) expands the body, rendered as markdown. The
+//     glyph is muted while the body is hidden and paints in the accent colour
+//     while it's revealed, so the row signals at a glance that it carries a note.
 //   • While expanded, tapping the title edits the **title**; tapping the body
 //     edits the **body**; tapping anywhere outside the row collapses it.
 //   • An item with no body goes straight into the editor on a title tap,
@@ -38,7 +40,7 @@ export const INDENT_PER_LEVEL = 32;
 // text; the row renders the body back as markdown once the edit commits.
 //
 // When the user switches item notes off (Settings → Lists, `notesDisabled`),
-// the row is title-only: the chevron and rendered body never appear and the
+// the row is title-only: the note glyph and rendered body never appear and the
 // editor drops its note field. Any note already on the item is left in the
 // document untouched, so flipping the setting back on reveals it again.
 //
@@ -177,7 +179,7 @@ function ChecklistRowImpl({
   const [expanded, setExpanded] = useState(false);
   const rowRef = useRef<HTMLLIElement>(null);
   // Notes switched off collapses the row to title-only: ignore any stored
-  // body so the chevron, reveal, and rendered markdown never show.
+  // body so the note glyph, reveal, and rendered markdown never show.
   const hasBody = Boolean(item.notes) && !notesDisabled;
 
   const enterEdit = useCallback((focusBody: boolean) => {
@@ -349,8 +351,8 @@ function ChecklistRowImpl({
         } ${!desktop && swipe.animating ? "transition-transform duration-200" : ""}`}
       >
         {/* The whole row line is a pointer target for editing: a click that
-            isn't on one of the real controls (checkbox, caret, chevron, grip,
-            or the title button) edits the item, so tapping the dead space
+            isn't on one of the real controls (checkbox, caret, note glyph,
+            grip, or the title button) edits the item, so tapping the dead space
             beside the text — the gaps and the vertical padding — opens the
             editor instead of just blurring an open one. Keyboard users reach
             the title button directly, so this enlargement needs no role. */}
@@ -422,13 +424,11 @@ function ChecklistRowImpl({
               onClick={() => setExpanded((v) => !v)}
               aria-label={expanded ? t("app.hideNote") : t("app.showNote")}
               aria-expanded={expanded}
-              className="flex h-7 w-7 shrink-0 items-center justify-center text-muted hover:text-fg"
+              className={`flex h-7 w-7 shrink-0 items-center justify-center transition-colors ${
+                expanded ? "text-accent" : "text-muted hover:text-fg"
+              }`}
             >
-              <ChevronDownIcon
-                className={`h-4 w-4 transition-transform ${
-                  expanded ? "rotate-180" : ""
-                }`}
-              />
+              <NoteIcon className="h-4 w-4" />
             </button>
           )}
           <button
