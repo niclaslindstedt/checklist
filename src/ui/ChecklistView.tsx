@@ -5,6 +5,7 @@ import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
+import { resolveActiveEditor } from "./activeEditor.ts";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
@@ -387,6 +388,12 @@ function ChecklistViewImpl() {
   // The id of the row whose editor is open (null when none). The add button
   // hides while a row is being edited so it doesn't crowd the keyboard.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // A row reports its editor opening or closing; `resolveActiveEditor` keeps a
+  // close from clearing the id once editing has already moved to another row
+  // (see its comment), so the add button doesn't flash back over the keyboard.
+  const setEditorActive = useCallback((id: string, active: boolean) => {
+    setEditingId((cur) => resolveActiveEditor(cur, id, active));
+  }, []);
 
   const draftRow = drafting ? (
     <AddItemForm
@@ -503,7 +510,7 @@ function ChecklistViewImpl() {
                   onAutoEditConsumed={clearEditBody}
                   autoEditTitle={item.id === editTitleOfId}
                   onAutoEditTitleConsumed={clearEditTitle}
-                  onActiveEditorChange={setEditingId}
+                  onActiveEditorChange={setEditorActive}
                   notesDisabled={disableItemNotes}
                   depth={depth}
                   hasChildren={hasChildren}

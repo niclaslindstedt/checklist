@@ -98,10 +98,14 @@ type Props = {
   /** Tell the parent the auto title-edit has been consumed; clears the flag. */
   onAutoEditTitleConsumed?: () => void;
   /**
-   * Report the id of the item whose editor is open (or `null` when it closes)
-   * so the view can hide the add button while a row is being edited.
+   * Report this row's editor opening (`active: true`) or closing
+   * (`active: false`) so the view can hide the add button while a row is being
+   * edited. The row id is always passed so the view can tell *which* row is
+   * reporting: when editing moves straight from one row to another, the
+   * outgoing row's close must not clear an active id the incoming row has
+   * already claimed.
    */
-  onActiveEditorChange?: (editingId: string | null) => void;
+  onActiveEditorChange?: (id: string, active: boolean) => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
   /** Nesting depth — indents the row one step per level. */
@@ -193,8 +197,8 @@ function ChecklistRowImpl({
   // deleting the open row never leaves the button hidden.
   useEffect(() => {
     if (!editing) return;
-    onActiveEditorChange?.(item.id);
-    return () => onActiveEditorChange?.(null);
+    onActiveEditorChange?.(item.id, true);
+    return () => onActiveEditorChange?.(item.id, false);
   }, [editing, item.id, onActiveEditorChange]);
 
   // The composer just created this item with Shift+Enter and wants it opened
