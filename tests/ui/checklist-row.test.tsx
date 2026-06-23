@@ -599,7 +599,7 @@ describe("ChecklistRow editing", () => {
     expect(mouseDown.defaultPrevented).toBe(true);
   });
 
-  it("reports its item id as editing opens and clears it as it closes", () => {
+  it("reports its item id as editing opens and closes, so the view can tell which row", () => {
     const onActiveEditorChange = vi.fn();
     renderRow({ onActiveEditorChange });
 
@@ -607,11 +607,13 @@ describe("ChecklistRow editing", () => {
     expect(onActiveEditorChange).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
-    expect(onActiveEditorChange).toHaveBeenLastCalledWith("i1");
+    expect(onActiveEditorChange).toHaveBeenLastCalledWith("i1", true);
 
-    // Closing the editor (Escape) clears the reported id.
+    // Closing the editor (Escape) reports the same id as no longer active —
+    // carrying the id lets the view ignore a stale close once editing has
+    // already moved to another row.
     fireEvent.keyDown(screen.getByLabelText("Edit item"), { key: "Escape" });
-    expect(onActiveEditorChange).toHaveBeenLastCalledWith(null);
+    expect(onActiveEditorChange).toHaveBeenLastCalledWith("i1", false);
   });
 
   it("commits a title + note together from the editor", () => {

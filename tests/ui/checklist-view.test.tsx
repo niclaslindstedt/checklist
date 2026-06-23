@@ -368,6 +368,22 @@ describe("ChecklistView", () => {
       ).toBeNull();
       expect(screen.queryByRole("button", { name: "Done editing" })).toBeNull();
     });
+
+    it("keeps the button hidden when editing moves to another row", () => {
+      renderView({ items: twoItems });
+
+      // Edit the first row — the button hides.
+      fireEvent.click(screen.getByText("Milk"));
+      expect(screen.queryByRole("button", { name: "Add item" })).toBeNull();
+
+      // Move editing to the second row; the button stays hidden throughout.
+      // (The trailing-close race that used to flash it back is covered at the
+      // unit level in active-editor.test.ts — jsdom commits the outgoing editor
+      // before opening the next, the safe order, so it can't stage that race.)
+      fireEvent.click(screen.getByText("Bread"));
+      expect(screen.queryByRole("button", { name: "Add item" })).toBeNull();
+      expect(titleEditor().value).toBe("Bread");
+    });
   });
 
   describe("bulk actions (long-press the add button)", () => {

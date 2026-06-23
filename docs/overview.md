@@ -123,9 +123,15 @@ tap). The title is one line (a native `<input>`), the body an optional note
 beneath it (a native `<textarea>`), both plain text. The native fields mean
 iOS draws its own keyboard accessory bar (previous / next / Done) above the
 keyboard, and that is the only bar on screen — the app no longer draws its
-own. While an editor is open the row reports its id up (`onActiveEditorChange`)
-so `ChecklistView` hides the add button (`editingId`) and it doesn't crowd the
-keyboard, and the editor reveals itself above the keyboard on mount (and again
+own. While an editor is open the row reports its id up (`onActiveEditorChange(id,
+active)`) so `ChecklistView` hides the add button (`editingId`) and it doesn't
+crowd the keyboard. The report carries the row id on both open and close, and
+`resolveActiveEditor` (`src/ui/activeEditor.ts`) only clears the id on a close
+that matches it: when editing moves straight to another row, the incoming row
+claims the id first and the outgoing row's trailing close (its field blurs only
+once the new one has focus) is ignored — otherwise the add button would flash
+back over the keyboard mid-switch. The editor reveals itself above the keyboard
+on mount (and again
 when the keyboard's appearance resizes the visual viewport), since the
 visual-viewport-pinned shell stops iOS from auto-scrolling the field up. It
 does this by adjusting the scroll position of the **list container alone**
