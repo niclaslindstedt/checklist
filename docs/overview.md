@@ -96,6 +96,11 @@ edits straight away — where "Add a note" / Shift+Enter adds one. So a
 note reads as markdown until you open it for editing, where it shows as
 raw plain text. The title tap is swallowed after a swipe (the
 `useRowSwipe` `onClickCapture` guard), so a drag never drops into edit.
+The whole row line is the tap target, not just the title glyphs: a click
+on the row that doesn't land on a real control (the checkbox, caret,
+chevron, grip, or the title button) is treated as a title tap, so the dead
+space beside the text and the row's vertical padding open the editor too
+instead of just blurring an open one.
 
 ### Edit item
 
@@ -113,13 +118,16 @@ iOS draws its own keyboard accessory bar (previous / next / Done) above the
 keyboard, and that is the only bar on screen — the app no longer draws its
 own. While an editor is open the row reports its id up (`onActiveEditorChange`)
 so `ChecklistView` hides the add button (`editingId`) and it doesn't crowd the
-keyboard, and the editor scrolls itself into view above the keyboard on mount
-(and again when the keyboard's appearance resizes the visual viewport), since
-the visual-viewport-pinned shell stops iOS from auto-scrolling the field up.
-That scroll uses `block: "nearest"`, so a row already on screen stays put —
-only one clipped by the keyboard moves, and just far enough to clear it —
-rather than centering (which would jump the whole list and the pinned header
-every time an editor opens, e.g. on a Backspace hand-off to the line above).
+keyboard, and the editor reveals itself above the keyboard on mount (and again
+when the keyboard's appearance resizes the visual viewport), since the
+visual-viewport-pinned shell stops iOS from auto-scrolling the field up. It
+does this by adjusting the scroll position of the **list container alone**
+(`scrollParent` walks up to the `overflow-y-auto` list), never `scrollIntoView`
+— which also scrolls the window / visual viewport and so drags the pinned
+header along with it, a 20-30px jump every time an editor opens. It moves the
+container the minimum needed, and only when the editor is actually clipped, so
+a row already on screen stays put (e.g. on a Backspace hand-off to the line
+above); only one hidden behind the keyboard moves, just far enough to clear it.
 Revealing the body with "Add a note" eases it open with a short grow + fade
 (`note-reveal` in `theme.css`) rather than popping in with a hard reflow.
 Enter in the title commits

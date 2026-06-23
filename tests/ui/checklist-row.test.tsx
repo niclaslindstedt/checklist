@@ -157,36 +157,150 @@ describe("ChecklistRow editing", () => {
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
   });
 
-  it("scrolls the opened editor into view with 'nearest', never centering", () => {
-    // Centering (`block: "center"`) yanks the whole list — and the pinned
-    // header — every time an editor opens, even for an already-visible row
-    // (e.g. when Backspace hands editing to the line above). `nearest` leaves a
-    // visible row put and only lifts one clipped by the keyboard.
-    const scrollIntoView = vi.fn();
-    const proto = window.HTMLElement.prototype as unknown as {
-      scrollIntoView?: (arg?: unknown) => void;
-    };
-    const prevScroll = proto.scrollIntoView;
-    proto.scrollIntoView = scrollIntoView;
-    // The scroll is deferred to rAF; run it synchronously so the assertion
-    // doesn't race the frame.
-    const rafSpy = vi
-      .spyOn(window, "requestAnimationFrame")
-      .mockImplementation((cb: FrameRequestCallback) => {
-        cb(0);
-        return 0;
+  // Reveal a clipped editor by scrolling the list container, never the window
+  // (which would drag the pinned header). These tests stand in a scroll
+  // container around the row, deferring the rAF-scheduled scroll so the row's
+  // and container's rects can be mocked before it runs.
+  describe("revealing the open editor", () => {
+    const rect = (top: number, bottom: number): DOMRect =>
+      ({
+        top,
+        bottom,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: bottom - top,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    // jsdom does no layout, so give the container a real scrollTop store.
+    function stubScrollTop(el: HTMLElement, initial = 0): { get: () => number } {
+      let value = initial;
+      Object.defineProperty(el, "scrollTop", {
+        configurable: true,
+        get: () => value,
+        set: (v: number) => {
+          value = v;
+        },
       });
-    try {
-      renderRow();
+      return { get: () => value };
+    }
+
+    function renderInScroller() {
+      render(
+        <div data-testid="scroller" style={{ overflowY: "auto" }}>
+          <ul>
+            <ChecklistRow
+              item={item}
+              onToggle={noop}
+              onArchive={noop}
+              onDelete={noop}
+              onEdit={noop}
+              dragHandleProps={dragHandleProps}
+              dragging={false}
+            />
+          </ul>
+        </div>,
+      );
+    }
+
+    function openEditorDeferred(): {
+      scroller: HTMLElement;
+      root: HTMLElement;
+      runScroll: () => void;
+      scrollIntoView: ReturnType<typeof vi.fn>;
+      restore: () => void;
+    } {
+      const scrollIntoView = vi.fn();
+      const proto = window.HTMLElement.prototype as unknown as {
+        scrollIntoView?: (arg?: unknown) => void;
+      };
+      const prevScroll = proto.scrollIntoView;
+      proto.scrollIntoView = scrollIntoView;
+      let rafCb: FrameRequestCallback | null = null;
+      const rafSpy = vi
+        .spyOn(window, "requestAnimationFrame")
+        .mockImplementation((cb: FrameRequestCallback) => {
+          rafCb = cb;
+          return 1;
+        });
+
+      renderInScroller();
       act(() => {
         fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
       });
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
-      expect(scrollIntoView).not.toHaveBeenCalledWith({ block: "center" });
-    } finally {
-      rafSpy.mockRestore();
-      proto.scrollIntoView = prevScroll;
+      const input = screen.getByLabelText("Edit item");
+      const root = input.closest("li")!.firstElementChild as HTMLElement;
+      const scroller = screen.getByTestId("scroller");
+      return {
+        scroller,
+        root,
+        runScroll: () => act(() => rafCb?.(0)),
+        scrollIntoView,
+        restore: () => {
+          rafSpy.mockRestore();
+          proto.scrollIntoView = prevScroll;
+        },
+      };
     }
+
+    it("scrolls the list container (not the window) to reveal a clipped editor", () => {
+      const { scroller, root, runScroll, scrollIntoView, restore } =
+        openEditorDeferred();
+      try {
+        scroller.getBoundingClientRect = () => rect(0, 100);
+        root.getBoundingClientRect = () => rect(120, 160);
+        const top = stubScrollTop(scroller, 0);
+
+        runScroll();
+
+        // The editor sat 60px below the container's bottom edge, so the
+        // container scrolls down by exactly that — and `scrollIntoView` (which
+        // would also move the window/header) is never used.
+        expect(top.get()).toBe(60);
+        expect(scrollIntoView).not.toHaveBeenCalled();
+      } finally {
+        restore();
+      }
+    });
+
+    it("leaves the scroll position alone when the editor is already visible", () => {
+      const { scroller, root, runScroll, restore } = openEditorDeferred();
+      try {
+        scroller.getBoundingClientRect = () => rect(0, 200);
+        root.getBoundingClientRect = () => rect(40, 90);
+        const top = stubScrollTop(scroller, 10);
+
+        runScroll();
+
+        // Fully inside the visible band, so nothing moves — no jump.
+        expect(top.get()).toBe(10);
+      } finally {
+        restore();
+      }
+    });
+  });
+
+  it("edits the item when the row line is clicked beside the title text", () => {
+    // The title button only covers the glyphs; tapping the dead space next to
+    // it (or the row's padding) used to miss every target and just blur an
+    // open editor. The whole line is now a tap target.
+    renderRow();
+    const line = screen.getByText("Buy milk").closest("div")!;
+    fireEvent.click(line);
+    expect(screen.getByRole("textbox", { name: "Edit item" })).toBeTruthy();
+  });
+
+  it("does not edit when an in-row control is clicked", () => {
+    const onToggle = vi.fn();
+    renderRow({ onToggle });
+    // Clicking the checkbox toggles without dropping into the editor — the
+    // row-line handler ignores clicks that land on a real control.
+    fireEvent.click(screen.getByLabelText("Check item"));
+    expect(onToggle).toHaveBeenCalledWith("i1");
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
   });
 
   it("opens a draft below this row after committing a title on Enter", () => {
