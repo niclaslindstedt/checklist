@@ -338,11 +338,13 @@ list by name, the active one marked, click to switch + navigate; each row
 badged with that list's count of not-yet-completed items — active,
 non-archived, still unchecked — hidden when the list is empty or fully
 checked off), with the Archive view living on the action panel below rather
-than in a section of its own. That action panel is **one bordered block**
+than in a section of its own. That action panel — the **button island** — is **one bordered block**
 just above the footer's divider: a top row of New list / New folder /
 Archive and a bottom row of Undo / Redo, split by a divider so the five
 icon buttons read as a single coherent unit (`BarButton`s; undo/redo dim
-and go inert at the ends of the timeline). It highlights the
+and go inert at the ends of the timeline). It is `shrink-0` and its
+bottom inset matches its left/right inset, so it sits flush as a fixed
+island that the checklist list scrolls behind rather than pushing away. It highlights the
 active list and current view. A shared `SectionHeader` renders each heading
 with its optional action. Pinned to the foot are the relocated burger-menu
 rows — an optional donate link, the trophy, an **About** dropdown, and
