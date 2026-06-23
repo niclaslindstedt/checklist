@@ -266,14 +266,22 @@ The base path each slot is built with comes from `VITE_BASE` (`/`,
 
 ### Semver and release cadence
 
-Bumps are chosen at release time via the `bump` input on
-`.github/workflows/release.yml` (`workflow_dispatch` only):
+The `bump` input on `.github/workflows/release.yml` (`workflow_dispatch`
+only) defaults to **`auto`**, which derives the bump from the
+`.changes/unreleased/` fragments rather than asking a human — the release
+takes the **highest** level any waiting fragment implies:
 
 - `patch` — bug fixes, no visible behaviour change beyond the fix.
+  Implied by `type: Fixed | Security`.
 - `minor` — new user-facing feature or visible behaviour change.
-  Default and most common.
+  Implied by `type: Added | Changed | Removed | Deprecated`. Most common.
 - `major` — breaking change to the persisted-data shape an older build
-  cannot read, or a deliberate UX overhaul.
+  cannot read, or a deliberate UX overhaul. Implied by **`breaking: true`**
+  on any fragment (regardless of its `type:`).
+
+`scripts/release/compute-bump.mjs` is the single source of that mapping
+(unit-tested in `tests/release/compute-bump.test.ts`). Override the
+derivation by dispatching with an explicit `patch | minor | major`.
 
 ### Changeset fragments
 
@@ -293,14 +301,19 @@ One sentence users will read in the changelog.
 `type:` is one of `Added | Changed | Fixed | Removed | Security |
 Deprecated` (Keep a Changelog). `title:` (optional, expected for
 `Added` / `Changed`) is a short noun phrase bolded at the head of the
-bullet; `doc:` (optional) is the slug of a feature doc (see below); the
-body is a **one-sentence** summary. The collator renders the bullet as
+bullet; `doc:` (optional) is the slug of a feature doc (see below);
+`breaking:` (optional — `true` / `yes` / `1`) flags a change an older
+build cannot survive and forces the release to a **major** bump (see
+"Semver and release cadence"); the body is a **one-sentence** summary.
+The collator renders the bullet as
 `- **<title>** — <summary> [Learn more](feature:<doc>)`. The timestamp
 prefix on the filename keeps the lexical sort deterministic so collation
-roughly mirrors commit order. The collator
-(`scripts/release/collate-changelog.mjs`) validates the front-matter at
-release time — an unknown `type:`, a malformed front-matter line, or an
-empty body fails the run loudly.
+roughly mirrors commit order. Fragment parsing lives in
+`scripts/release/fragments.mjs`, shared by the collator
+(`scripts/release/collate-changelog.mjs`) and the bump deriver
+(`scripts/release/compute-bump.mjs`) so the two never disagree on what a
+valid fragment is — an unknown `type:`, a malformed front-matter line, or
+an empty body fails the run loudly.
 
 **Keep the bullet to one sentence.** The title + one-sentence summary
 shape is what keeps the in-app "What's new" modal scannable — if you
@@ -376,9 +389,12 @@ afterwards.
 
 ### End-to-end release flow
 
-1. Maintainer dispatches the `Release` workflow with a
-   `patch | minor | major` bump.
-2. The workflow runs `npm version <bump> --no-git-tag-version` and
+1. Maintainer dispatches the `Release` workflow. The `bump` input
+   defaults to `auto` (derived from the waiting fragments by
+   `scripts/release/compute-bump.mjs`); a `patch | minor | major` value
+   overrides it.
+2. The workflow resolves the bump, then runs
+   `npm version <bump> --no-git-tag-version` and
    `scripts/release/collate-changelog.mjs`, which converts
    `.changes/unreleased/*.md` into a new `## [X.Y.Z] - YYYY-MM-DD`
    section in `CHANGELOG.md` and deletes the consumed fragments.
