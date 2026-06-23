@@ -1359,7 +1359,16 @@ Two pointer paths back one gesture, ported from the `notes` sibling
   pointer, blocks page scroll, and hit-tests `elementFromPoint` against the
   `data-checklist-drop` attribute each target carries. A floating **chip**
   (`ChecklistDragProvider`'s ghost) tracks the fingertip, and the hovered
-  target reads `useChecklistDropKey` to paint the same highlight.
+  target reads `useChecklistDropKey` to paint the same highlight. A folder's
+  accent tint must sit on its **opaque foreground layer** (the swipe surface in
+  `FolderRow`), not on the wrapper behind it — otherwise the surface fill hides
+  it and a hovered folder never lights up on touch.
+
+Hovering the **ungrouped zone** (`CHECKLIST_DROP_ROOT`) frames the no-folder
+region with an accent border rather than just tinting it: folders always render
+above the loose lists, so the framed area below them is exactly where the list
+will land when dropped outside every folder (with no folders it's the whole
+list).
 
 Both paths commit through one resolver: `ChecklistDragProvider`'s `onDrop`
 (exposed to the desktop handlers via `OnDropContext` so neither path forks the
