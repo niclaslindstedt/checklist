@@ -290,6 +290,51 @@ describe("ChecklistView", () => {
 
       expect(removeEmpty).toHaveBeenCalledWith("i2");
     });
+
+    it("dismisses an empty composer and backs editing up into the line above", () => {
+      const addItemAfter = vi.fn().mockReturnValue("i3");
+      renderView({ items: twoItems, addItemAfter });
+
+      // Open the after-an-item composer below "Milk" (i1) by pressing Enter
+      // while editing it.
+      fireEvent.click(screen.getByText("Milk"));
+      fireEvent.keyDown(titleEditor(), { key: "Enter" });
+      const composer = screen.getByLabelText("Add item");
+
+      // Backspace in the still-empty composer dismisses the draft and opens the
+      // line above ("Milk") for editing — nothing is added.
+      fireEvent.keyDown(composer, { key: "Backspace" });
+
+      expect(addItemAfter).not.toHaveBeenCalled();
+      expect(screen.queryByLabelText("Add item")).toBeNull();
+      expect(titleEditor().value).toBe("Milk");
+    });
+
+    it("ignores Backspace in a composer that has text typed into it", () => {
+      renderView({ items: twoItems });
+
+      fireEvent.click(screen.getByText("Milk"));
+      fireEvent.keyDown(titleEditor(), { key: "Enter" });
+      const composer = screen.getByLabelText("Add item") as HTMLInputElement;
+      setText(composer, "x");
+
+      // A non-empty composer keeps Backspace as ordinary text editing — the
+      // draft stays open rather than backing up into the line above.
+      fireEvent.keyDown(composer, { key: "Backspace" });
+      expect(screen.getByLabelText("Add item")).toBeTruthy();
+    });
+
+    it("leaves a top-of-list composer alone on Backspace (nothing above)", () => {
+      renderView({ items: twoItems, addItemPosition: "top" });
+
+      fireEvent.click(screen.getByRole("button", { name: "Add item" }));
+      const composer = screen.getByLabelText("Add item");
+      fireEvent.keyDown(composer, { key: "Backspace" });
+
+      // The composer sits above the whole list, so there's nothing to back up
+      // into — it stays open.
+      expect(screen.getByLabelText("Add item")).toBeTruthy();
+    });
   });
 
   describe("add button while editing", () => {

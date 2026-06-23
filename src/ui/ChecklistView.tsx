@@ -265,6 +265,20 @@ function ChecklistViewImpl() {
     },
     [rows, removeEmpty],
   );
+  // Backspacing an empty composer dismisses the draft row and backs editing
+  // up into the line directly above where the composer is spliced in (the row
+  // at `spliceIndex - 1`). Closing is composer-specific, so the caller passes
+  // its own `close`. Nothing above (composer at the very top) declines it.
+  const backspaceDraft = useCallback(
+    (spliceIndex: number, close: () => void): boolean => {
+      const above = spliceIndex > 0 ? rows[spliceIndex - 1] : undefined;
+      if (!above) return false;
+      close();
+      setEditTitleOfId(above.item.id);
+      return true;
+    },
+    [rows],
+  );
   const addItemAndEditBody = useCallback(
     (title: string) => {
       const id = addItem(title);
@@ -380,6 +394,14 @@ function ChecklistViewImpl() {
       onAddWithBody={addItemAndEditBody}
       onImport={importItems}
       onClose={closeDraft}
+      // The top-position composer sits above the whole list (nothing to back
+      // up into); the bottom-position one sits past the last row.
+      onBackspaceEmpty={() =>
+        backspaceDraft(
+          addItemPosition === "top" ? 0 : rows.length,
+          closeDraft,
+        )
+      }
       notesDisabled={disableItemNotes}
     />
   ) : null;
@@ -393,6 +415,7 @@ function ChecklistViewImpl() {
         onAddWithBody={addChildAndEditBody}
         onImport={importChildItems}
         onClose={closeChildDraft}
+        onBackspaceEmpty={() => backspaceDraft(childDraftIndex, closeChildDraft)}
         notesDisabled={disableItemNotes}
         depth={childDraftDepth}
       />
@@ -408,6 +431,7 @@ function ChecklistViewImpl() {
         onAddWithBody={addAfterAndEditBody}
         onImport={importAfterItems}
         onClose={closeAfterDraft}
+        onBackspaceEmpty={() => backspaceDraft(afterDraftIndex, closeAfterDraft)}
         notesDisabled={disableItemNotes}
         depth={afterDraftDepth}
       />
