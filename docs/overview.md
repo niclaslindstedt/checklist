@@ -299,7 +299,10 @@ total across item groups plus archived lists. Each row offers Restore
 (an item goes back into its **source** list, not the active one; a list
 goes back into the switcher) and Delete (permanent). On a desktop pointer
 the row actions live in the [right-click menu](#right-click-menu); on
-touch they're inline buttons. There is no composer and no reordering —
+touch they're inline buttons. Each item-group header is a disclosure
+button (carrying its item count and a chevron) that collapses just that
+list's items; the collapsed set is local, default-expanded view state and
+doesn't travel with the document. There is no composer and no reordering —
 items only ever enter the archive by being archived in the checklist
 view. Reached from the side menu.
 
