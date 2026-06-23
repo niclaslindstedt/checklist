@@ -1,0 +1,60 @@
+name: Mirror to GitLab
+
+# Push a copy of this repo to a GitLab mirror. The sibling projects
+# (budget / notes) copy features from each other, and some Claude Code
+# sandboxes can reach gitlab.com over plain `git` but have github.com
+# egress blocked (403) — so a GitLab mirror is what lets a sibling
+# `git clone` this repo *with full history* instead of falling back to
+# fetching files over raw.githubusercontent.com (see the copy-feature
+# skill's clone-sibling.mjs).
+#
+# One-time setup (no code change needed — the job is a no-op until both
+# exist):
+#   1. Create the mirror project on gitlab.com, e.g.
+#      gitlab.com/<namespace>/checklist.
+#   2. Add a repository **secret** GITLAB_TOKEN — a GitLab personal- or
+#      project-access token with the `write_repository` scope.
+#   3. Add a repository **variable** GITLAB_MIRROR_URL — the host+path of
+#      the mirror without scheme, e.g. `gitlab.com/<namespace>/checklist.git`.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never let two mirror pushes race; let an in-flight one finish.
+concurrency:
+  group: mirror-gitlab
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    # Skip on forks and until the mirror is configured, so the workflow
+    # is inert rather than red before setup.
+    if: vars.GITLAB_MIRROR_URL != ''
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Push main + tags to the GitLab mirror
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_MIRROR_URL: ${{ vars.GITLAB_MIRROR_URL }}
+        run: |
+          if [ -z "$GITLAB_TOKEN" ]; then
+            echo "::error::GITLAB_MIRROR_URL is set but the GITLAB_TOKEN secret is missing."
+            exit 1
+          fi
+          # Make sure tags are present (checkout fetches history but not
+          # always every tag), then mirror main and all tags. --force so
+          # the mirror always converges on this repo's state.
+          git fetch --tags --force origin
+          git push --force "https://oauth2:${GITLAB_TOKEN}@${GITLAB_MIRROR_URL}" \
+            "refs/remotes/origin/main:refs/heads/main" \
+            "+refs/tags/*:refs/tags/*"

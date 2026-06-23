@@ -57,19 +57,21 @@ node .agent/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
 node .agent/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
 ```
 
-The script tries a plain `git clone` first (fast, and keeps history so the
-Step-1 "read the feature's git log for the *why*" pass works). When the
-session's network policy blocks that — the scoped Claude Code on the web
-sandbox 403s all of github.com, and the session git proxy / GitHub MCP only
-authorize the in-scope repo — it falls back to fetching every file over
-`raw.githubusercontent.com`, which stays reachable. **Don't hand-clone or
-hand-curl around a failure; the script already encodes which paths work.**
+The script tries three sources in order: the sibling's **GitLab mirror**
+(`gitlab.com` is reachable over plain `git` even in the scoped sandbox, so this
+is a real clone *with history*), then **github.com** (works in permissive
+sessions, 403-blocked in the scoped sandbox), then a **raw fallback** that
+fetches every file over `raw.githubusercontent.com`. The siblings keep the
+GitLab mirror current via their own `.github/workflows/mirror-gitlab.yml`.
+**Don't hand-clone or hand-curl around a failure; the script already encodes
+which paths work.**
 
-> **Caveat — the fallback has no git history.** If the script logged "Falling
-> back to raw.githubusercontent.com", `git log`/`git show` in the checkout won't
-> work, so read the history for the *why* (Step 1) from the PR's shipped
-> artifacts instead — the `.changes/unreleased/*.md` fragment and the `docs/`
-> diff — which the same checkout already contains, plus the GitHub PR page.
+> **Caveat — only the raw fallback lacks git history.** If the script logged
+> "Cloned …" (GitLab or GitHub), `git log`/`git show` work in the checkout. If
+> it logged "Falling back to raw.githubusercontent.com" (no mirror, github
+> blocked), there's no history — read the *why* (Step 1) from the PR's shipped
+> artifacts instead: the `.changes/unreleased/*.md` fragment and the `docs/`
+> diff, which the same checkout already contains, plus the GitHub PR page.
 
 If the script fails outright (no outbound network at all), ask the user to paste
 the relevant files — don't guess from memory, and don't fall back to the
