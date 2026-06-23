@@ -116,6 +116,10 @@ so `ChecklistView` hides the add button (`editingId`) and it doesn't crowd the
 keyboard, and the editor scrolls itself into view above the keyboard on mount
 (and again when the keyboard's appearance resizes the visual viewport), since
 the visual-viewport-pinned shell stops iOS from auto-scrolling the field up.
+That scroll uses `block: "nearest"`, so a row already on screen stays put —
+only one clipped by the keyboard moves, and just far enough to clear it —
+rather than centering (which would jump the whole list and the pinned header
+every time an editor opens, e.g. on a Backspace hand-off to the line above).
 Revealing the body with "Add a note" eases it open with a short grow + fade
 (`note-reveal` in `theme.css`) rather than popping in with a hard reflow.
 Enter in the title commits

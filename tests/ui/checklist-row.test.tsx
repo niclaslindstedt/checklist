@@ -157,6 +157,38 @@ describe("ChecklistRow editing", () => {
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
   });
 
+  it("scrolls the opened editor into view with 'nearest', never centering", () => {
+    // Centering (`block: "center"`) yanks the whole list — and the pinned
+    // header — every time an editor opens, even for an already-visible row
+    // (e.g. when Backspace hands editing to the line above). `nearest` leaves a
+    // visible row put and only lifts one clipped by the keyboard.
+    const scrollIntoView = vi.fn();
+    const proto = window.HTMLElement.prototype as unknown as {
+      scrollIntoView?: (arg?: unknown) => void;
+    };
+    const prevScroll = proto.scrollIntoView;
+    proto.scrollIntoView = scrollIntoView;
+    // The scroll is deferred to rAF; run it synchronously so the assertion
+    // doesn't race the frame.
+    const rafSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
+    try {
+      renderRow();
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+      });
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      expect(scrollIntoView).not.toHaveBeenCalledWith({ block: "center" });
+    } finally {
+      rafSpy.mockRestore();
+      proto.scrollIntoView = prevScroll;
+    }
+  });
+
   it("opens a draft below this row after committing a title on Enter", () => {
     const onEdit = vi.fn();
     const onAddAfter = vi.fn();

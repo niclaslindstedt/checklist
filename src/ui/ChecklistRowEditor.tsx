@@ -121,10 +121,15 @@ export function ChecklistRowEditor({
   // Bring the row being edited into view above the soft keyboard. The shell is
   // pinned to the *visual* viewport (see `useViewportHeight`), so iOS won't
   // auto-scroll the focused field up itself — the scrollable list has to. We
-  // centre it on mount and again when the keyboard's appearance resizes the
-  // visual viewport, so the row never ends up hidden behind the keyboard.
+  // use `block: "nearest"` so a row that's already fully visible doesn't move
+  // at all (centering it would yank the whole list — and the pinned header —
+  // by 20-30px every time an editor opens, e.g. when Backspace hands editing
+  // to the line above); only a row that's actually clipped by the keyboard
+  // scrolls, and just far enough to clear it. We re-run on visual-viewport
+  // resize so the keyboard's appearance still lifts the row into view.
   useEffect(() => {
-    const scroll = () => rootRef.current?.scrollIntoView?.({ block: "center" });
+    const scroll = () =>
+      rootRef.current?.scrollIntoView?.({ block: "nearest" });
     const raf = requestAnimationFrame(scroll);
     const vv = window.visualViewport;
     vv?.addEventListener("resize", scroll);
