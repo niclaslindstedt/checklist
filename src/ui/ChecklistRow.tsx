@@ -344,7 +344,21 @@ function ChecklistRowImpl({
           dragging ? "bg-surface-2" : "bg-page-bg"
         } ${!desktop && swipe.animating ? "transition-transform duration-200" : ""}`}
       >
-        <div className="flex min-h-11 items-center gap-3">
+        {/* The whole row line is a pointer target for editing: a click that
+            isn't on one of the real controls (checkbox, caret, chevron, grip,
+            or the title button) edits the item, so tapping the dead space
+            beside the text — the gaps and the vertical padding — opens the
+            editor instead of just blurring an open one. Keyboard users reach
+            the title button directly, so this enlargement needs no role. */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+        <div
+          className="flex min-h-11 items-center gap-3"
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest("button, label, input, a"))
+              return;
+            onTitleTap();
+          }}
+        >
           {/* Sub-item disclosure caret — a fixed slot so leaf rows still align
               their checkbox under a sibling that has one. */}
           <span className="flex w-5 shrink-0 items-center justify-center">

@@ -46,6 +46,20 @@ import { PlusIcon } from "./icons.tsx";
 // opens a composer nested under this item (`onAddChild`) — the no-drag way to
 // grow the tree.
 
+// The nearest ancestor that actually scrolls vertically — the checklist's
+// `overflow-y-auto` list. Scrolling this directly (rather than letting the
+// browser walk every scrollable ancestor) keeps the pinned header, which sits
+// *outside* this container, from moving when an editor reveals itself.
+function scrollParent(node: HTMLElement): HTMLElement | null {
+  let el = node.parentElement;
+  while (el) {
+    const overflowY = getComputedStyle(el).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
 export function ChecklistRowEditor({
   item,
   onSubmit,
@@ -118,24 +132,35 @@ export function ChecklistRowEditor({
     focusAtEnd(titleRef.current);
   }, [focusBody, notesDisabled]);
 
-  // Bring the row being edited into view above the soft keyboard. The shell is
-  // pinned to the *visual* viewport (see `useViewportHeight`), so iOS won't
-  // auto-scroll the focused field up itself — the scrollable list has to. We
-  // use `block: "nearest"` so a row that's already fully visible doesn't move
-  // at all (centering it would yank the whole list — and the pinned header —
-  // by 20-30px every time an editor opens, e.g. when Backspace hands editing
-  // to the line above); only a row that's actually clipped by the keyboard
-  // scrolls, and just far enough to clear it. We re-run on visual-viewport
-  // resize so the keyboard's appearance still lifts the row into view.
+  // Bring the row being edited into view above the soft keyboard by scrolling
+  // *only* the list's own scroll container — never `scrollIntoView`, which
+  // also scrolls the window / visual viewport and so drags the pinned header
+  // (the title and menu buttons) along with it, a 20-30px jump every time an
+  // editor opens. We move the container the minimum needed, and only when the
+  // editor is actually clipped, so a row that's already on screen (e.g. when
+  // Backspace hands editing to the line above) doesn't move at all. The shell
+  // is pinned to the visual viewport (`useViewportHeight`), so the container's
+  // own bottom edge already sits above the keyboard; aligning the editor to it
+  // clears the keyboard. Re-run on visual-viewport resize so the keyboard's
+  // appearance still lifts a now-hidden row.
   useEffect(() => {
-    const scroll = () =>
-      rootRef.current?.scrollIntoView?.({ block: "nearest" });
-    const raf = requestAnimationFrame(scroll);
+    const reveal = () => {
+      const node = rootRef.current;
+      if (!node) return;
+      const scroller = scrollParent(node);
+      if (!scroller) return;
+      const row = node.getBoundingClientRect();
+      const view = scroller.getBoundingClientRect();
+      if (row.top < view.top) scroller.scrollTop -= view.top - row.top;
+      else if (row.bottom > view.bottom)
+        scroller.scrollTop += row.bottom - view.bottom;
+    };
+    const raf = requestAnimationFrame(reveal);
     const vv = window.visualViewport;
-    vv?.addEventListener("resize", scroll);
+    vv?.addEventListener("resize", reveal);
     return () => {
       cancelAnimationFrame(raf);
-      vv?.removeEventListener("resize", scroll);
+      vv?.removeEventListener("resize", reveal);
     };
   }, []);
 
