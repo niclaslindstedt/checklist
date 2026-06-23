@@ -155,6 +155,10 @@ const settings = {
     unlockHint:
       "Your lists are encrypted. Enter your passphrase to unlock them on this device.",
     unlock: "Unlock",
+    unlockStatusAria: "Unlock progress",
+    unlockStepDerivingKey: "Checking your passphrase…",
+    unlockStepDecrypting: "Decrypting your lists…",
+    unlockStepFinalizing: "Unlocking your lists…",
     unlockWrong: "Wrong passphrase. Try again.",
     unlockOffline:
       "Can't reach your cloud, and there's no offline copy saved on this device yet. Reconnect and try again.",

@@ -151,6 +151,10 @@ const settings: SettingsCatalog = {
     unlockHint:
       "Dina listor är krypterade. Ange din lösenfras för att låsa upp dem på den här enheten.",
     unlock: "Lås upp",
+    unlockStatusAria: "Upplåsningsförlopp",
+    unlockStepDerivingKey: "Kontrollerar din lösenfras…",
+    unlockStepDecrypting: "Dekrypterar dina listor…",
+    unlockStepFinalizing: "Låser upp dina listor…",
     unlockWrong: "Fel lösenfras. Försök igen.",
     unlockOffline:
       "Kan inte nå ditt moln, och det finns ingen offlinekopia sparad på den här enheten ännu. Återanslut och försök igen.",
