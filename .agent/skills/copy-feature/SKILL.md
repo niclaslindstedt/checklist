@@ -1,6 +1,6 @@
 ---
 name: copy-feature
-description: "Use whenever you want to bring a feature, look, modal, button, component, or behaviour from a sibling app (budget or notes) into this checklist app — 'port budget's split-entry modal', 'copy budget's company picker', 'copy the folder concept from notes', 'add notes' redesigned action bar'. Clones the sibling repo over plain HTTPS git, studies the named feature in place (its components, hooks, storage, styles, achievements, and the dependencies it needs), then re-implements it here adapted to the checklist domain — same structure and patterns, not a verbatim paste. Reach for this instead of hand-copying files, so the port stays idiomatic and self-consistent."
+description: "Use whenever you want to bring a feature, look, modal, button, component, or behaviour from a sibling app (budget or notes) into this checklist app — 'port budget's split-entry modal', 'copy budget's company picker', 'copy the folder concept from notes', 'add notes' redesigned action bar'. Fetches the sibling repo into /tmp via the bundled clone-sibling.mjs helper, studies the named feature in place (its components, hooks, storage, styles, achievements, and the dependencies it needs), then re-implements it here adapted to the checklist domain — same structure and patterns, not a verbatim paste. Reach for this instead of hand-copying files, so the port stays idiomatic and self-consistent."
 ---
 
 # Copying a feature from a sibling app into checklist
@@ -23,9 +23,10 @@ Use this skill every time you bring a sibling's feature across, so each port
 lands in the same shape as the last.
 
 > Throughout this skill `<sibling>` is whichever repo the feature lives in —
-> `budget` or `notes`. The steps are identical; only the clone URL and the
-> domain mapping differ. (`notes` deals in *notes* where checklist deals in
-> *checklists*, but its namespace/folder/storage vocabulary is the same.)
+> `budget` or `notes`. The steps are identical; only the sibling name passed to
+> the Step-0 helper and the domain mapping differ. (`notes` deals in *notes*
+> where checklist deals in *checklists*, but its namespace/folder/storage
+> vocabulary is the same.)
 
 ## When to invoke
 
@@ -44,37 +45,38 @@ Do **not** invoke when:
   (still _read_ the sibling's version for the pattern, but you don't need the
   full clone-and-port loop).
 
-## Step 0 — Clone the sibling repo (plain `git`, not the GitHub tools)
+## Step 0 — Get the sibling's source into `/tmp`
 
-> **Learning, baked in:** in the Claude Code on the web sandbox the GitHub MCP
-> tools (`mcp__github__*`) and the git proxy are **scoped to this repo only**.
-> Reading a sibling repo through them fails — the MCP tools refuse with
-> *"repository … is not configured for this session"* and the proxy returns
-> **`Proxy error: repository not authorized`** (HTTP 502). **Do not reach for
-> the GitHub tools (or `mcp__claude-code-remote__add_repo`) to inspect a
-> sibling.** budget and notes are public open source, so **clone the sibling
-> directly from github.com over plain HTTPS `git`** — that path is not gated by
-> the proxy allow-list — and read it from `/tmp` with the normal file tools:
+Run the helper script — it puts the sibling's working tree under `/tmp` and
+prints the path:
 
 ```sh
-# budget:
-git clone --depth 1 https://github.com/niclaslindstedt/budget.git /tmp/budget
-# notes:
-git clone https://github.com/niclaslindstedt/notes.git /tmp/notes
+node .agent/skills/copy-feature/clone-sibling.mjs notes    # -> /tmp/notes
+node .agent/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
+# optional 2nd/3rd args: a destination and a ref
+node .agent/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
 ```
 
-> Drop `--depth 1` (or use `--depth 50`) when the user points you at a specific
-> commit/PR, so `git log`/`git show` can reach it.
+The script tries a plain `git clone` first (fast, and keeps history so the
+Step-1 "read the feature's git log for the *why*" pass works). When the
+session's network policy blocks that — the scoped Claude Code on the web
+sandbox 403s all of github.com, and the session git proxy / GitHub MCP only
+authorize the in-scope repo — it falls back to fetching every file over
+`raw.githubusercontent.com`, which stays reachable. **Don't hand-clone or
+hand-curl around a failure; the script already encodes which paths work.**
 
-If even that is blocked (no outbound network at all), ask the user to paste the
-relevant files — don't guess at the sibling's implementation from memory, and
-don't fall back to the scope-locked GitHub tools.
+> **Caveat — the fallback has no git history.** If the script logged "Falling
+> back to raw.githubusercontent.com", `git log`/`git show` in the checkout won't
+> work, so read the history for the *why* (Step 1) from the PR's shipped
+> artifacts instead — the `.changes/unreleased/*.md` fragment and the `docs/`
+> diff — which the same checkout already contains, plus the GitHub PR page.
 
-Clone fresh each run (`rm -rf /tmp/<sibling>` first if it exists) so you study
-current truth, and clone to `/tmp`, never inside this repo's working tree. When
-the user names a specific commit or PR ("the redesigned action bar from #112"),
-`git log`/`git show` it in `/tmp/<sibling>` to read the exact diff before
-porting.
+If the script fails outright (no outbound network at all), ask the user to paste
+the relevant files — don't guess from memory, and don't fall back to the
+scope-locked GitHub tools.
+
+The script clears its destination first, so you always study current truth, and
+it writes under `/tmp`, never inside this repo's working tree.
 
 ## Step 1 — Locate the feature in the sibling
 
@@ -132,8 +134,11 @@ git show <hash>
 > authoritative and always reachable.
 
 When the user names a specific commit or PR ("the redesigned action bar from
-#112"), `git show` that commit (clone without `--depth 1` so it's reachable) and
-read its message, changeset, and docs diff before porting the code.
+#112") and the Step-0 helper got the repo via `git clone`, `git show` that commit
+(pass the ref as the helper's 3rd arg, or deepen the checkout, so it's reachable)
+and read its message, changeset, and docs diff before porting the code. If Step 0
+fell back to the raw fetch there is no local history — read the PR on GitHub and
+the shipped `.changes/` + `docs/` files in the checkout instead.
 
 ## Step 2 — Map budget paths to checklist paths
 
@@ -254,8 +259,10 @@ The port is done when:
 
 ## Common pitfalls
 
-1. **Cloning via the proxy.** It fails with "repository not authorized" — clone
-   from `https://github.com/niclaslindstedt/budget.git` (Step 0).
+1. **Hand-cloning instead of using the Step-0 helper.** `git clone` of
+   github.com 403s in a scoped session, and the git proxy / GitHub MCP are
+   locked to this repo — don't retry them or hand-curl around them. Run
+   `clone-sibling.mjs`, which already falls back to `raw.githubusercontent.com`.
 2. **Pasting budget's domain nouns.** The single biggest tell of a lazy port.
    Translate every `account`/`sheet`/`row`/`transaction`/`loan` to a checklist
    concept via `docs/dictionary.md`.
@@ -304,8 +311,8 @@ After a port:
 2. If you discovered a reusable sub-port (a foundation you had to bring over
    before the real feature), add it to "Shared foundations already here" so the
    next run reuses it.
-3. If the clone path changed (proxy rules, a new mirror, an auth requirement),
-   update Step 0 — keep the "clone from the public github.com URL" learning
-   current.
+3. If how the sibling source is reached changed (proxy rules, scope, a new
+   mirror, an auth requirement), update `clone-sibling.mjs` and the Step 0
+   summary — keep the clone-then-raw-fallback logic current.
 4. Commit the SKILL.md edit alongside the ported feature, and refresh
    `.last-updated` with today's date.
