@@ -31,29 +31,57 @@ import {
 // Namespace heading it's a cogwheel, because that action opens the full
 // manage-and-create dialog rather than adding one inline. The first section
 // omits the top border; every later one draws one to separate it from the
-// rows above.
+// rows above. When `collapsible`, the label becomes a toggle button with a
+// leading caret (rotated down when `expanded`) — the Namespace heading uses
+// this so the seldom-changed namespace list can fold away, leaving just the
+// active namespace beneath.
 export function SectionHeader({
   label,
   border = false,
   onAdd,
   addLabel,
   addIcon = <PlusIcon className="h-4 w-4" />,
+  collapsible = false,
+  expanded = false,
+  onToggle,
 }: {
   label: string;
   border?: boolean;
   onAdd?: () => void;
   addLabel?: string;
   addIcon?: ReactNode;
+  collapsible?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
 }) {
+  const labelText = (
+    <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+      {label}
+    </span>
+  );
   return (
     <div
       className={`flex items-center justify-between gap-2 px-5 pt-3 pb-1 ${
         border ? "border-t border-line" : ""
       }`}
     >
-      <span className="text-xs font-semibold tracking-wide text-muted uppercase">
-        {label}
-      </span>
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="-ml-1 flex min-w-0 cursor-pointer items-center gap-1 rounded pl-1 text-left text-muted hover:text-fg-bright"
+        >
+          <CaretRightIcon
+            className={`h-3 w-3 shrink-0 transition-transform ${
+              expanded ? "rotate-90" : ""
+            }`}
+          />
+          {labelText}
+        </button>
+      ) : (
+        labelText
+      )}
       {onAdd && (
         <button
           type="button"

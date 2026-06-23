@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useRef,
   useState,
   type DragEvent as ReactDragEvent,
   type ReactNode,
@@ -27,10 +28,12 @@ import { useDraggableMenuButton } from "./hooks/useDraggableMenuButton.ts";
 import {
   ArchiveIcon,
   ChecklistIcon,
+  ChevronUpIcon,
   CodeIcon,
   CogIcon,
   FolderIcon,
   HeartIcon,
+  HelpCircleIcon,
   MenuIcon,
   PlusIcon,
   RedoIcon,
@@ -64,6 +67,17 @@ import {
 } from "./SideMenuRows.tsx";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 import { TrophyButton } from "./achievements/TrophyButton.tsx";
+import { FloatingPanel } from "./FloatingPanel.tsx";
+import type { FloatingPlacement } from "./hooks/useFloatingPosition.ts";
+
+// The About dropdown opens "up and to the left" of its footer trigger:
+// `useFloatingPosition` flips it above automatically (there is no room
+// below at the foot of the drawer), and it widens to at least the trigger.
+const ABOUT_PLACEMENT: FloatingPlacement = {
+  width: { kind: "min", minPx: 200 },
+  anchor: "left",
+  coordinateSpace: "viewport",
+};
 
 // The dataTransfer MIME the desktop HTML5 drag stamps the list id onto, so a
 // drop reads back which checklist was dragged.
@@ -162,6 +176,13 @@ export function SideMenu({
   );
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  // Namespaces are changed seldom, so the section folds shut by default and
+  // shows only the active namespace; clicking the heading reveals the rest.
+  const [namespacesExpanded, setNamespacesExpanded] = useState(false);
+  // The footer "About" dropdown (source / privacy / what's new), opened
+  // against `aboutRef` and flipped upward by `FloatingPanel`.
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const aboutRef = useRef<HTMLButtonElement>(null);
   const toggleFolder = (id: string) =>
     setCollapsedFolders((prev) => {
       const next = new Set(prev);
@@ -372,85 +393,103 @@ export function SideMenu({
   // The drawer's body — identical whether it slides in over a backdrop
   // (narrow viewports) or sits docked as a permanent sidebar (pinned). Only
   // the framing `<nav>` differs between the two, so the rows live here once.
+  // Collapsed, the namespace section shows only the active namespace (so the
+  // user still sees where they are); expanded, it lists them all.
+  const visibleNamespaces = namespacesExpanded
+    ? namespaces
+    : namespaces.filter((ns) => ns.slug === activeNamespace);
+
   const sections = (
     <>
-      <SectionHeader
-        label={t("namespace.section")}
-        onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
-        addLabel={t("namespace.manage")}
-        addIcon={<CogIcon className="h-4 w-4" />}
-      />
-      {namespaces.map((ns) => {
-        // A namespace that has picked an icon or a colour shows its own
-        // glyph, tinted to its accent — only the glyph is coloured, never
-        // the row's text. One left untouched gets the plain folder fallback;
-        // the active namespace reads from the row's accent highlight (and the
-        // icon's accent tint) rather than a swapped-in checkmark.
-        const customised = Boolean(ns.glyph || ns.color);
-        const icon = customised ? (
-          <NamespaceGlyph
-            name={ns.glyph}
-            className="h-5 w-5"
-            style={ns.color ? { color: ns.color } : undefined}
-          />
-        ) : (
-          <FolderIcon className="h-5 w-5" />
-        );
-        // Every namespace but the active one is a drop target: dropping a
-        // checklist onto it moves the list into that namespace.
-        const droppable = ns.slug !== activeNamespace;
-        const nsKey = checklistDropNamespaceKey(ns.slug);
-        const row = (
-          <NavItem
-            icon={icon}
-            label={ns.name}
-            active={ns.slug === activeNamespace}
-            dropId={droppable ? nsKey : undefined}
-            isDropTarget={
-              droppable && (dropTarget === nsKey || activeDropKey === nsKey)
-            }
-            onDragOver={droppable ? (e) => allowDropOn(e, nsKey) : undefined}
-            onDragLeave={droppable ? () => setDropTarget(null) : undefined}
-            onDrop={droppable ? (e) => commitDrop(e, nsKey) : undefined}
-            onClick={() => {
-              onSwitchNamespace(ns.slug);
-              close();
-            }}
-          />
-        );
-        // The default namespace can't be removed — render it plain.
-        if (ns.slug === DEFAULT_NAMESPACE_SLUG) {
-          return <div key={ns.slug}>{row}</div>;
-        }
-        return (
-          <SwipeToRemove
-            key={ns.slug}
-            actionLabel={t("namespace.deleteAction")}
-            confirmLabel={t("namespace.confirmDelete")}
-            onRemove={() => onRemoveNamespace(ns.slug)}
-          >
-            {row}
-          </SwipeToRemove>
-        );
-      })}
+      {/* Namespace — a fixed (non-scrolling) header that folds the seldom-
+          touched list away. The cog still opens the manage dialog; the
+          heading itself toggles the fold. */}
+      <div className="shrink-0">
+        <SectionHeader
+          label={t("namespace.section")}
+          collapsible
+          expanded={namespacesExpanded}
+          onToggle={() => setNamespacesExpanded((v) => !v)}
+          onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
+          addLabel={t("namespace.manage")}
+          addIcon={<CogIcon className="h-4 w-4" />}
+        />
+        {visibleNamespaces.map((ns) => {
+          // A namespace that has picked an icon or a colour shows its own
+          // glyph, tinted to its accent — only the glyph is coloured, never
+          // the row's text. One left untouched gets the plain folder fallback;
+          // the active namespace reads from the row's accent highlight (and the
+          // icon's accent tint) rather than a swapped-in checkmark.
+          const customised = Boolean(ns.glyph || ns.color);
+          const icon = customised ? (
+            <NamespaceGlyph
+              name={ns.glyph}
+              className="h-5 w-5"
+              style={ns.color ? { color: ns.color } : undefined}
+            />
+          ) : (
+            <FolderIcon className="h-5 w-5" />
+          );
+          // Every namespace but the active one is a drop target: dropping a
+          // checklist onto it moves the list into that namespace.
+          const droppable = ns.slug !== activeNamespace;
+          const nsKey = checklistDropNamespaceKey(ns.slug);
+          const row = (
+            <NavItem
+              icon={icon}
+              label={ns.name}
+              active={ns.slug === activeNamespace}
+              dropId={droppable ? nsKey : undefined}
+              isDropTarget={
+                droppable && (dropTarget === nsKey || activeDropKey === nsKey)
+              }
+              onDragOver={droppable ? (e) => allowDropOn(e, nsKey) : undefined}
+              onDragLeave={droppable ? () => setDropTarget(null) : undefined}
+              onDrop={droppable ? (e) => commitDrop(e, nsKey) : undefined}
+              onClick={() => {
+                onSwitchNamespace(ns.slug);
+                close();
+              }}
+            />
+          );
+          // The default namespace can't be removed — render it plain.
+          if (ns.slug === DEFAULT_NAMESPACE_SLUG) {
+            return <div key={ns.slug}>{row}</div>;
+          }
+          return (
+            <SwipeToRemove
+              key={ns.slug}
+              actionLabel={t("namespace.deleteAction")}
+              confirmLabel={t("namespace.confirmDelete")}
+              onRemove={() => onRemoveNamespace(ns.slug)}
+            >
+              {row}
+            </SwipeToRemove>
+          );
+        })}
+      </div>
       {/* The Checklists heading carries no inline "+" any more — New list,
-          New folder, and Archive all live on the compact action bar below. */}
+          New folder, and Archive all live on the compact action bar below. It
+          stays fixed; only the list beneath it scrolls. */}
       <SectionHeader label={t("nav.checklists")} border />
-      {/* The whole folders + ungrouped region is the root drop zone — dropping
-          a list here (outside any folder) returns it to the top level. Folders
-          nest inside as their own drop targets (their dragover stops
-          propagation so the root highlight doesn't also light up). */}
+      {/* The only part of the drawer that grows is the checklist list, so it
+          alone scrolls (`flex-1` + `min-h-0` so it can shrink below content
+          height) while the namespace header above and the action / footer rows
+          below stay put. The whole folders + ungrouped region is the root drop
+          zone — dropping a list here (outside any folder) returns it to the top
+          level. Folders nest inside as their own drop targets (their dragover
+          stops propagation so the root highlight doesn't also light up). */}
       <div
         {...{ [CHECKLIST_DROP_ATTR]: CHECKLIST_DROP_ROOT }}
         onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ROOT)}
         onDragLeave={() => setDropTarget(null)}
         onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ROOT)}
-        className={
+        className={`min-h-0 flex-1 overflow-y-auto ${
           dropTarget === CHECKLIST_DROP_ROOT ||
           activeDropKey === CHECKLIST_DROP_ROOT
-            ? "rounded-sm bg-accent/10"
-            : undefined
-        }
+            ? "bg-accent/10"
+            : ""
+        }`}
       >
         {folders.map(renderFolder)}
         {ungroupedChecklists.map((c) => renderChecklistRow(c))}
@@ -470,7 +509,7 @@ export function SideMenu({
           saving vertical space. The three cells split the width evenly; the
           parent owns the border, rounding, and inner dividers. Archive lights
           up accent while its view is showing and carries the archived count. */}
-      <div className="px-3 pt-2 pb-1">
+      <div className="shrink-0 px-3 pt-2 pb-1">
         <div className="flex divide-x divide-line overflow-hidden rounded-md border border-line">
           <BarButton
             icon={<PlusIcon className="h-5 w-5" />}
@@ -502,12 +541,12 @@ export function SideMenu({
           />
         </div>
       </div>
-      {/* Undo / redo: a pair of side-by-side buttons pinned to the foot of
-          the list (mt-auto), so they sit just above the footer's divider and
-          fall under the thumb. Two columns share one row to save vertical
+      {/* Undo / redo: a pair of side-by-side buttons just above the footer's
+          divider, fixed so they fall under the thumb regardless of how long
+          the checklist list is. Two columns share one row to save vertical
           space; each keeps the drawer open so a burst of reverts can be
           applied without reopening it. */}
-      <div className="mt-auto flex gap-2 px-3 pt-3 pb-1">
+      <div className="flex shrink-0 gap-2 px-3 pt-3 pb-1">
         <EditButton
           icon={<UndoIcon className="h-5 w-5" />}
           label={t("nav.undo")}
@@ -521,9 +560,11 @@ export function SideMenu({
           onClick={redo}
         />
       </div>
-      {/* The old top-right burger menu, pinned to the foot of the
-                drawer with its order inverted so it reads bottom-up. */}
-      <div className="flex flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
+      {/* The relocated burger menu, fixed at the foot of the drawer: Donate,
+          the trophy, an "About" dropdown that folds away the project links
+          (source / privacy / what's new), and Settings pinned last under the
+          thumb. */}
+      <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
         {donateUrl && (
           <MenuLink
             icon={<HeartIcon className="h-5 w-5 text-danger" />}
@@ -533,35 +574,70 @@ export function SideMenu({
             onClick={close}
           />
         )}
-        <MenuLink
-          icon={<CodeIcon className="h-5 w-5" />}
-          label={t("menu.source")}
-          href={SOURCE_URL}
-          external
-          sublabel={BUILD_LABEL}
-          onClick={close}
-        />
-        <MenuLink
-          icon={<ShieldIcon className="h-5 w-5" />}
-          label={t("menu.privacy")}
-          href={privacyUrl}
-          onClick={close}
-        />
         {/* The trophy, relocated from the header. It does its own
             quiet-vs-lit dispatch, so it just needs the drawer closed
             behind it. Hides itself when achievements are disabled. */}
         <TrophyButton onSelect={close} />
-        <MenuButton
-          icon={<SparklesIcon className="h-5 w-5" />}
-          label={t("menu.changelog")}
-          onClick={() => pick(() => dispatch({ kind: "changelog" }))}
-        />
+        {/* About: a single row that reveals the project links in an
+            upward-flipping dropdown (there's no room below at the foot of the
+            drawer). The chevron points up to signal that. */}
+        <button
+          ref={aboutRef}
+          type="button"
+          role="menuitem"
+          aria-haspopup="menu"
+          aria-expanded={aboutOpen}
+          onClick={() => setAboutOpen((v) => !v)}
+          className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
+        >
+          <span className="text-muted">
+            <HelpCircleIcon className="h-5 w-5" />
+          </span>
+          <span className="flex-1">{t("menu.about")}</span>
+          <ChevronUpIcon className="h-4 w-4 text-muted" />
+        </button>
         <MenuButton
           icon={<CogIcon className="h-5 w-5" />}
           label={t("menu.settings")}
           onClick={() => pick(() => dispatch({ kind: "settings" }))}
         />
       </div>
+      <FloatingPanel
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        triggerRef={aboutRef}
+        placement={ABOUT_PLACEMENT}
+        className="py-1"
+      >
+        <MenuButton
+          icon={<SparklesIcon className="h-5 w-5" />}
+          label={t("menu.changelog")}
+          onClick={() => {
+            setAboutOpen(false);
+            pick(() => dispatch({ kind: "changelog" }));
+          }}
+        />
+        <MenuLink
+          icon={<CodeIcon className="h-5 w-5" />}
+          label={t("menu.source")}
+          href={SOURCE_URL}
+          external
+          sublabel={BUILD_LABEL}
+          onClick={() => {
+            setAboutOpen(false);
+            close();
+          }}
+        />
+        <MenuLink
+          icon={<ShieldIcon className="h-5 w-5" />}
+          label={t("menu.privacy")}
+          href={privacyUrl}
+          onClick={() => {
+            setAboutOpen(false);
+            close();
+          }}
+        />
+      </FloatingPanel>
       {menuState && (
         <ContextMenu
           x={menuState.x}
@@ -582,7 +658,7 @@ export function SideMenu({
     return (
       <nav
         aria-label={t("nav.label")}
-        className={`relative flex h-full w-64 shrink-0 flex-col overflow-y-auto bg-surface [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
+        className={`relative flex h-full w-64 shrink-0 flex-col overflow-hidden bg-surface [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
           onRight ? "order-last border-l border-line" : "border-r border-line"
         }`}
       >
@@ -636,7 +712,7 @@ export function SideMenu({
           <nav
             id={drawerId}
             aria-label={t("nav.label")}
-            className={`relative flex w-64 max-w-[80%] flex-col overflow-y-auto bg-surface shadow-xl [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
+            className={`relative flex w-64 max-w-[80%] flex-col overflow-hidden bg-surface shadow-xl [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
               onRight
                 ? "drawer-panel-right border-l border-line"
                 : "drawer-panel-left border-r border-line"

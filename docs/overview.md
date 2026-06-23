@@ -318,25 +318,32 @@ drag to either vertical edge (its resting spot persists in
 `menuButtonPosition`). Pressing the
 button slides the drawer in from that edge over a dimmed backdrop (a CSS
 `animation` that plays off the mount — the `drawer-*` keyframes in
-`styles/theme.css` — so there is no first-frame snap). The drawer opens
-with the **namespace** section — the known namespaces (the active one
-checked, click to switch), its heading carrying a trailing "+" that opens
-`NamespacesModal` — then the **Checklists** switcher (every list by name,
-the active one marked, click to switch + navigate; the heading's trailing
-"+" appends a default-named list; each row badged with that list's count
-of not-yet-completed items — active, non-archived, still unchecked —
-hidden when the list is empty or fully checked off), with the Archive view
-sitting at the foot of that same list (badged with the archived-item
-count) rather than in a section of its own; the Undo / Redo actions sit as a
-side-by-side button pair pinned to the foot of the list, just above the
-footer's divider. It highlights the
-active list and current view. The "+" affordances replace the full-width
-"New namespace" / "New checklist" rows the drawer used to carry, and a
-shared `SectionHeader` renders each heading with its optional action.
-Pinned to the foot are the relocated
-burger-menu links — settings, "what's new", privacy, the source on GitHub
-(with the app version shown as a subtitle), and an optional donate link.
-The drawer's open/current/position state comes from `useNav`
+`styles/theme.css` — so there is no first-frame snap). **Only the
+checklist list scrolls.** The drawer is a fixed-height flex column whose
+namespace header, Checklists heading, action bar, Undo / Redo pair, and
+footer all stay put (`shrink-0`); the checklist region between them is the
+single growing part (`flex-1 min-h-0 overflow-y-auto`), so a long list
+scrolls under stationary chrome instead of pushing the footer off-screen.
+The drawer opens with the **namespace** section — a **collapsible**
+heading (`SectionHeader`'s `collapsible`/`expanded`/`onToggle`) that folds
+the seldom-changed list away by default, showing only the active namespace
+beneath it so the user keeps context; clicking the heading reveals every
+namespace (the active one checked, click to switch), and its trailing
+cogwheel opens `NamespacesModal`. Then the **Checklists** switcher (every
+list by name, the active one marked, click to switch + navigate; each row
+badged with that list's count of not-yet-completed items — active,
+non-archived, still unchecked — hidden when the list is empty or fully
+checked off), with the Archive view living on the action bar below rather
+than in a section of its own; the Undo / Redo actions sit as a
+side-by-side button pair just above the footer's divider. It highlights the
+active list and current view. A shared `SectionHeader` renders each heading
+with its optional action. Pinned to the foot are the relocated burger-menu
+rows — an optional donate link, the trophy, an **About** dropdown, and
+settings (last, under the thumb). The About row reveals the project links —
+"what's new", the source on GitHub (with the app version as a subtitle),
+and privacy — in a `FloatingPanel` that flips **upward** (there is no room
+below at the foot of the drawer). The drawer's open/current/position state
+comes from `useNav`
 (`src/ui/nav-context.ts`, which exports the `View` type
 `"checklist" | "archive"`) and the undo/redo/archive counts plus
 `removeChecklist` from `useChecklistContext`; the namespace list and its

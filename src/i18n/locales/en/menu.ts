@@ -9,6 +9,7 @@ const menu = {
   privacy: "Privacy policy",
   source: "View source",
   donate: "Donate",
+  about: "About",
 } as const;
 
 export type MenuCatalog = Widen<typeof menu>;

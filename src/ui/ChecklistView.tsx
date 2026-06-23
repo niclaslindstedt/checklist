@@ -404,10 +404,7 @@ function ChecklistViewImpl() {
       // The top-position composer sits above the whole list (nothing to back
       // up into); the bottom-position one sits past the last row.
       onBackspaceEmpty={() =>
-        backspaceDraft(
-          addItemPosition === "top" ? 0 : rows.length,
-          closeDraft,
-        )
+        backspaceDraft(addItemPosition === "top" ? 0 : rows.length, closeDraft)
       }
       notesDisabled={disableItemNotes}
     />
@@ -422,7 +419,9 @@ function ChecklistViewImpl() {
         onAddWithBody={addChildAndEditBody}
         onImport={importChildItems}
         onClose={closeChildDraft}
-        onBackspaceEmpty={() => backspaceDraft(childDraftIndex, closeChildDraft)}
+        onBackspaceEmpty={() =>
+          backspaceDraft(childDraftIndex, closeChildDraft)
+        }
         notesDisabled={disableItemNotes}
         depth={childDraftDepth}
       />
@@ -438,7 +437,9 @@ function ChecklistViewImpl() {
         onAddWithBody={addAfterAndEditBody}
         onImport={importAfterItems}
         onClose={closeAfterDraft}
-        onBackspaceEmpty={() => backspaceDraft(afterDraftIndex, closeAfterDraft)}
+        onBackspaceEmpty={() =>
+          backspaceDraft(afterDraftIndex, closeAfterDraft)
+        }
         notesDisabled={disableItemNotes}
         depth={afterDraftDepth}
       />
