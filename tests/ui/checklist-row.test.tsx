@@ -303,6 +303,18 @@ describe("ChecklistRow editing", () => {
     expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
   });
 
+  it("prevents the row-line mousedown default so a tap can't blur an open editor", () => {
+    // Pressing a row commits — and shrinks — an editor open on another row,
+    // sliding the tapped row up so the trailing click misses and the keyboard
+    // drops. Holding focus by preventing the mousedown default keeps the tap on
+    // target. (jsdom can't reproduce the layout shift, so guard the mechanism.)
+    renderRow();
+    const line = screen.getByText("Buy milk").closest("div")!;
+    const ev = createEvent.mouseDown(line);
+    fireEvent(line, ev);
+    expect(ev.defaultPrevented).toBe(true);
+  });
+
   it("opens a draft below this row after committing a title on Enter", () => {
     const onEdit = vi.fn();
     const onAddAfter = vi.fn();

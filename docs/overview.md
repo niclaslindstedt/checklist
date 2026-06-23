@@ -100,7 +100,14 @@ The whole row line is the tap target, not just the title glyphs: a click
 on the row that doesn't land on a real control (the checkbox, caret,
 chevron, grip, or the title button) is treated as a title tap, so the dead
 space beside the text and the row's vertical padding open the editor too
-instead of just blurring an open one.
+instead of just blurring an open one. The row line also `preventDefault`s
+its `mousedown` (the same trick the editor `Checkbox` uses): pressing a row
+while another row's editor is open would otherwise blur-commit that editor,
+shrink it (its affordance row disappears), and slide every row below it up —
+so the trailing click would miss the row that moved and the keyboard would
+drop. Holding focus until the click lands keeps the tap on target; the newly
+opened editor then takes focus and the previous one commits, so editing moves
+field-to-field and the keyboard never disappears.
 
 ### Edit item
 

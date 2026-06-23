@@ -353,6 +353,16 @@ function ChecklistRowImpl({
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
         <div
           className="flex min-h-11 items-center gap-3"
+          // Keep tapping this row from blurring an editor already open on
+          // another row: the blur commits that editor, which shrinks it (the
+          // affordance row disappears) and slides every row below it up — so by
+          // the time the trailing click fires, the tapped row has moved out
+          // from under the finger and the tap misses, dropping the keyboard.
+          // Preventing the mousedown default holds focus until the click lands
+          // and opens this row, at which point its editor takes focus and the
+          // previous one commits — focus moves field-to-field, so the keyboard
+          // never disappears. Mirrors the editor `Checkbox`'s onMouseDown trick.
+          onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => {
             if ((e.target as HTMLElement).closest("button, label, input, a"))
               return;
