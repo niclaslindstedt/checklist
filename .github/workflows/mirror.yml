@@ -1,30 +1,21 @@
 name: Mirror
 
-# Push a copy of this repo to an external git mirror on any provider
-# (GitLab, Codeberg / Gitea, Bitbucket, a self-hosted host, ...). The
-# sibling projects (budget / notes) copy features from each other, and
-# some Claude Code sandboxes can reach an arbitrary git host over plain
-# `git` while github.com egress is blocked (403) — so a mirror lets a
-# sibling `git clone` this repo *with full history* instead of falling
-# back to fetching files over raw.githubusercontent.com (see the
-# copy-feature skill's clone-sibling.mjs).
+# Push main to an external git mirror on every commit to main, so the
+# sibling projects (budget / notes) can `git clone` this repo with full
+# history — even from sandboxes where github.com egress is blocked (403).
+# Provider-agnostic: GitLab, Codeberg / Gitea, Bitbucket, self-hosted.
 #
-# One-time setup (no code change needed — the job is a no-op until set):
-#   1. Create the mirror project on your provider, e.g.
-#      gitlab.com/<ns>/checklist or codeberg.org/<ns>/checklist.
-#   2. Add a repository **variable** MIRROR_URL — host+path without the
-#      scheme, e.g. `gitlab.com/<ns>/checklist.git`.
-#   3. Add a repository **secret** MIRROR_TOKEN — a push token/PAT for
-#      that project.
-#   4. (Optional) repository **variable** MIRROR_USER — the basic-auth
-#      username the provider pairs with a token. Defaults to `oauth2`
-#      (GitLab). Use `x-access-token` for GitHub, `x-token-auth` for
-#      Bitbucket, or your username for Gitea / Codeberg.
+# Setup (the job is a no-op until configured):
+#   - variable MIRROR_URL    e.g. `gitlab.com/<ns>/checklist.git`
+#   - secret   MIRROR_TOKEN  a push token / PAT with write access
+#   - variable MIRROR_USER   (optional) basic-auth username paired with
+#                            the token; defaults to `oauth2` (GitLab). Use
+#                            `x-token-auth` for Bitbucket, your username
+#                            for Gitea / Codeberg.
 
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -38,15 +29,16 @@ concurrency:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    # Skip on forks and until the mirror is configured, so the workflow
-    # is inert rather than red before setup.
+    # Inert (skipped) until the mirror is configured.
     if: vars.MIRROR_URL != ''
     steps:
+      # fetch-depth: 0 so the mirror gets full history and stays cloneable
+      # with history, not just the latest commit.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Push main + tags to the mirror
+      - name: Push main to the mirror
         env:
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
           MIRROR_URL: ${{ vars.MIRROR_URL }}
@@ -56,13 +48,6 @@ jobs:
             echo "::error::MIRROR_URL is set but the MIRROR_TOKEN secret is missing."
             exit 1
           fi
-          # Basic-auth username the provider expects with a token; oauth2
-          # is GitLab's convention and a safe default.
-          user="${MIRROR_USER:-oauth2}"
-          # Make sure tags are present (checkout fetches history but not
-          # always every tag), then mirror main and all tags. --force so
-          # the mirror always converges on this repo's state.
-          git fetch --tags --force origin
-          git push --force "https://${user}:${MIRROR_TOKEN}@${MIRROR_URL}" \
-            "refs/remotes/origin/main:refs/heads/main" \
-            "+refs/tags/*:refs/tags/*"
+          git push --force \
+            "https://${MIRROR_USER:-oauth2}:${MIRROR_TOKEN}@${MIRROR_URL}" \
+            HEAD:refs/heads/main
