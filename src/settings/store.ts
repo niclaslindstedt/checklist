@@ -67,6 +67,11 @@ export const DEFAULT_DISABLE_ITEM_NOTES = false;
 // opt-out hides it for a cleaner header without changing any behaviour.
 export const DEFAULT_SHOW_ITEM_COUNT = true;
 
+// Copying a list leaves the archived items out by default — the clipboard
+// gets just the active task lines. The opt-in appends the `## Archived`
+// section to the copied markdown.
+export const DEFAULT_INCLUDE_ARCHIVED_IN_COPY = false;
+
 // The achievements system is on by default. The opt-out stops tracking and
 // hides the trophy button without discarding already-earned progress.
 export const DEFAULT_DISABLE_ACHIEVEMENTS = false;
@@ -85,6 +90,7 @@ export function defaultSettings(): Settings {
     disableToasts: DEFAULT_DISABLE_TOASTS,
     disableItemNotes: DEFAULT_DISABLE_ITEM_NOTES,
     showItemCount: DEFAULT_SHOW_ITEM_COUNT,
+    includeArchivedInCopy: DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements: {},
     unseenAchievements: [],
@@ -226,6 +232,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.showItemCount === "boolean"
         ? raw.showItemCount
         : DEFAULT_SHOW_ITEM_COUNT,
+    includeArchivedInCopy:
+      typeof raw.includeArchivedInCopy === "boolean"
+        ? raw.includeArchivedInCopy
+        : DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
     disableAchievements:
       typeof raw.disableAchievements === "boolean"
         ? raw.disableAchievements

@@ -510,6 +510,47 @@ describe("ChecklistView", () => {
       expect(md).toContain("- [x] Bread");
       expect(md).not.toContain("---");
     });
+
+    const withArchived: Checklist = {
+      version: 1,
+      id: "list-1",
+      templateId: "",
+      name: "Groceries",
+      items: [
+        { id: "a", title: "Milk", checked: false },
+        { id: "b", title: "Bread", checked: true, archived: true },
+      ],
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+
+    it("omits the archived section when includeArchivedInCopy is off", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+      renderView({ activeList: withArchived, includeArchivedInCopy: false });
+      fireEvent.click(
+        screen.getByRole("button", { name: "Copy checklist as markdown" }),
+      );
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      const md = writeText.mock.calls[0]![0] as string;
+      expect(md).toContain("- [ ] Milk");
+      expect(md).not.toContain("## Archived");
+      expect(md).not.toContain("Bread");
+    });
+
+    it("appends the archived section when includeArchivedInCopy is on", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+      renderView({ activeList: withArchived, includeArchivedInCopy: true });
+      fireEvent.click(
+        screen.getByRole("button", { name: "Copy checklist as markdown" }),
+      );
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      const md = writeText.mock.calls[0]![0] as string;
+      expect(md).toContain("- [ ] Milk");
+      expect(md).toContain("## Archived");
+      expect(md).toContain("Bread");
+    });
   });
 
   describe("sub-item composer", () => {

@@ -514,6 +514,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "copyTheArchive",
+    tier: "expert",
+    glyph: ArchiveGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.includeArchivedInCopy],
+      predicate: (prev, next) =>
+        !prev.settings.includeArchivedInCopy &&
+        next.settings.includeArchivedInCopy,
+    },
+  },
+  {
     id: "underTheHood",
     tier: "expert",
     glyph: CodeGlyph,

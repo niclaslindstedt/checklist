@@ -167,6 +167,20 @@ describe("validateSettings", () => {
     expect(validateSettings({ showItemCount: "no" }).showItemCount).toBe(true);
   });
 
+  it("excludes archived from a copy by default and honours an explicit boolean", () => {
+    expect(defaultSettings().includeArchivedInCopy).toBe(false);
+    expect(validateSettings({}).includeArchivedInCopy).toBe(false);
+    expect(
+      validateSettings({ includeArchivedInCopy: true }).includeArchivedInCopy,
+    ).toBe(true);
+  });
+
+  it("falls back to excluding archived on a non-boolean value", () => {
+    expect(
+      validateSettings({ includeArchivedInCopy: "yes" }).includeArchivedInCopy,
+    ).toBe(false);
+  });
+
   it("keeps checked items in place by default and honours an explicit boolean", () => {
     expect(defaultSettings().sortCheckedToBottom).toBe(false);
     expect(validateSettings({}).sortCheckedToBottom).toBe(false);

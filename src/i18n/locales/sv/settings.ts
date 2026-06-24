@@ -57,6 +57,9 @@ const settings: SettingsCatalog = {
     showItemCount: "Visa antal poster",
     showItemCountHint:
       "Visa förloppsräknaren (bockade / totalt) i listans rubrik.",
+    includeArchivedInCopy: "Ta med arkiverade vid kopiering",
+    includeArchivedInCopyHint:
+      "När du kopierar en lista läggs dess arkiverade poster till under en rubrik ”Arkiverade”. Av som standard – en kopia innehåller bara de aktiva posterna.",
   },
 
   developer: {

@@ -279,12 +279,17 @@ untouched.
 glyph (and leftmost of the right-hand controls when no cloud backend is
 active). Tapping it writes the active checklist to the clipboard as plain
 task-list markdown via `checklistBodyMarkdown` (the `# Name` heading and
-every `- [ ]` / `- [x]` line, checked items still checked, archived items
-under `## Archived`) — **without** the persistence frontmatter the
-on-disk `.md` files carry. It raises a confirmation toast and flips to a
-tick for a beat so the copy reads even with toasts disabled; a failed
-clipboard write raises an error toast. The body it produces round-trips
-back through the paste-import path (see [Add-item form](#add-item-form)).
+every `- [ ]` / `- [x]` line, checked items still checked) — **without**
+the persistence frontmatter the on-disk `.md` files carry. Whether the
+archived items come along under a `## Archived` section is governed by the
+**Include archived in copy** setting (`includeArchivedInCopy`, off by
+default — see [Include archived in copy](#include-archived-in-copy)); the
+flag is passed to `checklistBodyMarkdown` as its `includeArchived`
+argument, which still defaults to `true` so the on-disk `.md` file keeps
+the whole archive. It raises a confirmation toast and flips to a tick for
+a beat so the copy reads even with toasts disabled; a failed clipboard
+write raises an error toast. The body it produces round-trips back through
+the paste-import path (see [Add-item form](#add-item-form)).
 
 ### Archive view
 
@@ -1183,6 +1188,23 @@ for a cleaner header; the flag rides the checklist context
 (`showItemCount` on `ChecklistContextValue`, set by `App` from the
 settings) to `ChecklistView`, which drops the badge when it's off. Hiding
 it unlocks the **Lost Count** achievement.
+
+### Include archived in copy
+
+The **Include archived in copy** toggle on the Lists tab
+(`includeArchivedInCopy` on the synced `Settings`, **off** by default)
+governs whether the [copy button](#copy-checklist) appends the archived
+items — the `## Archived` section — to the markdown it puts on the
+clipboard. With it off, a copied list is just its active `- [ ]` / `- [x]`
+lines; turning it on copies the archive too. The flag rides the checklist
+context (`includeArchivedInCopy` on `ChecklistContextValue`, set by `App`
+from the settings) to `ChecklistView`, which hands it to `CopyButton` as
+its `includeArchived` prop; that prop becomes the `includeArchived`
+argument to `checklistBodyMarkdown`. The argument defaults to `true`, so
+the only caller that opts out is the copy path — the on-disk `.md` file
+(`checklistToMarkdown`) always writes the full archive, since there the
+archive is the live store, not an export. Turning the setting on unlocks
+the **Copy the Archive** achievement.
 
 ### Appearance / theme tab
 
