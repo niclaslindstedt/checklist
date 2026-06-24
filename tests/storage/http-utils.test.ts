@@ -1,9 +1,42 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeError,
   parseRetryAfterMs,
   readErrorBody,
+  requestLabel,
 } from "../../src/storage/http-utils.ts";
+
+describe("requestLabel", () => {
+  it("reduces a URL to its host and path", () => {
+    expect(
+      requestLabel("https://api.dropboxapi.com/2/files/download?foo=bar"),
+    ).toBe("api.dropboxapi.com/2/files/download");
+  });
+
+  it("omits the query string and any access token", () => {
+    expect(
+      requestLabel("https://www.googleapis.com/drive/v3/files?access_token=s3cret"),
+    ).toBe("www.googleapis.com/drive/v3/files");
+  });
+
+  it("falls back to the raw string when the URL can't be parsed", () => {
+    expect(requestLabel("not a url")).toBe("not a url");
+  });
+});
+
+describe("describeError", () => {
+  it("formats an Error as Name: message", () => {
+    expect(describeError(new TypeError("Load failed"))).toBe(
+      "TypeError: Load failed",
+    );
+  });
+
+  it("stringifies a non-Error throw", () => {
+    expect(describeError("boom")).toBe("boom");
+    expect(describeError(42)).toBe("42");
+  });
+});
 
 describe("parseRetryAfterMs", () => {
   it("converts a delta-seconds header to milliseconds", () => {

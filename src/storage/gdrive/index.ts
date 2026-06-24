@@ -29,7 +29,12 @@ import {
   fileNamespaceStore,
   type NamespaceRegistryStore,
 } from "../namespace-store.ts";
-import { parseRetryAfterMs, readErrorBody } from "../http-utils.ts";
+import {
+  describeError,
+  parseRetryAfterMs,
+  readErrorBody,
+  requestLabel,
+} from "../http-utils.ts";
 
 const log = createLogger("gdrive");
 
@@ -139,25 +144,6 @@ function createLoggedFetch(fetchImpl: FetchImpl): LoggedFetch {
     else log.warn(line);
     return res;
   };
-}
-
-// `host/path` of a request URL for the sync log — identifies the endpoint
-// (which host, which operation) without ever logging the access token (it
-// rides in the `Authorization` header), the search query, or any body.
-function requestLabel(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.host}${u.pathname}`;
-  } catch {
-    return url;
-  }
-}
-
-// A compact "Name: message" for a thrown value, so a bare WebKit
-// `TypeError: Load failed` (a network-level failure) is legible in the log.
-function describeError(err: unknown): string {
-  if (err instanceof Error) return `${err.name}: ${err.message}`;
-  return String(err);
 }
 
 // Returns a URL that opens Drive's web UI (the app folder, or My Drive

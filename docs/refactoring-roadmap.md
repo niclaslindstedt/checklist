@@ -64,21 +64,21 @@ _None pending._
   Dropbox OAuth, unreachable from Vitest). Keep each PR < 500 lines.
   **Severity: 6.**
 
-- **HTTP-diagnostics helpers duplicated byte-for-byte across the cloud
-  adapters.** `requestLabel()` and `describeError()` (with their comment
-  blocks) are identical in `src/storage/gdrive/index.ts` (147–162, 663
-  lines) and `src/storage/dropbox/index.ts` (293–307, 502 lines); the
-  gdrive `createLoggedFetch()` wrapper (119–145) has an equivalent inline
-  twin inside Dropbox's `createAuthedFetch`. A shared
-  `src/storage/http-utils.ts` already exists (`parseRetryAfterMs`,
-  `readErrorBody`) and is the obvious home. **Plan:** move `requestLabel`
-  / `describeError` into `http-utils.ts` (pure, trivially unit-testable —
-  add the tests the move exposes), import from both adapters; optionally
-  lift a shared `createLoggedFetch(fetchImpl, label)` factory so both
-  backends instantiate one logger. **Risk:** low — pure helpers, but the
-  logged-fetch factory threads through the request hot path, so re-run
-  the storage tests and eyeball one real sync. Every future cloud backend
-  reimplements these today. **Severity: 5.**
+- **Shared logged-fetch block still duplicated across the cloud
+  adapters.** The pure `requestLabel` / `describeError` helpers are now
+  shared (see Landed, 2026-06), but the surrounding logging *block* —
+  `performance.now()` start, `elapsed()`, the `try { … } catch` that warns
+  with `describeError`, and the final `→ status (ms)` info/warn line — is
+  still written out inline in gdrive's `createLoggedFetch` (~119–142) and
+  Dropbox's `createAuthedFetch` (~250–287). Dropbox interleaves a
+  401-silent-refresh retry between the catch and the final status line, so
+  the two are not byte-for-byte and a clean `createLoggedFetch(fetchImpl,
+  label)` factory has to thread that retry hook through. **Plan:** lift a
+  shared logger that takes the fetch thunk and an optional post-throw retry
+  callback; Dropbox composes it with its refresh step. **Risk:** threads
+  the request + auth hot path which has **no automated coverage** —
+  smoke-test a real Dropbox 401-refresh by hand. Lower value than the pure
+  helpers were. **Severity: 3.**
 
 - **Namespace CRUD repeats read→setState→push four times in
   `useStorageBackend.ts`.** `createNamespace`, `renameNamespace`,
@@ -129,7 +129,12 @@ _None pending._
 
 ## Landed
 
-_None._
+- **Shared `requestLabel` / `describeError` across the cloud adapters**
+  (2026-06). Moved the two byte-for-byte-identical HTTP-diagnostics helpers
+  out of `src/storage/gdrive/index.ts` and `src/storage/dropbox/index.ts`
+  into `src/storage/http-utils.ts` and imported them from both; added unit
+  tests (now 100% coverage on `http-utils.ts`). The surrounding
+  logged-fetch block is left as a narrower Severity-3 follow-up in Pending.
 
 ## Investigated and skipped
 

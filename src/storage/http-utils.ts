@@ -14,6 +14,32 @@ export async function readErrorBody(res: Response): Promise<string> {
 }
 
 /**
+ * `host/path` of a request URL for the sync log — identifies the endpoint
+ * (which host, which operation) without ever logging the access token (it
+ * rides in the `Authorization` header), the search query, the
+ * `Dropbox-API-Arg` file path, or any body. Falls back to the raw URL when
+ * it can't be parsed.
+ */
+export function requestLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.host}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * A compact "Name: message" for a thrown value, so a bare WebKit
+ * `TypeError: Load failed` (a network-level failure) is legible in the sync
+ * log. Non-`Error` throws are stringified.
+ */
+export function describeError(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  return String(err);
+}
+
+/**
  * Parse an HTTP `Retry-After` header (delta-seconds) into milliseconds,
  * clamped to never return below `fallbackMs`. A missing or non-numeric
  * header yields the fallback; a present value is floored at zero before
