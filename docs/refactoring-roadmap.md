@@ -92,20 +92,23 @@ _None pending._
 
 ### Easy wins
 
-- **Extract the phantom-conflict resolver from `directory-adapter.ts`
-  for testability.** `src/storage/directory-adapter.ts` (533 lines) embeds
-  a subtle fingerprint / write-history / order-independent conflict
-  algorithm inside a ~110-line `save()` closure that captures
-  `recentWrites` / `lastFoldersJson` local state, so the algorithm can't
-  be unit-tested in isolation. **Plan:** lift it into a small
-  `PhantomConflictResolver` (or pure helpers) the adapter delegates to,
-  then add the unit tests the seam makes possible — a high-value
-  correctness algorithm currently has no direct coverage. **Risk:** pure
-  relocation, but it guards real data-loss on flaky links — pin behaviour
-  with a test written against the current code first, then refactor under
-  it. **Severity: 4.**
+_None pending._
 
 ## Landed
+
+- **Extracted the phantom-conflict resolver into `phantom-conflict.ts`**
+  (2026-06). Lifted the fingerprint / order-independent `comparable`
+  canonical form and the adopt / overwrite / conflict verdict out of
+  `directory-adapter.ts`'s `save()` closure into a new pure
+  `src/storage/phantom-conflict.ts` (`fingerprint`, `comparable`,
+  `resolvePhantomConflict`), and added direct unit tests
+  (`tests/storage/phantom-conflict.test.ts`, 100% line / func, 91.66%
+  branch on the new module) the buried code couldn't have. The adapter
+  keeps the I/O and the persisted write log and delegates the verdict; the
+  encrypted-envelope conflict (no fingerprint) stays inline so its log line
+  reads correctly. Pure relocation, no behaviour change — the full
+  directory-adapter suite (incl. all phantom-conflict regressions) passes
+  unchanged. Shrank `directory-adapter.ts` 533 → ~490 lines.
 
 - **Extracted the namespace registry into `useNamespaceRegistry`**
   (2026-06). First seam of the `useStorageBackend.ts` god-hook split:

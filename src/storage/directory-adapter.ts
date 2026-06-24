@@ -36,6 +36,11 @@ import type { FileEntry, FileStore } from "./file-store.ts";
 import { snapshotToFiles } from "./markdown/codec.ts";
 import { filesToSnapshot } from "./markdown/codec.ts";
 import {
+  comparable,
+  fingerprint,
+  resolvePhantomConflict,
+} from "./phantom-conflict.ts";
+import {
   parse,
   parseFolders,
   serialize,
@@ -136,23 +141,6 @@ export function browserWriteLog(
     storage: localStorage,
     key: `checklist:writelog:${id}:${namespace}`,
   };
-}
-
-// A compact, dependency-free content fingerprint for the write history: the
-// string length plus two differently-seeded rolling hashes. Storing
-// fingerprints rather than whole documents keeps the persisted log tiny and
-// leaks no extra plaintext, while an accidental collision between two *distinct*
-// documents stays vanishingly unlikely — enough to tell this device's own
-// earlier write from another device's edit.
-function fingerprint(s: string): string {
-  let h1 = 0x811c9dc5;
-  let h2 = 0xc2b2ae35;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
-    h2 = Math.imul(h2 ^ c, 0x85ebca77) >>> 0;
-  }
-  return `${s.length}:${h1.toString(36)}:${h2.toString(36)}`;
 }
 
 // Default per-file retry curve: three retries on a network error, backing
@@ -311,31 +299,6 @@ export function createDirectoryAdapter(
     return injectFolders(rebuilt, snapshot.folders ?? []);
   }
 
-  // An order-independent canonical form of a document, for the phantom-conflict
-  // comparison only (never for what's written). `load` — and the remote
-  // readback below — rebuilds a snapshot in the backend's file-*listing* order,
-  // while the bytes we're about to write carry the *in-memory* order, which can
-  // come from the offline cache and need not match how the backend lists its
-  // files. The two then serialize the *same* content to the *same* byte length
-  // but a different top-level array order, so a raw string compare never
-  // matches — the field bug where the remote was byte-identical in size to this
-  // device's own earlier write yet came back "unrecognised". Sorting the
-  // checklist / template / folder arrays by id makes them comparable; item
-  // order *within* a list is intrinsic to the document and left untouched.
-  function comparable(text: string): string {
-    const snap = parse(text);
-    const byId = (a: { id: string }, b: { id: string }) =>
-      a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    const normalized: Snapshot = {
-      templates: [...snap.templates].sort(byId),
-      checklists: [...snap.checklists].sort(byId),
-    };
-    if (snap.folders && snap.folders.length > 0) {
-      normalized.folders = [...snap.folders].sort(byId);
-    }
-    return serialize(normalized);
-  }
-
   // Write the folder registry sidecar when it changed. Writes `[]` to clear a
   // sidecar whose folders were all removed; skips entirely on a folder-less
   // document that never had one, so a plain checklist folder gains no stray
@@ -428,40 +391,42 @@ export function createDirectoryAdapter(
         // write lands, yet the client never learns the new revision and keeps
         // basing on the stale one. So the next save sees the revision "move"
         // and would surface a conflict over the user's own edit.
-        if (writingFingerprint !== null) {
-          // Compare on the same order-independent footing the history is kept
-          // in: the remote was rebuilt from a file listing whose order need not
-          // match our in-memory document's.
-          const remoteFingerprint = fingerprint(comparable(remoteDoc));
-          if (writingFingerprint === remoteFingerprint) {
-            // The remote already holds exactly the document we're about to
-            // write: our own lost-response write of *these* bytes is what moved
-            // the revision. Adopt it and report success — nothing left to write.
-            log.info(
-              "save: remote already holds these bytes — adopting revision",
-            );
-            return { text, revision: current };
-          }
-          if (recentWrites.includes(remoteFingerprint)) {
-            // The remote holds an *earlier* write of ours (the lost-response
-            // one) and the user has since edited further, so the local document
-            // has moved ahead of what landed. Still not another device — write
-            // the newer bytes over the moved revision instead of conflicting.
-            log.info(
-              "save: remote holds an earlier local write — writing newer bytes over it",
-            );
-            // fall through to the write below, which re-bases on `before`.
-          } else {
-            log.warn(
-              "save: remote moved to an unrecognised document — real conflict",
-            );
-            throw new ConflictError({ text: remoteDoc, revision: current });
-          }
-        } else {
+        if (writingFingerprint === null) {
           // Encrypted: can't tell our own re-encryption from another device's
           // edit, so any revision move is treated as a genuine conflict.
           throw new ConflictError({ text: remoteDoc, revision: current });
         }
+        // Compare on the same order-independent footing the history is kept in:
+        // the remote was rebuilt from a file listing whose order need not match
+        // our in-memory document's.
+        const resolution = resolvePhantomConflict({
+          writingFingerprint,
+          remoteDoc,
+          recentWrites,
+        });
+        if (resolution === "adopt") {
+          // The remote already holds exactly the document we're about to write:
+          // our own lost-response write of *these* bytes is what moved the
+          // revision. Adopt it and report success — nothing left to write.
+          log.info(
+            "save: remote already holds these bytes — adopting revision",
+          );
+          return { text, revision: current };
+        }
+        if (resolution === "conflict") {
+          log.warn(
+            "save: remote moved to an unrecognised document — real conflict",
+          );
+          throw new ConflictError({ text: remoteDoc, revision: current });
+        }
+        // resolution === "overwrite": the remote holds an *earlier* write of
+        // ours (the lost-response one) and the user has since edited further, so
+        // the local document has moved ahead of what landed. Still not another
+        // device — fall through to the write below, which re-bases on `before`,
+        // writing the newer bytes over the moved revision instead of conflicting.
+        log.info(
+          "save: remote holds an earlier local write — writing newer bytes over it",
+        );
       }
     }
 
