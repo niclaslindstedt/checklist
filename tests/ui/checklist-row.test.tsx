@@ -23,9 +23,6 @@ function setText(el: HTMLElement, text: string): void {
 
 const dragHandleProps: DragHandleProps = {
   onPointerDown: noop,
-  onPointerMove: noop,
-  onPointerUp: noop,
-  onPointerCancel: noop,
 };
 
 const item: ChecklistItem = {
