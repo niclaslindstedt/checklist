@@ -535,7 +535,10 @@ function AppShell() {
             the menu isn't pinned, SideMenu renders only `position: fixed`
             layers (the floating button and the overlay drawer), which sit
             outside the flex flow — so the view keeps the full width. */}
-            <ChecklistDragProvider onDrop={onChecklistDrop}>
+            <ChecklistDragProvider
+              onDrop={onChecklistDrop}
+              aborted={checklist.conflict !== null}
+            >
               <div className="flex h-full">
                 <SideMenu
                   namespaces={storage.namespaces}

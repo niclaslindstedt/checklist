@@ -1378,6 +1378,28 @@ Two pointer paths back one gesture, ported from the `notes` sibling
   `FolderRow`), not on the wrapper behind it — otherwise the surface fill hides
   it and a hovered folder never lights up on touch.
 
+**Ending the gesture reliably.** Only `onPointerDown` lives on the row;
+`useTouchChecklistDrag` binds `pointermove`/`pointerup`/`pointercancel` to
+**`window`** for the rest of the drag (dropped on cleanup). Keeping them on the
+row instead would lean on the pointer capture `engage` requests — but capture is
+best-effort (some engines refuse it mid-gesture, and a pen/touch point can drift
+off the row), and a release the row never sees would leave the lifted list
+frozen mid-air. Off `window` the release is caught wherever the pointer ends up;
+a `pointercancel` aborts without filing. This mirrors the item-reorder drag
+(`useListReorder`), which already binds to `window` for the same reason.
+
+That covers a release that lands anywhere, but not the screen being seized while
+the finger is _still down_ — a background save colliding with another device
+raises the non-dismissable conflict modal over the list mid-drag. For that,
+`App` hands `ChecklistDragProvider` an `aborted` prop
+(`checklist.conflict !== null`); on its rising edge the provider clears the chip
+and bumps `DragAbortContext`, which each active `useTouchChecklistDrag` watches
+to tear its gesture down (so the lifted list can't hover over the modal, and a
+later release can't commit a move into the unresolved conflict), and which the
+native HTML5 drop zones in the side menu watch via `useChecklistDragAbort` to
+clear a lift that `dragend` would otherwise never resolve once the dragged row
+unmounts.
+
 Hovering the **ungrouped zone** (`CHECKLIST_DROP_ROOT`) frames the no-folder
 region with an accent border rather than just tinting it: folders always render
 above the loose lists, so the framed area below them is exactly where the list

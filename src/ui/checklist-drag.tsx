@@ -42,6 +42,7 @@ import { ChecklistIcon } from "./icons.tsx";
 import { useReportDragActivity } from "./drag-activity.ts";
 import {
   ActionsContext,
+  DragAbortContext,
   DropKeyContext,
   OnDropContext,
   useTouchChecklistDrag,
@@ -50,6 +51,7 @@ import {
 
 export function ChecklistDragProvider({
   onDrop,
+  aborted = false,
   children,
 }: {
   // Fired when a list is released over a drop target. `key` is the target's
@@ -57,10 +59,17 @@ export function ChecklistDragProvider({
   // `CHECKLIST_DROP_ARCHIVE` / `ns:<slug>`); the caller resolves it to an
   // action.
   onDrop: (checklistId: string, key: string) => void;
+  // When true, any in-flight drag is torn down: a sync-conflict modal (or a
+  // background reload) has seized the screen, so the lifted list must not stay
+  // frozen on top of it waiting for a pointerup/`dragend` that won't come.
+  aborted?: boolean;
   children: ReactNode;
 }) {
   const [dragging, setDragging] = useState<{ title: string } | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
+  // Bumped to tell every active row (and the native drop zones) to tear their
+  // drag down when `aborted` rises — see `DragAbortContext`.
+  const [abortGen, setAbortGen] = useState(0);
   const ghostRef = useRef<HTMLDivElement | null>(null);
   // Latest fingertip position, kept on a ref so the callback ref can place the
   // chip the instant it mounts (see `setGhostRef`).
@@ -108,6 +117,25 @@ export function ChecklistDragProvider({
     [applyGhostTransform],
   );
 
+  // Drop the floating chip and forget the in-flight drag without committing a
+  // move. Shared by the `cancel` action (a pointercancel) and the abort effect.
+  const cancelDrag = useCallback(() => {
+    checklistIdRef.current = null;
+    dropKeyRef.current = null;
+    setDragging(null);
+    setDropKey(null);
+  }, []);
+
+  // When the app raises `aborted` (a sync-conflict modal surfaced over the
+  // list), tear any in-flight drag down: clear the chip and bump the abort
+  // generation so the active row releases its pointer capture and the native
+  // drop zones drop their lift styling.
+  useEffect(() => {
+    if (!aborted) return;
+    cancelDrag();
+    setAbortGen((g) => g + 1);
+  }, [aborted, cancelDrag]);
+
   const actions = useMemo<DragActions>(
     () => ({
       begin(checklistId, title, x, y) {
@@ -135,32 +163,29 @@ export function ChecklistDragProvider({
         setDragging(null);
         setDropKey(null);
       },
-      cancel() {
-        checklistIdRef.current = null;
-        dropKeyRef.current = null;
-        setDragging(null);
-        setDropKey(null);
-      },
+      cancel: cancelDrag,
     }),
-    [onDrop, positionGhost],
+    [onDrop, positionGhost, cancelDrag],
   );
 
   return (
     <ActionsContext.Provider value={actions}>
       <OnDropContext.Provider value={onDrop}>
-        <DropKeyContext.Provider value={dropKey}>
-          {children}
-          {dragging && (
-            <div
-              ref={setGhostRef}
-              aria-hidden
-              className="pointer-events-none fixed top-0 left-0 z-[100] flex max-w-[70vw] items-center gap-2 rounded-[var(--radius)] border border-accent/40 bg-surface-2 px-3 py-1.5 text-sm text-fg-bright shadow-lg"
-            >
-              <ChecklistIcon className="h-4 w-4 shrink-0 text-accent" />
-              <span className="truncate">{dragging.title}</span>
-            </div>
-          )}
-        </DropKeyContext.Provider>
+        <DragAbortContext.Provider value={abortGen}>
+          <DropKeyContext.Provider value={dropKey}>
+            {children}
+            {dragging && (
+              <div
+                ref={setGhostRef}
+                aria-hidden
+                className="pointer-events-none fixed top-0 left-0 z-[100] flex max-w-[70vw] items-center gap-2 rounded-[var(--radius)] border border-accent/40 bg-surface-2 px-3 py-1.5 text-sm text-fg-bright shadow-lg"
+              >
+                <ChecklistIcon className="h-4 w-4 shrink-0 text-accent" />
+                <span className="truncate">{dragging.title}</span>
+              </div>
+            )}
+          </DropKeyContext.Provider>
+        </DragAbortContext.Provider>
       </OnDropContext.Provider>
     </ActionsContext.Provider>
   );

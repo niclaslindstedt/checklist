@@ -49,6 +49,7 @@ import {
   CHECKLIST_DROP_ATTR,
   CHECKLIST_DROP_ROOT,
   checklistDropNamespaceKey,
+  useChecklistDragAbort,
   useChecklistDrop,
   useChecklistDropKey,
 } from "./checklist-drag-context.ts";
@@ -208,10 +209,20 @@ export function SideMenu({
   // and both paths commit through the same `onDrop` resolver (`App`).
   const onDrop = useChecklistDrop();
   const activeDropKey = useChecklistDropKey();
+  const dragAbort = useChecklistDragAbort();
   const [draggingChecklist, setDraggingChecklist] = useState<string | null>(
     null,
   );
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  // Clear the desktop drag's lift if the app aborts mid-drag (a sync conflict,
+  // a background reload) — the row may unmount before `dragend` fires, which
+  // would otherwise leave it stranded dimmed. See the overview's note on
+  // `DragAbortContext`. Idle on mount and whenever nothing is lifted.
+  useEffect(() => {
+    setDraggingChecklist(null);
+    setDropTarget(null);
+  }, [dragAbort]);
 
   function startChecklistDrag(e: ReactDragEvent, id: string) {
     e.dataTransfer.setData(CHECKLIST_DND_TYPE, id);
