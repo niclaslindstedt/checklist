@@ -85,19 +85,10 @@ import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,
   type NamespaceAppearance,
-  addNamespace as registryAddNamespace,
   getActiveNamespaceSlug,
-  getNamespaces,
-  hasLocalOnlyNamespaces,
-  mergeNamespaceLists,
-  parseNamespaces,
-  removeNamespace as registryRemoveNamespace,
-  renameNamespace as registryRenameNamespace,
-  serializeNamespaces,
-  setNamespaceAppearance as registrySetNamespaceAppearance,
   setActiveNamespaceSlug,
-  setNamespaces as registrySetNamespaces,
 } from "./namespaces.ts";
+import { useNamespaceRegistry } from "./useNamespaceRegistry.ts";
 
 const log = createLogger("storage");
 
@@ -277,7 +268,6 @@ export function useStorageBackend(): UseStorageBackend {
     useState<EncryptionMode>(getEncryption);
   // Session-only passphrase. Never persisted — lost on reload by design.
   const [password, setPassword] = useState<string | null>(null);
-  const [namespaces, setNamespacesState] = useState<Namespace[]>(getNamespaces);
   const [activeNamespace, setActiveNamespaceState] = useState<string>(
     getActiveNamespaceSlug,
   );
@@ -491,55 +481,18 @@ export function useStorageBackend(): UseStorageBackend {
     }
   }, [selection, markFolderPermissionLost]);
 
-  // Best-effort push of the current device registry to the active backend.
-  // Shared by the create / rename / appearance / remove verbs so a mutation
-  // is mirrored into `namespaces.json` the same way `useSettings` mirrors
-  // `settings.json`. A no-op on the browser backend (no store).
-  const pushNamespaces = useCallback(
-    (list: Namespace[]) => {
-      void Promise.resolve(
-        namespaceStore?.save(serializeNamespaces(list)),
-      ).catch(() => {
-        // A failed write leaves the local copy, which the next reconcile or
-        // mutation re-pushes.
-      });
-    },
-    [namespaceStore],
-  );
-
-  // Reconcile the device's namespace list with the backend's `namespaces.json`
-  // when a file backend is (re)selected. The backend wins on any slug both
-  // sides know, and this device's own namespaces are merged in and pushed
-  // back up — so connecting on a new device adopts the cloud's lists and
-  // uploads any local-only ones rather than dropping them. A missing remote
-  // file is seeded from this device (the first device to connect publishes).
-  useEffect(() => {
-    if (!namespaceStore) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const raw = await namespaceStore.load();
-        if (cancelled) return;
-        const local = getNamespaces();
-        if (raw === null) {
-          await namespaceStore.save(serializeNamespaces(local));
-          return;
-        }
-        const remote = parseNamespaces(raw);
-        const merged = mergeNamespaceLists(local, remote);
-        registrySetNamespaces(merged);
-        setNamespacesState(getNamespaces());
-        if (hasLocalOnlyNamespaces(local, remote)) {
-          await namespaceStore.save(serializeNamespaces(getNamespaces()));
-        }
-      } catch {
-        // Backend unreachable / malformed — keep the local registry.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [namespaceStore]);
+  // The device namespace registry: owns the `namespaces` state, mirrors each
+  // mutation into the active backend's `namespaces.json`, and reconciles with
+  // the backend's list when a file backend is (re)selected. The CRUD verbs
+  // below wrap these with the backend-specific side concerns (data deletion,
+  // active-namespace switching, achievements).
+  const {
+    namespaces,
+    add: addNamespaceEntry,
+    rename: renameNamespace,
+    setAppearance: setNamespaceAppearanceEntry,
+    remove: removeNamespaceEntry,
+  } = useNamespaceRegistry(namespaceStore);
 
   const locked = encryption === "encrypted" && password === null;
 
@@ -818,40 +771,22 @@ export function useStorageBackend(): UseStorageBackend {
 
   const createNamespace = useCallback(
     (name: string, appearance?: NamespaceAppearance) => {
-      const created = registryAddNamespace(name);
-      // Apply the icon / colour the user picked at creation time, if any,
-      // before reading the registry back into state.
-      if (appearance && (appearance.glyph || appearance.color)) {
-        registrySetNamespaceAppearance(created.slug, appearance);
-      }
-      setNamespacesState(getNamespaces());
-      pushNamespaces(getNamespaces());
+      const created = addNamespaceEntry(name, appearance);
       // Land the user in the namespace they just created.
       setActiveNamespaceSlug(created.slug);
       setActiveNamespaceState(created.slug);
       unlockAchievement("compartments");
     },
-    [pushNamespaces],
-  );
-
-  const renameNamespace = useCallback(
-    (slug: string, name: string) => {
-      registryRenameNamespace(slug, name);
-      setNamespacesState(getNamespaces());
-      pushNamespaces(getNamespaces());
-    },
-    [pushNamespaces],
+    [addNamespaceEntry],
   );
 
   const setNamespaceAppearance = useCallback(
     (slug: string, patch: NamespaceAppearance) => {
-      registrySetNamespaceAppearance(slug, patch);
-      setNamespacesState(getNamespaces());
-      pushNamespaces(getNamespaces());
+      setNamespaceAppearanceEntry(slug, patch);
       // Only count picking an icon / colour, not clearing one back to plain.
       if (patch.glyph || patch.color) unlockAchievement("dressUp");
     },
-    [pushNamespaces],
+    [setNamespaceAppearanceEntry],
   );
 
   const removeNamespace = useCallback(
@@ -879,9 +814,7 @@ export function useStorageBackend(): UseStorageBackend {
       } catch (err) {
         log.warn(`removeNamespace: data delete failed for ${slug}`, err);
       }
-      registryRemoveNamespace(slug);
-      setNamespacesState(getNamespaces());
-      pushNamespaces(getNamespaces());
+      removeNamespaceEntry(slug);
       if (activeNamespace === slug) {
         setActiveNamespaceSlug(DEFAULT_NAMESPACE_SLUG);
         setActiveNamespaceState(DEFAULT_NAMESPACE_SLUG);
@@ -893,7 +826,7 @@ export function useStorageBackend(): UseStorageBackend {
       gdriveToken,
       activeNamespace,
       folderHandle,
-      pushNamespaces,
+      removeNamespaceEntry,
     ],
   );
 
