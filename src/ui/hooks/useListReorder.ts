@@ -21,11 +21,12 @@
 
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
-  type PointerEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
 
@@ -66,11 +67,13 @@ export interface DropTarget {
   mode: DropMode;
 }
 
+// Only `pointerdown` lives on the grip: it arms the gesture, then the
+// move/up/cancel handlers are bound to `window` for the rest of the drag (see
+// `useListReorder`). Binding them to the element instead would lose the drop
+// the moment a mouse release lands off the grip — a desktop mouse has no
+// implicit pointer capture to fall back on, so the lifted row would freeze.
 export interface DragHandleProps {
-  onPointerDown: (e: PointerEvent<HTMLElement>) => void;
-  onPointerMove: (e: PointerEvent<HTMLElement>) => void;
-  onPointerUp: (e: PointerEvent<HTMLElement>) => void;
-  onPointerCancel: (e: PointerEvent<HTMLElement>) => void;
+  onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
 }
 
 export interface ListReorder {
@@ -118,11 +121,15 @@ export function useListReorder(
   const startY = useRef(0);
   const pointerId = useRef<number | null>(null);
   const armed = useRef(false);
-  // Mirror the live drop target into a ref so `onPointerUp` reads the latest
-  // without re-binding the handler on every pointermove.
+  // Mirror the live drop target into a ref so `handleUp` reads the latest
+  // without re-binding the window handler on every pointermove.
   const dropTargetRef = useRef<DropTarget | null>(null);
   const canDropRef = useRef(canDrop);
   canDropRef.current = canDrop;
+  // Remover for the window listeners bound for the lifetime of the active drag
+  // (see `bindWindow`). Held on a ref so `reset` can detach them without taking
+  // a dependency on the handlers, keeping every callback's identity stable.
+  const detachWindow = useRef<(() => void) | null>(null);
 
   // Snapshot every row's top/height in DOM order, keyed by its data attribute.
   const measure = useCallback((): Rect[] => {
@@ -157,6 +164,8 @@ export function useListReorder(
   }, []);
 
   const reset = useCallback(() => {
+    detachWindow.current?.();
+    detachWindow.current = null;
     setDraggingId(null);
     setDelta(0);
     setDropTarget(null);
@@ -178,8 +187,101 @@ export function useListReorder(
     rects.current = measureCollapsed();
   }, [draggingId, measureCollapsed]);
 
+  const computeDropTarget = useCallback(
+    (draggedId: string, y: number): DropTarget | null =>
+      resolveDropTarget(rects.current, draggedId, y, canDropRef.current),
+    [],
+  );
+
+  // Read the live reorder callback through a ref so the window handlers below
+  // can stay referentially stable (bound once, removed by the same reference)
+  // without re-binding on every render the parent hands a fresh `onReorder`.
+  const onReorderRef = useRef(onReorder);
+  onReorderRef.current = onReorder;
+
+  // Best-effort release of the pointer capture taken at pickup. The capture is
+  // a nicety (it suppresses text-selection and keeps touch events on the grip);
+  // correctness no longer depends on it, because the move/up/cancel handlers
+  // are bound to `window`, not the grip — so a mouse release that lands off the
+  // grip (a desktop pointer has no implicit capture) is still caught.
+  const releaseCapture = useCallback(() => {
+    const el = captureEl.current;
+    const pid = pointerId.current;
+    if (el && pid !== null) {
+      try {
+        if (el.hasPointerCapture?.(pid)) el.releasePointerCapture(pid);
+      } catch {
+        // The capture may already be gone (released between a teardown trigger
+        // and here) — nothing left to free.
+      }
+    }
+  }, []);
+
+  // Move/up/cancel run off `window`, bound for one drag's lifetime, so the
+  // release is caught wherever the pointer ends up — not only when it happens
+  // to land back on the grip. `reset` detaches them via `detachWindow`.
+  const handleMove = useCallback(
+    (e: PointerEvent) => {
+      if (pointerId.current !== e.pointerId || draggedIdRef.current === null)
+        return;
+      const d = e.clientY - startY.current;
+      if (!armed.current) {
+        if (Math.abs(d) < AXIS_LOCK) return;
+        armed.current = true;
+      }
+      // Keep the page from scrolling / selecting text under the dragged row.
+      if (e.cancelable) e.preventDefault();
+      const draggedId = draggedIdRef.current;
+      const target = computeDropTarget(draggedId, e.clientY);
+      setDelta(d);
+      setDropTarget(target);
+      dropTargetRef.current = target;
+    },
+    [computeDropTarget],
+  );
+
+  const handleUp = useCallback(
+    (e: PointerEvent) => {
+      if (pointerId.current !== e.pointerId) return;
+      const draggedId = draggedIdRef.current;
+      const target = dropTargetRef.current;
+      const moved = armed.current;
+      releaseCapture();
+      reset();
+      if (moved && draggedId && target) {
+        onReorderRef.current(draggedId, target.id, target.mode);
+      }
+    },
+    [releaseCapture, reset],
+  );
+
+  // A browser-initiated `pointercancel` (the UA seized the pointer for its own
+  // gesture) aborts the drag — it must NOT commit a half-finished move the way
+  // a deliberate release does.
+  const handleCancel = useCallback(
+    (e: PointerEvent) => {
+      if (pointerId.current !== e.pointerId) return;
+      releaseCapture();
+      reset();
+    },
+    [releaseCapture, reset],
+  );
+
+  const bindWindow = useCallback(() => {
+    detachWindow.current?.();
+    // `passive: false` so `handleMove` may `preventDefault` to block scroll.
+    window.addEventListener("pointermove", handleMove, { passive: false });
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleCancel);
+    detachWindow.current = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+    };
+  }, [handleMove, handleUp, handleCancel]);
+
   const onPointerDown = useCallback(
-    (id: string) => (e: PointerEvent<HTMLElement>) => {
+    (id: string) => (e: ReactPointerEvent<HTMLElement>) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       // Keep the row's swipe gesture from arming on the same press.
       e.stopPropagation();
@@ -198,71 +300,28 @@ export function useListReorder(
       pointerId.current = e.pointerId;
       armed.current = false;
       captureEl.current = e.currentTarget;
-      e.currentTarget.setPointerCapture(e.pointerId);
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // Capture is best-effort; the window listeners catch the release
+        // regardless, so a refusal here is harmless.
+      }
+      bindWindow();
       setDraggingId(id);
       setDelta(0);
       setDropTarget(null);
       dropTargetRef.current = null;
     },
-    [measure],
-  );
-
-  const computeDropTarget = useCallback(
-    (draggedId: string, y: number): DropTarget | null =>
-      resolveDropTarget(rects.current, draggedId, y, canDropRef.current),
-    [],
-  );
-
-  const onPointerMove = useCallback(
-    (e: PointerEvent<HTMLElement>) => {
-      if (pointerId.current !== e.pointerId || draggedIdRef.current === null)
-        return;
-      e.stopPropagation();
-      const d = e.clientY - startY.current;
-      if (!armed.current) {
-        if (Math.abs(d) < AXIS_LOCK) return;
-        armed.current = true;
-      }
-      e.preventDefault();
-      const draggedId = draggedIdRef.current;
-      const target = computeDropTarget(draggedId, e.clientY);
-      setDelta(d);
-      setDropTarget(target);
-      dropTargetRef.current = target;
-    },
-    [computeDropTarget],
-  );
-
-  const onPointerUp = useCallback(
-    (e: PointerEvent<HTMLElement>) => {
-      if (pointerId.current !== e.pointerId) return;
-      e.stopPropagation();
-      if (e.currentTarget.hasPointerCapture(e.pointerId))
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      const draggedId = draggedIdRef.current;
-      const target = dropTargetRef.current;
-      const moved = armed.current;
-      reset();
-      if (moved && draggedId && target) {
-        onReorder(draggedId, target.id, target.mode);
-      }
-    },
-    [onReorder, reset],
+    [measure, bindWindow],
   );
 
   const cancel = useCallback(() => {
-    const el = captureEl.current;
-    const pid = pointerId.current;
-    if (el && pid !== null) {
-      try {
-        if (el.hasPointerCapture(pid)) el.releasePointerCapture(pid);
-      } catch {
-        // The capture may already be gone (the pointer was released between
-        // the conflict surfacing and this teardown) — nothing left to free.
-      }
-    }
+    releaseCapture();
     reset();
-  }, [reset]);
+  }, [releaseCapture, reset]);
+
+  // Drop any still-bound window listeners if the component unmounts mid-drag.
+  useEffect(() => () => detachWindow.current?.(), []);
 
   const rowStyle = useCallback(
     (id: string): CSSProperties => {
@@ -304,24 +363,19 @@ export function useListReorder(
   const dragHandleProps = useCallback(
     (id: string): DragHandleProps => {
       const cache = handleCache.current;
-      const deps = [onPointerDown, onPointerMove, onPointerUp] as const;
+      const deps = [onPointerDown] as const;
       if (deps.some((d, i) => d !== cache.deps[i])) {
         cache.deps = deps;
         cache.byId = new Map();
       }
       let props = cache.byId.get(id);
       if (!props) {
-        props = {
-          onPointerDown: onPointerDown(id),
-          onPointerMove,
-          onPointerUp,
-          onPointerCancel: onPointerUp,
-        };
+        props = { onPointerDown: onPointerDown(id) };
         cache.byId.set(id, props);
       }
       return props;
     },
-    [onPointerDown, onPointerMove, onPointerUp],
+    [onPointerDown],
   );
 
   return {

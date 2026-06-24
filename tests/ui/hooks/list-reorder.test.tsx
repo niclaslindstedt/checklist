@@ -119,6 +119,21 @@ const move = (id: string, clientY: number) =>
     pointerId: 1,
     clientY,
   });
+// A mouse press on the grip. Unlike `drag` (touch), a desktop mouse has no
+// implicit pointer capture, so the release can land anywhere.
+const mouseDown = (id: string, clientY: number) =>
+  fireEvent.pointerDown(screen.getByTestId(`row-${id}`), {
+    pointerId: 1,
+    clientY,
+    button: 0,
+    pointerType: "mouse",
+  });
+// Release / cancel fired on the document body rather than the grip, modelling a
+// desktop release whose cursor drifted off the narrow grip button.
+const upOffGrip = (clientY: number) =>
+  fireEvent.pointerUp(document.body, { pointerId: 1, clientY });
+const cancelOffGrip = () =>
+  fireEvent.pointerCancel(document.body, { pointerId: 1 });
 
 describe("useListReorder", () => {
   it("marks the picked-up row as dragging", () => {
@@ -145,6 +160,41 @@ describe("useListReorder", () => {
     act(() => drag("c", 90));
     act(() => move("c", 75)); // b's bottom edge (40..80)
     expect(screen.getByTestId("drop").textContent).toBe("b:after");
+  });
+
+  it("commits and unfreezes when a desktop mouse releases off the grip", () => {
+    // The regression: the move/up handlers used to live only on the grip
+    // button, and a mouse has no implicit capture, so a release that landed
+    // anywhere else was never seen — `reset` never ran and the lifted row
+    // (`position: absolute`) stayed frozen mid-air. Binding the release to
+    // `window` catches it wherever the cursor ends up.
+    const onReorder = vi.fn();
+    render(<Harness onReorder={onReorder} />);
+    act(() => mouseDown("c", 90));
+    act(() => move("c", 150)); // drag down over the lower rows
+    expect(screen.getByTestId("dragging").textContent).toBe("c");
+
+    act(() => upOffGrip(150)); // release with the cursor off the grip
+
+    expect(screen.getByTestId("dragging").textContent).toBe("none");
+    expect(screen.getByTestId("drop").textContent).toBe("none");
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder.mock.calls[0]![0]).toBe("c");
+  });
+
+  it("aborts without committing when the browser cancels the pointer", () => {
+    // A `pointercancel` (the UA seized the pointer for its own gesture) must
+    // tear the drag down, not commit the half-finished move a release would.
+    const onReorder = vi.fn();
+    render(<Harness onReorder={onReorder} />);
+    act(() => mouseDown("c", 90));
+    act(() => move("c", 150));
+    expect(screen.getByTestId("dragging").textContent).toBe("c");
+
+    act(() => cancelOffGrip());
+
+    expect(screen.getByTestId("dragging").textContent).toBe("none");
+    expect(onReorder).not.toHaveBeenCalled();
   });
 
   it("cancel() abandons the drag and releases the pointer capture", () => {
