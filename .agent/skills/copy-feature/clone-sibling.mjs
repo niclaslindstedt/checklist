@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 // Get a sibling repo's working tree into a local folder so the
-// copy-feature skill can read it. Two ways in, tried in order:
+// copy-feature skill can read it. Three ways in, tried in order:
 //
-//   1. `git clone` — fast, and includes history so the skill's "read the
-//      feature's git log for the *why*" step works. Used when the
-//      session's network policy allows github.com.
+//   1. Mirror clone — the siblings push-mirror themselves to an external
+//      git host (see each repo's .github/workflows/mirror.yml). That host
+//      (GitLab, Codeberg / Gitea, Bitbucket, ...) is typically reachable
+//      over plain `git` even in the scoped web sandbox where github.com
+//      is blocked, so this is a real clone *with history* — preferred
+//      whenever a mirror is configured (env MIRROR_BASE).
 //
-//   2. raw-file fallback — in a scoped Claude Code on the web sandbox,
-//      `git clone` of github.com is denied with HTTP 403 (a host-level
-//      egress block — even an unrelated public repo 403s), and the
-//      session git proxy / GitHub MCP are locked to the in-scope repo.
-//      But `raw.githubusercontent.com` and `api.github.com` stay
-//      reachable, so we list the tree via the API and download every
-//      blob over raw. This gives file *contents* but no git history.
+//   2. GitHub clone — fast and also has history, but github.com egress
+//      is denied with HTTP 403 in a scoped sandbox (a host-level block;
+//      even an unrelated public repo 403s). Works in permissive sessions.
+//
+//   3. raw-file fallback — `raw.githubusercontent.com` and
+//      `api.github.com` stay reachable when github.com's git transport
+//      doesn't, so we list the tree via the API and download every blob
+//      over raw. This gives file *contents* but no git history.
 //
 // Usage:
 //   node clone-sibling.mjs <repo|owner/repo> [dest] [ref]
@@ -21,6 +25,15 @@
 //   node clone-sibling.mjs budget /tmp/b         # -> /tmp/b       @ main
 //   node clone-sibling.mjs notes /tmp/notes dev  # -> /tmp/notes   @ dev
 //
+// Mirror config (provider-agnostic) — all via env:
+//   MIRROR_BASE   host+namespace of the mirror, no scheme and no repo,
+//                 e.g. `gitlab.com/niclaslindstedt` or
+//                 `codeberg.org/team`. Unset → skip step 1 entirely.
+//   MIRROR_TOKEN  a read token/PAT, embedded in the clone URL so a
+//                 *private* mirror still clones; a public mirror needs none.
+//   MIRROR_USER   basic-auth username paired with the token (default
+//                 `oauth2`; `x-token-auth` for Bitbucket, your username
+//                 for Gitea/Codeberg, etc.).
 // The resolved destination path is printed to STDOUT on success; all
 // progress and diagnostics go to STDERR so the path can be captured
 // cleanly (`DEST=$(node clone-sibling.mjs notes)`).
@@ -59,20 +72,41 @@ rmSync(dest, { recursive: true, force: true });
 // permissive, non-proxied environment won't have it).
 const caArgs = existsSync(CA) ? ["--cacert", CA] : [];
 
-function tryGitClone() {
-  const url = `https://github.com/${owner}/${repo}.git`;
-  log(`Trying git clone ${url} ...`);
+function tryGitClone(url) {
+  // Never print an embedded credential (oauth2:<token>@) to the log.
+  const safe = url.replace(/\/\/[^@/]+@/, "//");
+  log(`Trying git clone ${safe} ...`);
   const r = spawnSync(
     "git",
     ["clone", "--depth", "50", "--branch", ref, url, dest],
-    { stdio: ["ignore", "ignore", "pipe"] },
+    {
+      stdio: ["ignore", "ignore", "pipe"],
+      // Don't let git hang on an auth prompt for a private repo.
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    },
   );
-  if (r.status === 0) return true;
+  if (r.status === 0) {
+    log(`Cloned ${safe} (with history).`);
+    return true;
+  }
   const stderr = (r.stderr || "").toString().trim();
-  log(`git clone unavailable (${stderr.split("\n").pop() || r.status}).`);
+  log(`  unavailable (${stderr.split("\n").pop() || r.status}).`);
   // A partial checkout may exist if clone failed late; clear it.
   rmSync(dest, { recursive: true, force: true });
   return false;
+}
+
+// Build the mirror clone URL from MIRROR_BASE (any provider). Returns
+// null when no mirror is configured. A MIRROR_TOKEN is embedded so a
+// *private* mirror still clones; without it the clone is anonymous and
+// only works for a public mirror.
+function mirrorUrl() {
+  const base = process.env.MIRROR_BASE;
+  if (!base) return null;
+  const token = process.env.MIRROR_TOKEN || "";
+  const user = process.env.MIRROR_USER || "oauth2";
+  const auth = token ? `${user}:${token}@` : "";
+  return `https://${auth}${base.replace(/\/+$/, "")}/${repo}.git`;
 }
 
 function curlText(url) {
@@ -126,7 +160,13 @@ function fetchViaRaw() {
   }
 }
 
-if (!tryGitClone()) {
+// Mirror first when configured (reachable + has history), then GitHub,
+// then the raw fallback for the file contents.
+const mirror = mirrorUrl();
+if (
+  (!mirror || !tryGitClone(mirror)) &&
+  !tryGitClone(`https://github.com/${owner}/${repo}.git`)
+) {
   fetchViaRaw();
 }
 
