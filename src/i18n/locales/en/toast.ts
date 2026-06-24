@@ -35,6 +35,8 @@ const toast = {
   folderCreated: "Created folder “{name}”",
   folderRenamed: "Renamed folder to “{name}”",
   folderDeleted: "Deleted folder “{name}”",
+  folderMovedToNamespace: "Moved folder to “{name}”",
+  folderMoveFailed: "Couldn’t move the folder — try again",
   namespaceCreated: "Created namespace “{name}”",
   namespaceDeleted: "Deleted namespace “{name}”",
   undone: "Undone: {action}",

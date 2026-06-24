@@ -480,4 +480,53 @@ describe("useChecklist folder verbs", () => {
     expect(result.current.checklists).toHaveLength(1);
     expect(result.current.checklists[0]!.folderId).toBeUndefined();
   });
+
+  it("detaches a moved folder and every list inside it", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    // A list that stays behind, so the namespace keeps an active list.
+    const keeper = result.current.activeChecklistId;
+    act(() => result.current.createFolder("Trips"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    const folderId = result.current.folders[0]!.id;
+    act(() => result.current.addChecklistInFolder(folderId));
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    const filed = result.current.checklists.find(
+      (c) => c.folderId === folderId,
+    )!.id;
+
+    // The folder moved to another namespace: it and its list drop out here,
+    // the selection re-points at the keeper, and the folder leaves the registry.
+    act(() => result.current.detachFolderToNamespace(folderId, "Work"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(0));
+    expect(result.current.checklists.map((c) => c.id)).toEqual([keeper]);
+    expect(result.current.checklists.some((c) => c.id === filed)).toBe(false);
+    expect(parse(adapter.stored()).folders).toBeUndefined();
+
+    // Recoverable via undo (the target-namespace copy is left in place).
+    act(() => result.current.undo());
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    expect(result.current.checklists).toHaveLength(2);
+  });
+
+  it("refuses to detach a folder holding the last active list", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    const only = result.current.activeChecklistId;
+
+    act(() => result.current.createFolder("Trips"));
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    const folderId = result.current.folders[0]!.id;
+    act(() => result.current.moveChecklistToFolder(only, folderId));
+    await waitFor(() => expect(result.current.folders[0]!.count).toBe(1));
+
+    // The only active list lives in the folder — moving it would empty the
+    // namespace, so the detach is refused and nothing changes.
+    act(() => result.current.detachFolderToNamespace(folderId, "Work"));
+    expect(result.current.folders).toHaveLength(1);
+    expect(result.current.checklists).toHaveLength(1);
+  });
 });

@@ -17,8 +17,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 // achievement bus's `unlock` comes in under a distinct name.
 import { unlock as unlockAchievement } from "../achievements/bus.ts";
 import { createLogger } from "../dev/logger.ts";
-import { setChecklistFolder } from "../domain/folders.ts";
-import type { Checklist } from "../domain/types.ts";
+import { addFolder, setChecklistFolder } from "../domain/folders.ts";
+import type { Checklist, Folder } from "../domain/types.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import {
   type BackendId,
@@ -184,6 +184,19 @@ export interface UseStorageBackend {
    */
   moveChecklistToNamespace: (
     checklist: Checklist,
+    targetSlug: string,
+  ) => Promise<boolean>;
+  /**
+   * Write a whole folder — and every checklist filed inside it — into another
+   * namespace's document, returning whether the target write succeeded. Like
+   * {@link moveChecklistToNamespace} it's best-effort: a failed write resolves
+   * `false` and leaves the source untouched, so the caller only drops its local
+   * copy on success. The lists keep their `folderId` and the folder is added to
+   * the target's registry, so the group survives the move intact.
+   */
+  moveFolderToNamespace: (
+    folder: Folder,
+    checklists: Checklist[],
     targetSlug: string,
   ) => Promise<boolean>;
   /** Create a namespace from a display name and switch to it. */
@@ -769,6 +782,50 @@ export function useStorageBackend(): UseStorageBackend {
     [locked, activeNamespace, namespaces, wrapForActive, makeInner],
   );
 
+  // Write a whole folder and the lists inside it into another namespace's
+  // document (the sidebar drag-a-folder-to-namespace). Loads the target,
+  // prepends the lists (each keeping its `folderId` so it stays grouped),
+  // registers the folder there, and saves — best-effort, mirroring
+  // `moveChecklistToNamespace`. The caller drops the source folder and its
+  // lists only on success.
+  const moveFolderToNamespace = useCallback(
+    async (
+      folder: Folder,
+      checklists: Checklist[],
+      targetSlug: string,
+    ): Promise<boolean> => {
+      if (locked) return false;
+      if (targetSlug === activeNamespace) return false;
+      if (!namespaces.some((n) => n.slug === targetSlug)) return false;
+
+      const target = wrapForActive(makeInner(targetSlug));
+      const prev = await target.load().catch(() => null);
+      let doc = parse(prev?.text ?? null);
+      // Prepend the folder's lists, de-duped by id, keeping their folder link so
+      // the group lands intact; register the folder so the target knows its name.
+      const movedIds = new Set(checklists.map((c) => c.id));
+      doc.checklists = [
+        ...checklists,
+        ...doc.checklists.filter((c) => !movedIds.has(c.id)),
+      ];
+      doc = addFolder(doc, folder);
+      try {
+        await target.save(serialize(doc), prev?.revision);
+      } catch (err) {
+        log.warn(
+          `moveFolderToNamespace: target save failed (${targetSlug})`,
+          err,
+        );
+        return false;
+      }
+      log.info(
+        `moveFolderToNamespace: ${folder.id} (${checklists.length} lists) → ${targetSlug}`,
+      );
+      return true;
+    },
+    [locked, activeNamespace, namespaces, wrapForActive, makeInner],
+  );
+
   const createNamespace = useCallback(
     (name: string, appearance?: NamespaceAppearance) => {
       const created = addNamespaceEntry(name, appearance);
@@ -858,6 +915,7 @@ export function useStorageBackend(): UseStorageBackend {
     activeNamespace,
     switchNamespace,
     moveChecklistToNamespace,
+    moveFolderToNamespace,
     createNamespace,
     renameNamespace,
     setNamespaceAppearance,

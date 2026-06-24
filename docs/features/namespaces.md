@@ -22,6 +22,10 @@ it, without handing them anything in the rest of your namespaces.
    set of checklists you see.
 4. Change a namespace's icon or colour later from its row, and the change
    applies immediately.
+5. Move work between namespaces by **dragging it onto another namespace's
+   row** — drag a single checklist to send just that list, or drag a whole
+   folder to relocate the folder and every list inside it at once (press and
+   hold to pick it up on a touchscreen).
 
 While a namespace is active, its icon and colour **badge it in the side menu**
 (only the glyph is tinted, never the row text) and **re-skin the app** — the

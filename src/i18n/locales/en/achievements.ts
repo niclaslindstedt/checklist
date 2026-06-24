@@ -222,6 +222,10 @@ const achievements = {
       name: "Relocated",
       condition: "Drag a checklist into another namespace.",
     },
+    movedHouse: {
+      name: "Moving Day",
+      condition: "Drag a whole folder into another namespace.",
+    },
     localVault: {
       name: "Local Vault",
       condition: "Store your lists in a local folder.",

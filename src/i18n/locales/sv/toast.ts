@@ -28,6 +28,8 @@ const toast: ToastCatalog = {
   folderCreated: "Skapade mappen ”{name}”",
   folderRenamed: "Bytte namn på mappen till ”{name}”",
   folderDeleted: "Tog bort mappen ”{name}”",
+  folderMovedToNamespace: "Flyttade mappen till ”{name}”",
+  folderMoveFailed: "Kunde inte flytta mappen — försök igen",
   namespaceCreated: "Skapade namnrymden ”{name}”",
   namespaceDeleted: "Tog bort namnrymden ”{name}”",
   undone: "Ångrade: {action}",

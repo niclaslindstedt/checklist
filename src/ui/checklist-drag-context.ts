@@ -35,6 +35,30 @@ export function checklistDropNamespaceKey(slug: string): string {
   return `${CHECKLIST_DROP_NS_PREFIX}${slug}`;
 }
 
+// A dragged item is either a single checklist (a bare id) or a whole folder.
+// Both paths carry the dragged thing as one string — the desktop HTML5 drag
+// stamps it on `dataTransfer`, the touch path hands it to `begin` — so a folder
+// drag is encoded as its id under this prefix and `parseDragId` splits the kind
+// back off at the drop. A folder can only be dropped on a namespace (it moves
+// the folder and every list inside it there); over a folder / the ungrouped
+// zone / the archive it's a no-op.
+export const FOLDER_DRAG_PREFIX = "folder:";
+
+export type DragKind = "checklist" | "folder";
+
+/** Encode a folder id as the drag payload for a whole-folder drag. */
+export function folderDragId(folderId: string): string {
+  return `${FOLDER_DRAG_PREFIX}${folderId}`;
+}
+
+/** Split a drag payload back into its kind and the underlying id. */
+export function parseDragId(raw: string): { kind: DragKind; id: string } {
+  if (raw.startsWith(FOLDER_DRAG_PREFIX)) {
+    return { kind: "folder", id: raw.slice(FOLDER_DRAG_PREFIX.length) };
+  }
+  return { kind: "checklist", id: raw };
+}
+
 // Hold this long without moving to pick a list up; abort the press if the
 // finger travels more than this many px first (it's a scroll or a swipe).
 const LONG_PRESS_MS = 320;
@@ -65,10 +89,19 @@ export const OnDropContext = createContext<
 // no pointerup/cancel (or `dragend`) will arrive on a row the interruption
 // unmounted.
 export const DragAbortContext = createContext<number>(0);
+// What kind of thing the touch drag is currently carrying (null when idle), so
+// drop targets can suppress a highlight they'd never accept — a folder being
+// dragged lights up only namespace rows, not other folders / the archive.
+export const DragKindContext = createContext<DragKind | null>(null);
 
 /** The drop target currently under the finger (its `data-checklist-drop` value). */
 export function useChecklistDropKey(): string | null {
   return useContext(DropKeyContext);
+}
+
+/** The kind of item the touch drag is carrying right now (null when idle). */
+export function useChecklistDragKind(): DragKind | null {
+  return useContext(DragKindContext);
 }
 
 /** The current drag-abort generation; changes when the app aborts in-flight

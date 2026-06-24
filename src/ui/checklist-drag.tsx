@@ -38,15 +38,18 @@ import {
   type ReactNode,
 } from "react";
 
-import { ChecklistIcon } from "./icons.tsx";
+import { ChecklistIcon, FolderIcon } from "./icons.tsx";
 import { useReportDragActivity } from "./drag-activity.ts";
 import {
   ActionsContext,
   DragAbortContext,
+  DragKindContext,
   DropKeyContext,
   OnDropContext,
+  parseDragId,
   useTouchChecklistDrag,
   type DragActions,
+  type DragKind,
 } from "./checklist-drag-context.ts";
 
 export function ChecklistDragProvider({
@@ -65,7 +68,10 @@ export function ChecklistDragProvider({
   aborted?: boolean;
   children: ReactNode;
 }) {
-  const [dragging, setDragging] = useState<{ title: string } | null>(null);
+  const [dragging, setDragging] = useState<{
+    title: string;
+    kind: DragKind;
+  } | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   // Bumped to tell every active row (and the native drop zones) to tear their
   // drag down when `aborted` rises — see `DragAbortContext`.
@@ -144,7 +150,7 @@ export function ChecklistDragProvider({
         // Record the pickup point so the chip's callback ref can place it the
         // moment it mounts, rather than flashing at the top-left default.
         positionGhost(x, y);
-        setDragging({ title });
+        setDragging({ title, kind: parseDragId(checklistId).kind });
         setDropKey(null);
       },
       hover(key, x, y) {
@@ -172,19 +178,25 @@ export function ChecklistDragProvider({
     <ActionsContext.Provider value={actions}>
       <OnDropContext.Provider value={onDrop}>
         <DragAbortContext.Provider value={abortGen}>
-          <DropKeyContext.Provider value={dropKey}>
-            {children}
-            {dragging && (
-              <div
-                ref={setGhostRef}
-                aria-hidden
-                className="pointer-events-none fixed top-0 left-0 z-[100] flex max-w-[70vw] items-center gap-2 rounded-[var(--radius)] border border-accent/40 bg-surface-2 px-3 py-1.5 text-sm text-fg-bright shadow-lg"
-              >
-                <ChecklistIcon className="h-4 w-4 shrink-0 text-accent" />
-                <span className="truncate">{dragging.title}</span>
-              </div>
-            )}
-          </DropKeyContext.Provider>
+          <DragKindContext.Provider value={dragging?.kind ?? null}>
+            <DropKeyContext.Provider value={dropKey}>
+              {children}
+              {dragging && (
+                <div
+                  ref={setGhostRef}
+                  aria-hidden
+                  className="pointer-events-none fixed top-0 left-0 z-[100] flex max-w-[70vw] items-center gap-2 rounded-[var(--radius)] border border-accent/40 bg-surface-2 px-3 py-1.5 text-sm text-fg-bright shadow-lg"
+                >
+                  {dragging.kind === "folder" ? (
+                    <FolderIcon className="h-4 w-4 shrink-0 text-accent" />
+                  ) : (
+                    <ChecklistIcon className="h-4 w-4 shrink-0 text-accent" />
+                  )}
+                  <span className="truncate">{dragging.title}</span>
+                </div>
+              )}
+            </DropKeyContext.Provider>
+          </DragKindContext.Provider>
         </DragAbortContext.Provider>
       </OnDropContext.Provider>
     </ActionsContext.Provider>

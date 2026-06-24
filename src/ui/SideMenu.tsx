@@ -47,11 +47,16 @@ import { ChecklistDragItem } from "./checklist-drag.tsx";
 import {
   CHECKLIST_DROP_ARCHIVE,
   CHECKLIST_DROP_ATTR,
+  CHECKLIST_DROP_NS_PREFIX,
   CHECKLIST_DROP_ROOT,
   checklistDropNamespaceKey,
+  folderDragId,
+  parseDragId,
   useChecklistDragAbort,
+  useChecklistDragKind,
   useChecklistDrop,
   useChecklistDropKey,
+  type DragKind,
 } from "./checklist-drag-context.ts";
 import {
   BarButton,
@@ -209,11 +214,24 @@ export function SideMenu({
   // and both paths commit through the same `onDrop` resolver (`App`).
   const onDrop = useChecklistDrop();
   const activeDropKey = useChecklistDropKey();
+  const touchDragKind = useChecklistDragKind();
   const dragAbort = useChecklistDragAbort();
   const [draggingChecklist, setDraggingChecklist] = useState<string | null>(
     null,
   );
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  // What's being dragged right now (null when idle): the desktop path records
+  // it locally, the touch path reports it through context. A whole folder may
+  // only land on a namespace row — over a folder / the ungrouped zone / the
+  // archive it's inert — so the drop targets gate their highlight on this.
+  const dragKind: DragKind | null = draggingChecklist
+    ? parseDragId(draggingChecklist).kind
+    : touchDragKind;
+  const acceptsDrag = (key: string) =>
+    key.startsWith(CHECKLIST_DROP_NS_PREFIX) || dragKind !== "folder";
+  const isDropTarget = (key: string) =>
+    (dropTarget === key || activeDropKey === key) && acceptsDrag(key);
 
   // Clear the desktop drag's lift if the app aborts mid-drag (a sync conflict,
   // a background reload) — the row may unmount before `dragend` fires, which
@@ -235,6 +253,9 @@ export function SideMenu({
   }
   function allowDropOn(e: ReactDragEvent, key: string) {
     if (!draggingChecklist) return;
+    // A dragged folder only drops onto a namespace; leaving folder / root /
+    // archive un-prevented makes the browser refuse the drop there entirely.
+    if (!acceptsDrag(key)) return;
     e.preventDefault();
     // Folders nest inside the ungrouped root drop zone, so stop the hover from
     // bubbling up and lighting the root highlight at the same time.
@@ -376,29 +397,46 @@ export function SideMenu({
     const activePeek = expanded
       ? undefined
       : inside.find((c) => c.id === activeChecklistId);
+    // The folder header itself is draggable — drop it on another namespace to
+    // move the whole group (folder + every list inside it) there. The encoded
+    // drag id tags the payload as a folder so the drop resolver routes it to the
+    // cross-namespace folder move rather than the per-list one.
+    const folderDrag = folderDragId(f.id);
     return (
       <div key={f.id} {...{ [CHECKLIST_DROP_ATTR]: f.id }}>
-        <FolderRow
-          name={f.name}
-          count={f.count}
-          expanded={expanded}
-          desktop={desktop}
-          isDropTarget={dropTarget === f.id || activeDropKey === f.id}
-          renameLabel={t("nav.renameFolder")}
-          deleteLabel={t("nav.deleteFolder")}
-          addLabel={t("nav.newChecklist")}
-          onToggle={() => toggleFolder(f.id)}
-          onRename={() => setRenamingFolderId(f.id)}
-          onDelete={() => removeFolder(f.id)}
-          onAdd={() => {
-            addChecklistInFolder(f.id);
-            navigate("checklist");
-          }}
-          onDragOver={(e) => allowDropOn(e, f.id)}
-          onDragLeave={() => setDropTarget(null)}
-          onDrop={(e) => commitDrop(e, f.id)}
-          openMenu={openMenu}
-        />
+        <ChecklistDragItem
+          checklistId={folderDrag}
+          title={f.name}
+          enabled={!desktop}
+          draggable={desktop}
+          dragging={draggingChecklist === folderDrag}
+          onDragStart={
+            desktop ? (e) => startChecklistDrag(e, folderDrag) : undefined
+          }
+          onDragEnd={desktop ? endChecklistDrag : undefined}
+        >
+          <FolderRow
+            name={f.name}
+            count={f.count}
+            expanded={expanded}
+            desktop={desktop}
+            isDropTarget={isDropTarget(f.id)}
+            renameLabel={t("nav.renameFolder")}
+            deleteLabel={t("nav.deleteFolder")}
+            addLabel={t("nav.newChecklist")}
+            onToggle={() => toggleFolder(f.id)}
+            onRename={() => setRenamingFolderId(f.id)}
+            onDelete={() => removeFolder(f.id)}
+            onAdd={() => {
+              addChecklistInFolder(f.id);
+              navigate("checklist");
+            }}
+            onDragOver={(e) => allowDropOn(e, f.id)}
+            onDragLeave={() => setDropTarget(null)}
+            onDrop={(e) => commitDrop(e, f.id)}
+            openMenu={openMenu}
+          />
+        </ChecklistDragItem>
         {expanded
           ? inside.map((c) => renderChecklistRow(c, true))
           : activePeek && renderChecklistRow(activePeek, true)}
@@ -413,8 +451,7 @@ export function SideMenu({
   // "no folder" landing area is the contiguous region below them — which is
   // exactly what we frame with a border so the user can see where the list
   // will land. When there are no folders that region is the whole list.
-  const rootActive =
-    dropTarget === CHECKLIST_DROP_ROOT || activeDropKey === CHECKLIST_DROP_ROOT;
+  const rootActive = isDropTarget(CHECKLIST_DROP_ROOT);
 
   // The drawer's body — identical whether it slides in over a backdrop
   // (narrow viewports) or sits docked as a permanent sidebar (pinned). Only
@@ -457,7 +494,8 @@ export function SideMenu({
             <FolderIcon className="h-5 w-5" />
           );
           // Every namespace but the active one is a drop target: dropping a
-          // checklist onto it moves the list into that namespace.
+          // checklist onto it moves the list there; dropping a folder moves the
+          // whole group.
           const droppable = ns.slug !== activeNamespace;
           const nsKey = checklistDropNamespaceKey(ns.slug);
           const row = (
@@ -466,9 +504,7 @@ export function SideMenu({
               label={ns.name}
               active={ns.slug === activeNamespace}
               dropId={droppable ? nsKey : undefined}
-              isDropTarget={
-                droppable && (dropTarget === nsKey || activeDropKey === nsKey)
-              }
+              isDropTarget={droppable && isDropTarget(nsKey)}
               onDragOver={droppable ? (e) => allowDropOn(e, nsKey) : undefined}
               onDragLeave={droppable ? () => setDropTarget(null) : undefined}
               onDrop={droppable ? (e) => commitDrop(e, nsKey) : undefined}
@@ -571,10 +607,7 @@ export function SideMenu({
               active={current === "archive"}
               badge={archivedCount > 0 ? archivedCount : undefined}
               dropId={CHECKLIST_DROP_ARCHIVE}
-              isDropTarget={
-                dropTarget === CHECKLIST_DROP_ARCHIVE ||
-                activeDropKey === CHECKLIST_DROP_ARCHIVE
-              }
+              isDropTarget={isDropTarget(CHECKLIST_DROP_ARCHIVE)}
               onDragOver={(e) => allowDropOn(e, CHECKLIST_DROP_ARCHIVE)}
               onDragLeave={() => setDropTarget(null)}
               onDrop={(e) => commitDrop(e, CHECKLIST_DROP_ARCHIVE)}
