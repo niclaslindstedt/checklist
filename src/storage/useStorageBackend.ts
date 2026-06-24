@@ -303,6 +303,18 @@ export function useStorageBackend(): UseStorageBackend {
     setFolderReconnectNeeded(true);
   }, []);
 
+  // The shared persist → select pair every backend switch ends on: persist
+  // the choice and flip the in-memory selection. Each backend's connect /
+  // disconnect path does its own token / handle setup, routes through here,
+  // and (on connect) raises its own `unlockAchievement` — kept inline at the
+  // call site so the catalog test can statically see every manual unlock.
+  // Adding a fourth backend is one call, not a re-typed `persistBackend` +
+  // `setBackendState` pair.
+  const switchToBackend = useCallback((id: BackendId) => {
+    persistBackend(id);
+    setBackendState(id);
+  }, []);
+
   // Boot probe: when the saved backend is the folder, load the stored
   // handle from IndexedDB and ask the OS whether the grant still stands.
   // Either rehydrate the handle or fall back to the browser store with a
@@ -351,8 +363,7 @@ export function useStorageBackend(): UseStorageBackend {
           setDropboxRefreshToken(result.refreshToken);
           setDropboxRefreshState(result.refreshToken);
         }
-        persistBackend("dropbox");
-        setBackendState("dropbox");
+        switchToBackend("dropbox");
         unlockAchievement("cloudWalker");
       } catch (err) {
         log.error("boot: Dropbox OAuth completion failed", err);
@@ -363,7 +374,7 @@ export function useStorageBackend(): UseStorageBackend {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [switchToBackend]);
 
   // Resolve the active backend once. Both builders below switch on this
   // single selection rather than re-deriving the `backend && token` chain.
@@ -519,9 +530,8 @@ export function useStorageBackend(): UseStorageBackend {
   }, [inner, encryption, password, locked, backend]);
 
   const selectBrowser = useCallback(() => {
-    persistBackend("browser");
-    setBackendState("browser");
-  }, []);
+    switchToBackend("browser");
+  }, [switchToBackend]);
 
   // Wrap a raw adapter in the session's encryption envelope so a folder
   // probe / seed / mirror reads and writes the same bytes the steady-state
@@ -534,14 +544,12 @@ export function useStorageBackend(): UseStorageBackend {
     [encryption, password],
   );
 
-  // The common tail of every `disconnect*`: fall back to the browser store,
-  // persisting the choice and flipping the in-memory selection. Each backend's
-  // disconnect clears its own tokens/state and then routes through here, so a
-  // fourth backend's disconnect is one call, not a re-typed pair.
+  // The common tail of every `disconnect*`: fall back to the browser store.
+  // Each backend's disconnect clears its own tokens / state and then routes
+  // through here (no achievement — falling back isn't an unlock).
   const switchToBrowser = useCallback(() => {
-    persistBackend("browser");
-    setBackendState("browser");
-  }, []);
+    switchToBackend("browser");
+  }, [switchToBackend]);
 
   // Pick a folder and switch to it. When the folder is empty, seed it with
   // the current document so the switch doesn't blank the screen; when it
@@ -574,13 +582,12 @@ export function useStorageBackend(): UseStorageBackend {
       log.error("folder seed failed", err);
     }
     await saveDirectoryHandle(handle);
-    persistBackend("folder");
     setFolderHandle(handle);
     setFolderReconnectNeeded(false);
     setFolderHandleLoaded(true);
-    setBackendState("folder");
+    switchToBackend("folder");
     unlockAchievement("localVault");
-  }, [activeNamespace, adapter, wrapForActive]);
+  }, [activeNamespace, adapter, wrapForActive, switchToBackend]);
 
   // Re-confirm the OS grant on the already-stored handle. `requestPermission`
   // needs a user gesture, which is why this lives in a click handler.
@@ -646,10 +653,9 @@ export function useStorageBackend(): UseStorageBackend {
     const token = await startGdriveAuth();
     setGdriveToken(token);
     setGdriveTokenState(token);
-    persistBackend("gdrive");
-    setBackendState("gdrive");
+    switchToBackend("gdrive");
     unlockAchievement("cloudWalker");
-  }, []);
+  }, [switchToBackend]);
 
   const disconnectGdrive = useCallback(() => {
     clearGdriveToken();

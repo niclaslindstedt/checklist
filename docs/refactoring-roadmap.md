@@ -45,28 +45,31 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`useStorageBackend.ts` is an 866-line god-hook nearing the 1000-line
-  cap.** `src/storage/useStorageBackend.ts` (866 lines, down from 933 once
-  the namespace-registry seam landed — see Landed, 2026-06; no
+- **`useStorageBackend.ts` is a 934-line god-hook nearing the 1000-line
+  cap.** `src/storage/useStorageBackend.ts` (934 lines; no
   `oss-spec:allow-large-file:` opt-out) wires every backend's lifecycle
-  into one hook: ~8 per-backend `useState` token vars (lines ~266–293),
-  the Dropbox OAuth boot effect (~336–364), and the folder probe/connect/
-  reconnect/disconnect set (~304–331, 576–657) — a return object with ~31
-  keys. Adding a fourth backend means threading new state through 5+ spots
-  in this file. The namespace-registry seam (state + reconcile + CRUD) is
-  now peeled out into `useNamespaceRegistry.ts`, and the disconnect
-  clear→reset→switch shape is consolidated behind `switchToBrowser()` +
-  `clearDropboxTokens()` (see Landed, 2026-06). The **next recommended
-  seam** is the symmetric *connect* side: `connectGdrive` / `connectDropbox`
-  (boot effect) / `connectFolder` each repeat a persist-backend →
-  set-backend-state → `unlockAchievement` dance that could route through a
-  `switchToBackend(id)` companion to `switchToBrowser`.
+  into one hook: ~8 per-backend `useState` token vars (lines ~269–295),
+  the Dropbox OAuth boot effect (~350–372), the folder probe/connect/
+  reconnect/disconnect set, and the encryption lifecycle. The
+  namespace-registry seam (state + reconcile + CRUD) is now peeled out
+  into `useNamespaceRegistry.ts`; the disconnect clear→reset→switch shape
+  is consolidated behind `switchToBrowser()` + `clearDropboxTokens()`; and
+  the connect-side persist→select pair now routes through a single
+  `switchToBackend(id)` primitive that `selectBrowser`, `switchToBrowser`,
+  `connectFolder`, `connectGdrive`, and the Dropbox boot effect all call
+  (see Landed, 2026-06). The **next recommended seam** is the
+  **encryption lifecycle**: `enableEncryption` / `disableEncryption` /
+  `unlock` (~666–750) plus the `encryption` + `password` state (~279–282)
+  form a self-contained concern that could peel into a `useEncryption`
+  hook, mirroring how `useNamespaceRegistry` was extracted.
   **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
   leaving the hook working and shrinking it. **Risk:** this is the central
   wiring for all three backends and the OAuth boot flow has **no automated
   coverage** — each seam must be smoke-tested by hand against LocalStorage
   plus whichever cloud backend it touches (Google Drive / Dropbox OAuth,
-  unreachable from Vitest). Keep each PR < 500 lines. **Severity: 6.**
+  unreachable from Vitest). Encryption enable/disable rewraps the persisted
+  document, so that seam needs a passphrase round-trip smoke-test. Keep
+  each PR < 500 lines. **Severity: 6.**
 
 - **Shared logged-fetch block still duplicated across the cloud
   adapters.** The pure `requestLabel` / `describeError` helpers are now
@@ -89,6 +92,21 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **Routed the connect-side persist→select pair through `switchToBackend`**
+  (2026-06). Second consolidation seam of the `useStorageBackend.ts`
+  god-hook: the `persistBackend(id)` + `setBackendState(id)` pair that was
+  written out inline at five sites (`selectBrowser`, `switchToBrowser`,
+  `connectFolder`, `connectGdrive`, and the Dropbox OAuth boot effect) now
+  lives in one `switchToBackend(id)` primitive they all call. The
+  feature-specific `unlockAchievement("…")` lines stay inline at each
+  connect site so the catalog test's static `unlock("<id>")` scan still
+  proves every manual achievement is wired (burying the id in
+  `switchToBackend`'s argument would have silently broken that guard — the
+  test caught it). `persistBackend` / `setBackendState` now have exactly one
+  call site each. Net line count ~flat (+6) — the win is the single edit
+  point for a fourth backend's switch, not shrinkage. Pure relocation, no
+  behaviour change; full suite (919 tests) green.
 
 - **Consolidated the per-backend `disconnect*` clear→reset→switch shape**
   (2026-06). The shared switch-to-browser tail (`persistBackend("browser")`
