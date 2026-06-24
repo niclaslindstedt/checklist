@@ -80,6 +80,12 @@ export type ChecklistContextValue = UseChecklist & {
    */
   showItemCount: boolean;
   /**
+   * Whether the copy button includes the archived items in the markdown it
+   * puts on the clipboard. A flag mirrored from the synced `Settings`; off
+   * by default, so a copied list is just its active items.
+   */
+  includeArchivedInCopy: boolean;
+  /**
    * Whether the checklist view should animate rows sliding into place when
    * the displayed order changes (a checked item sinking to the bottom). True
    * only when both checked-sorting and its animation are enabled in the

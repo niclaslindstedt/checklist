@@ -175,6 +175,19 @@ describe("markdown codec", () => {
       const body = checklistBodyMarkdown(checklist);
       expect(full.endsWith(body)).toBe(true);
     });
+
+    it("includes the archived section by default", () => {
+      const body = checklistBodyMarkdown(checklist);
+      expect(body).toContain("## Archived");
+    });
+
+    it("drops the archived section when includeArchived is false", () => {
+      const body = checklistBodyMarkdown(checklist, false);
+      expect(body).not.toContain("## Archived");
+      // The active items still render.
+      expect(body).toContain("- [ ] Milk");
+      expect(body).toContain("- [x] Bread");
+    });
   });
 
   describe("nested sub-items", () => {

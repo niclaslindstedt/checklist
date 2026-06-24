@@ -41,7 +41,13 @@ async function writeClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function CopyButton({ checklist }: { checklist: Checklist }) {
+export function CopyButton({
+  checklist,
+  includeArchived,
+}: {
+  checklist: Checklist;
+  includeArchived: boolean;
+}) {
   const t = useT();
   const toast = useToast();
   const [copied, setCopied] = useState(false);
@@ -50,7 +56,9 @@ export function CopyButton({ checklist }: { checklist: Checklist }) {
   );
 
   const onClick = useCallback(async () => {
-    const ok = await writeClipboard(checklistBodyMarkdown(checklist));
+    const ok = await writeClipboard(
+      checklistBodyMarkdown(checklist, includeArchived),
+    );
     if (!ok) {
       toast.push({ kind: "error", message: t("app.copyFailed") });
       return;
@@ -60,7 +68,7 @@ export function CopyButton({ checklist }: { checklist: Checklist }) {
     setCopied(true);
     clearTimeout(resetTimer.current);
     resetTimer.current = setTimeout(() => setCopied(false), 1500);
-  }, [checklist, t, toast]);
+  }, [checklist, includeArchived, t, toast]);
 
   const label = copied ? t("app.copied") : t("app.copyChecklist");
   const Icon = copied ? CheckIcon : CopyIcon;

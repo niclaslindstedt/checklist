@@ -72,6 +72,12 @@ export type Settings = {
   // total) beside the copy and sync glyphs. On by default; the opt-out
   // hides the badge for a cleaner header without affecting any behaviour.
   showItemCount: boolean;
+  // Whether the copy affordance includes the archived items (the
+  // `## Archived` section) in the markdown it puts on the clipboard. Off by
+  // default — a copied list is just its active `- [ ] / - [x]` lines; the
+  // opt-in appends the archived items too. Only affects the clipboard copy,
+  // never the persisted markdown file (which always keeps the archive).
+  includeArchivedInCopy: boolean;
   // Whether the achievements system is switched off. When on, the watcher
   // stops recording unlocks and raising celebratory toasts, and the header
   // trophy button is hidden. Already-earned achievements are preserved (the

@@ -169,13 +169,22 @@ export function checklistToMarkdown(checklist: Checklist): string {
  * affordance puts on the clipboard: human-readable task-list markdown a
  * user can paste anywhere (and back into the app, see
  * `parseItemsFromMarkdown`), where checked items stay checked.
+ *
+ * `includeArchived` controls whether the `## Archived` section is emitted.
+ * It defaults to `true` so the on-disk markdown file keeps every archived
+ * item (the archive is the live store, not an export). The copy affordance
+ * passes the user's "Include archived in copy" setting, which defaults to
+ * off — so a copied list is just its active items unless the user opts in.
  */
-export function checklistBodyMarkdown(checklist: Checklist): string {
+export function checklistBodyMarkdown(
+  checklist: Checklist,
+  includeArchived = true,
+): string {
   // `activeItems` / `archivedItems` walk the item tree, so nested sub-items
   // render indented under their parent and an archived subtree lands whole in
   // the Archived section.
   const active = activeItems(checklist);
-  const archived = archivedItems(checklist);
+  const archived = includeArchived ? archivedItems(checklist) : [];
 
   const lines: string[] = [`# ${checklist.name}`, ""];
   for (const item of active) lines.push(...renderChecklistItem(item, 0));

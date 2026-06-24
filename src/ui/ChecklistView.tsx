@@ -65,6 +65,7 @@ function ChecklistViewImpl() {
     logoSrc,
     disableItemNotes,
     showItemCount,
+    includeArchivedInCopy,
     animateReorder,
   } = useChecklistContext();
   const t = useT();
@@ -464,7 +465,10 @@ function ChecklistViewImpl() {
           {showItemCount && (
             <ItemCount checked={checkedCount} total={visibleCount} />
           )}
-          <CopyButton checklist={activeList} />
+          <CopyButton
+            checklist={activeList}
+            includeArchived={includeArchivedInCopy}
+          />
           {sync && (
             <SyncStatus
               providerName={sync.providerName}

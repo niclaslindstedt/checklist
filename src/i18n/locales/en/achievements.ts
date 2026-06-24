@@ -298,6 +298,10 @@ const achievements = {
       name: "Lost Count",
       condition: "Hide the item count in the list header.",
     },
+    copyTheArchive: {
+      name: "Copy the Archive",
+      condition: "Turn on including archived items when you copy a list.",
+    },
     underTheHood: {
       name: "Under the Hood",
       condition: "Turn on developer mode.",

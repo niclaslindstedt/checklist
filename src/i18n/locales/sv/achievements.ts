@@ -291,6 +291,11 @@ const achievements: AchievementsCatalog = {
       name: "Tappat räkningen",
       condition: "Dölj antalet poster i listans rubrik.",
     },
+    copyTheArchive: {
+      name: "Kopiera arkivet",
+      condition:
+        "Slå på att ta med arkiverade poster när du kopierar en lista.",
+    },
     underTheHood: {
       name: "Under huven",
       condition: "Slå på utvecklarläge.",
