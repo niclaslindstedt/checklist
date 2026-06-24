@@ -45,31 +45,34 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`useStorageBackend.ts` is a 934-line god-hook nearing the 1000-line
-  cap.** `src/storage/useStorageBackend.ts` (934 lines; no
+- **`useStorageBackend.ts` is an 846-line god-hook still well over the
+  friction band.** `src/storage/useStorageBackend.ts` (846 lines; no
   `oss-spec:allow-large-file:` opt-out) wires every backend's lifecycle
-  into one hook: ~8 per-backend `useState` token vars (lines ~269–295),
-  the Dropbox OAuth boot effect (~350–372), the folder probe/connect/
-  reconnect/disconnect set, and the encryption lifecycle. The
-  namespace-registry seam (state + reconcile + CRUD) is now peeled out
-  into `useNamespaceRegistry.ts`; the disconnect clear→reset→switch shape
-  is consolidated behind `switchToBrowser()` + `clearDropboxTokens()`; and
-  the connect-side persist→select pair now routes through a single
-  `switchToBackend(id)` primitive that `selectBrowser`, `switchToBrowser`,
-  `connectFolder`, `connectGdrive`, and the Dropbox boot effect all call
-  (see Landed, 2026-06). The **next recommended seam** is the
-  **encryption lifecycle**: `enableEncryption` / `disableEncryption` /
-  `unlock` (~666–750) plus the `encryption` + `password` state (~279–282)
-  form a self-contained concern that could peel into a `useEncryption`
-  hook, mirroring how `useNamespaceRegistry` was extracted.
+  into one hook: the per-backend `useState` token vars (lines ~261–280),
+  the Dropbox OAuth boot effect (~327–349), the folder probe/connect/
+  reconnect/disconnect set, and the cross-namespace move verbs. Four seams
+  are now peeled out: the namespace-registry (state + reconcile + CRUD →
+  `useNamespaceRegistry.ts`), the disconnect clear→reset→switch shape
+  (`switchToBrowser()` + `clearDropboxTokens()`), the connect-side
+  persist→select pair (`switchToBackend(id)`), and the **encryption
+  lifecycle** (`enableEncryption` / `disableEncryption` / `unlock` plus the
+  `encryption` + `password` state → `useEncryption.ts`) — see Landed,
+  2026-06. The **next recommended seam** is the **folder lifecycle**: the
+  `folderHandle` / `folderHandleLoaded` / `folderReconnectNeeded` state
+  (~280–287), the IndexedDB boot probe (~300–323), `markFolderPermissionLost`,
+  and `connectFolder` / `reconnectFolder` / `disconnectFolder` form a
+  self-contained File-System-Access concern that could peel into a
+  `useFolderHandle` hook the way `useEncryption` was extracted. (The cloud
+  token state + each cloud backend's connect/disconnect is a parallel
+  candidate seam.)
   **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
   leaving the hook working and shrinking it. **Risk:** this is the central
   wiring for all three backends and the OAuth boot flow has **no automated
   coverage** — each seam must be smoke-tested by hand against LocalStorage
   plus whichever cloud backend it touches (Google Drive / Dropbox OAuth,
-  unreachable from Vitest). Encryption enable/disable rewraps the persisted
-  document, so that seam needs a passphrase round-trip smoke-test. Keep
-  each PR < 500 lines. **Severity: 6.**
+  unreachable from Vitest). The folder seam touches the File System Access
+  grant flow, which also has no automated coverage — smoke-test pick / seed
+  / reconnect / disconnect by hand. Keep each PR < 500 lines. **Severity: 6.**
 
 - **Shared logged-fetch block still duplicated across the cloud
   adapters.** The pure `requestLabel` / `describeError` helpers are now
@@ -92,6 +95,27 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **Extracted the encryption lifecycle into `useEncryption`** (2026-06).
+  Fourth seam of the `useStorageBackend.ts` god-hook split: moved the
+  `encryption` mode + session-`password` state, the derived `locked` gate,
+  and the `enableEncryption` / `disableEncryption` / `unlock` verbs (the
+  crypto re-wrap / decrypt / verify round-trips) into a new
+  `src/storage/useEncryption.ts` (182 lines) exposing
+  `{encryption, password, locked, enableEncryption, disableEncryption,
+  unlock}` and driven by the unwrapped scoped `inner` adapter. The
+  `EncryptionProgress` / `EncryptionProgressStep` types moved with it and are
+  re-exported from `useStorageBackend.ts` so the unlock gate, the storage
+  settings tab, the progress-message map, and their tests keep resolving them
+  from the old module. The `paranoidMode` achievement unlock travelled inline
+  with `enableEncryption` (the catalog test's static `unlock("<id>")` scan
+  covers all of `src/`, so it stays wired). Added direct unit tests
+  (`tests/storage/use-encryption.test.ts`, 12 cases against a mocked adapter:
+  enable→envelope, disable→plaintext, unlock right/wrong/offline/plaintext-
+  at-rest, progress phases — 100% line/func, 90% branch on the new module)
+  the buried verbs couldn't have. Shrank `useStorageBackend.ts` 934 → 846
+  lines. Pure relocation, no behaviour change; full suite (931 tests) green.
+  Recommended next seam is the **folder lifecycle** (see the Pending row).
 
 - **Routed the connect-side persist→select pair through `switchToBackend`**
   (2026-06). Second consolidation seam of the `useStorageBackend.ts`
