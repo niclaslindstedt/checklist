@@ -28,20 +28,13 @@ import {
   getBackend,
   getDropboxRefreshToken,
   getDropboxToken,
-  getEncryption,
   getGdriveToken,
   setBackend as persistBackend,
   setDropboxRefreshToken,
   setDropboxToken,
-  setEncryption as persistEncryption,
   setGdriveToken,
 } from "./backend-preference.ts";
-import {
-  OfflineUnavailableError,
-  localCacheKey,
-  withLocalCache,
-} from "./cache/index.ts";
-import { decryptEnvelope, encryptText, isEncryptedEnvelope } from "./crypto.ts";
+import { localCacheKey, withLocalCache } from "./cache/index.ts";
 import {
   type DropboxAuth,
   completeDropboxAuth,
@@ -88,22 +81,18 @@ import {
   setActiveNamespaceSlug,
 } from "./namespaces.ts";
 import { useNamespaceRegistry } from "./useNamespaceRegistry.ts";
+import {
+  type EncryptionProgress,
+  type EncryptionProgressStep,
+  useEncryption,
+} from "./useEncryption.ts";
+
+// Re-exported from their new home in `useEncryption.ts` so existing importers
+// (the unlock gate, the storage settings tab, the progress-message map, and
+// their tests) keep resolving these types from this hook's module.
+export type { EncryptionProgress, EncryptionProgressStep };
 
 const log = createLogger("storage");
-
-// The ordered phases turning encryption on/off passes through, surfaced to the
-// settings UI so it can flash a one-line status while the work runs. `reading`,
-// `saving`, and `finalizing` bracket the storage round-trip; the key-derivation
-// and cipher phases (`derivingKey` / `encrypting` / `decrypting`) bubble up
-// from the crypto layer — the superset keeps a single callback driving both.
-export type EncryptionProgressStep =
-  | "reading"
-  | "derivingKey"
-  | "encrypting"
-  | "decrypting"
-  | "saving"
-  | "finalizing";
-export type EncryptionProgress = (step: EncryptionProgressStep) => void;
 
 export interface UseStorageBackend {
   /** The adapter to hand to `useChecklist`. A no-op placeholder while locked. */
@@ -276,10 +265,6 @@ export function useStorageBackend(): UseStorageBackend {
   const [gdriveToken, setGdriveTokenState] = useState<string | null>(
     getGdriveToken,
   );
-  const [encryption, setEncryptionState] =
-    useState<EncryptionMode>(getEncryption);
-  // Session-only passphrase. Never persisted — lost on reload by design.
-  const [password, setPassword] = useState<string | null>(null);
   const [activeNamespace, setActiveNamespaceState] = useState<string>(
     getActiveNamespaceSlug,
   );
@@ -517,7 +502,19 @@ export function useStorageBackend(): UseStorageBackend {
     remove: removeNamespaceEntry,
   } = useNamespaceRegistry(namespaceStore);
 
-  const locked = encryption === "encrypted" && password === null;
+  // The at-rest encryption lifecycle: owns the encryption-mode and session-
+  // passphrase state, derives the `locked` gate, and carries the enable /
+  // disable / unlock verbs that re-wrap or decrypt the active document. Driven
+  // by `inner` (the unwrapped scoped backend); the `adapter` memo below layers
+  // `withEncryption` on top using the `encryption` / `password` it exposes.
+  const {
+    encryption,
+    password,
+    locked,
+    enableEncryption,
+    disableEncryption,
+    unlock,
+  } = useEncryption(inner);
 
   // The adapter handed to the app. Wrapped with encryption when on;
   // replaced by the locked placeholder until the passphrase is supplied.
@@ -662,91 +659,6 @@ export function useStorageBackend(): UseStorageBackend {
     setGdriveTokenState(null);
     switchToBrowser();
   }, [switchToBrowser]);
-
-  const enableEncryption = useCallback(
-    async (next: string, onProgress?: EncryptionProgress) => {
-      if (!next) throw new Error("Passphrase is required");
-      log.info("enable encryption: start");
-      // Re-wrap whatever the inner backend currently holds so existing
-      // plaintext becomes an envelope. A first run with no data is a
-      // no-op beyond flipping the flag.
-      onProgress?.("reading");
-      const snap = await inner.load();
-      if (snap && !isEncryptedEnvelope(snap.text)) {
-        const payload = await encryptText(snap.text, next, onProgress);
-        onProgress?.("saving");
-        await inner.save(payload, snap.revision);
-      }
-      onProgress?.("finalizing");
-      persistEncryption("encrypted");
-      setEncryptionState("encrypted");
-      setPassword(next);
-      log.info("enable encryption: done");
-      unlockAchievement("paranoidMode");
-    },
-    [inner],
-  );
-
-  const disableEncryption = useCallback(
-    async (onProgress?: EncryptionProgress) => {
-      if (password === null) {
-        throw new Error("Unlock before turning encryption off");
-      }
-      log.info("disable encryption: start");
-      // Rewrite the document at rest as plaintext and drop the encrypted blob.
-      // Decrypt when the load surfaced the envelope; when a stale plaintext
-      // copy shadows the blob (a both-representations state a backend can drift
-      // into), the load returns that document instead, so re-save it as-is.
-      // Either way the plaintext write makes the directory adapter clear the
-      // superseded `checklist.json`, so disabling can't leave the envelope
-      // behind — gating the re-save on the load happening to surface the
-      // envelope is what let the file linger.
-      onProgress?.("reading");
-      const snap = await inner.load();
-      if (snap) {
-        const plaintext = isEncryptedEnvelope(snap.text)
-          ? await decryptEnvelope(snap.text, password, onProgress)
-          : snap.text;
-        onProgress?.("saving");
-        await inner.save(plaintext, snap.revision);
-      }
-      onProgress?.("finalizing");
-      persistEncryption("plaintext");
-      setEncryptionState("plaintext");
-      setPassword(null);
-      log.info("disable encryption: done");
-    },
-    [inner, password],
-  );
-
-  const unlock = useCallback(
-    async (candidate: string, onProgress?: EncryptionProgress) => {
-      if (!candidate) throw new Error("Passphrase is required");
-      // Verify by decrypting the stored envelope. For a cloud backend the
-      // load falls back to the on-device cache when offline, so the
-      // passphrase can be checked in airplane mode against the cached
-      // ciphertext. If the backend is unreachable *and* nothing is cached,
-      // map it to a distinct error so the gate says "you're offline" instead
-      // of the misleading "wrong passphrase".
-      onProgress?.("reading");
-      let snap: StoredSnapshot | null;
-      try {
-        snap = await inner.load();
-      } catch (err) {
-        log.warn("unlock: backend unreachable and no cached copy", err);
-        throw new OfflineUnavailableError();
-      }
-      // Plaintext-at-rest (the re-wrap never ran) can't be verified, so it
-      // unlocks optimistically. `decryptEnvelope` reports the `derivingKey`
-      // and `decrypting` phases itself.
-      if (snap && isEncryptedEnvelope(snap.text)) {
-        await decryptEnvelope(snap.text, candidate, onProgress); // throws on wrong pass
-      }
-      onProgress?.("finalizing");
-      setPassword(candidate);
-    },
-    [inner],
-  );
 
   const switchNamespace = useCallback((slug: string) => {
     setActiveNamespaceSlug(slug);
