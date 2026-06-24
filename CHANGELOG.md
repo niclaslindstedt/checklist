@@ -12,6 +12,23 @@ changelog").
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-24
+
+### Added
+
+- **Collapsible archive groups** — Tap a checklist's header in the archive to collapse or expand its archived items.
+
+### Changed
+
+- **Tidier side menu** — The namespace list now folds away (showing just the active one), a collapsed folder still peeks the active list inside it, only the checklist list scrolls so the menu's controls stay put, New list / New folder / Archive and Undo / Redo share one tidy action panel that sits flush with even spacing on every side, and the source, privacy, and "what's new" links moved into an About menu.
+- **Unlock status and cipher animation** — The unlock screen now flashes what it's doing while it checks your passphrase and decrypts your lists, and the encryption status bars swap the spinner for a scrambling cipher animation.
+
+### Fixed
+
+- **Clearer drop targets when dragging a list** — Dragging a checklist now highlights the folder under your finger and frames the no-folder area, so it's clear where the list will land.
+- **Restore icon** — The archive's restore button now uses a cleaner circular-arrow glyph whose arrowhead meets the arc flush.
+- **Drag-to-reorder freezing on desktop** — Reordering a checklist item with a mouse no longer leaves the row stuck floating mid-drag when you release the button away from the grip handle.
+
 ## [1.1.0] - 2026-06-23
 
 ### Added
