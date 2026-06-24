@@ -45,11 +45,87 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-_None pending._
+- **`useStorageBackend.ts` is a 933-line god-hook nearing the 1000-line
+  cap.** `src/storage/useStorageBackend.ts` (933 lines, no
+  `oss-spec:allow-large-file:` opt-out) wires every backend's lifecycle
+  into one hook: ~8 per-backend `useState` token vars (lines ~266–293),
+  the Dropbox OAuth boot effect (~336–364), the folder probe/connect/
+  reconnect/disconnect set (~304–331, 576–657), the namespace-registry
+  reconcile effect (~516–542), and namespace CRUD (~819–898) — a return
+  object with ~31 keys. Adding a fourth backend means threading new state
+  through 5+ spots in this file. **Plan:** umbrella multi-PR split by
+  concern; ship one seam per PR, each leaving the hook working and
+  shrinking it. Recommended first seams are the two friction rows below
+  (namespace registry hook, per-backend token/disconnect) — peel those
+  out before attempting deeper restructuring. **Risk:** this is the
+  central wiring for all three backends and the OAuth boot flow has **no
+  automated coverage** — each seam must be smoke-tested by hand against
+  LocalStorage plus whichever cloud backend it touches (Google Drive /
+  Dropbox OAuth, unreachable from Vitest). Keep each PR < 500 lines.
+  **Severity: 6.**
+
+- **HTTP-diagnostics helpers duplicated byte-for-byte across the cloud
+  adapters.** `requestLabel()` and `describeError()` (with their comment
+  blocks) are identical in `src/storage/gdrive/index.ts` (147–162, 663
+  lines) and `src/storage/dropbox/index.ts` (293–307, 502 lines); the
+  gdrive `createLoggedFetch()` wrapper (119–145) has an equivalent inline
+  twin inside Dropbox's `createAuthedFetch`. A shared
+  `src/storage/http-utils.ts` already exists (`parseRetryAfterMs`,
+  `readErrorBody`) and is the obvious home. **Plan:** move `requestLabel`
+  / `describeError` into `http-utils.ts` (pure, trivially unit-testable —
+  add the tests the move exposes), import from both adapters; optionally
+  lift a shared `createLoggedFetch(fetchImpl, label)` factory so both
+  backends instantiate one logger. **Risk:** low — pure helpers, but the
+  logged-fetch factory threads through the request hot path, so re-run
+  the storage tests and eyeball one real sync. Every future cloud backend
+  reimplements these today. **Severity: 5.**
+
+- **Namespace CRUD repeats read→setState→push four times in
+  `useStorageBackend.ts`.** `createNamespace`, `renameNamespace`,
+  `setNamespaceAppearance`, `removeNamespace` (lines ~819–896) each run
+  the same `registryOp(...) → setNamespacesState(getNamespaces()) →
+  pushNamespaces(getNamespaces())` dance (`getNamespaces()` is called
+  2–3× per function). The per-backend `disconnect*` callbacks (~659–688)
+  share an analogous clear-tokens→reset-state→switch-to-browser shape.
+  **Plan:** extract a `useNamespaceRegistry()` hook exposing
+  `{add, rename, setAppearance, remove}` that owns the state+persist
+  step once; this is also the recommended **first seam** of the
+  god-hook split above, so landing it shrinks `useStorageBackend.ts`
+  measurably. The extracted hook is directly unit-testable against a
+  mocked registry/store — add those tests in the same PR. **Risk:**
+  touches the synced namespace registry; pure relocation only, no shape
+  change. Smoke-test create/rename/remove against LocalStorage.
+  **Severity: 5.**
 
 ### Easy wins
 
-_None pending._
+- **Centralise `splitPath` across the file backends.** The
+  `path.split("/").filter((s) => s.length > 0)` idiom (drops empty
+  segments from `a//b`) is reimplemented in `src/storage/gdrive/index.ts`
+  (~470), `src/storage/folder/index.ts` (~92), and inline in the Dropbox
+  path handling. **Plan:** add `splitPath()` (and `joinPath()` if used)
+  to a small `src/storage/path-utils.ts`, replace the call sites, unit-
+  test the empty-segment trimming. Mechanical, N≥3 sites. **Severity: 4.**
+
+- **Share a `bearerAuthHeader(token)` helper.** `Authorization: Bearer
+  ${token}` is hand-built in ~7 places across `src/storage/gdrive/`
+  (gdrive already has a local `authHeader()` at 227) and 4× inline in
+  `src/storage/dropbox/index.ts` (331, 374, 394, 421, 448). **Plan:**
+  one helper in `http-utils.ts`, replace the inline strings. Guards
+  against header-casing typos and a future scheme change. **Severity: 3.**
+
+- **Extract the phantom-conflict resolver from `directory-adapter.ts`
+  for testability.** `src/storage/directory-adapter.ts` (533 lines) embeds
+  a subtle fingerprint / write-history / order-independent conflict
+  algorithm inside a ~110-line `save()` closure that captures
+  `recentWrites` / `lastFoldersJson` local state, so the algorithm can't
+  be unit-tested in isolation. **Plan:** lift it into a small
+  `PhantomConflictResolver` (or pure helpers) the adapter delegates to,
+  then add the unit tests the seam makes possible — a high-value
+  correctness algorithm currently has no direct coverage. **Risk:** pure
+  relocation, but it guards real data-loss on flaky links — pin behaviour
+  with a test written against the current code first, then refactor under
+  it. **Severity: 4.**
 
 ## Landed
 
