@@ -45,24 +45,23 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`useStorageBackend.ts` is a 933-line god-hook nearing the 1000-line
-  cap.** `src/storage/useStorageBackend.ts` (933 lines, no
+- **`useStorageBackend.ts` is an 866-line god-hook nearing the 1000-line
+  cap.** `src/storage/useStorageBackend.ts` (866 lines, down from 933 once
+  the namespace-registry seam landed — see Landed, 2026-06; no
   `oss-spec:allow-large-file:` opt-out) wires every backend's lifecycle
   into one hook: ~8 per-backend `useState` token vars (lines ~266–293),
-  the Dropbox OAuth boot effect (~336–364), the folder probe/connect/
-  reconnect/disconnect set (~304–331, 576–657), the namespace-registry
-  reconcile effect (~516–542), and namespace CRUD (~819–898) — a return
-  object with ~31 keys. Adding a fourth backend means threading new state
-  through 5+ spots in this file. **Plan:** umbrella multi-PR split by
-  concern; ship one seam per PR, each leaving the hook working and
-  shrinking it. Recommended first seams are the two friction rows below
-  (namespace registry hook, per-backend token/disconnect) — peel those
-  out before attempting deeper restructuring. **Risk:** this is the
-  central wiring for all three backends and the OAuth boot flow has **no
-  automated coverage** — each seam must be smoke-tested by hand against
-  LocalStorage plus whichever cloud backend it touches (Google Drive /
-  Dropbox OAuth, unreachable from Vitest). Keep each PR < 500 lines.
-  **Severity: 6.**
+  the Dropbox OAuth boot effect (~336–364), and the folder probe/connect/
+  reconnect/disconnect set (~304–331, 576–657) — a return object with ~31
+  keys. Adding a fourth backend means threading new state through 5+ spots
+  in this file. The namespace-registry seam (state + reconcile + CRUD) is
+  now peeled out into `useNamespaceRegistry.ts`; the **next recommended
+  seam** is the per-backend token/disconnect friction row below.
+  **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
+  leaving the hook working and shrinking it. **Risk:** this is the central
+  wiring for all three backends and the OAuth boot flow has **no automated
+  coverage** — each seam must be smoke-tested by hand against LocalStorage
+  plus whichever cloud backend it touches (Google Drive / Dropbox OAuth,
+  unreachable from Vitest). Keep each PR < 500 lines. **Severity: 6.**
 
 - **Shared logged-fetch block still duplicated across the cloud
   adapters.** The pure `requestLabel` / `describeError` helpers are now
@@ -80,22 +79,16 @@ _None pending._
   smoke-test a real Dropbox 401-refresh by hand. Lower value than the pure
   helpers were. **Severity: 3.**
 
-- **Namespace CRUD repeats read→setState→push four times in
-  `useStorageBackend.ts`.** `createNamespace`, `renameNamespace`,
-  `setNamespaceAppearance`, `removeNamespace` (lines ~819–896) each run
-  the same `registryOp(...) → setNamespacesState(getNamespaces()) →
-  pushNamespaces(getNamespaces())` dance (`getNamespaces()` is called
-  2–3× per function). The per-backend `disconnect*` callbacks (~659–688)
-  share an analogous clear-tokens→reset-state→switch-to-browser shape.
-  **Plan:** extract a `useNamespaceRegistry()` hook exposing
-  `{add, rename, setAppearance, remove}` that owns the state+persist
-  step once; this is also the recommended **first seam** of the
-  god-hook split above, so landing it shrinks `useStorageBackend.ts`
-  measurably. The extracted hook is directly unit-testable against a
-  mocked registry/store — add those tests in the same PR. **Risk:**
-  touches the synced namespace registry; pure relocation only, no shape
-  change. Smoke-test create/rename/remove against LocalStorage.
-  **Severity: 5.**
+- **Per-backend `disconnect*` callbacks share a clear→reset→switch
+  shape.** The `disconnectDropbox` / `disconnectGdrive` / `disconnectFolder`
+  callbacks (~`useStorageBackend.ts` 595–625 post-split) each run an
+  analogous clear-tokens → reset-state → switch-to-browser dance. **Plan:**
+  fold the common shape into a small helper (or a per-backend descriptor)
+  so a fourth backend's disconnect is one entry, not a fourth hand-written
+  callback; this is the recommended **next seam** of the god-hook split
+  above. **Risk:** touches the cloud token lifecycle, which has **no
+  automated coverage** — smoke-test disconnect against Dropbox / Google
+  Drive by hand. **Severity: 4.**
 
 ### Easy wins
 
@@ -113,6 +106,20 @@ _None pending._
   it. **Severity: 4.**
 
 ## Landed
+
+- **Extracted the namespace registry into `useNamespaceRegistry`**
+  (2026-06). First seam of the `useStorageBackend.ts` god-hook split:
+  moved the `namespaces` state, the best-effort `namespaces.json` push,
+  the boot-time reconcile effect, and the four CRUD verbs' shared
+  `registryOp → setState → push` dance into a new
+  `src/storage/useNamespaceRegistry.ts` (154 lines) exposing
+  `{namespaces, add, rename, setAppearance, remove}`. The hook's wrappers
+  in `useStorageBackend` keep the backend-specific side concerns (data
+  deletion on remove, active-namespace switching, achievements). Shrank
+  `useStorageBackend.ts` 933 → 866 lines and added direct unit tests
+  (`tests/storage/use-namespace-registry.test.ts`, ~97% line coverage on
+  the new hook) the buried code couldn't have. Pure relocation, no shape
+  change; smoke-test against LocalStorage clean.
 
 - **Shared `requestLabel` / `describeError` across the cloud adapters**
   (2026-06). Moved the two byte-for-byte-identical HTTP-diagnostics helpers
