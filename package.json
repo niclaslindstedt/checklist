@@ -1,6 +1,6 @@
 {
   "name": "checklist",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A local-first PWA checklist app with template support and optional Google Drive / Dropbox sync.",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",

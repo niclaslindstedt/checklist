@@ -12,6 +12,12 @@ changelog").
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-06-24
+
+### Fixed
+
+- **Drag-and-drop reliability** — Filing a checklist into a folder no longer freezes mid-air when you release away from the row or when a sync conflict surfaces mid-drag.
+
 ## [1.2.0] - 2026-06-24
 
 ### Added
