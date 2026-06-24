@@ -99,21 +99,6 @@ _None pending._
 
 ### Easy wins
 
-- **Centralise `splitPath` across the file backends.** The
-  `path.split("/").filter((s) => s.length > 0)` idiom (drops empty
-  segments from `a//b`) is reimplemented in `src/storage/gdrive/index.ts`
-  (~470), `src/storage/folder/index.ts` (~92), and inline in the Dropbox
-  path handling. **Plan:** add `splitPath()` (and `joinPath()` if used)
-  to a small `src/storage/path-utils.ts`, replace the call sites, unit-
-  test the empty-segment trimming. Mechanical, N≥3 sites. **Severity: 4.**
-
-- **Share a `bearerAuthHeader(token)` helper.** `Authorization: Bearer
-  ${token}` is hand-built in ~7 places across `src/storage/gdrive/`
-  (gdrive already has a local `authHeader()` at 227) and 4× inline in
-  `src/storage/dropbox/index.ts` (331, 374, 394, 421, 448). **Plan:**
-  one helper in `http-utils.ts`, replace the inline strings. Guards
-  against header-casing typos and a future scheme change. **Severity: 3.**
-
 - **Extract the phantom-conflict resolver from `directory-adapter.ts`
   for testability.** `src/storage/directory-adapter.ts` (533 lines) embeds
   a subtle fingerprint / write-history / order-independent conflict
@@ -136,6 +121,22 @@ _None pending._
   tests (now 100% coverage on `http-utils.ts`). The surrounding
   logged-fetch block is left as a narrower Severity-3 follow-up in Pending.
 
+- **Shared `bearerAuthHeader(token)` helper across the cloud adapters**
+  (2026-06). Replaced the seven hand-built `Authorization: Bearer ${token}`
+  strings (gdrive `authHeader()` + namespace-delete, five Dropbox request
+  sites) with one `bearerAuthHeader()` in `src/storage/http-utils.ts`,
+  spread into each `headers` object; added unit tests. Guards against a
+  header-casing typo and gives a single edit point for a future scheme
+  change.
+
 ## Investigated and skipped
 
-_None._
+- **Centralise `splitPath` across the file backends** (skipped 2026-06).
+  The roadmap claimed N≥3 call sites of the
+  `path.split("/").filter((s) => s.length > 0)` idiom, but on re-verify
+  only **two** remain (`src/storage/gdrive/index.ts` ~457 and
+  `src/storage/folder/index.ts` ~92) — the claimed inline Dropbox site
+  isn't there. A shared module + test for a one-line idiom at two trivial
+  call sites is below the easy-win N≥3 threshold and the fix threshold.
+  Re-evaluate if a third file grows the same idiom. **Was Severity 4 →
+  re-rated 2.**

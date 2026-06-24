@@ -55,3 +55,13 @@ export function parseRetryAfterMs(
     : 0;
   return Math.max(headerMs, fallbackMs);
 }
+
+/**
+ * Build the `Authorization` header for an OAuth bearer token. Centralising
+ * the `Bearer ` scheme keeps every cloud backend's request headers in one
+ * place — guarding against a header-casing typo and giving a single edit
+ * point if the scheme ever changes.
+ */
+export function bearerAuthHeader(token: string): { Authorization: string } {
+  return { Authorization: `Bearer ${token}` };
+}
