@@ -23,8 +23,7 @@ import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import {
   type BackendId,
   type EncryptionMode,
-  clearDropboxRefreshToken,
-  clearDropboxToken,
+  clearDropboxTokens,
   clearGdriveToken,
   getBackend,
   getDropboxRefreshToken,
@@ -522,6 +521,15 @@ export function useStorageBackend(): UseStorageBackend {
     [encryption, password],
   );
 
+  // The common tail of every `disconnect*`: fall back to the browser store,
+  // persisting the choice and flipping the in-memory selection. Each backend's
+  // disconnect clears its own tokens/state and then routes through here, so a
+  // fourth backend's disconnect is one call, not a re-typed pair.
+  const switchToBrowser = useCallback(() => {
+    persistBackend("browser");
+    setBackendState("browser");
+  }, []);
+
   // Pick a folder and switch to it. When the folder is empty, seed it with
   // the current document so the switch doesn't blank the screen; when it
   // already holds lists, adopt them (the folder wins). The handle is
@@ -603,11 +611,10 @@ export function useStorageBackend(): UseStorageBackend {
       }
     }
     await clearDirectoryHandle();
-    persistBackend("browser");
     setFolderHandle(null);
     setFolderReconnectNeeded(false);
-    setBackendState("browser");
-  }, [folderHandle, activeNamespace, wrapForActive]);
+    switchToBrowser();
+  }, [folderHandle, activeNamespace, wrapForActive, switchToBrowser]);
 
   const connectDropbox = useCallback(() => {
     // Redirects away; completion (and the `cloudWalker` unlock) runs in the
@@ -616,13 +623,11 @@ export function useStorageBackend(): UseStorageBackend {
   }, []);
 
   const disconnectDropbox = useCallback(() => {
-    clearDropboxToken();
-    clearDropboxRefreshToken();
+    clearDropboxTokens();
     setDropboxTokenState(null);
     setDropboxRefreshState(null);
-    persistBackend("browser");
-    setBackendState("browser");
-  }, []);
+    switchToBrowser();
+  }, [switchToBrowser]);
 
   const connectGdrive = useCallback(async () => {
     const token = await startGdriveAuth();
@@ -636,9 +641,8 @@ export function useStorageBackend(): UseStorageBackend {
   const disconnectGdrive = useCallback(() => {
     clearGdriveToken();
     setGdriveTokenState(null);
-    persistBackend("browser");
-    setBackendState("browser");
-  }, []);
+    switchToBrowser();
+  }, [switchToBrowser]);
 
   const enableEncryption = useCallback(
     async (next: string, onProgress?: EncryptionProgress) => {

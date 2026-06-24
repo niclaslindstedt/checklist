@@ -54,8 +54,13 @@ _None pending._
   reconnect/disconnect set (~304–331, 576–657) — a return object with ~31
   keys. Adding a fourth backend means threading new state through 5+ spots
   in this file. The namespace-registry seam (state + reconcile + CRUD) is
-  now peeled out into `useNamespaceRegistry.ts`; the **next recommended
-  seam** is the per-backend token/disconnect friction row below.
+  now peeled out into `useNamespaceRegistry.ts`, and the disconnect
+  clear→reset→switch shape is consolidated behind `switchToBrowser()` +
+  `clearDropboxTokens()` (see Landed, 2026-06). The **next recommended
+  seam** is the symmetric *connect* side: `connectGdrive` / `connectDropbox`
+  (boot effect) / `connectFolder` each repeat a persist-backend →
+  set-backend-state → `unlockAchievement` dance that could route through a
+  `switchToBackend(id)` companion to `switchToBrowser`.
   **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
   leaving the hook working and shrinking it. **Risk:** this is the central
   wiring for all three backends and the OAuth boot flow has **no automated
@@ -79,22 +84,25 @@ _None pending._
   smoke-test a real Dropbox 401-refresh by hand. Lower value than the pure
   helpers were. **Severity: 3.**
 
-- **Per-backend `disconnect*` callbacks share a clear→reset→switch
-  shape.** The `disconnectDropbox` / `disconnectGdrive` / `disconnectFolder`
-  callbacks (~`useStorageBackend.ts` 595–625 post-split) each run an
-  analogous clear-tokens → reset-state → switch-to-browser dance. **Plan:**
-  fold the common shape into a small helper (or a per-backend descriptor)
-  so a fourth backend's disconnect is one entry, not a fourth hand-written
-  callback; this is the recommended **next seam** of the god-hook split
-  above. **Risk:** touches the cloud token lifecycle, which has **no
-  automated coverage** — smoke-test disconnect against Dropbox / Google
-  Drive by hand. **Severity: 4.**
-
 ### Easy wins
 
 _None pending._
 
 ## Landed
+
+- **Consolidated the per-backend `disconnect*` clear→reset→switch shape**
+  (2026-06). The shared switch-to-browser tail (`persistBackend("browser")`
+  + `setBackendState("browser")`) now lives in one `switchToBrowser()`
+  callback that all three `disconnect*` callbacks route through, and the
+  Dropbox access/refresh pair clears via a new pure `clearDropboxTokens()`
+  in `backend-preference.ts` (clearing one without the other left a
+  half-authenticated state) with a direct unit test. A fourth backend's
+  disconnect is now clear-its-state + `switchToBrowser()`, not a re-typed
+  pair. Net line count on the hook is ~flat (+4) — the win is
+  de-duplication, not shrinkage. Pure relocation, no behaviour change; full
+  suite (911 tests, incl. the settings-modal disconnect tests) green.
+  Narrower than the god-hook row implied; recommended next seam is the
+  symmetric *connect* side (see the row above).
 
 - **Extracted the phantom-conflict resolver into `phantom-conflict.ts`**
   (2026-06). Lifted the fingerprint / order-independent `comparable`

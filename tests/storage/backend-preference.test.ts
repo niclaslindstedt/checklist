@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearDropboxRefreshToken,
   clearDropboxToken,
+  clearDropboxTokens,
   clearGdriveToken,
   getBackend,
   getDropboxRefreshToken,
@@ -62,6 +63,14 @@ describe("cloud tokens", () => {
     clearDropboxToken();
     expect(getDropboxRefreshToken()).toBe("dbx-refresh");
     clearDropboxRefreshToken();
+    expect(getDropboxRefreshToken()).toBeNull();
+  });
+
+  it("clears both Dropbox tokens together", () => {
+    setDropboxToken("dbx-access");
+    setDropboxRefreshToken("dbx-refresh");
+    clearDropboxTokens();
+    expect(getDropboxToken()).toBeNull();
     expect(getDropboxRefreshToken()).toBeNull();
   });
 

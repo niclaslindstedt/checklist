@@ -91,6 +91,14 @@ export function clearDropboxRefreshToken(): void {
   clear(DROPBOX_REFRESH_KEY);
 }
 
+// Drop both Dropbox tokens together. Disconnect always clears the pair —
+// keeping the access token without its refresh companion (or vice versa)
+// would leave a half-authenticated state, so they move as one.
+export function clearDropboxTokens(): void {
+  clearDropboxToken();
+  clearDropboxRefreshToken();
+}
+
 export function getGdriveToken(): string | null {
   return read(GDRIVE_TOKEN_KEY);
 }
