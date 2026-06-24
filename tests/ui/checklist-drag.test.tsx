@@ -157,6 +157,84 @@ describe("checklist long-press drag", () => {
     expect(onDrop).not.toHaveBeenCalled();
   });
 
+  // The move/up handlers live on `window`, not the row, so a release that
+  // lands off the dragged row still files the list. Pre-fix they sat on the row
+  // and leaned on pointer capture; a pen/touch point that drifted off it (or a
+  // browser that refused the capture) never delivered the pointerup and the
+  // lifted list froze. The release here fires on `document.body`, which is not
+  // inside the row wrapper — an element-bound handler would never see it.
+  it("commits the drop when the release lands off the dragged row", () => {
+    const onDrop = vi.fn();
+    const { wrapper, getByTestId } = setup(onDrop);
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(
+      getByTestId("folder"),
+    );
+
+    fireEvent.pointerDown(wrapper, touch);
+    act(() => void vi.advanceTimersByTime(400));
+    fireEvent.pointerMove(window, { ...touch, clientX: 50, clientY: 200 });
+    fireEvent.pointerUp(document.body, { pointerId: 1 });
+
+    expect(onDrop).toHaveBeenCalledExactlyOnceWith("c1", "f1");
+  });
+
+  // A browser-initiated pointercancel (the UA seized the pointer) aborts the
+  // drag without committing the half-finished move a deliberate release would.
+  it("aborts without filing when the browser cancels the pointer", () => {
+    const onDrop = vi.fn();
+    const { wrapper, getByTestId } = setup(onDrop);
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(
+      getByTestId("folder"),
+    );
+
+    fireEvent.pointerDown(wrapper, touch);
+    act(() => void vi.advanceTimersByTime(400));
+    fireEvent.pointerMove(window, { ...touch, clientX: 50, clientY: 200 });
+    fireEvent.pointerCancel(window, { pointerId: 1 });
+
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  // A background save can collide with another device mid-drag, raising the
+  // conflict modal over the list. The lifted list must be torn down — otherwise
+  // its floating chip stays frozen in mid-air and its captured pointer keeps
+  // swallowing input meant for the modal. The app signals this via `aborted`.
+  it("tears the drag down when the app aborts mid-drag (a sync conflict)", () => {
+    const onDrop = vi.fn();
+    function Tree({ aborted }: { aborted: boolean }) {
+      return (
+        <ChecklistDragProvider onDrop={onDrop} aborted={aborted}>
+          <ChecklistDragItem checklistId="c1" title="My list" enabled>
+            <button data-testid="list">My list</button>
+          </ChecklistDragItem>
+          <div data-testid="folder" {...{ [CHECKLIST_DROP_ATTR]: "f1" }}>
+            Folder
+          </div>
+        </ChecklistDragProvider>
+      );
+    }
+    const { getByTestId, container, rerender } = render(
+      <Tree aborted={false} />,
+    );
+    const wrapper = getByTestId("list").parentElement!;
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(
+      getByTestId("folder"),
+    );
+
+    fireEvent.pointerDown(wrapper, touch);
+    act(() => void vi.advanceTimersByTime(400));
+    // The list is picked up — the floating chip is mounted.
+    expect(container.querySelector("[aria-hidden]")).not.toBeNull();
+
+    // A sync conflict surfaces: the app raises `aborted`.
+    act(() => rerender(<Tree aborted={true} />));
+
+    // The chip is gone, and a trailing release commits no move.
+    expect(container.querySelector("[aria-hidden]")).toBeNull();
+    fireEvent.pointerUp(wrapper, { pointerId: 1 });
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
   // While a list is picked up, the drag must report itself so the
   // document-level pull-to-refresh stands down — dragging a list downward to a
   // drop target would otherwise arm a refresh at the same time.

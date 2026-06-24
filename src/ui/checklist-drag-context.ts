@@ -10,6 +10,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -56,10 +57,25 @@ export const DropKeyContext = createContext<string | null>(null);
 export const OnDropContext = createContext<
   ((checklistId: string, key: string) => void) | null
 >(null);
+// A monotonically increasing "abort" signal the app bumps to tear down any
+// in-flight filing drag from outside the gesture — e.g. a sync-conflict modal
+// has surfaced over the list and seized the screen. The provider raises it; the
+// active row releases its pointer capture and stops blocking scroll, and the
+// native HTML5 drop zones in the side menu drop their lift styling, even though
+// no pointerup/cancel (or `dragend`) will arrive on a row the interruption
+// unmounted.
+export const DragAbortContext = createContext<number>(0);
 
 /** The drop target currently under the finger (its `data-checklist-drop` value). */
 export function useChecklistDropKey(): string | null {
   return useContext(DropKeyContext);
+}
+
+/** The current drag-abort generation; changes when the app aborts in-flight
+ * drags (a sync conflict, a background reload). Native HTML5 drop zones watch
+ * it to clear a lift that `dragend` would otherwise never resolve. */
+export function useChecklistDragAbort(): number {
+  return useContext(DragAbortContext);
 }
 
 /** Commit a drop of `checklistId` onto the target identified by `key`. */
@@ -70,9 +86,6 @@ export function useChecklistDrop(): (checklistId: string, key: string) => void {
 
 export type TouchDragHandlers = Partial<{
   onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
-  onPointerMove: (e: ReactPointerEvent<HTMLElement>) => void;
-  onPointerUp: (e: ReactPointerEvent<HTMLElement>) => void;
-  onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
   onClickCapture: (e: ReactMouseEvent) => void;
 }>;
 
@@ -86,6 +99,7 @@ export function useTouchChecklistDrag(
   enabled: boolean,
 ): { handlers: TouchDragHandlers; dragging: boolean } {
   const actions = useContext(ActionsContext);
+  const abortGen = useContext(DragAbortContext);
   const [dragging, setDragging] = useState(false);
 
   const timer = useRef<number | null>(null);
@@ -97,6 +111,10 @@ export function useTouchChecklistDrag(
   const justDragged = useRef(false);
   // Non-passive scroll blocker installed only while a drag is live.
   const blockScroll = useRef<(e: TouchEvent) => void>(() => {});
+  // Detaches the window move/up/cancel listeners bound for the lifetime of the
+  // active gesture (see `bindWindow`). Held on a ref so `cleanup` can drop them
+  // without depending on the handler identities.
+  const detachWindow = useRef<(() => void) | null>(null);
 
   const clearTimer = useCallback(() => {
     if (timer.current !== null) {
@@ -115,6 +133,8 @@ export function useTouchChecklistDrag(
   );
 
   const cleanup = useCallback(() => {
+    detachWindow.current?.();
+    detachWindow.current = null;
     clearTimer();
     const el = targetEl.current;
     const id = pointerId.current;
@@ -131,6 +151,17 @@ export function useTouchChecklistDrag(
     setDragging(false);
   }, [clearTimer]);
 
+  // Tear the gesture down when the app aborts mid-drag (a sync-conflict modal
+  // took over, a background reload swapped the list). The user is still
+  // holding — no pointerup has fired — so `cleanup` here drops the chip and
+  // detaches the window listeners now, both so the lifted list doesn't hover
+  // over the modal and so a later release can't commit a move into the
+  // unresolved conflict. `active` is false on mount and whenever idle, so the
+  // initial run (and runs while no drag is live) are no-ops.
+  useEffect(() => {
+    if (active.current) cleanup();
+  }, [abortGen, cleanup]);
+
   const engage = useCallback(
     (x: number, y: number) => {
       active.current = true;
@@ -140,7 +171,10 @@ export function useTouchChecklistDrag(
         try {
           el.setPointerCapture(pointerId.current);
         } catch {
-          // some browsers reject capture mid-gesture — drag still works
+          // Capture is best-effort — it keeps touch events on the row and
+          // suppresses text selection — but correctness no longer depends on
+          // it: move/up/cancel live on `window`, so a release is caught
+          // wherever the pointer ends up even when capture is refused.
         }
       }
       blockScroll.current = (e: TouchEvent) => e.preventDefault();
@@ -154,10 +188,70 @@ export function useTouchChecklistDrag(
     [actions, hitTest, checklistId, title],
   );
 
-  if (!enabled) return { handlers: {}, dragging: false };
+  // Move / up / cancel run off `window` for the gesture's lifetime, not the
+  // row, so the press is tracked and the release caught wherever the pointer
+  // travels. A pen/touch point that drifts off the row — or a browser that
+  // refused the pointer capture `engage` requests — would otherwise never
+  // deliver the `pointerup`, leaving the lifted list frozen mid-air. Bound on
+  // pointer-down (so even the pre-latch move/up is seen), dropped by `cleanup`.
+  const handleMove = useCallback(
+    (e: PointerEvent) => {
+      if (pointerId.current !== e.pointerId) return;
+      if (!active.current) {
+        // Moved past the slop before the press latched → it's a scroll or a
+        // swipe; stand down and leave the existing gesture untouched.
+        if (
+          Math.abs(e.clientX - startX.current) > MOVE_SLOP ||
+          Math.abs(e.clientY - startY.current) > MOVE_SLOP
+        ) {
+          clearTimer();
+        }
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      hitTest(e.clientX, e.clientY);
+    },
+    [clearTimer, hitTest],
+  );
 
-  const handlers: TouchDragHandlers = {
-    onPointerDown(e) {
+  const handleUp = useCallback(
+    (e: PointerEvent) => {
+      if (pointerId.current !== e.pointerId) return;
+      if (active.current) {
+        justDragged.current = true;
+        actions?.commit();
+      }
+      cleanup();
+    },
+    [actions, cleanup],
+  );
+
+  // A browser-initiated `pointercancel` (the UA seized the pointer for its own
+  // gesture) aborts the drag — it must not commit a move the way a release does.
+  const handleCancel = useCallback(
+    (e: PointerEvent) => {
+      if (pointerId.current !== e.pointerId) return;
+      if (active.current) actions?.cancel();
+      cleanup();
+    },
+    [actions, cleanup],
+  );
+
+  const bindWindow = useCallback(() => {
+    detachWindow.current?.();
+    // `passive: false` so `handleMove` may `preventDefault` to block scroll.
+    window.addEventListener("pointermove", handleMove, { passive: false });
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleCancel);
+    detachWindow.current = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+    };
+  }, [handleMove, handleUp, handleCancel]);
+
+  const onPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLElement>) => {
       if (e.pointerType === "mouse") return;
       pointerId.current = e.pointerId;
       targetEl.current = e.currentTarget;
@@ -167,47 +261,28 @@ export function useTouchChecklistDrag(
       justDragged.current = false;
       const { clientX: x, clientY: y } = e;
       clearTimer();
+      // Bind the rest of the gesture to `window` up front so even a pre-latch
+      // move or a quick tap-release is tracked off the row.
+      bindWindow();
       timer.current = window.setTimeout(() => engage(x, y), LONG_PRESS_MS);
     },
-    onPointerMove(e) {
-      if (pointerId.current !== e.pointerId) return;
-      if (!active.current) {
-        // Moved before the press latched → it's a scroll or a swipe; stand down.
-        if (
-          Math.abs(e.clientX - startX.current) > MOVE_SLOP ||
-          Math.abs(e.clientY - startY.current) > MOVE_SLOP
-        ) {
-          clearTimer();
-        }
-        return;
-      }
-      e.preventDefault();
-      hitTest(e.clientX, e.clientY);
-    },
-    onPointerUp(e) {
-      if (pointerId.current !== e.pointerId) return;
-      if (active.current) {
-        e.preventDefault();
-        justDragged.current = true;
-        actions?.commit();
-      }
-      cleanup();
-    },
-    onPointerCancel(e) {
-      if (pointerId.current !== e.pointerId) return;
-      if (active.current) actions?.cancel();
-      cleanup();
-    },
-    // Swallow the click that trails a drag so releasing over a folder files the
-    // list instead of also selecting it.
-    onClickCapture(e) {
-      if (justDragged.current) {
-        e.preventDefault();
-        e.stopPropagation();
-        justDragged.current = false;
-      }
-    },
-  };
+    [bindWindow, clearTimer, engage],
+  );
 
-  return { handlers, dragging };
+  // Swallow the click that trails a drag so releasing over a folder files the
+  // list instead of also selecting it.
+  const onClickCapture = useCallback((e: ReactMouseEvent) => {
+    if (justDragged.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      justDragged.current = false;
+    }
+  }, []);
+
+  // Drop any still-bound window listeners if the row unmounts mid-drag.
+  useEffect(() => () => detachWindow.current?.(), []);
+
+  if (!enabled) return { handlers: {}, dragging: false };
+
+  return { handlers: { onPointerDown, onClickCapture }, dragging };
 }
