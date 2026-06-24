@@ -30,6 +30,7 @@ import {
   type NamespaceRegistryStore,
 } from "../namespace-store.ts";
 import {
+  bearerAuthHeader,
   describeError,
   parseRetryAfterMs,
   readErrorBody,
@@ -211,7 +212,7 @@ function createGdriveFileStore(
   const dirIdCache = new Map<string, string>();
 
   function authHeader(): Record<string, string> {
-    return { Authorization: `Bearer ${token}` };
+    return bearerAuthHeader(token);
   }
 
   async function searchOne(
@@ -474,7 +475,7 @@ export async function deleteGdriveNamespace(
   fetchImpl: FetchImpl = fetch,
 ): Promise<void> {
   const loggedFetch = createLoggedFetch(fetchImpl);
-  const auth = { Authorization: `Bearer ${token}` };
+  const auth = bearerAuthHeader(token);
   const folderName = namespaceCloudFolder(namespace);
   const appQuery =
     `name='${GDRIVE_APP_FOLDER_NAME}' and mimeType='${FOLDER_MIME_TYPE}'` +

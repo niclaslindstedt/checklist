@@ -30,6 +30,7 @@ import {
   type NamespaceRegistryStore,
 } from "../namespace-store.ts";
 import {
+  bearerAuthHeader,
   describeError,
   parseRetryAfterMs,
   readErrorBody,
@@ -314,7 +315,7 @@ function createDropboxFileStore(
     const res = await authedFetch(endpoint, (token) => ({
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...bearerAuthHeader(token),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -357,7 +358,7 @@ function createDropboxFileStore(
         (token) => ({
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...bearerAuthHeader(token),
             "Dropbox-API-Arg": dropboxApiArg({ path: `${rootPath}/${path}` }),
           },
         }),
@@ -377,7 +378,7 @@ function createDropboxFileStore(
         (token) => ({
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            ...bearerAuthHeader(token),
             "Dropbox-API-Arg": dropboxApiArg({
               path: `${rootPath}/${path}`,
               mode: "overwrite",
@@ -404,7 +405,7 @@ function createDropboxFileStore(
       const res = await authedFetch(DELETE_ENDPOINT, (token) => ({
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...bearerAuthHeader(token),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ path: `${rootPath}/${path}` }),
@@ -431,7 +432,7 @@ export async function deleteDropboxNamespace(
   const res = await fetchImpl(DELETE_ENDPOINT, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...bearerAuthHeader(accessToken),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ path }),

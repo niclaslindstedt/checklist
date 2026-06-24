@@ -1,11 +1,30 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bearerAuthHeader,
   describeError,
   parseRetryAfterMs,
   readErrorBody,
   requestLabel,
 } from "../../src/storage/http-utils.ts";
+
+describe("bearerAuthHeader", () => {
+  it("builds an RFC 6750 Authorization header from a token", () => {
+    expect(bearerAuthHeader("abc123")).toEqual({
+      Authorization: "Bearer abc123",
+    });
+  });
+
+  it("spreads cleanly alongside other request headers", () => {
+    expect({
+      ...bearerAuthHeader("tok"),
+      "Content-Type": "application/json",
+    }).toEqual({
+      Authorization: "Bearer tok",
+      "Content-Type": "application/json",
+    });
+  });
+});
 
 describe("requestLabel", () => {
   it("reduces a URL to its host and path", () => {
