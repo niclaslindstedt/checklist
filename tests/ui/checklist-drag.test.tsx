@@ -11,6 +11,8 @@ import {
   CHECKLIST_DROP_ATTR,
   CHECKLIST_DROP_ROOT,
   checklistDropNamespaceKey,
+  folderDragId,
+  parseDragId,
 } from "../../src/ui/checklist-drag-context.ts";
 import { ReportDragActivityContext } from "../../src/ui/drag-activity.ts";
 
@@ -264,5 +266,56 @@ describe("checklist long-press drag", () => {
 
     act(() => fireEvent.pointerUp(wrapper, { pointerId: 1 }));
     expect(report).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe("drag id encoding", () => {
+  it("round-trips a folder id through the folder prefix", () => {
+    expect(parseDragId(folderDragId("f1"))).toEqual({
+      kind: "folder",
+      id: "f1",
+    });
+  });
+
+  it("reads a bare id as a checklist", () => {
+    expect(parseDragId("c1")).toEqual({ kind: "checklist", id: "c1" });
+  });
+});
+
+describe("folder long-press drag", () => {
+  function setupFolder(onDrop: (id: string, key: string) => void) {
+    const utils = render(
+      <ChecklistDragProvider onDrop={onDrop}>
+        <ChecklistDragItem
+          checklistId={folderDragId("f1")}
+          title="Trips"
+          enabled
+        >
+          <button data-testid="folder-row">Trips</button>
+        </ChecklistDragItem>
+        <div
+          data-testid="ns"
+          {...{ [CHECKLIST_DROP_ATTR]: checklistDropNamespaceKey("work") }}
+        >
+          Work
+        </div>
+      </ChecklistDragProvider>,
+    );
+    const wrapper = utils.getByTestId("folder-row").parentElement!;
+    return { ...utils, wrapper };
+  }
+
+  it("hands the encoded folder id to onDrop on a namespace", () => {
+    const onDrop = vi.fn();
+    const { wrapper, getByTestId } = setupFolder(onDrop);
+    dragOnto(wrapper, getByTestId("ns"));
+    expect(onDrop).toHaveBeenCalledExactlyOnceWith(
+      folderDragId("f1"),
+      "ns:work",
+    );
+    expect(parseDragId(onDrop.mock.calls[0]![0])).toEqual({
+      kind: "folder",
+      id: "f1",
+    });
   });
 });

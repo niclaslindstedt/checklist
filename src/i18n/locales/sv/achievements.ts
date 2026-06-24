@@ -215,6 +215,10 @@ const achievements: AchievementsCatalog = {
       name: "Omflyttad",
       condition: "Dra en checklista till en annan namnrymd.",
     },
+    movedHouse: {
+      name: "Flyttdag",
+      condition: "Dra en hel mapp till en annan namnrymd.",
+    },
     localVault: {
       name: "Lokalt valv",
       condition: "Spara dina listor i en lokal mapp.",

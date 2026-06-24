@@ -1382,6 +1382,17 @@ This is the only way lists move between folders and namespaces — the old
 right-click/swipe "move to folder" affordances are gone; the swipe strip now
 carries only delete, and the right-click menu only archive + delete.
 
+A **whole folder header is draggable too**, but its only meaningful target is
+another **namespace**: dropping a folder onto a namespace row relocates the
+folder *and every list filed inside it* there, group intact (over a folder, the
+ungrouped zone, or the archive it's inert). The two payloads ride the same
+machinery — the dragged thing is carried as one string, with a folder encoded
+under the `FOLDER_DRAG_PREFIX` via `folderDragId` and split back out by
+`parseDragId` at the drop, so the resolver routes a folder to the
+folder-move and a bare id to the per-list path. While a folder is in flight the
+drop targets gate their highlight on `DragKindContext` (a folder lights up only
+namespace rows), and the drag chip swaps in a folder icon.
+
 Two pointer paths back one gesture, ported from the `notes` sibling
 (`src/ui/checklist-drag.tsx` + `src/ui/checklist-drag-context.ts`):
 
@@ -1430,10 +1441,13 @@ list).
 
 Both paths commit through one resolver: `ChecklistDragProvider`'s `onDrop`
 (exposed to the desktop handlers via `OnDropContext` so neither path forks the
-logic). It hands the target **key** to `onChecklistDrop` in `src/app/App.tsx`,
-which maps it to an action — `CHECKLIST_DROP_ROOT` / a folder id →
-`moveChecklistToFolder`, `CHECKLIST_DROP_ARCHIVE` → `archiveChecklist`,
-`ns:<slug>` → the cross-namespace move.
+logic). It hands the dragged **id** (bare, or folder-prefixed) and the target
+**key** to `onChecklistDrop` in `src/app/App.tsx`, which first splits the id
+with `parseDragId`: a **folder** drop resolves only on a `ns:<slug>` key (the
+folder-to-namespace move) and is a no-op elsewhere; a **checklist** maps the
+key to an action — `CHECKLIST_DROP_ROOT` / a folder id → `moveChecklistToFolder`,
+`CHECKLIST_DROP_ARCHIVE` → `archiveChecklist`, `ns:<slug>` → the cross-namespace
+move.
 
 The **cross-namespace move** is the only genuinely new write. Because each
 namespace is its own document, App writes the list into the *target*
@@ -1447,6 +1461,16 @@ target write (offline cloud, locked store) leaves the list where it is. The
 source move refuses to strip a namespace of its last active list, since the
 views always need one to show. The gesture unlocks the **Relocated**
 achievement.
+
+Moving a **whole folder** across namespaces works the same way, scaled up to
+the group: `storage.moveFolderToNamespace` loads the target document, prepends
+every list filed in the folder (each *keeping* its `folderId`, unlike the
+per-list move) and registers the folder there with `addFolder`, then saves;
+only on success does `detachFolderToNamespace` (`use-checklist-lists.ts`) drop
+the folder and its lists from the source in one undoable step. App refuses the
+move when it would leave the source namespace with no active list, and an empty
+folder simply relocates its registry entry. The gesture unlocks the **Moving
+Day** achievement.
 
 ### Namespaces
 

@@ -119,6 +119,15 @@ export interface ChecklistLists {
    * leave no active list behind (the caller guards this too, before writing).
    */
   detachChecklistToNamespace: (id: string, namespaceName: string) => void;
+  /**
+   * Drop a folder and every checklist filed inside it from this namespace's
+   * document, after its contents have been written into another namespace (the
+   * sidebar drag-a-folder-to-namespace move — the storage write happens in
+   * `App`). Records the removal on the undo timeline under a "moved" label and
+   * re-points the selection if the open list moved. A no-op when it would leave
+   * no active list behind (the caller guards this too, before writing).
+   */
+  detachFolderToNamespace: (folderId: string, namespaceName: string) => void;
 }
 
 export function useChecklistLists(deps: {
@@ -413,6 +422,32 @@ export function useChecklistLists(deps: {
     [docRef, commit, t, activeId, setActiveId],
   );
 
+  const detachFolderToNamespace = useCallback(
+    (folderId: string, namespaceName: string) => {
+      const prev = docRef.current;
+      const inFolder = prev.checklists.filter((c) => c.folderId === folderId);
+      const remaining = prev.checklists.filter((c) => c.folderId !== folderId);
+      // The views always need at least one *active* list to render — refuse a
+      // move that would strip this namespace of its last one. (App guards this
+      // before the target write, so this is the belt-and-braces backstop.)
+      if (!remaining.some((c) => !c.archived)) return;
+      // Drop the folder from the registry too — it lives on in the target now.
+      const registry = prev.folders ?? [];
+      const nextFolders = registry.filter((f) => f.id !== folderId);
+      const next: Snapshot = { ...prev, checklists: remaining };
+      if (nextFolders.length > 0) next.folders = nextFolders;
+      else delete next.folders;
+      // The folder and its lists live on in the target namespace, so frame the
+      // undo entry as a move. Undo restores the local copies; the copies already
+      // written into the target are left in place.
+      commit(next, t("toast.folderMovedToNamespace", { name: namespaceName }));
+      if (inFolder.some((c) => c.id === activeId)) {
+        setActiveId(remaining.find((c) => !c.archived)?.id ?? null);
+      }
+    },
+    [docRef, commit, t, activeId, setActiveId],
+  );
+
   const summarize = (c: Checklist): ChecklistSummary => {
     const { checked, total } = progress(c);
     const summary: ChecklistSummary = {
@@ -466,6 +501,7 @@ export function useChecklistLists(deps: {
       moveChecklistToFolder,
       addChecklistInFolder,
       detachChecklistToNamespace,
+      detachFolderToNamespace,
     }),
     [
       activeList,
@@ -484,6 +520,7 @@ export function useChecklistLists(deps: {
       moveChecklistToFolder,
       addChecklistInFolder,
       detachChecklistToNamespace,
+      detachFolderToNamespace,
     ],
   );
 }

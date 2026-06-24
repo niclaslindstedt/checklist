@@ -31,6 +31,7 @@ import {
   CHECKLIST_DROP_ARCHIVE,
   CHECKLIST_DROP_NS_PREFIX,
   CHECKLIST_DROP_ROOT,
+  parseDragId,
 } from "../ui/checklist-drag-context.ts";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
@@ -275,10 +276,14 @@ function AppShell() {
   // so a failed target write (offline cloud, locked) leaves the list where it
   // is. Refuses to strip the source namespace of its last active list, since
   // the views always need one to show.
-  const { moveChecklistToNamespace: writeToNamespace } = storage;
+  const {
+    moveChecklistToNamespace: writeToNamespace,
+    moveFolderToNamespace: writeFolderToNamespace,
+  } = storage;
   const {
     snapshot: docSnapshot,
     detachChecklistToNamespace,
+    detachFolderToNamespace,
     archiveChecklist,
     moveChecklistToFolder,
   } = checklist;
@@ -315,14 +320,68 @@ function AppShell() {
     ],
   );
 
+  // Move a whole folder into another namespace (the sidebar drag): write the
+  // folder and every list inside it into the target's document first, then drop
+  // them from this one — so a failed target write leaves everything where it is.
+  // Refuses to strip the source namespace of its last active list.
+  const moveFolderToNamespace = useCallback(
+    async (folderId: string, slug: string) => {
+      const folder = (docSnapshot.folders ?? []).find((f) => f.id === folderId);
+      if (!folder) return;
+      const inFolder = docSnapshot.checklists.filter(
+        (c) => c.folderId === folderId,
+      );
+      const activeOutside = docSnapshot.checklists.filter(
+        (c) => !c.archived && c.folderId !== folderId,
+      ).length;
+      // Moving the folder out would leave no active list behind — the views
+      // always need one to show, so refuse (mirrors the single-list move).
+      if (activeOutside < 1) {
+        push({ message: t("toast.listKeepLast"), kind: "info" });
+        return;
+      }
+      if (!(await writeFolderToNamespace(folder, inFolder, slug))) {
+        push({ message: t("toast.folderMoveFailed"), kind: "error" });
+        return;
+      }
+      const name = namespaces.find((n) => n.slug === slug)?.name ?? slug;
+      detachFolderToNamespace(folderId, name);
+      unlock("movedHouse");
+      push({
+        message: t("toast.folderMovedToNamespace", { name }),
+        kind: "success",
+      });
+    },
+    [
+      docSnapshot,
+      writeFolderToNamespace,
+      detachFolderToNamespace,
+      namespaces,
+      push,
+      t,
+    ],
+  );
+
   // Resolve a sidebar drag's drop target (a `data-checklist-drop` key) to the
-  // right action: the ungrouped zone / a folder id files the list, the Archive
-  // button archives it, a `ns:<slug>` row moves it to that namespace. Routed
-  // through a ref so the provider's `onDrop` keeps a stable identity (it feeds
-  // a context every draggable row subscribes to) while still seeing the latest
-  // closures here.
+  // right action. A dragged checklist files into the ungrouped zone / a folder,
+  // archives on the Archive button, or moves on a `ns:<slug>` row; a dragged
+  // folder only resolves on a namespace row (it relocates the whole group), and
+  // is a no-op over any other target. Routed through a ref so the provider's
+  // `onDrop` keeps a stable identity (it feeds a context every draggable row
+  // subscribes to) while still seeing the latest closures here.
   const dropHandlerRef = useRef<(id: string, key: string) => void>(() => {});
-  dropHandlerRef.current = (id: string, key: string) => {
+  dropHandlerRef.current = (rawId: string, key: string) => {
+    const item = parseDragId(rawId);
+    if (item.kind === "folder") {
+      if (key.startsWith(CHECKLIST_DROP_NS_PREFIX)) {
+        void moveFolderToNamespace(
+          item.id,
+          key.slice(CHECKLIST_DROP_NS_PREFIX.length),
+        );
+      }
+      return;
+    }
+    const id = item.id;
     if (key === CHECKLIST_DROP_ROOT) moveChecklistToFolder(id, null);
     else if (key === CHECKLIST_DROP_ARCHIVE) archiveChecklist(id);
     else if (key.startsWith(CHECKLIST_DROP_NS_PREFIX)) {
