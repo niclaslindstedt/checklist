@@ -57,30 +57,23 @@ node .agent/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
 node .agent/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
 ```
 
-The script tries three sources in order: the sibling's **mirror** on an
-external git host (set via `MIRROR_BASE`; that host is typically reachable over
-plain `git` even in the scoped sandbox where github.com is blocked, so it's a
-real clone *with history*), then **github.com** (works in permissive sessions,
-403-blocked in the scoped sandbox), then a **raw fallback** that fetches every
-file over `raw.githubusercontent.com`. The siblings keep the mirror current via
-their own `.github/workflows/mirror.yml`. **Don't hand-clone or hand-curl
-around a failure; the script already encodes which paths work.**
+The siblings push-mirror themselves to an external git host (each repo's
+`.github/workflows/mirror.yml`), and that mirror is reachable over plain `git`
+even in the scoped sandbox where github.com egress is blocked (403). So the
+helper clones the mirror directly — `<sibling>.git` appended to `MIRROR_BASE` —
+giving a real checkout *with full history*. **Don't hand-clone or hand-curl
+around it; the helper is the one supported path.**
 
-> **Mirror config (provider-agnostic).** Set `MIRROR_BASE` (host+namespace,
-> e.g. `gitlab.com/niclaslindstedt` or `codeberg.org/team`) to enable step 1;
-> add `MIRROR_TOKEN` (+ optional `MIRROR_USER`, default `oauth2`) when the
-> mirror is private. With none set, the script just falls through to github →
-> raw.
+> **Config (provider-agnostic, via env).** `MIRROR_BASE` = the mirror
+> host+namespace, no scheme / no repo (e.g. `gitlab.com/niclaslindstedt` or
+> `codeberg.org/team`) — **required**. `MIRROR_TOKEN` = the PAT, needed for a
+> private mirror (omit for a public one). `MIRROR_USER` optional (default
+> `oauth2`; `x-token-auth` for Bitbucket, your username for Gitea / Codeberg).
 
-> **Caveat — only the raw fallback lacks git history.** If the script logged
-> "Cloned …" (mirror or GitHub), `git log`/`git show` work in the checkout. If
-> it logged "Falling back to raw.githubusercontent.com" (no mirror, github
-> blocked), there's no history — read the *why* (Step 1) from the PR's shipped
-> artifacts instead: the `.changes/unreleased/*.md` fragment and the `docs/`
-> diff, which the same checkout already contains, plus the GitHub PR page.
-
-If the script fails outright (no outbound network at all), ask the user to paste
-the relevant files — don't guess from memory, and don't fall back to the
+If `MIRROR_BASE` isn't set, or the clone fails (no mirror for that sibling yet,
+or no network), the helper stops with a clear error. Fix the config / create
+the sibling's mirror — or, if you truly can't reach it, ask the user to paste
+the relevant files. Don't guess from memory, and don't fall back to the
 scope-locked GitHub tools.
 
 The script clears its destination first, so you always study current truth, and
@@ -142,11 +135,10 @@ git show <hash>
 > authoritative and always reachable.
 
 When the user names a specific commit or PR ("the redesigned action bar from
-#112") and the Step-0 helper got the repo via `git clone`, `git show` that commit
-(pass the ref as the helper's 3rd arg, or deepen the checkout, so it's reachable)
-and read its message, changeset, and docs diff before porting the code. If Step 0
-fell back to the raw fetch there is no local history — read the PR on GitHub and
-the shipped `.changes/` + `docs/` files in the checkout instead.
+#112"), `git show` that commit and read its message, changeset, and docs diff
+before porting the code. The mirror clone carries full history, so `git log` /
+`git show` work directly; pass the ref as the helper's 3rd arg if the commit
+lives on another branch.
 
 ## Step 2 — Map budget paths to checklist paths
 
@@ -270,7 +262,7 @@ The port is done when:
 1. **Hand-cloning instead of using the Step-0 helper.** `git clone` of
    github.com 403s in a scoped session, and the git proxy / GitHub MCP are
    locked to this repo — don't retry them or hand-curl around them. Run
-   `clone-sibling.mjs`, which already falls back to `raw.githubusercontent.com`.
+   `clone-sibling.mjs`, which clones the sibling's mirror (`MIRROR_BASE`).
 2. **Pasting budget's domain nouns.** The single biggest tell of a lazy port.
    Translate every `account`/`sheet`/`row`/`transaction`/`loan` to a checklist
    concept via `docs/dictionary.md`.
@@ -319,8 +311,8 @@ After a port:
 2. If you discovered a reusable sub-port (a foundation you had to bring over
    before the real feature), add it to "Shared foundations already here" so the
    next run reuses it.
-3. If how the sibling source is reached changed (proxy rules, scope, a new
-   mirror, an auth requirement), update `clone-sibling.mjs` and the Step 0
-   summary — keep the clone-then-raw-fallback logic current.
+3. If how the sibling source is reached changed (mirror host, auth, scope,
+   proxy rules), update `clone-sibling.mjs` and the Step 0 summary — keep the
+   `MIRROR_BASE` mirror-clone logic current.
 4. Commit the SKILL.md edit alongside the ported feature, and refresh
    `.last-updated` with today's date.
