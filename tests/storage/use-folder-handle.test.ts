@@ -91,13 +91,14 @@ function setPicker(handle: FileSystemDirectoryHandle | "abort" | "missing") {
     delete (window as { showDirectoryPicker?: unknown }).showDirectoryPicker;
     return;
   }
-  (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker =
-    vi.fn(async () => {
-      if (handle === "abort") {
-        throw new DOMException("dismissed", "AbortError");
-      }
-      return handle;
-    });
+  (
+    window as unknown as { showDirectoryPicker: () => Promise<unknown> }
+  ).showDirectoryPicker = vi.fn(async () => {
+    if (handle === "abort") {
+      throw new DOMException("dismissed", "AbortError");
+    }
+    return handle;
+  });
 }
 
 beforeEach(() => {

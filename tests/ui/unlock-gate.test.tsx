@@ -90,15 +90,13 @@ describe("UnlockGate", () => {
 
   it("flashes what's happening and disables the button while unlocking", async () => {
     const gate = deferred<void>();
-    const onUnlock = vi.fn(
-      (_pass: string, onProgress?: EncryptionProgress) => {
-        // The storage layer brackets the load with these phases; the gate maps
-        // the last one to the status line shown during the wait.
-        onProgress?.("derivingKey");
-        onProgress?.("decrypting");
-        return gate.promise;
-      },
-    );
+    const onUnlock = vi.fn((_pass: string, onProgress?: EncryptionProgress) => {
+      // The storage layer brackets the load with these phases; the gate maps
+      // the last one to the status line shown during the wait.
+      onProgress?.("derivingKey");
+      onProgress?.("decrypting");
+      return gate.promise;
+    });
     render(<UnlockGate open onUnlock={onUnlock} />);
 
     fireEvent.change(screen.getByLabelText(/passphrase/i), {
@@ -119,12 +117,10 @@ describe("UnlockGate", () => {
 
   it("names the phases in unlock-specific terms", async () => {
     const gate = deferred<void>();
-    const onUnlock = vi.fn(
-      (_pass: string, onProgress?: EncryptionProgress) => {
-        onProgress?.("derivingKey");
-        return gate.promise;
-      },
-    );
+    const onUnlock = vi.fn((_pass: string, onProgress?: EncryptionProgress) => {
+      onProgress?.("derivingKey");
+      return gate.promise;
+    });
     render(<UnlockGate open onUnlock={onUnlock} />);
     fireEvent.change(screen.getByLabelText(/passphrase/i), {
       target: { value: "hunter2" },

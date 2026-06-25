@@ -8,13 +8,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { StorageAdapter, StoredSnapshot } from "../../src/storage/adapter.ts";
+import type {
+  StorageAdapter,
+  StoredSnapshot,
+} from "../../src/storage/adapter.ts";
 import { setEncryption } from "../../src/storage/backend-preference.ts";
 import { OfflineUnavailableError } from "../../src/storage/cache/index.ts";
-import {
-  encryptText,
-  isEncryptedEnvelope,
-} from "../../src/storage/crypto.ts";
+import { encryptText, isEncryptedEnvelope } from "../../src/storage/crypto.ts";
 import {
   type EncryptionProgressStep,
   useEncryption,

@@ -60,6 +60,9 @@ const settings: SettingsCatalog = {
     includeArchivedInCopy: "Ta med arkiverade vid kopiering",
     includeArchivedInCopyHint:
       "När du kopierar en lista läggs dess arkiverade poster till under en rubrik ”Arkiverade”. Av som standard – en kopia innehåller bara de aktiva posterna.",
+    capitalizeItems: "Inled poster med versal",
+    capitalizeItemsHint:
+      "Gör första bokstaven i varje post till versal medan du skriver, så att ”köp mjölk” läggs till som ”Köp mjölk”. Bara första bokstaven ändras; resten lämnas som du skrev den.",
   },
 
   developer: {

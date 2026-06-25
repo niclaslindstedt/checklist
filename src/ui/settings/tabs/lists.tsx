@@ -58,6 +58,12 @@ export function ListsTab({
           checked={settings.includeArchivedInCopy}
           onChange={(next) => onUpdate("includeArchivedInCopy", next)}
         />
+        <ToggleRow
+          label={t("settings.lists.capitalizeItems")}
+          hint={t("settings.lists.capitalizeItemsHint")}
+          checked={settings.capitalizeItems}
+          onChange={(next) => onUpdate("capitalizeItems", next)}
+        />
       </Section>
     </>
   );

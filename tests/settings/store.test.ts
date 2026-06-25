@@ -181,6 +181,18 @@ describe("validateSettings", () => {
     ).toBe(false);
   });
 
+  it("leaves item capitalisation off by default and honours an explicit boolean", () => {
+    expect(defaultSettings().capitalizeItems).toBe(false);
+    expect(validateSettings({}).capitalizeItems).toBe(false);
+    expect(validateSettings({ capitalizeItems: true }).capitalizeItems).toBe(
+      true,
+    );
+    // A non-boolean stored value falls back to the default.
+    expect(validateSettings({ capitalizeItems: "yes" }).capitalizeItems).toBe(
+      false,
+    );
+  });
+
   it("keeps checked items in place by default and honours an explicit boolean", () => {
     expect(defaultSettings().sortCheckedToBottom).toBe(false);
     expect(validateSettings({}).sortCheckedToBottom).toBe(false);

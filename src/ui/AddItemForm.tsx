@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { capitalizeFirst } from "../domain/text.ts";
 import { useT } from "../i18n";
 import { INDENT_PER_LEVEL } from "./ChecklistRow.tsx";
 import { ClearableInput } from "./form/index.ts";
@@ -37,6 +38,7 @@ export function AddItemForm({
   onClose,
   onBackspaceEmpty,
   notesDisabled = false,
+  capitalize = false,
   depth = 0,
 }: {
   onAdd: (title: string) => void;
@@ -61,6 +63,12 @@ export function AddItemForm({
   /** When set, item notes are off — Shift+Enter falls back to a plain add. */
   notesDisabled?: boolean;
   /**
+   * When set, the first letter of the typed item is capitalised — live in the
+   * field as you type and again when it commits, so "buy milk" is added as
+   * "Buy milk". Mirrors the "Capitalise items" Lists setting.
+   */
+  capitalize?: boolean;
+  /**
    * Nesting depth — indents the composer one step per level so a sub-item
    * draft lines up under the children it's adding to (mirrors `ChecklistRow`).
    * 0 (the default) is the top-level composer.
@@ -82,11 +90,16 @@ export function AddItemForm({
     inputRef.current?.focus();
   }, []);
 
+  // Apply the "Capitalise items" preference to a title before it's committed.
+  // A no-op when the setting is off or the string is empty.
+  const titleCase = (text: string) =>
+    capitalize ? capitalizeFirst(text) : text;
+
   // Add the item described by `raw`. Shift+Enter (`withBody`) commits and
   // hands off to editing the body, closing the composer; a plain add clears
   // the field and keeps focus so the next item can be typed straight away.
   const commit = (raw: string, withBody: boolean) => {
-    const trimmed = raw.trim();
+    const trimmed = titleCase(raw.trim());
     if (!trimmed) return;
     if (withBody) {
       committed.current = true;
@@ -177,7 +190,9 @@ export function AddItemForm({
       <ClearableInput
         ref={inputRef}
         value={value}
-        onValueChange={setValue}
+        // Capitalise live as the user types so the field shows the same text
+        // that will commit; the trailing word is left untouched.
+        onValueChange={(v) => setValue(titleCase(v))}
         onKeyDown={onKeyDown}
         onCompositionEnd={onCompositionEnd}
         onPaste={(e) => {
@@ -195,7 +210,7 @@ export function AddItemForm({
           // Shift+Enter already committed and is closing the composer; don't
           // let the blur it triggers add the item again.
           if (committed.current) return;
-          const trimmed = value.trim();
+          const trimmed = titleCase(value.trim());
           if (trimmed) onAdd(trimmed);
           onClose();
         }}

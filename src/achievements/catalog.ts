@@ -533,6 +533,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "capitalIdea",
+    tier: "expert",
+    glyph: TypeGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.capitalizeItems],
+      predicate: (prev, next) =>
+        !prev.settings.capitalizeItems && next.settings.capitalizeItems,
+    },
+  },
+  {
     id: "underTheHood",
     tier: "expert",
     glyph: CodeGlyph,

@@ -39,4 +39,25 @@ describe("AddItemForm", () => {
     const input = screen.getByLabelText("Add item") as HTMLInputElement;
     expect(input.getAttribute("autocapitalize")).toBe("sentences");
   });
+
+  it("leaves the title verbatim when capitalise is off", () => {
+    const onAdd = vi.fn();
+    renderForm({ onAdd, capitalize: false });
+    const input = screen.getByLabelText("Add item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "buy milk" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAdd).toHaveBeenCalledWith("buy milk");
+  });
+
+  it("capitalises the first letter live and on commit when enabled", () => {
+    const onAdd = vi.fn();
+    renderForm({ onAdd, capitalize: true });
+    const input = screen.getByLabelText("Add item") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "buy milk" } });
+    // The field shows the capitalised text as you type…
+    expect(input.value).toBe("Buy milk");
+    // …and the committed item carries it too.
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAdd).toHaveBeenCalledWith("Buy milk");
+  });
 });

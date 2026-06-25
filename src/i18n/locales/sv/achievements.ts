@@ -300,6 +300,10 @@ const achievements: AchievementsCatalog = {
       condition:
         "Slå på att ta med arkiverade poster när du kopierar en lista.",
     },
+    capitalIdea: {
+      name: "Lysande idé",
+      condition: "Slå på att inleda varje post med versal.",
+    },
     underTheHood: {
       name: "Under huven",
       condition: "Slå på utvecklarläge.",

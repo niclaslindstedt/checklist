@@ -28,10 +28,7 @@ import {
   setDropboxToken,
   setGdriveToken,
 } from "./backend-preference.ts";
-import {
-  completeDropboxAuth,
-  hasPendingDropboxAuth,
-} from "./dropbox/index.ts";
+import { completeDropboxAuth, hasPendingDropboxAuth } from "./dropbox/index.ts";
 import { startGdriveAuth } from "./gdrive/index.ts";
 
 const log = createLogger("storage");

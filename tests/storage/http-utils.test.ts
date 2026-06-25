@@ -54,7 +54,9 @@ describe("requestLabel", () => {
 
   it("omits the query string and any access token", () => {
     expect(
-      requestLabel("https://www.googleapis.com/drive/v3/files?access_token=s3cret"),
+      requestLabel(
+        "https://www.googleapis.com/drive/v3/files?access_token=s3cret",
+      ),
     ).toBe("www.googleapis.com/drive/v3/files");
   });
 
