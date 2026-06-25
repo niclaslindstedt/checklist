@@ -37,6 +37,7 @@ import {
   OFFLINE_RESUME_MS,
 } from "../storage/save-retry.ts";
 import { parse, serialize } from "../storage/serialize.ts";
+import { SaveQueue } from "./save-queue.ts";
 import { newId, now } from "./side-effects.ts";
 
 const log = createLogger("checklist");
@@ -179,26 +180,20 @@ export function useChecklistSync(deps: {
   // document instead of treating the swap as a burst of fresh unlocks.
   const [loaded, setLoaded] = useState(false);
 
-  // Debounced-save plumbing. `pendingDoc` holds the latest unsaved
-  // document; the timer coalesces a burst of edits into one write per
-  // `saveDebounceMs` window (0 ⇒ save immediately, right for localStorage).
+  // Debounced-save plumbing. The timer coalesces a burst of edits into one
+  // write per `saveDebounceMs` window (0 ⇒ save immediately, right for
+  // localStorage); the `queue` below owns the unsaved snapshot, the single
+  // in-flight gate, and the stale-generation guard.
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingDoc = useRef<Snapshot | null>(null);
-  // At most one write is in flight at a time. A second save started before
-  // the first resolves would base on a revision the in-flight write is about
-  // to bump, so the backend rejects the loser as a ConflictError — the
-  // device colliding with *itself* on a slow link. Instead we queue: edits
-  // pile up in `pendingDoc` (each a complete snapshot, so the newest covers
-  // every one before it) and drain in a single follow-up save once the
-  // in-flight write returns with a fresh revision. This is the budget
-  // project's serialized-save model.
-  const inFlight = useRef(false);
-  // Bumped whenever the on-screen document is replaced wholesale (backend
-  // swap, reload, conflict-adopt). An in-flight save captures the value at
-  // launch; if it no longer matches when the save resolves, the result
-  // describes a baseline that's gone — its revision and any queued follow-up
-  // are stale, so the completion handler bails instead of writing back.
-  const saveGeneration = useRef(0);
+  // The serialized-save state machine: at most one write in flight, edits
+  // that arrive mid-write coalesce (newest snapshot wins), and a generation
+  // token drops the result of a save whose baseline was swapped out from
+  // under it (backend change, reload, conflict-adopt). Pure and directly
+  // unit-tested in `save-queue.test.ts`; see `SaveQueue` for the invariants.
+  // Held in a ref so the single instance survives every re-render.
+  const queueRef = useRef<SaveQueue<Snapshot> | null>(null);
+  queueRef.current ??= new SaveQueue<Snapshot>();
+  const queue = queueRef.current;
   // Forward handle to `flushSave` (defined below): `performSave` calls it to
   // drain a queued edit on completion, but `flushSave` is built on top of
   // `performSave`, so the cycle is broken through a ref.
@@ -228,26 +223,29 @@ export function useChecklistSync(deps: {
 
   // Schedule a resume `waitMs` from now after a save backed off (rate
   // limit or transient hiccup). Re-queues the failed snapshot — unless a
-  // newer edit already superseded it in `pendingDoc` — so the resume has
+  // newer edit already superseded it in the queue — so the resume has
   // bytes to push, then arms the cooldown timer. The timer captures the
   // save generation at arm time and bails if the document was swapped
   // wholesale (backend change, reload, conflict-adopt) before it fired,
   // so a stale resume can't write the old baseline onto the new one.
-  const armResave = useCallback((failedDoc: Snapshot, waitMs: number) => {
-    if (pendingDoc.current === null) pendingDoc.current = failedDoc;
-    if (retryTimer.current !== null) clearTimeout(retryTimer.current);
-    const generation = saveGeneration.current;
-    retryTimer.current = setTimeout(() => {
-      retryTimer.current = null;
-      if (saveGeneration.current !== generation) return;
-      flushSaveRef.current();
-    }, waitMs);
-  }, []);
+  const armResave = useCallback(
+    (failedDoc: Snapshot, waitMs: number) => {
+      queue.requeue(failedDoc);
+      if (retryTimer.current !== null) clearTimeout(retryTimer.current);
+      const generation = queue.generation;
+      retryTimer.current = setTimeout(() => {
+        retryTimer.current = null;
+        if (queue.isStale(generation)) return;
+        flushSaveRef.current();
+      }, waitMs);
+    },
+    [queue],
+  );
 
   const performSave = useCallback(
     (next: Snapshot, baseRevision?: string) => {
-      const generation = saveGeneration.current;
-      inFlight.current = true;
+      const generation = queue.generation;
+      queue.beginFlight();
       setStatus("saving");
       log.info(
         `save: starting (gen ${generation}, base=${baseRevision ?? "none"})`,
@@ -255,13 +253,13 @@ export function useChecklistSync(deps: {
       void adapterRef.current
         .save(serialize(next), baseRevision)
         .then((stored) => {
-          inFlight.current = false;
+          queue.endFlight();
           // The document was swapped out from under this save (reload, backend
           // change, conflict-adopt). Its revision and any queued follow-up
           // belong to a baseline that no longer exists — drop them.
-          if (saveGeneration.current !== generation) {
+          if (queue.isStale(generation)) {
             log.info(
-              `save: result for stale gen ${generation} (now ${saveGeneration.current}) — dropping`,
+              `save: result for stale gen ${generation} (now ${queue.generation}) — dropping`,
             );
             return;
           }
@@ -276,7 +274,7 @@ export function useChecklistSync(deps: {
           // An edit queued while this save was in flight. Each queued edit is a
           // full snapshot, so the latest supersedes every one before it — send
           // only that, based on the revision we just got, never concurrently.
-          if (pendingDoc.current !== null) {
+          if (queue.hasPending) {
             log.info("save: draining edit queued during write");
             flushSaveRef.current();
           } else {
@@ -286,8 +284,8 @@ export function useChecklistSync(deps: {
           }
         })
         .catch((err: unknown) => {
-          inFlight.current = false;
-          if (saveGeneration.current !== generation) return;
+          queue.endFlight();
+          if (queue.isStale(generation)) return;
           // Offline (a raw network error) is handled apart from the typed
           // signals and the transient-retry storm below. `withLocalCache` has
           // already persisted the attempted bytes, so the edit is safe and
@@ -370,10 +368,10 @@ export function useChecklistSync(deps: {
             transientRetries.current = 0;
             // Re-queue the failed snapshot (unless a newer edit already
             // superseded it) so the "Try again" affordance has bytes to push.
-            // `flushSave` consumed `pendingDoc` before this write started, and
+            // `flushSave` took the pending edit before this write started, and
             // a hard error arms no resume timer — without this, a manual retry
             // finds an empty queue and silently no-ops.
-            if (pendingDoc.current === null) pendingDoc.current = next;
+            queue.requeue(next);
             setStatus("error");
             // Capture the failure reason so the details modal can show *why*
             // the save failed instead of a bare "Sync failed" — and a clear
@@ -383,7 +381,7 @@ export function useChecklistSync(deps: {
           }
         });
     },
-    [armResave],
+    [armResave, queue],
   );
 
   const flushSave = useCallback(() => {
@@ -391,25 +389,24 @@ export function useChecklistSync(deps: {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
-    // One save in flight at a time (see `inFlight`). Leave the edit queued in
-    // `pendingDoc`; the outstanding save drains it when it resolves.
-    if (inFlight.current) {
+    // One save in flight at a time. Leave the edit queued; the outstanding
+    // save drains it when it resolves.
+    if (queue.inFlight) {
       log.info("flushSave: write already in flight — staying queued");
       return;
     }
     // A cooldown (rate-limit throttle or transient backoff) is in
     // progress — don't start a fresh write that would just be rejected
-    // again. The edit stays queued in `pendingDoc`; the armed resume
-    // timer drains it (and any newer edit) when the cooldown elapses.
+    // again. The edit stays queued; the armed resume timer drains it (and
+    // any newer edit) when the cooldown elapses.
     if (retryTimer.current !== null) {
       log.info("flushSave: cooldown active — staying queued");
       return;
     }
-    const next = pendingDoc.current;
+    const next = queue.take();
     if (next === null) return;
-    pendingDoc.current = null;
     performSave(next, revisionRef.current);
-  }, [performSave]);
+  }, [performSave, queue]);
 
   useEffect(() => {
     flushSaveRef.current = flushSave;
@@ -417,7 +414,7 @@ export function useChecklistSync(deps: {
 
   const scheduleSave = useCallback(
     (next: Snapshot) => {
-      pendingDoc.current = next;
+      queue.enqueue(next);
       setDirty(true);
       const ms = adapterRef.current.saveDebounceMs ?? 0;
       if (ms <= 0) {
@@ -429,7 +426,7 @@ export function useChecklistSync(deps: {
       if (saveTimer.current !== null) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(flushSave, ms);
     },
-    [flushSave],
+    [flushSave, queue],
   );
 
   // Reload whenever the active adapter instance changes. On first mount
@@ -456,9 +453,7 @@ export function useChecklistSync(deps: {
     // against the old backend — becomes a no-op rather than landing the old
     // backend's bytes on the new one.
     flushSave();
-    saveGeneration.current += 1;
-    inFlight.current = false;
-    pendingDoc.current = null;
+    queue.reset();
     adapterRef.current = active;
     revisionRef.current = undefined;
     setConflict(null);
@@ -500,7 +495,7 @@ export function useChecklistSync(deps: {
     return () => {
       cancelled = true;
     };
-  }, [active, flushSave, resetHistory]);
+  }, [active, flushSave, queue, resetHistory]);
 
   // Flush any pending save on unmount so a debounced edit isn't lost, and
   // cancel any armed cooldown so the resume timer can't fire after teardown.
@@ -527,9 +522,7 @@ export function useChecklistSync(deps: {
     flushSave();
     // The reloaded document is a fresh baseline; abandon any in-flight or
     // queued save so its stale write-back can't clobber what we load.
-    saveGeneration.current += 1;
-    inFlight.current = false;
-    pendingDoc.current = null;
+    queue.reset();
     // Recorded for `checkConnection`: whether this reload settled on the
     // offline cache. A non-offline error below leaves it false.
     reloadEndedOfflineRef.current = false;
@@ -559,7 +552,7 @@ export function useChecklistSync(deps: {
     const reloaded = withActiveList(parse(stored?.text));
     setDoc(reloaded);
     resetHistory.current(reloaded);
-  }, [flushSave, resetHistory]);
+  }, [flushSave, queue, resetHistory]);
 
   // Actively re-check reachability — the offline glyph's "Check connection"
   // gesture. Trusting `navigator.onLine` to flip back is unreliable (it's the
@@ -620,7 +613,7 @@ export function useChecklistSync(deps: {
   // syncs to the backend without the user lifting a finger. The browser's
   // `online` event is the trigger; a successful save clears the offline flag
   // (see `performSave`). Cloud `load()` failures during the outage left the
-  // edits queued in `pendingDoc`, so this is all the reconnect needs.
+  // edits queued in the save queue, so this is all the reconnect needs.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onOnline = () => {
@@ -661,9 +654,7 @@ export function useChecklistSync(deps: {
           // write-back, so we don't bounce the conflict. The adopted remote
           // is a fresh baseline, so abandon any queued save against the old
           // one.
-          saveGeneration.current += 1;
-          inFlight.current = false;
-          pendingDoc.current = null;
+          queue.reset();
           revisionRef.current = current.remoteRevision;
           setDoc(current.remote);
           // Adopting the remote document makes it the new baseline, so
@@ -676,7 +667,7 @@ export function useChecklistSync(deps: {
         return null;
       });
     },
-    [performSave, resetHistory],
+    [performSave, queue, resetHistory],
   );
 
   return {
