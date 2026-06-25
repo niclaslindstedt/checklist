@@ -12,7 +12,7 @@ import {
   FAMILY_DEFAULT_THEME,
   FAMILY_LABELS,
   FONT_FAMILIES,
-  FONT_SCALE_PRESETS,
+  FONT_SCALES,
   LIGHT_THEMES,
   PRESET_PALETTES,
   RADIUS_PRESETS,
@@ -33,6 +33,17 @@ import { Field, Section, SegmentedRow, ToggleRow } from "../shared.tsx";
 function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// Descriptive labels for the text-size steps. The framework's
+// `FONT_SCALE_PRESETS` ships bare percentages ("90%"); the checklist keeps its
+// fuller "Small (90%)" wording, built off the shared `FONT_SCALES` values so
+// the set of steps stays in lockstep with the framework.
+const FONT_SCALE_LABELS: Record<number, string> = {
+  0.9: "Small (90%)",
+  1: "Default (100%)",
+  1.1: "Large (110%)",
+  1.25: "Extra large (125%)",
+};
 
 export function AppearanceTab({
   settings,
@@ -127,10 +138,10 @@ export function AppearanceTab({
             onChange={(v) => onUpdate("fontScale", v)}
             ariaLabel={t("settings.appearance.textSize")}
             triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
-            options={FONT_SCALE_PRESETS.map(
-              (p): SelectOption<number> => ({
-                value: p.scale,
-                label: p.label,
+            options={FONT_SCALES.map(
+              (scale): SelectOption<number> => ({
+                value: scale,
+                label: FONT_SCALE_LABELS[scale] ?? `${Math.round(scale * 100)}%`,
               }),
             )}
           />
