@@ -35,7 +35,7 @@ vi.mock("../../src/storage/dropbox/index.ts", () => ({
   startDropboxAuth: h.startDropboxAuth,
 }));
 
-vi.mock("../../src/storage/gdrive/index.ts", () => ({
+vi.mock("../../src/storage/gdrive/gis-oauth.ts", () => ({
   startGdriveAuth: h.startGdriveAuth,
 }));
 
