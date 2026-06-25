@@ -45,34 +45,35 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`useStorageBackend.ts` is an 846-line god-hook still well over the
-  friction band.** `src/storage/useStorageBackend.ts` (846 lines; no
+- **`useStorageBackend.ts` is a 734-line god-hook still over the friction
+  band.** `src/storage/useStorageBackend.ts` (734 lines; no
   `oss-spec:allow-large-file:` opt-out) wires every backend's lifecycle
-  into one hook: the per-backend `useState` token vars (lines ~261–280),
-  the Dropbox OAuth boot effect (~327–349), the folder probe/connect/
-  reconnect/disconnect set, and the cross-namespace move verbs. Four seams
-  are now peeled out: the namespace-registry (state + reconcile + CRUD →
-  `useNamespaceRegistry.ts`), the disconnect clear→reset→switch shape
-  (`switchToBrowser()` + `clearDropboxTokens()`), the connect-side
-  persist→select pair (`switchToBackend(id)`), and the **encryption
-  lifecycle** (`enableEncryption` / `disableEncryption` / `unlock` plus the
-  `encryption` + `password` state → `useEncryption.ts`) — see Landed,
-  2026-06. The **next recommended seam** is the **folder lifecycle**: the
-  `folderHandle` / `folderHandleLoaded` / `folderReconnectNeeded` state
-  (~280–287), the IndexedDB boot probe (~300–323), `markFolderPermissionLost`,
-  and `connectFolder` / `reconnectFolder` / `disconnectFolder` form a
-  self-contained File-System-Access concern that could peel into a
-  `useFolderHandle` hook the way `useEncryption` was extracted. (The cloud
-  token state + each cloud backend's connect/disconnect is a parallel
-  candidate seam.)
+  into one hook: the per-backend `useState` token vars (lines ~254–267),
+  the Dropbox OAuth boot effect (~299–326), and the cross-namespace move
+  verbs. Five seams are now peeled out: the namespace-registry (state +
+  reconcile + CRUD → `useNamespaceRegistry.ts`), the disconnect
+  clear→reset→switch shape (`switchToBrowser()` + `clearDropboxTokens()`),
+  the connect-side persist→select pair (`switchToBackend(id)`), the
+  **encryption lifecycle** (→ `useEncryption.ts`), and the **folder
+  lifecycle** (the handle state + boot probe + connect / reconnect /
+  disconnect → `useFolderHandle.ts`) — see Landed, 2026-06. The **next
+  recommended seam** is the **cloud token state**: the `dropboxToken` /
+  `dropboxRefresh` / `gdriveToken` state (~254–267), the Dropbox OAuth boot
+  effect, and `connectDropbox` / `disconnectDropbox` / `connectGdrive` /
+  `disconnectGdrive` form a self-contained cloud-credential concern that
+  could peel into a `useCloudTokens` hook the way `useFolderHandle` was
+  extracted. The `selection` memo reads the three tokens (and a Dropbox
+  access-token refresh callback), so the hook must expose them; the connect
+  verbs need only `switchToBackend` (available early), so this seam has no
+  latest-ref entanglement the folder seam had.
   **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
   leaving the hook working and shrinking it. **Risk:** this is the central
   wiring for all three backends and the OAuth boot flow has **no automated
   coverage** — each seam must be smoke-tested by hand against LocalStorage
   plus whichever cloud backend it touches (Google Drive / Dropbox OAuth,
-  unreachable from Vitest). The folder seam touches the File System Access
-  grant flow, which also has no automated coverage — smoke-test pick / seed
-  / reconnect / disconnect by hand. Keep each PR < 500 lines. **Severity: 6.**
+  unreachable from Vitest), though the extracted hook can be unit-tested
+  against mocked stores (see `useFolderHandle` / `useEncryption`). Keep each
+  PR < 500 lines. **Severity: 6.**
 
 - **Shared logged-fetch block still duplicated across the cloud
   adapters.** The pure `requestLabel` / `describeError` helpers are now
@@ -95,6 +96,33 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **Extracted the folder lifecycle into `useFolderHandle`** (2026-06).
+  Fifth seam of the `useStorageBackend.ts` god-hook split: moved the
+  `folderHandle` / `folderHandleLoaded` / `folderReconnectNeeded` state, the
+  IndexedDB boot probe, `markFolderPermissionLost`, and the
+  `connectFolder` / `reconnectFolder` / `disconnectFolder` verbs into a new
+  `src/storage/useFolderHandle.ts` (215 lines) exposing
+  `{folderHandle, folderHandleLoaded, folderReconnectNeeded,
+  markFolderPermissionLost, connectFolder, reconnectFolder,
+  disconnectFolder}`. The connect / disconnect verbs read the active
+  document (to seed an empty folder and to mirror back on disconnect), which
+  lives *downstream* of the folder handle (the active adapter is selected
+  from the handle) — a genuine ordering cycle, since `markFolderPermissionLost`
+  is needed *upstream* by the adapter builders. Broke it with a `runtime`
+  latest-ref the parent refreshes each render (the same idiom
+  `usePullToRefresh` uses for `onRefresh`), so the whole concern stays in one
+  cohesive hook. The `localVault` achievement unlock travelled inline with
+  `connectFolder` (the catalog test's static `unlock("<id>")` scan covers all
+  of `src/`, so it stays wired). Added direct unit tests
+  (`tests/storage/use-folder-handle.test.ts`, 12 cases against a mocked
+  handle-store + picker: boot-probe rehydrate / lapsed-grant / no-handle,
+  connect-seed / adopt / abort / unsupported, reconnect re-grant / fall back
+  to connect, disconnect mirror-to-browser — 91.66% line, 80% branch on the
+  new module) the buried File-System-Access flow couldn't have. Shrank
+  `useStorageBackend.ts` 846 → 734 lines. Pure relocation, no behaviour
+  change; full suite (943 tests) green. Recommended next seam is the **cloud
+  token state** (see the Pending row).
 
 - **Extracted the encryption lifecycle into `useEncryption`** (2026-06).
   Fourth seam of the `useStorageBackend.ts` god-hook split: moved the
