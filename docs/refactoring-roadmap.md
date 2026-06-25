@@ -41,27 +41,7 @@ and update this file in the same PR.
 
 ### Severity 5–6 — friction
 
-- **Extract the Google Identity Services OAuth plumbing out of
-  `gdrive/index.ts`.** `src/storage/gdrive/index.ts` (630 lines) tangles three
-  unrelated concerns: the GIS OAuth flow (`loadGisScript`, `startGdriveAuth`,
-  `preloadGdriveAuth`, the token-client promise cache and `<script>`
-  injection, lines ~546–630), the file-store adapter factory (lines ~146–180),
-  and namespace deletion (`deleteGdriveNamespace`, lines ~452–501). The three
-  don't interact beyond the adapter handing a token in. Re-verify with `grep -n
-  "loadGisScript\|startGdriveAuth\|preloadGdriveAuth\|gisLoaderPromise"
-  src/storage/gdrive/index.ts`.
-  - **Plan**: lift the GIS machinery into `src/storage/gdrive/gis-oauth.ts`,
-    exporting only `startGdriveAuth` + `preloadGdriveAuth` (keep the script
-    cache and token-client types private). `createGdriveAdapter` calls
-    `startGdriveAuth`, gets a token, hands it to the file store — the file
-    store stays as-is (it's crisp). The OAuth module becomes independently
-    unit-testable, and the next cloud backend has a pattern to copy rather than
-    re-derive.
-  - **Risk**: low — OAuth is self-contained and the file-I/O paths (list /
-    read / write / remove / `deleteGdriveNamespace`) don't move. But the GIS
-    popup + token-refresh flow has **no automated coverage**, so the extraction
-    must be smoke-tested by hand: connect Google Drive, confirm the popup
-    completes, a token is obtained, and a save round-trips. **Severity: 5.**
+_None pending._
 
 ### Severity 3–4 — nits with leverage
 
@@ -72,6 +52,25 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **Extracted the GIS OAuth plumbing into `gdrive/gis-oauth.ts`**
+  (2026-06) — lifted the GIS token-client flow (`loadGisScript`,
+  `startGdriveAuth`, `preloadGdriveAuth`, the `gisLoaderPromise` script
+  cache, the GIS type declarations, and the `GDRIVE_SCOPE` constant) out of
+  `src/storage/gdrive/index.ts` into a new
+  `src/storage/gdrive/gis-oauth.ts`. The new module imports only
+  `GOOGLE_CLIENT_ID` from `index.ts` (a one-directional edge — no cycle:
+  `index.ts` no longer references any OAuth symbol), and `useCloudTokens`
+  now imports `startGdriveAuth` from the new module. `index.ts` dropped
+  630 → 498 lines; the OAuth module is 142. The extraction made the popup
+  flow directly unit-testable for the first time — the previously
+  zero-coverage flow is now exercised at 85% lines in the new
+  `tests/storage/gdrive-oauth.test.ts` (success grant, error response,
+  missing token, error-callback paths, and the `<script>`-injection path
+  via a stubbed `window.google`). No behaviour change; the file-I/O paths
+  (list / read / write / remove / `deleteGdriveNamespace`) and the logger
+  channel name (`"gdrive"`) were untouched, so the GIS popup hot path did
+  not need a manual smoke test for this pure relocation.
 
 - **Extracted the sidebar drag-to-move plumbing into a `useSideMenuDrag`
   hook** (2026-06) — moved the `draggingChecklist` / `dropTarget` state, the
