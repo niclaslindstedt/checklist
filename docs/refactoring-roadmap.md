@@ -49,40 +49,6 @@ _None pending._
 
 ### Severity 3–4 — nits with leverage
 
-- **`useStorageBackend.ts` is a 642-line god-hook, now back inside the
-  friction band but still the central backend wiring.**
-  `src/storage/useStorageBackend.ts` (642 lines; no
-  `oss-spec:allow-large-file:` opt-out) still composes every backend's
-  lifecycle. Six seams are now peeled out: the namespace-registry (state +
-  reconcile + CRUD → `useNamespaceRegistry.ts`), the disconnect
-  clear→reset→switch shape (`switchToBrowser()` + `clearDropboxTokens()`),
-  the connect-side persist→select pair (`switchToBackend(id)`), the
-  **encryption lifecycle** (→ `useEncryption.ts`), the **folder lifecycle**
-  (→ `useFolderHandle.ts`), and the **cloud token state** (Dropbox/Gdrive
-  tokens + OAuth boot effect + connect/disconnect → `useCloudTokens.ts`) —
-  see Landed, 2026-06. What remains in the hook is mostly the **adapter /
-  settings-store / namespace-store composition** (the `selection` memo,
-  `makeInner`, `inner`, `settingsStore`, `namespaceStore`, `adapter`) and
-  the **cross-namespace move verbs** (`moveChecklistToNamespace` /
-  `moveFolderToNamespace`, ~75 lines of near-duplicated load→prepend→save).
-  The **next recommended seam** is those two move verbs: they share a
-  best-effort target-write shape (`wrapForActive(makeInner(target))` →
-  `load` → prepend de-duped → `save`, returning `false` on throw) that
-  could collapse into one helper taking a document transform, peeling ~50
-  lines out. They depend only on `locked` / `activeNamespace` / `namespaces`
-  / `wrapForActive` / `makeInner`, so they extract cleanly as a
-  `useNamespaceMoves` hook or a pure helper the hook calls.
-  **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
-  leaving the hook working. The remaining seams (the move verbs, possibly
-  the selection/adapter composition) are smaller than the lifecycle ones
-  were — re-rate before the next pass, the god-hook smell has largely
-  decayed. **Risk:** the move verbs touch persisted documents across
-  namespaces; pin their behaviour with the existing move tests before
-  relocating. The OAuth boot flow remains **un-automatable** — any seam
-  touching it needs a hand smoke-test against the cloud backends. Keep each
-  PR < 500 lines. **Severity: 4** (down from 6 — the file is back under the
-  friction band and the remaining seams are localized).
-
 - **Shared logged-fetch block still duplicated across the cloud
   adapters.** The pure `requestLabel` / `describeError` helpers are now
   shared (see Landed, 2026-06), but the surrounding logging *block* —
@@ -104,6 +70,28 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **Collapsed the cross-namespace move verbs onto one `writeMovedDocument`
+  helper** (2026-06). Seventh and final seam of the `useStorageBackend.ts`
+  god-hook split: the near-duplicated best-effort target-write shape that both
+  `moveChecklistToNamespace` and `moveFolderToNamespace` wrote out inline
+  (`load().catch(() => null)` → `parse` → mutate → `save(serialize(doc),
+  prev?.revision)` in a `try/catch` returning `false`) now lives in one pure
+  `src/storage/namespace-moves.ts` (`writeMovedDocument(target, transform)`,
+  39 lines) returning a `{ ok } | { ok, error }` result so each verb keeps its
+  own success / failure log line. The verbs now build only the document
+  transform (drop-folder + prepend for a checklist; prepend-group + `addFolder`
+  for a folder) and own the guards and logging. Added direct unit tests
+  (`tests/storage/namespace-moves.test.ts`, 4 cases against a mock adapter:
+  save+ok, load-failure→empty-document, revision threaded back to `save`, and
+  the **save-failure→`{ ok: false, error }`** path the hook tests can't reach
+  on the browser backend, which never throws). Pure relocation, no behaviour
+  change — the existing through-the-hook move tests pass unchanged; full suite
+  (959 tests) green. Shrank `useStorageBackend.ts` 642 → 641 lines (the win is
+  the shared, now-testable write shape and the single edit point for a fourth
+  backend's move path, not shrinkage). With every lifecycle and the move verbs
+  peeled out, the god-hook smell has fully decayed — see Investigated and
+  skipped.
 
 - **Extracted the cloud token state into `useCloudTokens`** (2026-06).
   Sixth seam of the `useStorageBackend.ts` god-hook split: moved the
@@ -255,6 +243,20 @@ _None pending._
   change.
 
 ## Investigated and skipped
+
+- **`useStorageBackend.ts` god-hook split — remaining composition core**
+  (skipped 2026-06). The seven-PR concern split is done: namespace registry,
+  disconnect shape, connect shape, encryption, folder, cloud-token, and
+  cross-namespace-move seams all live in their own modules (see Landed). What
+  remains in the hook (641 lines, comfortably under the 1000-line cap) is the
+  **irreducible adapter composition** — the `selection` memo, `makeInner` /
+  `inner`, the per-backend `settingsStore` / `namespaceStore`, and the active
+  `adapter` — i.e. selecting the live `StorageAdapter` from the backend
+  preference + tokens + encryption. That is the hook's whole reason to exist;
+  it isn't a separable "concern" so much as the wiring the extracted hooks plug
+  into, and pulling it apart would trade a cohesive core for ceremony. The
+  god-hook smell has decayed to cosmetic. **Was Severity 4 → re-rated 2.**
+  Re-evaluate only if the file grows back toward the cap.
 
 - **Centralise `splitPath` across the file backends** (skipped 2026-06).
   The roadmap claimed N≥3 call sites of the

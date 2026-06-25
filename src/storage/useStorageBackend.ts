@@ -52,7 +52,7 @@ import {
   createFolderNamespaceStore,
   createFolderSettingsStore,
 } from "./folder/index.ts";
-import { parse, serialize } from "./serialize.ts";
+import { writeMovedDocument } from "./namespace-moves.ts";
 import type { SettingsStore } from "./settings-store.ts";
 import type { NamespaceRegistryStore } from "./namespace-store.ts";
 import { isFolderBackendAvailable } from "./folder/handle-store.ts";
@@ -479,18 +479,14 @@ export function useStorageBackend(): UseStorageBackend {
       // Build an adapter pointed at the target namespace, wrapped in the same
       // encryption envelope the active session uses so the bytes land readable.
       const target = wrapForActive(makeInner(targetSlug));
-      const prev = await target.load().catch(() => null);
-      const doc = parse(prev?.text ?? null);
-      doc.checklists = [
-        moved,
-        ...doc.checklists.filter((c) => c.id !== moved.id),
-      ];
-      try {
-        await target.save(serialize(doc), prev?.revision);
-      } catch (err) {
+      const result = await writeMovedDocument(target, (doc) => ({
+        ...doc,
+        checklists: [moved, ...doc.checklists.filter((c) => c.id !== moved.id)],
+      }));
+      if (!result.ok) {
         log.warn(
           `moveChecklistToNamespace: target save failed (${targetSlug})`,
-          err,
+          result.error,
         );
         return false;
       }
@@ -517,22 +513,25 @@ export function useStorageBackend(): UseStorageBackend {
       if (!namespaces.some((n) => n.slug === targetSlug)) return false;
 
       const target = wrapForActive(makeInner(targetSlug));
-      const prev = await target.load().catch(() => null);
-      let doc = parse(prev?.text ?? null);
       // Prepend the folder's lists, de-duped by id, keeping their folder link so
       // the group lands intact; register the folder so the target knows its name.
       const movedIds = new Set(checklists.map((c) => c.id));
-      doc.checklists = [
-        ...checklists,
-        ...doc.checklists.filter((c) => !movedIds.has(c.id)),
-      ];
-      doc = addFolder(doc, folder);
-      try {
-        await target.save(serialize(doc), prev?.revision);
-      } catch (err) {
+      const result = await writeMovedDocument(target, (doc) =>
+        addFolder(
+          {
+            ...doc,
+            checklists: [
+              ...checklists,
+              ...doc.checklists.filter((c) => !movedIds.has(c.id)),
+            ],
+          },
+          folder,
+        ),
+      );
+      if (!result.ok) {
         log.warn(
           `moveFolderToNamespace: target save failed (${targetSlug})`,
-          err,
+          result.error,
         );
         return false;
       }
