@@ -94,19 +94,20 @@ and update this file in the same PR.
 
 ### Easy wins
 
-- **Extract the inline `SyncLogPanel` out of `SyncDetailsModal.tsx`** —
-  `src/ui/SyncDetailsModal.tsx` (737 lines, nearing the 1000-line cap). The
-  developer sync-log panel (lines ~621–703) is a self-contained sub-component
-  with its own `version`/`copyStatus` state, an async `handleCopy`, the
-  `SYNC_LOG_SCOPES` const, and the `formatLogTime`/`formatLogLine`/`levelClass`/
-  `railClass` formatting helpers — orthogonal to the modal's main job (surface
-  sync status + reconnect buttons). **Plan:** move `SyncLogPanel` and its
-  helpers to `src/ui/SyncLogPanel.tsx` (~100 lines); props reduce to roughly
-  `{ t }`. Pure presentational relocation, no behaviour change, shrinks the
-  near-cap modal by ~80 lines and makes the panel reusable. **Risk:** none
-  beyond confirming the copy button and log rendering still work. **Severity: 4.**
+_None pending._
 
 ## Landed
+
+- **`SyncLogPanel` extracted out of `SyncDetailsModal.tsx`** (2026-06) — moved
+  the developer sync-log sub-component, its `SYNC_LOG_SCOPES` filter, and the
+  `formatLogTime`/`formatLogLine`/`levelClass`/`railClass` helpers to
+  `src/ui/SyncLogPanel.tsx`, shrinking the near-cap modal from 737 to 586
+  lines. Pure presentational relocation, no behaviour change; the modal imports
+  the panel and is otherwise untouched. The extraction exposed the panel as a
+  directly-testable export, so `tests/ui/sync-log-panel.test.tsx` adds focused
+  coverage the modal tests lacked — the scope filter (drops out-of-scope noise)
+  and the clipboard copy (chronological order, success/failure labels) — taking
+  the new file to 100% branch/line coverage. Was Severity 4 (easy win).
 
 - **`useStorageBackend.ts` encryption-wrapping decision deduped into a pure
   helper** (2026-06) — pulled the twice-written
