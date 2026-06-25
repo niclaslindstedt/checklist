@@ -7,7 +7,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot, type Snapshot } from "../../src/domain/types.ts";
-import type { StorageAdapter, StoredSnapshot } from "../../src/storage/adapter.ts";
+import type {
+  StorageAdapter,
+  StoredSnapshot,
+} from "../../src/storage/adapter.ts";
 import { writeMovedDocument } from "../../src/storage/namespace-moves.ts";
 import { parse, serialize } from "../../src/storage/serialize.ts";
 

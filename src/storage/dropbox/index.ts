@@ -250,7 +250,9 @@ function createAuthedFetch(
     // doc comment in `http-utils.ts`), with a 401 silent-refresh retry
     // interleaved between the first attempt and the closing status line.
     const rlog = createRequestLog(log, url, labelOverride);
-    let res = await rlog.attempt(() => fetchImpl(url, build(currentAccessToken)));
+    let res = await rlog.attempt(() =>
+      fetchImpl(url, build(currentAccessToken)),
+    );
     if (res.status === 401) {
       log.info("401 — attempting silent refresh");
       const fresh = await refreshOnce();
