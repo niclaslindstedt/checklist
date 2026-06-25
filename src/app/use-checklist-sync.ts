@@ -31,12 +31,12 @@ import {
   isOfflineError,
 } from "../storage/cache/index.ts";
 import {
-  backoffDelayMs,
   isRetryableSaveError,
   MAX_TRANSIENT_SAVE_RETRIES,
   OFFLINE_RESUME_MS,
 } from "../storage/save-retry.ts";
 import { parse, serialize } from "../storage/serialize.ts";
+import { RetryScheduler } from "./retry-scheduler.ts";
 import { SaveQueue } from "./save-queue.ts";
 import { newId, now } from "./side-effects.ts";
 
@@ -203,44 +203,16 @@ export function useChecklistSync(deps: {
   // reload so a probe that reached the backend but a document load that
   // still served the cache is reported honestly as "offline", not "online".
   const reloadEndedOfflineRef = useRef(false);
-  // A scheduled re-save during a cooldown: either a rate-limit throttle
-  // (HTTP 429) waiting out the backend's `Retry-After`, or a transient
-  // backend hiccup backing off before another attempt. Non-null means a
-  // cooldown is in progress — `flushSave` refuses to start a fresh write
-  // while it's armed so edits coalesce into the one resume instead of
-  // hammering the backend. Cleared on backend swap, reload, and unmount.
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Count of back-to-back rate limits (HTTP 429) with no successful save
-  // in between. Drives the backoff floor on the throttle path so a server
-  // that keeps returning a tiny `retryAfterMs` escalates the cooldown
-  // instead of letting us resend on a tight loop. Reset to 0 the moment a
-  // save lands.
-  const consecutiveThrottles = useRef(0);
-  // Count of consecutive transient (non-typed) save failures. Bounds the
-  // automatic retry curve: after `MAX_TRANSIENT_SAVE_RETRIES` the save
-  // path gives up and surfaces a hard `error`. Reset to 0 on success.
-  const transientRetries = useRef(0);
-
-  // Schedule a resume `waitMs` from now after a save backed off (rate
-  // limit or transient hiccup). Re-queues the failed snapshot — unless a
-  // newer edit already superseded it in the queue — so the resume has
-  // bytes to push, then arms the cooldown timer. The timer captures the
-  // save generation at arm time and bails if the document was swapped
-  // wholesale (backend change, reload, conflict-adopt) before it fired,
-  // so a stale resume can't write the old baseline onto the new one.
-  const armResave = useCallback(
-    (failedDoc: Snapshot, waitMs: number) => {
-      queue.requeue(failedDoc);
-      if (retryTimer.current !== null) clearTimeout(retryTimer.current);
-      const generation = queue.generation;
-      retryTimer.current = setTimeout(() => {
-        retryTimer.current = null;
-        if (queue.isStale(generation)) return;
-        flushSaveRef.current();
-      }, waitMs);
-    },
-    [queue],
+  // The cooldown scheduler: owns the armed resume timer, the throttle
+  // escalation counter, and the transient retry budget that used to live
+  // inline. Composes the `queue` for the generation guard and re-queue;
+  // `arm`'s resume drains the queue through `flushSave`. Held in a ref so
+  // the single instance survives every re-render. See `RetryScheduler`.
+  const schedulerRef = useRef<RetryScheduler<Snapshot> | null>(null);
+  schedulerRef.current ??= new RetryScheduler<Snapshot>(queue, () =>
+    flushSaveRef.current(),
   );
+  const scheduler = schedulerRef.current;
 
   const performSave = useCallback(
     (next: Snapshot, baseRevision?: string) => {
@@ -265,8 +237,7 @@ export function useChecklistSync(deps: {
           }
           // A save landed — clear the backoff escalation so a future failure
           // (throttle or transient) starts its curve from scratch.
-          consecutiveThrottles.current = 0;
-          transientRetries.current = 0;
+          scheduler.resetCounters();
           // A write landed — we're demonstrably back online.
           setOffline(false);
           revisionRef.current = stored.revision;
@@ -305,8 +276,8 @@ export function useChecklistSync(deps: {
             setOffline(true);
             // Not a transient failure — reset the budget so a real 5xx after
             // reconnect starts its curve fresh.
-            transientRetries.current = 0;
-            armResave(next, OFFLINE_RESUME_MS);
+            scheduler.resetTransients();
+            scheduler.arm(next, OFFLINE_RESUME_MS);
             return;
           }
           if (err instanceof ConflictError) {
@@ -331,30 +302,26 @@ export function useChecklistSync(deps: {
             // budget here on purpose: giving up on a rate limit would
             // surface a red error and stop autosave, which is worse than
             // continuing to wait.
-            const floorMs = backoffDelayMs(consecutiveThrottles.current);
-            consecutiveThrottles.current += 1;
-            const waitMs = Math.max(err.retryAfterMs, floorMs);
+            const { waitMs, floorMs } = scheduler.nextThrottleDelay(
+              err.retryAfterMs,
+            );
             log.warn(
               `save throttled — retryAfter=${err.retryAfterMs}ms floor=${floorMs}ms resume in ${waitMs}ms`,
             );
             setStatus("throttled");
             setStatusDetail(null);
-            armResave(next, waitMs);
-          } else if (
-            isRetryableSaveError(err) &&
-            transientRetries.current < MAX_TRANSIENT_SAVE_RETRIES
-          ) {
+            scheduler.arm(next, waitMs);
+          } else if (isRetryableSaveError(err) && scheduler.canRetryTransient) {
             // Transient backend hiccup (5xx, raw network error): re-queue
             // and back off rather than immediately surfacing a red error.
             // Status stays `saving` across attempts so the glyph keeps
             // spinning. After `MAX_TRANSIENT_SAVE_RETRIES` we fall through
             // to the hard-error branch below.
-            const waitMs = backoffDelayMs(transientRetries.current);
-            transientRetries.current += 1;
+            const { waitMs, attempt } = scheduler.nextTransientDelay();
             log.warn(
-              `save failed — retrying in ${waitMs}ms (attempt ${transientRetries.current}/${MAX_TRANSIENT_SAVE_RETRIES}): ${describeStorageError(err)}`,
+              `save failed — retrying in ${waitMs}ms (attempt ${attempt}/${MAX_TRANSIENT_SAVE_RETRIES}): ${describeStorageError(err)}`,
             );
-            armResave(next, waitMs);
+            scheduler.arm(next, waitMs);
           } else {
             // Echoing a bare network `TypeError` ("Load failed" on WebKit)
             // tells nobody anything — log the meaning, and keep the raw
@@ -365,7 +332,7 @@ export function useChecklistSync(deps: {
             } else {
               log.error(`save failed — ${describeStorageError(err)}`, err);
             }
-            transientRetries.current = 0;
+            scheduler.resetTransients();
             // Re-queue the failed snapshot (unless a newer edit already
             // superseded it) so the "Try again" affordance has bytes to push.
             // `flushSave` took the pending edit before this write started, and
@@ -381,7 +348,7 @@ export function useChecklistSync(deps: {
           }
         });
     },
-    [armResave, queue],
+    [queue, scheduler],
   );
 
   const flushSave = useCallback(() => {
@@ -399,14 +366,14 @@ export function useChecklistSync(deps: {
     // progress — don't start a fresh write that would just be rejected
     // again. The edit stays queued; the armed resume timer drains it (and
     // any newer edit) when the cooldown elapses.
-    if (retryTimer.current !== null) {
+    if (scheduler.armed) {
       log.info("flushSave: cooldown active — staying queued");
       return;
     }
     const next = queue.take();
     if (next === null) return;
     performSave(next, revisionRef.current);
-  }, [performSave, queue]);
+  }, [performSave, queue, scheduler]);
 
   useEffect(() => {
     flushSaveRef.current = flushSave;
@@ -441,12 +408,7 @@ export function useChecklistSync(deps: {
     // reset the backoff escalation — the new backend starts with a clean
     // slate. Cleared before `flushSave` so a queued edit gets one last push
     // to the old backend rather than being blocked by the cooldown guard.
-    if (retryTimer.current !== null) {
-      clearTimeout(retryTimer.current);
-      retryTimer.current = null;
-    }
-    consecutiveThrottles.current = 0;
-    transientRetries.current = 0;
+    scheduler.cancel();
     // Flush a queued edit to the *old* backend first (when nothing is in
     // flight) so a debounced edit isn't dropped on the swap, then bump the
     // generation so that save's write-back — and any save already in flight
@@ -495,30 +457,22 @@ export function useChecklistSync(deps: {
     return () => {
       cancelled = true;
     };
-  }, [active, flushSave, queue, resetHistory]);
+  }, [active, flushSave, queue, resetHistory, scheduler]);
 
   // Flush any pending save on unmount so a debounced edit isn't lost, and
   // cancel any armed cooldown so the resume timer can't fire after teardown.
   useEffect(() => {
     return () => {
-      if (retryTimer.current !== null) {
-        clearTimeout(retryTimer.current);
-        retryTimer.current = null;
-      }
+      scheduler.cancelTimer();
       flushSave();
     };
-  }, [flushSave]);
+  }, [flushSave, scheduler]);
 
   const reload = useCallback(async () => {
     // Cancel any armed cooldown and reset the backoff escalation — the
     // reloaded document is a fresh baseline, so a pending throttle/retry
     // resume against the old baseline must not fire.
-    if (retryTimer.current !== null) {
-      clearTimeout(retryTimer.current);
-      retryTimer.current = null;
-    }
-    consecutiveThrottles.current = 0;
-    transientRetries.current = 0;
+    scheduler.cancel();
     flushSave();
     // The reloaded document is a fresh baseline; abandon any in-flight or
     // queued save so its stale write-back can't clobber what we load.
@@ -552,7 +506,7 @@ export function useChecklistSync(deps: {
     const reloaded = withActiveList(parse(stored?.text));
     setDoc(reloaded);
     resetHistory.current(reloaded);
-  }, [flushSave, queue, resetHistory]);
+  }, [flushSave, queue, resetHistory, scheduler]);
 
   // Actively re-check reachability — the offline glyph's "Check connection"
   // gesture. Trusting `navigator.onLine` to flip back is unreliable (it's the
@@ -621,15 +575,12 @@ export function useChecklistSync(deps: {
       // Cancel the gentle offline resume cooldown so the flush isn't blocked
       // by the cooldown guard and waits out the slow interval — connectivity
       // is back, so push now.
-      if (retryTimer.current !== null) {
-        clearTimeout(retryTimer.current);
-        retryTimer.current = null;
-      }
+      scheduler.cancelTimer();
       flushSaveRef.current();
     };
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, []);
+  }, [scheduler]);
 
   // Push any debounced edit to the backend immediately — the "save now"
   // action on the cloud-sync glyph when there are unsaved changes.
