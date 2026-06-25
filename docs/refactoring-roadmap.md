@@ -45,35 +45,43 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`useStorageBackend.ts` is a 734-line god-hook still over the friction
-  band.** `src/storage/useStorageBackend.ts` (734 lines; no
-  `oss-spec:allow-large-file:` opt-out) wires every backend's lifecycle
-  into one hook: the per-backend `useState` token vars (lines ~254–267),
-  the Dropbox OAuth boot effect (~299–326), and the cross-namespace move
-  verbs. Five seams are now peeled out: the namespace-registry (state +
+_None pending._
+
+### Severity 3–4 — nits with leverage
+
+- **`useStorageBackend.ts` is a 642-line god-hook, now back inside the
+  friction band but still the central backend wiring.**
+  `src/storage/useStorageBackend.ts` (642 lines; no
+  `oss-spec:allow-large-file:` opt-out) still composes every backend's
+  lifecycle. Six seams are now peeled out: the namespace-registry (state +
   reconcile + CRUD → `useNamespaceRegistry.ts`), the disconnect
   clear→reset→switch shape (`switchToBrowser()` + `clearDropboxTokens()`),
   the connect-side persist→select pair (`switchToBackend(id)`), the
-  **encryption lifecycle** (→ `useEncryption.ts`), and the **folder
-  lifecycle** (the handle state + boot probe + connect / reconnect /
-  disconnect → `useFolderHandle.ts`) — see Landed, 2026-06. The **next
-  recommended seam** is the **cloud token state**: the `dropboxToken` /
-  `dropboxRefresh` / `gdriveToken` state (~254–267), the Dropbox OAuth boot
-  effect, and `connectDropbox` / `disconnectDropbox` / `connectGdrive` /
-  `disconnectGdrive` form a self-contained cloud-credential concern that
-  could peel into a `useCloudTokens` hook the way `useFolderHandle` was
-  extracted. The `selection` memo reads the three tokens (and a Dropbox
-  access-token refresh callback), so the hook must expose them; the connect
-  verbs need only `switchToBackend` (available early), so this seam has no
-  latest-ref entanglement the folder seam had.
+  **encryption lifecycle** (→ `useEncryption.ts`), the **folder lifecycle**
+  (→ `useFolderHandle.ts`), and the **cloud token state** (Dropbox/Gdrive
+  tokens + OAuth boot effect + connect/disconnect → `useCloudTokens.ts`) —
+  see Landed, 2026-06. What remains in the hook is mostly the **adapter /
+  settings-store / namespace-store composition** (the `selection` memo,
+  `makeInner`, `inner`, `settingsStore`, `namespaceStore`, `adapter`) and
+  the **cross-namespace move verbs** (`moveChecklistToNamespace` /
+  `moveFolderToNamespace`, ~75 lines of near-duplicated load→prepend→save).
+  The **next recommended seam** is those two move verbs: they share a
+  best-effort target-write shape (`wrapForActive(makeInner(target))` →
+  `load` → prepend de-duped → `save`, returning `false` on throw) that
+  could collapse into one helper taking a document transform, peeling ~50
+  lines out. They depend only on `locked` / `activeNamespace` / `namespaces`
+  / `wrapForActive` / `makeInner`, so they extract cleanly as a
+  `useNamespaceMoves` hook or a pure helper the hook calls.
   **Plan:** umbrella multi-PR split by concern; ship one seam per PR, each
-  leaving the hook working and shrinking it. **Risk:** this is the central
-  wiring for all three backends and the OAuth boot flow has **no automated
-  coverage** — each seam must be smoke-tested by hand against LocalStorage
-  plus whichever cloud backend it touches (Google Drive / Dropbox OAuth,
-  unreachable from Vitest), though the extracted hook can be unit-tested
-  against mocked stores (see `useFolderHandle` / `useEncryption`). Keep each
-  PR < 500 lines. **Severity: 6.**
+  leaving the hook working. The remaining seams (the move verbs, possibly
+  the selection/adapter composition) are smaller than the lifecycle ones
+  were — re-rate before the next pass, the god-hook smell has largely
+  decayed. **Risk:** the move verbs touch persisted documents across
+  namespaces; pin their behaviour with the existing move tests before
+  relocating. The OAuth boot flow remains **un-automatable** — any seam
+  touching it needs a hand smoke-test against the cloud backends. Keep each
+  PR < 500 lines. **Severity: 4** (down from 6 — the file is back under the
+  friction band and the remaining seams are localized).
 
 - **Shared logged-fetch block still duplicated across the cloud
   adapters.** The pure `requestLabel` / `describeError` helpers are now
@@ -96,6 +104,35 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **Extracted the cloud token state into `useCloudTokens`** (2026-06).
+  Sixth seam of the `useStorageBackend.ts` god-hook split: moved the
+  `dropboxToken` / `dropboxRefresh` / `gdriveToken` state, the Dropbox OAuth
+  boot-redirect completion effect (and its `cleanAuthParamsFromUrl` helper),
+  and the `connectDropbox` / `disconnectDropbox` / `connectGdrive` /
+  `disconnectGdrive` verbs into a new `src/storage/useCloudTokens.ts` (174
+  lines) exposing `{dropboxToken, dropboxRefresh, gdriveToken,
+  onDropboxAccessTokenRefreshed, connectDropbox, disconnectDropbox,
+  connectGdrive, disconnectGdrive}`. The hook takes `switchToBackend` as an
+  argument exactly as `useFolderHandle` does — no latest-ref entanglement,
+  since the connect verbs need nothing built downstream of the tokens. The
+  parent's `selection` memo now reads the three tokens and threads the
+  silently-refreshed Dropbox access token back through the hook's
+  `onDropboxAccessTokenRefreshed` callback; `removeNamespace` and the
+  `dropboxConnected` / `gdriveConnected` flags read the exposed tokens. The
+  `cloudWalker` achievement unlock travelled inline with the boot effect and
+  `connectGdrive` (the catalog test's static `unlock("<id>")` scan covers all
+  of `src/`, so it stays wired). Added direct unit tests
+  (`tests/storage/use-cloud-tokens.test.ts`, 12 cases against the mocked
+  Dropbox / Gdrive auth modules + the real token store: boot rehydrate,
+  OAuth completion with / without a refresh token / no pending auth / no
+  code / failed exchange / URL scrub, refresh-token reflect, connect /
+  disconnect for both backends — 98.21% line, 100% func, 78.57% branch on the
+  new module) the buried OAuth flow couldn't have. Shrank
+  `useStorageBackend.ts` 734 → 642 lines. Pure relocation, no behaviour
+  change; full suite (955 tests) green. The god-hook smell has largely
+  decayed — the file is back under the friction band; the next recommended
+  seam (the cross-namespace move verbs) is re-rated Severity 4.
 
 - **Extracted the folder lifecycle into `useFolderHandle`** (2026-06).
   Fifth seam of the `useStorageBackend.ts` god-hook split: moved the
