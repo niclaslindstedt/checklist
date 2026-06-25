@@ -39,26 +39,6 @@ and update this file in the same PR.
 
 ## Pending
 
-### Severity 5–6 — friction
-
-- **`ChecklistView.tsx` interleaves three composer modes through parallel
-  state and callback sets** — `src/ui/ChecklistView.tsx` (631 lines). Three
-  add-item affordances (inline add `drafting`, child form `childDraftParentId`,
-  after-item form `afterDraftAnchorId`) each carry their own state, their own
-  `addItem`/`importItems`-style verb callbacks (lines ~329–377), and their own
-  depth/index memos (`childDraftDepth`/`childDraftIndex` ~384–398,
-  `afterDraftDepth`/`afterDraftIndex` ~404+), with mutual-exclusion close logic
-  scattered across the component. A reader has to hold three parallel patterns
-  in their head to follow which composer is active. **Plan:** extract a
-  `useComposer()` hook (`src/ui/hooks/useComposer.ts`) owning a single
-  discriminated state (`{ kind: 'none' | 'inline' | 'child' | 'after';
-  parentId?; anchorId? }`), the derived depth/index as one memo, the verb
-  factories bound to the active kind, and the mutual-exclusion close logic.
-  ChecklistView keeps only display wiring. **Risk:** the three composers differ
-  in depth positioning and anchor chaining (the Shift+Enter "add after" chain);
-  pin the current behaviour with a test first, then refactor under it. No
-  storage/domain impact. **Severity: 6.**
-
 ### Severity 3–4 — nits with leverage
 
 - **`SideMenuRows.tsx` duplicates the `FolderRow` header/action JSX across
@@ -97,6 +77,19 @@ and update this file in the same PR.
 _None pending._
 
 ## Landed
+
+- **`ChecklistView.tsx` composer modes consolidated into a `useComposer` hook**
+  (2026-06) — replaced the three parallel composer states (`drafting`,
+  `childDraftParentId`, `afterDraftAnchorId`), their per-mode verb callbacks,
+  and the four depth/index memos with a single discriminated `ComposerState`
+  (`none | inline | child | after`) owned by `src/ui/hooks/useComposer.ts`
+  (218 lines). The hook derives the one active composer's splice index, depth,
+  and verbs in one place; ChecklistView keeps only display wiring and dropped
+  from 631 to 486 lines. Pure refactor, no behaviour change — the 41 existing
+  ChecklistView integration tests still pass, and the hook's previously-embedded
+  index/depth math and anchor-chaining are now directly unit-tested in
+  `tests/ui/hooks/use-composer.test.ts` (12 cases, ~91% of the new file). Was
+  Severity 6.
 
 - **`SyncLogPanel` extracted out of `SyncDetailsModal.tsx`** (2026-06) — moved
   the developer sync-log sub-component, its `SYNC_LOG_SCOPES` filter, and the
