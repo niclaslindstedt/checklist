@@ -65,25 +65,7 @@ and update this file in the same PR.
 
 ### Severity 3–4 — nits with leverage
 
-- **Extract the sidebar drag-and-drop plumbing into a `useSideMenuDrag`
-  hook.** `src/ui/SideMenu.tsx` (797 lines) mingles drag-and-drop coordination
-  (`startChecklistDrag` / `endChecklistDrag` / `allowDropOn` / `commitDrop`,
-  the `draggingChecklist` / `dropTarget` state, and the derived `dragKind` /
-  `acceptsDrag` / `isDropTarget`, lines ~209–274) with the high-level folder /
-  checklist render path (lines ~315–445). The two share no cohesion beyond
-  "both live in the sidebar". Re-verify with `grep -n
-  "startChecklistDrag\|commitDrop\|draggingChecklist\|dropTarget\|acceptsDrag"
-  src/ui/SideMenu.tsx`.
-  - **Plan**: pull the drag state + handlers + derived flags into a
-    `useSideMenuDrag` hook (under `src/ui/hooks/`), returning
-    `{ draggingChecklist, dropTarget, startChecklistDrag, endChecklistDrag,
-    allowDropOn, commitDrop, dragKind, acceptsDrag, isDropTarget }`. `SideMenu`
-    threads the derived flags into the row / folder renders as it does today,
-    ~150 lines shorter. The hook is pure local state, directly testable.
-  - **Risk**: low — no external contract changes; the hook is local state +
-    handlers. Verify folder / checklist rows still accept drops and that the
-    mobile long-press touch-drag still routes through the drag context.
-    **Severity: 4.**
+_None pending._
 
 ### Easy wins
 
@@ -91,6 +73,21 @@ _None pending._
 
 ## Landed
 
+- **Extracted the sidebar drag-to-move plumbing into a `useSideMenuDrag`
+  hook** (2026-06) — moved the `draggingChecklist` / `dropTarget` state, the
+  drag-abort reset effect, and the `startChecklistDrag` / `endChecklistDrag` /
+  `allowDropOn` / `commitDrop` handlers out of `src/ui/SideMenu.tsx` into
+  `src/ui/hooks/useSideMenuDrag.ts`. The decision logic the handlers shared
+  (`deriveDragKind`, `dropAcceptsKind`, `isKeyDropTarget`) came out as pure,
+  exported functions, directly unit-tested with no DOM; the stateful handlers
+  are driven through `renderHook` in `tests/ui/hooks/use-side-menu-drag.test.tsx`
+  (100% lines/funcs on the hook). `SideMenu` dropped 797 → 726 lines and now
+  consumes a six-member bag. Two deviations from the original plan: the touch
+  `onDragLeave` handlers needed a `clearDropTarget()` member (the old code
+  reached for `setDropTarget(null)` inline), and the hook reads the drag
+  contexts internally rather than returning `dragKind` / `acceptsDrag` — those
+  stay private, so the public surface is narrower than the plan listed. The
+  existing `side-menu-drag-highlight.test.tsx` integration coverage stays green.
 - **Extracted the `RetryScheduler` cooldown machine out of
   `use-checklist-sync.ts`** (2026-06) — step 2 of 2 of the sync-engine split,
   completing it. Moved the `retryTimer` / `consecutiveThrottles` /
