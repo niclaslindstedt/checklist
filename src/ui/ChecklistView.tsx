@@ -66,6 +66,7 @@ function ChecklistViewImpl() {
     disableItemNotes,
     showItemCount,
     includeArchivedInCopy,
+    capitalizeItems,
     animateReorder,
   } = useChecklistContext();
   const t = useT();
@@ -408,6 +409,7 @@ function ChecklistViewImpl() {
         backspaceDraft(addItemPosition === "top" ? 0 : rows.length, closeDraft)
       }
       notesDisabled={disableItemNotes}
+      capitalize={capitalizeItems}
     />
   ) : null;
 
@@ -424,6 +426,7 @@ function ChecklistViewImpl() {
           backspaceDraft(childDraftIndex, closeChildDraft)
         }
         notesDisabled={disableItemNotes}
+        capitalize={capitalizeItems}
         depth={childDraftDepth}
       />
     ) : null;
@@ -442,6 +445,7 @@ function ChecklistViewImpl() {
           backspaceDraft(afterDraftIndex, closeAfterDraft)
         }
         notesDisabled={disableItemNotes}
+        capitalize={capitalizeItems}
         depth={afterDraftDepth}
       />
     ) : null;
@@ -517,6 +521,7 @@ function ChecklistViewImpl() {
                   onAutoEditTitleConsumed={clearEditTitle}
                   onActiveEditorChange={setEditorActive}
                   notesDisabled={disableItemNotes}
+                  capitalizeItems={capitalizeItems}
                   depth={depth}
                   hasChildren={hasChildren}
                   collapsed={collapsed.has(item.id)}

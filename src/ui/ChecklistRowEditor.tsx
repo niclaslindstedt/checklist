@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { capitalizeFirst } from "../domain/text.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { Checkbox, focusAtEnd } from "./form/index.ts";
@@ -70,6 +71,7 @@ export function ChecklistRowEditor({
   onBackspaceEmpty,
   focusBody = false,
   notesDisabled = false,
+  capitalize = false,
 }: {
   item: ChecklistItem;
   onSubmit: (fields: { title?: string; notes?: string }) => void;
@@ -106,6 +108,12 @@ export function ChecklistRowEditor({
    * Shift+Enter into a plain commit. Any stored note is left untouched.
    */
   notesDisabled?: boolean;
+  /**
+   * When set, the first letter of the title is capitalised — live as the user
+   * types and again when the edit commits. Mirrors the "Capitalise items"
+   * Lists setting; only the first letter changes, the rest is left as typed.
+   */
+  capitalize?: boolean;
 }) {
   const t = useT();
   const [title, setTitle] = useState(item.title);
@@ -169,10 +177,18 @@ export function ChecklistRowEditor({
   // Used to gate the "empty line" backspace so a hidden note is never lost.
   const bodyContent = () => (bodyShown ? notes : (item.notes ?? "")).trim();
 
+  // Apply the "Capitalise items" preference to the title. A no-op when the
+  // setting is off or the title is empty (so the empty-title delete path still
+  // fires).
+  const titleCase = (text: string) =>
+    capitalize ? capitalizeFirst(text) : text;
+
   const submit = (addAfter = false) => {
     if (done.current) return;
     done.current = true;
-    const fields: { title?: string; notes?: string } = { title };
+    const fields: { title?: string; notes?: string } = {
+      title: titleCase(title),
+    };
     // Only carry the note when its field is in play, so editing just the
     // title never wipes a body the user didn't touch.
     if (bodyShown) fields.notes = notes;
@@ -265,7 +281,8 @@ export function ChecklistRowEditor({
           ref={titleRef}
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          // Capitalise live as the user types so the field matches what commits.
+          onChange={(e) => setTitle(titleCase(e.target.value))}
           onKeyDown={onTitleKey}
           placeholder={t("app.editTitlePlaceholder")}
           aria-label={t("app.editItem")}

@@ -64,6 +64,9 @@ const settings = {
     includeArchivedInCopy: "Include archived in copy",
     includeArchivedInCopyHint:
       "When you copy a list, append its archived items under an “Archived” heading. Off by default — a copy holds just the active items.",
+    capitalizeItems: "Capitalise items",
+    capitalizeItemsHint:
+      "Capitalise the first letter of each item as you type it, so “buy milk” is added as “Buy milk”. Only the first letter changes; the rest is left as typed.",
   },
 
   developer: {

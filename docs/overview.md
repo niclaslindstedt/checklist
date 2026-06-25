@@ -1206,6 +1206,28 @@ the only caller that opts out is the copy path — the on-disk `.md` file
 archive is the live store, not an export. Turning the setting on unlocks
 the **Copy the Archive** achievement.
 
+### Capitalise items
+
+The **Capitalise items** toggle on the Lists tab (`capitalizeItems` on
+the synced `Settings`, **off** by default) capitalises the first letter
+of a newly entered item title. With it on, typing `buy milk` and
+committing stores `Buy milk`, and the entry fields capitalise the first
+letter **live** as you type. This is a deterministic, cross-platform
+capitalisation done in the app — it doesn't rely on the mobile keyboard's
+own `autocapitalize` behaviour, which iOS does not re-evaluate when a new
+item's field is focused programmatically after Enter — so it works the
+same on a phone and a desktop browser. Only the first letter is touched
+(via the pure `capitalizeFirst` in `src/domain/text.ts`), so an
+intentional `iPad` later in the title is left alone. The flag rides the
+checklist context (`capitalizeItems` on `ChecklistContextValue`, set by
+`App` from the settings) to `ChecklistView`, which threads it to the
+[add-item composer](#add-item-form) (`AddItemForm`'s `capitalize` prop)
+and, through `ChecklistRow`, to the [in-place editor](#edit-item)
+(`ChecklistRowEditor`'s `capitalize` prop); each applies it both in the
+field's `onChange` and at the commit boundary. Imports and pastes are left
+untouched — only typed titles are capitalised. Turning the setting on
+unlocks the **Capital Idea** achievement.
+
 ### Appearance / theme tab
 
 `src/ui/settings/tabs/appearance.tsx` — the theme picker (light/dark

@@ -78,6 +78,13 @@ export type Settings = {
   // opt-in appends the archived items too. Only affects the clipboard copy,
   // never the persisted markdown file (which always keeps the archive).
   includeArchivedInCopy: boolean;
+  // Whether a newly entered item title has its first letter capitalised. When
+  // on, typing "buy milk" and committing stores "Buy milk", and the entry
+  // fields capitalise the first letter live as you type — a deterministic,
+  // cross-platform capitalisation that doesn't depend on the mobile keyboard's
+  // own autocapitalize behaviour. Only the first letter is touched, so an
+  // intentional "iPad" later in the title is left alone. Off by default.
+  capitalizeItems: boolean;
   // Whether the achievements system is switched off. When on, the watcher
   // stops recording unlocks and raising celebratory toasts, and the header
   // trophy button is hidden. Already-earned achievements are preserved (the

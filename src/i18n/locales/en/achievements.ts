@@ -306,6 +306,10 @@ const achievements = {
       name: "Copy the Archive",
       condition: "Turn on including archived items when you copy a list.",
     },
+    capitalIdea: {
+      name: "Capital Idea",
+      condition: "Turn on capitalising the first letter of each item.",
+    },
     underTheHood: {
       name: "Under the Hood",
       condition: "Turn on developer mode.",

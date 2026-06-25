@@ -110,6 +110,8 @@ type Props = {
   onActiveEditorChange?: (id: string, active: boolean) => void;
   /** When set, item notes are switched off — render the row title-only. */
   notesDisabled?: boolean;
+  /** When set, the editor capitalises the first letter of the item title. */
+  capitalizeItems?: boolean;
   /** Nesting depth — indents the row one step per level. */
   depth?: number;
   /** Whether the item has sub-items, so it shows the expand/collapse caret. */
@@ -152,6 +154,7 @@ function ChecklistRowImpl({
   onAutoEditTitleConsumed,
   onActiveEditorChange,
   notesDisabled = false,
+  capitalizeItems = false,
   depth = 0,
   hasChildren = false,
   collapsed = false,
@@ -274,6 +277,7 @@ function ChecklistRowImpl({
           item={item}
           focusBody={editFocusBody}
           notesDisabled={notesDisabled}
+          capitalize={capitalizeItems}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
           onAddAfter={handleAddAfter}

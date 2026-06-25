@@ -86,6 +86,12 @@ export type ChecklistContextValue = UseChecklist & {
    */
   includeArchivedInCopy: boolean;
   /**
+   * Whether a newly entered item title has its first letter capitalised, both
+   * live in the entry field and when it commits. A flag mirrored from the
+   * synced `Settings`; off by default.
+   */
+  capitalizeItems: boolean;
+  /**
    * Whether the checklist view should animate rows sliding into place when
    * the displayed order changes (a checked item sinking to the bottom). True
    * only when both checked-sorting and its animation are enabled in the

@@ -165,6 +165,19 @@ describe("ChecklistRow editing", () => {
     expect(input.getAttribute("autocapitalize")).toBe("sentences");
   });
 
+  // The "Capitalise items" setting deterministically uppercases the first
+  // letter of an edited title, live in the field and again on commit.
+  it("capitalises the edited title when capitalizeItems is on", () => {
+    const onEdit = vi.fn();
+    renderRow({ onEdit, capitalizeItems: true });
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    setText(input, "buy oat milk");
+    expect(input.value).toBe("Buy oat milk");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+  });
+
   // Reveal a clipped editor by scrolling the list container, never the window
   // (which would drag the pinned header). These tests stand in a scroll
   // container around the row, deferring the rAF-scheduled scroll so the row's

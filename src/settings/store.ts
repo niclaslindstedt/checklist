@@ -72,6 +72,10 @@ export const DEFAULT_SHOW_ITEM_COUNT = true;
 // section to the copied markdown.
 export const DEFAULT_INCLUDE_ARCHIVED_IN_COPY = false;
 
+// New item titles are stored verbatim by default. The opt-in capitalises the
+// first letter of each entry as it's typed and when it commits.
+export const DEFAULT_CAPITALIZE_ITEMS = false;
+
 // The achievements system is on by default. The opt-out stops tracking and
 // hides the trophy button without discarding already-earned progress.
 export const DEFAULT_DISABLE_ACHIEVEMENTS = false;
@@ -91,6 +95,7 @@ export function defaultSettings(): Settings {
     disableItemNotes: DEFAULT_DISABLE_ITEM_NOTES,
     showItemCount: DEFAULT_SHOW_ITEM_COUNT,
     includeArchivedInCopy: DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
+    capitalizeItems: DEFAULT_CAPITALIZE_ITEMS,
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements: {},
     unseenAchievements: [],
@@ -236,6 +241,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.includeArchivedInCopy === "boolean"
         ? raw.includeArchivedInCopy
         : DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
+    capitalizeItems:
+      typeof raw.capitalizeItems === "boolean"
+        ? raw.capitalizeItems
+        : DEFAULT_CAPITALIZE_ITEMS,
     disableAchievements:
       typeof raw.disableAchievements === "boolean"
         ? raw.disableAchievements

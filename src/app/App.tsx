@@ -532,6 +532,7 @@ function AppShell() {
       disableItemNotes: settings.disableItemNotes,
       showItemCount: settings.showItemCount,
       includeArchivedInCopy: settings.includeArchivedInCopy,
+      capitalizeItems: settings.capitalizeItems,
       animateReorder:
         settings.sortCheckedToBottom && settings.animateSortChecked,
     }),
@@ -542,6 +543,7 @@ function AppShell() {
       settings.disableItemNotes,
       settings.showItemCount,
       settings.includeArchivedInCopy,
+      settings.capitalizeItems,
       settings.sortCheckedToBottom,
       settings.animateSortChecked,
     ],
