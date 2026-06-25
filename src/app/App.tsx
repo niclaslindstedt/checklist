@@ -28,12 +28,7 @@ import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { ChecklistDragProvider } from "../ui/checklist-drag.tsx";
 import { FocusItemContext, type FocusItemBus } from "../ui/focus-item.ts";
 import { ReportDragActivityContext } from "../ui/drag-activity.ts";
-import {
-  CHECKLIST_DROP_ARCHIVE,
-  CHECKLIST_DROP_NS_PREFIX,
-  CHECKLIST_DROP_ROOT,
-  parseDragId,
-} from "../ui/checklist-drag-context.ts";
+import { resolveDragDrop } from "./drag-drop-resolver.ts";
 import { SideMenu } from "../ui/SideMenu.tsx";
 import { UnlockGate } from "../ui/UnlockGate.tsx";
 import {
@@ -369,33 +364,29 @@ function AppShell() {
   );
 
   // Resolve a sidebar drag's drop target (a `data-checklist-drop` key) to the
-  // right action. A dragged checklist files into the ungrouped zone / a folder,
-  // archives on the Archive button, or moves on a `ns:<slug>` row; a dragged
-  // folder only resolves on a namespace row (it relocates the whole group), and
-  // is a no-op over any other target. Routed through a ref so the provider's
-  // `onDrop` keeps a stable identity (it feeds a context every draggable row
-  // subscribes to) while still seeing the latest closures here.
+  // right action via `resolveDragDrop`, then dispatch it. Routed through a ref
+  // so the provider's `onDrop` keeps a stable identity (it feeds a context
+  // every draggable row subscribes to) while still seeing the latest closures
+  // here.
   const dropHandlerRef = useRef<(id: string, key: string) => void>(() => {});
   dropHandlerRef.current = (rawId: string, key: string) => {
-    const item = parseDragId(rawId);
-    if (item.kind === "folder") {
-      if (key.startsWith(CHECKLIST_DROP_NS_PREFIX)) {
-        void moveFolderToNamespace(
-          item.id,
-          key.slice(CHECKLIST_DROP_NS_PREFIX.length),
-        );
-      }
-      return;
+    const action = resolveDragDrop(rawId, key);
+    switch (action.type) {
+      case "none":
+        return;
+      case "moveFolderToNamespace":
+        void moveFolderToNamespace(action.folderId, action.slug);
+        return;
+      case "moveChecklistToFolder":
+        moveChecklistToFolder(action.checklistId, action.folderId);
+        return;
+      case "archiveChecklist":
+        archiveChecklist(action.checklistId);
+        return;
+      case "moveChecklistToNamespace":
+        void moveChecklistToNamespace(action.checklistId, action.slug);
+        return;
     }
-    const id = item.id;
-    if (key === CHECKLIST_DROP_ROOT) moveChecklistToFolder(id, null);
-    else if (key === CHECKLIST_DROP_ARCHIVE) archiveChecklist(id);
-    else if (key.startsWith(CHECKLIST_DROP_NS_PREFIX)) {
-      void moveChecklistToNamespace(
-        id,
-        key.slice(CHECKLIST_DROP_NS_PREFIX.length),
-      );
-    } else moveChecklistToFolder(id, key);
   };
   const onChecklistDrop = useCallback((id: string, key: string) => {
     dropHandlerRef.current(id, key);

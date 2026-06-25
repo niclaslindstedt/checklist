@@ -89,23 +89,6 @@ and update this file in the same PR.
   pin the current behaviour with a test first, then refactor under it. No
   storage/domain impact. **Severity: 6.**
 
-- **`App.tsx` routes drag-drop through an untestable ref-closure dispatch** —
-  `src/app/App.tsx` (669 lines). The drop handler (lines ~378–402) parses a
-  drag id, branches on item-kind + target-prefix, and dispatches to one of four
-  mutations (`moveChecklistToFolder`, `archiveChecklist`,
-  `moveChecklistToNamespace`, `moveFolderToNamespace`) inside a
-  `dropHandlerRef.current` closure. The parse→branch→dispatch logic can't be
-  exercised without simulating drag events, and it's not obvious the branch is
-  exhaustive or that illegal drops (e.g. a folder into itself) no-op. **Plan:**
-  extract a pure `resolveDragDrop(itemId, targetKey, state): DragDropAction`
-  into `src/app/drag-drop-resolver.ts` that returns a discriminated action
-  object; the ref handler becomes a thin dispatch loop, and the resolver is
-  unit-testable with no React/DOM. The action type documents which drop targets
-  are legal. **Risk:** currently untested precisely because drag-drop is hard to
-  simulate — the extraction *creates* the testable seam, so land the resolver's
-  tests in the same PR. Confirm illegal-target cases resolve to a no-op action.
-  **Severity: 5.**
-
 ### Severity 3–4 — nits with leverage
 
 - **`SideMenuRows.tsx` duplicates the `FolderRow` header/action JSX across
@@ -136,7 +119,14 @@ and update this file in the same PR.
 
 ## Landed
 
-_None yet — roadmap reset to a clean slate (2026-06)._
+- **`App.tsx` drag-drop dispatch extracted to a pure resolver** (2026-06) —
+  pulled the parse→branch→dispatch logic out of the `dropHandlerRef` closure
+  into `resolveDragDrop(rawId, key): DragDropAction` in
+  `src/app/drag-drop-resolver.ts`. The ref handler is now a thin `switch` over
+  the discriminated action; the drop-target matrix (including the
+  illegal-folder-drop no-ops) is unit-tested in
+  `tests/app/drag-drop-resolver.test.ts` with no React/DOM, coverage the
+  closure never had. Was Severity 5.
 
 ## Investigated and skipped
 
