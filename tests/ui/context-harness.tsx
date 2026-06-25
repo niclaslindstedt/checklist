@@ -61,6 +61,8 @@ export function makeChecklistValue(
     importItemsAfter: () => ({ count: 0, lastId: null }),
     editItem: noop,
     toggle: noop,
+    checkAll: noop,
+    uncheckAll: noop,
     remove: noop,
     removeEmpty: noop,
     archive: noop,

@@ -174,6 +174,10 @@ const achievements = {
       learnMore:
         "Long-press the add (+) button and tap Delete finished — one tap clears every checked item from the list in one go, and undo brings them back if you slipped.",
     },
+    allIn: {
+      name: "All In",
+      condition: "Check off a whole list at once.",
+    },
     copyThat: {
       name: "Copy That",
       condition: "Copy a checklist to the clipboard.",

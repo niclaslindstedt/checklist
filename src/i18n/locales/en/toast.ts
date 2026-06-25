@@ -14,6 +14,8 @@ const toast = {
   itemEdited: "Edited “{title}”",
   itemChecked: "Checked “{title}”",
   itemUnchecked: "Unchecked “{title}”",
+  allChecked: "Checked all items",
+  allUnchecked: "Unchecked all items",
   itemDeleted: "Deleted “{title}”",
   emptyItemRemoved: "Removed empty item",
   itemArchived: "Archived “{title}”",

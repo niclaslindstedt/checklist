@@ -26,6 +26,7 @@ import {
   nextChecklistName,
   progress,
   renameChecklist,
+  setAllChecked,
   setArchived,
   setChecklistArchived,
   sortCheckedToBottom,
@@ -670,6 +671,67 @@ describe("displayItems", () => {
     c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z");
     c = setArchived(c, "i2", true, NOW);
     expect(ids(displayItems(c, true))).toEqual(["i3", "i1"]);
+  });
+});
+
+describe("setAllChecked", () => {
+  const CHECK_AT = "2026-04-04T00:00:00.000Z";
+
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+
+  it("checks every item and stamps checkedAt", () => {
+    let c = listOf("A", "B", "C");
+    c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z"); // one already checked
+    const all = setAllChecked(c, true, CHECK_AT);
+    expect(all.items.every((it) => it.checked)).toBe(true);
+    // The freshly-checked items pick up the new stamp; the already-checked
+    // one keeps its original timestamp (no-op on it).
+    expect(all.items[0]?.checkedAt).toBe(CHECK_AT);
+    expect(all.items[1]?.checkedAt).toBe("2026-01-01T00:00:01.000Z");
+    expect(all.updatedAt).toBe(CHECK_AT);
+  });
+
+  it("unchecks every item and clears checkedAt", () => {
+    let c = listOf("A", "B");
+    c = setAllChecked(c, true, CHECK_AT);
+    const none = setAllChecked(c, false, "2026-05-05T00:00:00.000Z");
+    expect(none.items.every((it) => !it.checked)).toBe(true);
+    expect(none.items.every((it) => it.checkedAt === undefined)).toBe(true);
+  });
+
+  it("is a no-op (same reference) when every item already matches", () => {
+    const c = listOf("A", "B");
+    // Nothing checked → uncheck-all changes nothing.
+    expect(setAllChecked(c, false, CHECK_AT)).toBe(c);
+    const all = setAllChecked(c, true, CHECK_AT);
+    // Everything checked → check-all changes nothing.
+    expect(setAllChecked(all, true, "2026-06-06T00:00:00.000Z")).toBe(all);
+  });
+
+  it("leaves archived items and their subtrees untouched", () => {
+    let c = listOf("A", "B", "C");
+    c = setArchived(c, "i2", true, NOW);
+    const all = setAllChecked(c, true, CHECK_AT);
+    expect(findItem(all.items, "i1")?.checked).toBe(true);
+    expect(findItem(all.items, "i3")?.checked).toBe(true);
+    // The archived item is hidden from the count, so it stays unchecked.
+    expect(findItem(all.items, "i2")?.checked).toBe(false);
+  });
+
+  it("cascades through nested sub-items", () => {
+    let c = listOf("Parent", "Child1", "Child2");
+    c = moveItemInto(c, "i2", "i1", "into", NOW);
+    c = moveItemInto(c, "i3", "i1", "into", NOW);
+    const all = setAllChecked(c, true, CHECK_AT);
+    const parent = all.items[0]!;
+    expect(parent.checked).toBe(true);
+    expect(parent.children?.every((it) => it.checked)).toBe(true);
   });
 });
 

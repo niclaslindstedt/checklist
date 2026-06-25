@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ItemCount } from "../../src/ui/ItemCount.tsx";
 
@@ -41,5 +41,94 @@ describe("ItemCount", () => {
       3,
     );
     expect(screen.getByLabelText("0 of 0 items checked")).toBeTruthy();
+  });
+
+  it("stays a static span (not a button) without bulk handlers", () => {
+    render(<ItemCount checked={1} total={3} />);
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  describe("bulk-action dropdown", () => {
+    it("opens a Check all / Uncheck all menu when pressed", () => {
+      render(
+        <ItemCount
+          checked={1}
+          total={3}
+          onCheckAll={() => {}}
+          onUncheckAll={() => {}}
+        />,
+      );
+      const trigger = screen.getByRole("button", {
+        name: "1 of 3 items checked",
+      });
+      expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+      fireEvent.click(trigger);
+      expect(screen.getByRole("menuitem", { name: "Check all" })).toBeTruthy();
+      expect(
+        screen.getByRole("menuitem", { name: "Uncheck all" }),
+      ).toBeTruthy();
+    });
+
+    it("invokes the matching handler when an action is chosen", () => {
+      const onCheckAll = vi.fn();
+      const onUncheckAll = vi.fn();
+      render(
+        <ItemCount
+          checked={1}
+          total={3}
+          onCheckAll={onCheckAll}
+          onUncheckAll={onUncheckAll}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Check all" }));
+      expect(onCheckAll).toHaveBeenCalledTimes(1);
+      expect(onUncheckAll).not.toHaveBeenCalled();
+    });
+
+    it("disables Check all when everything is already checked", () => {
+      render(
+        <ItemCount
+          checked={2}
+          total={2}
+          onCheckAll={() => {}}
+          onUncheckAll={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      expect(
+        (
+          screen.getByRole("menuitem", {
+            name: "Check all",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+      expect(
+        (
+          screen.getByRole("menuitem", {
+            name: "Uncheck all",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false);
+    });
+
+    it("disables Uncheck all when nothing is checked", () => {
+      render(
+        <ItemCount
+          checked={0}
+          total={2}
+          onCheckAll={() => {}}
+          onUncheckAll={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      expect(
+        (
+          screen.getByRole("menuitem", {
+            name: "Uncheck all",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
+    });
   });
 });

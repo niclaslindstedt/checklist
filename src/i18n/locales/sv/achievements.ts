@@ -167,6 +167,10 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Håll inne lägg-till-knappen (+) och tryck på Ta bort avklarade — ett tryck rensar varje avbockad post från listan på en gång, och ångra tar tillbaka dem om du råkade fel.",
     },
+    allIn: {
+      name: "Helt klart",
+      condition: "Bocka av en hel lista på en gång.",
+    },
     copyThat: {
       name: "Kopierat",
       condition: "Kopiera en checklista till urklipp.",
