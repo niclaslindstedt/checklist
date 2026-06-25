@@ -154,6 +154,17 @@ describe("ChecklistRow editing", () => {
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
   });
 
+  // The soft keyboard must capitalise the first letter of a fresh item even
+  // though items rarely end in a period — on an installed iOS PWA the hint has
+  // to be set explicitly or the keyboard keeps the previous row's shift state
+  // when Enter chains into the next line.
+  it("hints the title field to capitalise sentences", () => {
+    renderRow();
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    const input = screen.getByLabelText("Edit item") as HTMLInputElement;
+    expect(input.getAttribute("autocapitalize")).toBe("sentences");
+  });
+
   // Reveal a clipped editor by scrolling the list container, never the window
   // (which would drag the pinned header). These tests stand in a scroll
   // container around the row, deferring the rAF-scheduled scroll so the row's
