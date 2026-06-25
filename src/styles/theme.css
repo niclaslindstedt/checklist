@@ -259,3 +259,18 @@ textarea::placeholder {
 .animate-note-reveal {
   animation: note-reveal 180ms ease-out;
 }
+
+/* Flash a checklist row when a search result jumps to it: a brief accent wash
+   that fades back to nothing, so the eye lands on the right line. Honours
+   reduced motion (the wash still appears, just without the easing tween). */
+@keyframes search-flash {
+  0% {
+    background-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.search-flash {
+  animation: search-flash 1600ms ease-out;
+}

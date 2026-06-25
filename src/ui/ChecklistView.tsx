@@ -14,6 +14,7 @@ import { ItemCount } from "./ItemCount.tsx";
 import { SyncStatus } from "./SyncStatus.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
+import { useFocusItem } from "./focus-item.ts";
 import { useReportDragActivity } from "./drag-activity.ts";
 import { ghostPlacement } from "./dragGhostPlacement.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
@@ -141,6 +142,32 @@ function ChecklistViewImpl() {
       if (reordering) reportDrag(false);
     };
   }, [reordering, reportDrag]);
+
+  // A search result can ask this view to reveal one item: once the list it
+  // belongs to is the active one (so `rows` holds it), scroll the row into
+  // centre and flash it, then drain the request so it fires exactly once. A
+  // target hidden behind a collapsed parent simply isn't found — drop the
+  // request rather than leave it pending forever.
+  const { pendingId, clearFocus } = useFocusItem();
+  const focusContainerRef = reorderCtl.containerRef;
+  useEffect(() => {
+    if (!pendingId) return;
+    const container = focusContainerRef.current;
+    const el = container?.querySelector<HTMLElement>(
+      `[data-reorder-id="${CSS.escape(pendingId)}"]`,
+    );
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.add("search-flash");
+      const timer = window.setTimeout(
+        () => el.classList.remove("search-flash"),
+        1600,
+      );
+      clearFocus();
+      return () => window.clearTimeout(timer);
+    }
+    clearFocus();
+  }, [pendingId, rows, clearFocus, focusContainerRef]);
 
   // Desktop swaps each row's swipe-to-reveal gesture for a right-click menu
   // carrying the same archive / delete actions. `openMenu` is referentially

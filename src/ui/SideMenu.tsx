@@ -30,6 +30,7 @@ import {
   MenuIcon,
   PlusIcon,
   RedoIcon,
+  SearchIcon,
   ShieldIcon,
   SparklesIcon,
   TrashIcon,
@@ -503,17 +504,18 @@ export function SideMenu({
           )}
         </div>
       </div>
-      {/* New list / New folder / Archive and Undo / Redo share one bordered
-          panel just above the footer divider, fixed so it falls under the
-          thumb no matter how long the checklist list is. A top row of
-          create/navigate actions and a bottom row of history actions are
-          split by a divider, so the five icon buttons read as one coherent
-          block rather than two competing widgets. Each cell splits its row's
-          width evenly; the parent owns the border, rounding, and the inner
-          dividers. Archive lights up accent while its view is showing and
-          carries the archived count; undo/redo dim and go inert at the ends
-          of the timeline but keep the drawer open so a burst of reverts can
-          be applied without reopening it. */}
+      {/* New list / New folder / Archive and Undo / Redo / Search share one
+          bordered panel just above the footer divider, fixed so it falls under
+          the thumb no matter how long the checklist list is. A top row of
+          create/navigate actions and a bottom row of history-plus-search
+          actions are split by a divider, so the six icon buttons read as one
+          coherent block rather than two competing widgets. Each cell splits its
+          row's width evenly; the parent owns the border, rounding, and the
+          inner dividers. Archive lights up accent while its view is showing and
+          carries the archived count; undo/redo dim and go inert at the ends of
+          the timeline but keep the drawer open so a burst of reverts can be
+          applied without reopening it; Search opens the find-across-lists modal
+          and closes the drawer behind it. */}
       <div className="shrink-0 px-3 pt-2 pb-3">
         <div className="divide-y divide-line overflow-hidden rounded-md border border-line">
           <div className="flex divide-x divide-line">
@@ -555,6 +557,13 @@ export function SideMenu({
               label={t("nav.redo")}
               disabled={!canRedo}
               onClick={redo}
+            />
+            {/* Search opens a modal, so close the drawer behind it (undo/redo
+                keep it open for repeated reverts; this doesn't). */}
+            <BarButton
+              icon={<SearchIcon className="h-5 w-5" />}
+              label={t("nav.search")}
+              onClick={() => pick(() => dispatch({ kind: "search" }))}
             />
           </div>
         </div>

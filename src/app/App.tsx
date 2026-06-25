@@ -26,6 +26,7 @@ import {
 } from "../ui/nav-context.ts";
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { ChecklistDragProvider } from "../ui/checklist-drag.tsx";
+import { FocusItemContext, type FocusItemBus } from "../ui/focus-item.ts";
 import { ReportDragActivityContext } from "../ui/drag-activity.ts";
 import {
   CHECKLIST_DROP_ARCHIVE,
@@ -56,6 +57,7 @@ import { AchievementsModalHost } from "./modals/AchievementsModalHost.tsx";
 import { AchievementsUnlockModalHost } from "./modals/AchievementsUnlockModalHost.tsx";
 import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
 import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
+import { SearchModalHost } from "./modals/SearchModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
 import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
@@ -143,6 +145,10 @@ function AppShell() {
   // so pull-to-refresh can stand down for its duration.
   const [dragActive, setDragActive] = useState(false);
   const [view, setView] = useState<View>("checklist");
+  // The item a search result asked the checklist view to reveal and flash
+  // (null when nothing is pending). The view drains and clears it once it has
+  // scrolled, so the highlight fires exactly once. See `focus-item.ts`.
+  const [focusItemId, setFocusItemId] = useState<string | null>(null);
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const openMenu = useCallback(() => setMenuOpen(true), []);
@@ -559,6 +565,16 @@ function AppShell() {
     [settings.unseenAchievements.length, settings.disableAchievements],
   );
 
+  // The item-focus bus the search modal drives and the checklist view drains.
+  const focusItemValue = useMemo<FocusItemBus>(
+    () => ({
+      requestFocus: setFocusItemId,
+      pendingId: focusItemId,
+      clearFocus: () => setFocusItemId(null),
+    }),
+    [focusItemId],
+  );
+
   const navValue = useMemo<NavContextValue>(
     () => ({
       open: menuOpen,
@@ -589,60 +605,63 @@ function AppShell() {
     <ReportDragActivityContext.Provider value={setDragActive}>
       <NavContext.Provider value={navValue}>
         <ChecklistContext.Provider value={checklistValue}>
-          <AchievementsContext.Provider value={achievementsValue}>
-            <PullToRefreshIndicator
-              state={ptr.state}
-              pullDistance={ptr.pullDistance}
-            />
-            {/* A flex row so the pinned sidebar docks beside the content. When
+          <FocusItemContext.Provider value={focusItemValue}>
+            <AchievementsContext.Provider value={achievementsValue}>
+              <PullToRefreshIndicator
+                state={ptr.state}
+                pullDistance={ptr.pullDistance}
+              />
+              {/* A flex row so the pinned sidebar docks beside the content. When
             the menu isn't pinned, SideMenu renders only `position: fixed`
             layers (the floating button and the overlay drawer), which sit
             outside the flex flow — so the view keeps the full width. */}
-            <ChecklistDragProvider
-              onDrop={onChecklistDrop}
-              aborted={checklist.conflict !== null}
-            >
-              <div className="flex h-full">
-                <SideMenu
-                  namespaces={storage.namespaces}
-                  activeNamespace={storage.activeNamespace}
-                  onSwitchNamespace={storage.switchNamespace}
-                  onRemoveNamespace={removeNamespace}
-                />
-                <main className="relative h-full min-w-0 flex-1">
-                  {view === "archive" ? <ArchiveView /> : <ChecklistView />}
-                </main>
-              </div>
-            </ChecklistDragProvider>
-            <SettingsModalHost
-              settings={settings}
-              onSave={saveSettingsDraft}
-              onPreviewAppearance={setAppearancePreview}
-              storage={storage}
-            />
-            <ChangelogModalHost />
-            <SyncDetailsModalHost />
-            <NamespacesModalHost
-              storage={storage}
-              onCreate={createNamespace}
-              onRemove={removeNamespace}
-            />
-            <AchievementsModalHost settings={settings} />
-            <AchievementsUnlockModalHost
-              settings={settings}
-              onClear={clearUnseenAchievements}
-            />
-            <ConflictResolutionModal
-              open={checklist.conflict !== null}
-              local={checklist.snapshot}
-              remote={checklist.conflict?.remote ?? checklist.snapshot}
-              onResolve={(keep) => {
-                unlock("peacemaker");
-                checklist.resolveConflict(keep);
-              }}
-            />
-            <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
-          </AchievementsContext.Provider>
+              <ChecklistDragProvider
+                onDrop={onChecklistDrop}
+                aborted={checklist.conflict !== null}
+              >
+                <div className="flex h-full">
+                  <SideMenu
+                    namespaces={storage.namespaces}
+                    activeNamespace={storage.activeNamespace}
+                    onSwitchNamespace={storage.switchNamespace}
+                    onRemoveNamespace={removeNamespace}
+                  />
+                  <main className="relative h-full min-w-0 flex-1">
+                    {view === "archive" ? <ArchiveView /> : <ChecklistView />}
+                  </main>
+                </div>
+              </ChecklistDragProvider>
+              <SettingsModalHost
+                settings={settings}
+                onSave={saveSettingsDraft}
+                onPreviewAppearance={setAppearancePreview}
+                storage={storage}
+              />
+              <ChangelogModalHost />
+              <SearchModalHost />
+              <SyncDetailsModalHost />
+              <NamespacesModalHost
+                storage={storage}
+                onCreate={createNamespace}
+                onRemove={removeNamespace}
+              />
+              <AchievementsModalHost settings={settings} />
+              <AchievementsUnlockModalHost
+                settings={settings}
+                onClear={clearUnseenAchievements}
+              />
+              <ConflictResolutionModal
+                open={checklist.conflict !== null}
+                local={checklist.snapshot}
+                remote={checklist.conflict?.remote ?? checklist.snapshot}
+                onResolve={(keep) => {
+                  unlock("peacemaker");
+                  checklist.resolveConflict(keep);
+                }}
+              />
+              <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
+            </AchievementsContext.Provider>
+          </FocusItemContext.Provider>
         </ChecklistContext.Provider>
       </NavContext.Provider>
     </ReportDragActivityContext.Provider>
