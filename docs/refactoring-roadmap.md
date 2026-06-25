@@ -41,42 +41,40 @@ and update this file in the same PR.
 
 ### Severity 3–4 — nits with leverage
 
-- **`SideMenuRows.tsx` duplicates the `FolderRow` header/action JSX across
-  desktop and touch branches** — `src/ui/SideMenuRows.tsx` (662 lines).
-  `FolderRow` renders a different tree for desktop (right-click context menu,
-  lines ~450–532) vs. touch (`useSwipeReveal` strip), re-implementing the
-  header and trash/edit action strip twice; the swipe hook also fires in a
-  test/desktop environment, making the presentational rows awkward to unit-test
-  without touch. **Plan:** split into `FolderRowDesktop` / `FolderRowTouch`
-  picked by the `desktop` flag already available at the call site (line ~352),
-  sharing the header via a small helper so the action strip isn't written
-  twice. **Risk:** purely presentational; verify both the desktop context-menu
-  and the touch swipe-to-remove gestures still fire after the split. **Severity: 3.**
-
-- **`useStorageBackend.ts` re-derives the active selection across three
-  parallel `switch (selection.kind)` builders** — `src/storage/useStorageBackend.ts`
-  (637 lines). `makeInner` (line ~317), `settingsStore` (line ~363), and
-  `namespaceStore` (line ~384) each switch over the same `BackendSelection`
-  to build the document adapter, the root settings store, and the namespace
-  registry store respectively. Adding a fourth backend means filling in three
-  separate switches in lockstep; missing one is a silent gap. This is the
-  *remaining* half of the now-landed encryption-wrapping dedupe (the duplicate
-  "should this be encrypted?" decision is fixed; these three structural
-  switches are the lower-leverage residue). **Plan:** introduce a
-  `createBackendFactory(selection)` in `src/storage/backend-factory.ts`
-  exposing `{ makeInner(slug), settingsStore, namespaceStore }` so one place
-  knows how to build every per-backend store from a selection; the hook
-  composes it once per `selection` change. **Risk:** storage backends have
-  **no automated coverage** and the cloud builders take live tokens — smoke-test
-  LocalStorage plus one cloud backend (connect, write, switch namespace) by
-  hand before merging; the factory must keep the token-refresh seam exposed,
-  not hidden. **Severity: 4.**
+_None pending._
 
 ### Easy wins
 
 _None pending._
 
 ## Landed
+
+- **`useStorageBackend.ts` three `selection.kind` builders consolidated into
+  `createBackendFactory`** (2026-06) — the `makeInner`, `settingsStore`, and
+  `namespaceStore` switches (each re-deriving the same per-backend branch) now
+  live as one switch with a single case per backend in
+  `createBackendFactory(selection, { fetchImpl, storage, onFolderPermissionLost })`
+  (`src/storage/backend-factory.ts`), returning `{ makeInner, settingsStore,
+  namespaceStore }`. Adding a backend is one new case, not three switches kept
+  in lockstep. The hook composes the factory once per `selection` change and
+  reads the three off it; behaviour and the Dropbox token-refresh seam
+  (`auth.onAccessTokenRefreshed`) are unchanged. The `fetch` / `localStorage`
+  globals are now injected, so the previously-unreachable dispatch is unit-tested
+  per backend (browser/dropbox/gdrive/folder) in
+  `tests/storage/backend-factory.test.ts` — 100% of the new factory. Pure
+  refactor; full suite (1085 tests) green. **Cloud OAuth flows have no automated
+  coverage — smoke-tested LocalStorage + a cloud backend (connect, write, switch
+  namespace) by hand before merge.** Was Severity 4.
+
+- **`FolderRow` split into desktop / touch variants** (2026-06) — the single
+  `FolderRow` in `src/ui/SideMenuRows.tsx` that branched on `desktop` (and so
+  mounted `useSwipeReveal` even on the desktop path that never uses it) is now
+  `FolderRowDesktop` / `FolderRowTouch`, dispatched by a thin `FolderRow` on the
+  `desktop` flag and sharing one `FolderRowHeader`. The swipe hook no longer
+  fires on desktop, and the desktop right-click context menu — previously
+  untested (jsdom has no `matchMedia`, so `SideMenu` renders touch-only) — is now
+  directly covered alongside the touch strip in `tests/ui/side-menu-rows.test.tsx`
+  (8 cases). Pure presentational relocation, no behaviour change. Was Severity 3.
 
 - **`ChecklistView.tsx` composer modes consolidated into a `useComposer` hook**
   (2026-06) — replaced the three parallel composer states (`drafting`,

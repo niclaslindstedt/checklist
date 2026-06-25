@@ -356,33 +356,15 @@ export function ChecklistRowStrip({
   );
 }
 
-// A folder group header: a collapse toggle (caret + folder glyph + name +
-// count) plus a trailing "+" that starts a new list filed inside the folder.
-// Desktop right-click offers Rename / Delete; touch reveals an Edit / Delete
-// strip on a left swipe (a folder has no archive analogue, so a right swipe is
-// inert). The open glyph + accent tint mark an expanded folder.
-export function FolderRow({
-  name,
-  count,
-  expanded,
-  desktop,
-  isDropTarget,
-  renameLabel,
-  deleteLabel,
-  addLabel,
-  onToggle,
-  onRename,
-  onDelete,
-  onAdd,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  openMenu,
-}: {
+// The drop highlight a folder paints while a dragged checklist hovers it.
+const FOLDER_DROP_CLASS = "bg-accent/15 ring-1 ring-accent/40 ring-inset";
+
+// Props shared by both folder-row variants. `openMenu` is desktop-only (the
+// right-click menu); the touch variant ignores it.
+type FolderRowProps = {
   name: string;
   count: number;
   expanded: boolean;
-  desktop: boolean;
   /** A dragged checklist is hovering this folder — paint the drop highlight. */
   isDropTarget: boolean;
   renameLabel: string;
@@ -396,14 +378,30 @@ export function FolderRow({
   onDragLeave: (e: ReactDragEvent) => void;
   onDrop: (e: ReactDragEvent) => void;
   openMenu: OpenMenu;
+};
+
+// The collapse toggle (caret + folder glyph + name + count) plus the trailing
+// "+" that starts a new list filed inside the folder. Identical on desktop and
+// touch — only the surrounding action affordance differs — so it lives here as
+// the one header both variants render. The open glyph + accent tint mark an
+// expanded folder. The toggle and the "+" are siblings, not nested buttons:
+// tapping the label expands the folder; the far-right "+" starts a list inside.
+function FolderRowHeader({
+  name,
+  count,
+  expanded,
+  addLabel,
+  onToggle,
+  onAdd,
+}: {
+  name: string;
+  count: number;
+  expanded: boolean;
+  addLabel: string;
+  onToggle: () => void;
+  onAdd: () => void;
 }) {
-  const swipe = useSwipeReveal(REMOVE_ACTION_W);
-  const dropClass = isDropTarget
-    ? "bg-accent/15 ring-1 ring-accent/40 ring-inset"
-    : "";
-  const header = (
-    // The toggle and the "+" are siblings, not nested buttons: tapping the
-    // label expands the folder; the far-right "+" starts a list inside it.
+  return (
     <div className="flex w-full min-w-0 items-center">
       <button
         type="button"
@@ -446,38 +444,86 @@ export function FolderRow({
       </button>
     </div>
   );
+}
 
-  if (desktop) {
-    return (
-      <div
-        onContextMenu={(e) =>
-          openMenu(
-            [
-              {
-                label: renameLabel,
-                icon: <PencilIcon className="h-4 w-4" />,
-                onSelect: onRename,
-              },
-              {
-                label: deleteLabel,
-                icon: <TrashIcon className="h-4 w-4" />,
-                onSelect: onDelete,
-                danger: true,
-              },
-            ],
-            e,
-          )
-        }
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        className={`text-sm ${isDropTarget ? dropClass : "hover:bg-surface-2"}`}
-      >
-        {header}
-      </div>
-    );
-  }
+// Desktop folder row: a right-click anywhere on the header opens a Rename /
+// Delete context menu. No swipe machinery (that's the touch variant), so this
+// renders without ever mounting `useSwipeReveal`.
+function FolderRowDesktop({
+  name,
+  count,
+  expanded,
+  isDropTarget,
+  renameLabel,
+  deleteLabel,
+  addLabel,
+  onToggle,
+  onRename,
+  onDelete,
+  onAdd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  openMenu,
+}: FolderRowProps) {
+  return (
+    <div
+      onContextMenu={(e) =>
+        openMenu(
+          [
+            {
+              label: renameLabel,
+              icon: <PencilIcon className="h-4 w-4" />,
+              onSelect: onRename,
+            },
+            {
+              label: deleteLabel,
+              icon: <TrashIcon className="h-4 w-4" />,
+              onSelect: onDelete,
+              danger: true,
+            },
+          ],
+          e,
+        )
+      }
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`text-sm ${
+        isDropTarget ? FOLDER_DROP_CLASS : "hover:bg-surface-2"
+      }`}
+    >
+      <FolderRowHeader
+        name={name}
+        count={count}
+        expanded={expanded}
+        addLabel={addLabel}
+        onToggle={onToggle}
+        onAdd={onAdd}
+      />
+    </div>
+  );
+}
 
+// Touch folder row: a left swipe reveals an Edit / Delete action strip (a
+// folder has no archive analogue, so a right swipe is inert).
+function FolderRowTouch({
+  name,
+  count,
+  expanded,
+  isDropTarget,
+  renameLabel,
+  deleteLabel,
+  addLabel,
+  onToggle,
+  onRename,
+  onDelete,
+  onAdd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: FolderRowProps) {
+  const swipe = useSwipeReveal(REMOVE_ACTION_W);
   return (
     <div className="relative overflow-hidden text-sm">
       <div
@@ -523,12 +569,33 @@ export function FolderRow({
         onDrop={onDrop}
         style={{ transform: `translateX(${swipe.offset}px)` }}
         className={`relative [touch-action:pan-y] ${
-          isDropTarget ? dropClass : "bg-surface"
+          isDropTarget ? FOLDER_DROP_CLASS : "bg-surface"
         } ${swipe.animating ? "transition-transform duration-200" : ""}`}
       >
-        {header}
+        <FolderRowHeader
+          name={name}
+          count={count}
+          expanded={expanded}
+          addLabel={addLabel}
+          onToggle={onToggle}
+          onAdd={onAdd}
+        />
       </div>
     </div>
+  );
+}
+
+// A folder group: header + the right action affordance for the pointer type.
+// Desktop right-click offers Rename / Delete; touch reveals an Edit / Delete
+// strip on a left swipe. Splitting on `desktop` here (rather than branching
+// inside one component) keeps the swipe hook off the desktop path entirely.
+export function FolderRow({ desktop, ...props }: FolderRowProps & {
+  desktop: boolean;
+}) {
+  return desktop ? (
+    <FolderRowDesktop {...props} />
+  ) : (
+    <FolderRowTouch {...props} />
   );
 }
 
