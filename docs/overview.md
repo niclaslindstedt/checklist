@@ -553,6 +553,38 @@ from inside another modal closes itself without also tearing down the
 modal underneath. (Backdrop clicks need no equivalent guard — the
 topmost backdrop covers the viewport, so a click can only reach it.)
 
+### Search
+
+`src/ui/SearchModal.tsx` — find anything across **every** checklist at
+once. Opened from the magnifier on the action bar (`SideMenu`'s bottom
+button row, right of undo/redo) via a `{ kind: "search" }` command on the
+modal bus; `src/app/modals/SearchModalHost.tsx` owns its open state. It is
+a plain `Modal`, so it fills the screen on mobile and centres on desktop.
+
+The engine is pure and lives in the domain layer (`src/domain/search.ts`,
+no DOM): `buildSearchIndex(snapshot)` flattens the document into a flat
+list of searchable entries — one per list name, item title, and item note
+body, walking sub-items recursively; archived lists and items are skipped
+since a result navigates to the live list. `search(index, query)` parses
+the query and returns the hits grouped per checklist, each carrying the
+character `ranges` that matched so the modal can highlight them in place
+(`segmentMatches` splits the text into plain / matched runs, rendered as
+`<mark>`). The query language is progressive: a `/pattern/flags` literal is
+a JavaScript regex (an invalid one is reported, not silently empty); a bare
+term with `*` / `?` is shell-style wildcards; anything else is a
+case-insensitive substring match that falls back to a fuzzy subsequence
+match (`grcl` → “Grocery list”) when the substring finds nothing.
+
+Picking a result selects that checklist (`selectChecklist`) and navigates
+to it (`useNav`); for an item hit it also drives the **item-focus bus**
+(`src/ui/focus-item.ts`) — App holds a pending item id, `ChecklistView`
+drains it once the list renders, scrolls the row (`data-reorder-id`) into
+centre, and adds the `search-flash` class for a one-shot accent wash (the
+`search-flash` keyframes in `styles/theme.css`). The bus has an inert
+no-op default, so a `ChecklistView` mounted without App's provider simply
+never gets a focus request. Searching is what unlocks the **Seeker**
+achievement (manual `unlock("seeker")`).
+
 ### Confirmation dialog
 
 `src/ui/ConfirmDialog.tsx` — the in-app replacement for the browser's

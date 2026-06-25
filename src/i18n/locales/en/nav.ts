@@ -25,6 +25,7 @@ const nav = {
   restoreList: "Restore list",
   undo: "Undo",
   redo: "Redo",
+  search: "Search",
 } as const;
 
 export type NavCatalog = Widen<typeof nav>;

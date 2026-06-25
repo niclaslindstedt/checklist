@@ -15,6 +15,7 @@ import menu from "./menu";
 import namespace from "./namespace";
 import nav from "./nav";
 import pwa from "./pwa";
+import search from "./search";
 import settings from "./settings";
 import sync from "./sync";
 import toast from "./toast";
@@ -29,6 +30,7 @@ export const en = {
   namespace,
   nav,
   pwa,
+  search,
   settings,
   sync,
   toast,

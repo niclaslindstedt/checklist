@@ -128,6 +128,13 @@ export function ShowcasePage() {
               <code className="text-meta">- [ ]</code> markdown.
             </li>
             <li>
+              <strong className="text-fg-bright">Search everything</strong> —
+              find a checklist, item, note, or nested sub-item across every list
+              as you type, with matches highlighted; type plain text (fuzzy by
+              default), shell-style wildcards, or a{" "}
+              <code className="text-meta">/regex/</code>.
+            </li>
+            <li>
               <strong className="text-fg-bright">Share a list by link</strong> —
               the payload travels in the URL fragment, so it never touches a
               server.

@@ -20,6 +20,7 @@ const nav: NavCatalog = {
   restoreList: "Återställ lista",
   undo: "Ångra",
   redo: "Gör om",
+  search: "Sök",
 };
 
 export default nav;

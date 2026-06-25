@@ -174,6 +174,12 @@ const achievements = {
       learnMore:
         "Long-press the add (+) button and tap Delete finished — one tap clears every checked item from the list in one go, and undo brings them back if you slipped.",
     },
+    seeker: {
+      name: "Seeker",
+      condition: "Search across your checklists.",
+      learnMore:
+        "Open search from the action bar (right of undo/redo) to look across every list at once — by list name, item, note body, or nested sub-item. Matches highlight as you type. Beyond plain text it understands shell-style wildcards (car* / sun?creen) and, wrapped in slashes, a full regular expression (/sun\\w+/); a bare term with no hit falls back to a fuzzy subsequence match, so “grcl” still finds “Grocery list”. Tap a result to jump straight to it.",
+    },
     copyThat: {
       name: "Copy That",
       condition: "Copy a checklist to the clipboard.",

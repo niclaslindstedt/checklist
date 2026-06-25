@@ -19,6 +19,7 @@ export type ModalCommand =
   | { kind: "settings"; tab?: "storage" }
   | { kind: "changelog" }
   | { kind: "namespaces" }
+  | { kind: "search" }
   | { kind: "achievements" }
   | { kind: "achievements-unlock" }
   | { kind: "sync-details" };
