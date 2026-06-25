@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
@@ -39,6 +39,23 @@ describe("Modal", () => {
     fireEvent.click(screen.getByText("bump"));
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("focuses initialFocusRef on open instead of the card", () => {
+    // Regression for the search modal: focus must land on the text field, not
+    // the card, so the open gesture raises the iOS soft keyboard. Modal claims
+    // focus for `initialFocusRef` in a layout effect on open.
+    function Host() {
+      const inputRef = useRef<HTMLInputElement>(null);
+      return (
+        <Modal open onClose={() => {}} labelledBy="t" initialFocusRef={inputRef}>
+          <h2 id="t">Title</h2>
+          <input ref={inputRef} aria-label="field" />
+        </Modal>
+      );
+    }
+    render(<Host />);
+    expect(document.activeElement).toBe(screen.getByLabelText("field"));
   });
 
   it("keeps focus on a typed-into input when the parent re-renders with a fresh onClose", () => {

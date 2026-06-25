@@ -108,13 +108,13 @@ export function SearchModal({ open, onClose }: Props) {
   );
   const trimmed = query.trim();
 
-  // Reset and focus the field each time the modal opens, so it's ready to type
-  // into and never reopens onto a stale query.
+  // Clear any stale query each time the modal opens, so it never reopens onto
+  // a previous search. Focus is owned by `Modal` via `initialFocusRef={inputRef}`
+  // below: it focuses the field in a layout effect, so when the open is
+  // dispatched inside `flushSync` from the tap (see `SideMenu`) the focus lands
+  // within that gesture and iOS raises the soft keyboard.
   useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    const id = window.setTimeout(() => inputRef.current?.focus(), 30);
-    return () => window.clearTimeout(id);
+    if (open) setQuery("");
   }, [open]);
 
   // Searching is the gesture the "Seeker" trophy watches for. The unlock bus
@@ -131,7 +131,12 @@ export function SearchModal({ open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} labelledBy={headingId}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy={headingId}
+      initialFocusRef={inputRef}
+    >
       <header className="flex shrink-0 items-center gap-2 border-b border-line bg-surface-3 px-3 py-2">
         <span className="pl-1 text-muted">
           <SearchIcon className="h-5 w-5" />
@@ -171,9 +176,9 @@ export function SearchModal({ open, onClose }: Props) {
           type="button"
           onClick={onClose}
           aria-label={t("common.close")}
-          className="flex h-7 shrink-0 cursor-pointer items-center rounded px-2 text-sm text-muted hover:bg-surface-2 hover:text-fg-bright"
+          className="-mr-1 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-surface-2 hover:text-fg-bright"
         >
-          {t("common.close")}
+          <CloseIcon className="h-5 w-5" />
         </button>
       </header>
 

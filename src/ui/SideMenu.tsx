@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 
 import { BUILD_LABEL } from "../build-env.ts";
 import type {
@@ -559,11 +560,21 @@ export function SideMenu({
               onClick={redo}
             />
             {/* Search opens a modal, so close the drawer behind it (undo/redo
-                keep it open for repeated reverts; this doesn't). */}
+                keep it open for repeated reverts; this doesn't). Open
+                synchronously *inside this tap* via flushSync, so the search
+                field's focus (a layout effect in `Modal`) runs within the user
+                gesture — the only context in which iOS raises the soft
+                keyboard for a programmatic focus. A plain bus dispatch defers
+                the focus to a later commit, outside the gesture, and the
+                keyboard stays down. Open before closing the drawer so the
+                field is focused while the tapped button is still mounted. */}
             <BarButton
               icon={<SearchIcon className="h-5 w-5" />}
               label={t("nav.search")}
-              onClick={() => pick(() => dispatch({ kind: "search" }))}
+              onClick={() => {
+                flushSync(() => dispatch({ kind: "search" }));
+                close();
+              }}
             />
           </div>
         </div>
