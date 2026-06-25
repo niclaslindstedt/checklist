@@ -269,6 +269,14 @@ export function ChecklistRowEditor({
           onKeyDown={onTitleKey}
           placeholder={t("app.editTitlePlaceholder")}
           aria-label={t("app.editItem")}
+          // Capitalise the first letter of the title. Each item is its own
+          // sentence, so a fresh row should start capitalised even though the
+          // previous one rarely ends in a period — and the hint must be set
+          // explicitly: in an installed iOS PWA (WKWebView) the soft keyboard
+          // doesn't reset its shift state when Enter commits a row and focus
+          // jumps here programmatically, so it would otherwise keep the prior
+          // field's lowercase state instead of capitalising this empty field.
+          autoCapitalize="sentences"
           className="min-w-0 flex-1 border-0 bg-transparent text-fg-bright outline-none"
         />
       </div>
@@ -285,6 +293,7 @@ export function ChecklistRowEditor({
             onKeyDown={onBodyKey}
             placeholder={t("app.notePlaceholder")}
             aria-label={t("app.notePlaceholder")}
+            autoCapitalize="sentences"
             className="max-h-72 min-h-32 w-full resize-none overflow-y-auto rounded-md border border-line bg-page-bg px-2 py-1.5 font-mono text-sm break-words text-fg outline-none focus:border-accent"
           />
         </div>

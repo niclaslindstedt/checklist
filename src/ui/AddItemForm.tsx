@@ -201,6 +201,12 @@ export function AddItemForm({
         }}
         placeholder={t("app.addItemPlaceholder")}
         aria-label={t("app.addItem")}
+        // Capitalise the first letter of each new item. The hint is set
+        // explicitly because an installed iOS PWA (WKWebView) doesn't reset
+        // the soft keyboard's shift state when this draft row is focused
+        // straight after committing the previous item with Enter — so it
+        // would otherwise stay lowercase from the row above.
+        autoCapitalize="sentences"
         wrapperClassName="flex-1"
         // Match the checklist item title's colour exactly — only the bright
         // input default set it apart.
