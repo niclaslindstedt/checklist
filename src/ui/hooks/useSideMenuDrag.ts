@@ -21,7 +21,9 @@ export function deriveDragKind(
   draggingChecklist: string | null,
   touchDragKind: DragKind | null,
 ): DragKind | null {
-  return draggingChecklist ? parseDragId(draggingChecklist).kind : touchDragKind;
+  return draggingChecklist
+    ? parseDragId(draggingChecklist).kind
+    : touchDragKind;
 }
 
 // Whether a drop zone keyed `key` accepts the current drag. A dragged folder

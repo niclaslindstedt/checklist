@@ -51,6 +51,8 @@ function ChecklistViewImpl() {
     importItemsAfter,
     editItem,
     toggle,
+    checkAll,
+    uncheckAll,
     remove,
     removeEmpty,
     archive,
@@ -494,7 +496,12 @@ function ChecklistViewImpl() {
         </h1>
         <div className="flex shrink-0 items-center gap-2">
           {showItemCount && (
-            <ItemCount checked={checkedCount} total={visibleCount} />
+            <ItemCount
+              checked={checkedCount}
+              total={visibleCount}
+              onCheckAll={checkAll}
+              onUncheckAll={uncheckAll}
+            />
           )}
           <CopyButton
             checklist={activeList}

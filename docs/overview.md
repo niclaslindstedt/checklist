@@ -1221,6 +1221,19 @@ for a cleaner header; the flag rides the checklist context
 settings) to `ChecklistView`, which drops the badge when it's off. Hiding
 it unlocks the **Lost Count** achievement.
 
+Pressing the badge opens a small **bulk-action dropdown** (a `FloatingPanel`
+menu anchored to the badge's right edge, so it opens down-and-to-the-left
+and stays on screen) with **Check all** and **Uncheck all** — a one-tap way
+to tick off (or clear) the whole list instead of toggling each row. Each
+action runs the `checkAll` / `uncheckAll` edit verb
+(`src/app/use-checklist-edits.ts`), which calls the pure `setAllChecked`
+(`src/domain/checklists.ts`) — it sweeps every active (non-archived) item,
+cascading through sub-items and stamping / clearing `checkedAt`, and no-ops
+when the list already matches. The menu greys out **Check all** once
+everything is checked and **Uncheck all** when nothing is, and the badge
+stays a static, non-interactive readout when there are no items. Using
+**Check all** unlocks the **All In** achievement.
+
 ### Include archived in copy
 
 The **Include archived in copy** toggle on the Lists tab

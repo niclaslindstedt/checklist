@@ -612,6 +612,44 @@ export function toggleItem(
   return { ...checklist, items, updatedAt: now };
 }
 
+/**
+ * Check or uncheck every active (non-archived) item in one sweep — the bulk
+ * action behind the header count's dropdown ("Check all" / "Uncheck all").
+ * Walks the whole tree but skips archived subtrees, since archived items are
+ * hidden from the count this action mirrors. Checking stamps `checkedAt` (the
+ * recency key the sink-checked view sorts on); unchecking clears it. A no-op
+ * (every active item already in the requested state) returns the same
+ * checklist untouched, so it never bumps `updatedAt` or triggers a write.
+ */
+export function setAllChecked(
+  checklist: Checklist,
+  checked: boolean,
+  now: string,
+): Checklist {
+  if (
+    !flattenItems(activeItems(checklist)).some((it) => it.checked !== checked)
+  ) {
+    return checklist;
+  }
+  const apply = (it: ChecklistItem): ChecklistItem => {
+    // Leave archived items (and their whole subtree) exactly as they are —
+    // they're hidden, so a bulk check over the visible list never touches them.
+    if (it.archived) return it;
+    let next = it;
+    if (it.checked !== checked) {
+      next = checked
+        ? { ...it, checked: true, checkedAt: now }
+        : { ...it, checked: false };
+      if (!checked) delete next.checkedAt;
+    }
+    if (next.children) {
+      next = withChildren(next, next.children.map(apply));
+    }
+    return next;
+  };
+  return { ...checklist, items: checklist.items.map(apply), updatedAt: now };
+}
+
 /** Where a dropped item lands relative to the item it was dropped on. */
 export type DropMode = "before" | "after" | "into";
 

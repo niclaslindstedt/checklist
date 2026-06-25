@@ -14,6 +14,8 @@ const app = {
   addItemPlaceholder: "Add item…",
   check: "Check item",
   uncheck: "Uncheck item",
+  checkAll: "Check all",
+  uncheckAll: "Uncheck all",
   archive: "Archive",
   delete: "Delete",
   editItem: "Edit item",
@@ -35,6 +37,7 @@ const app = {
   copied: "Copied",
   copyFailed: "Couldn't copy to the clipboard",
   itemCount: "{checked} of {total} items checked",
+  itemCountActions: "Check or uncheck all items",
 } as const;
 
 export type AppCatalog = Widen<typeof app>;

@@ -309,6 +309,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "allIn",
+    tier: "intermediate",
+    glyph: CheckGlyph,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "copyThat",
     tier: "intermediate",
     glyph: CopyGlyph,

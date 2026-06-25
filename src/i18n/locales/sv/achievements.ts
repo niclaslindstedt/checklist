@@ -173,6 +173,10 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Öppna sökningen från åtgärdsraden (till höger om ångra/gör om) för att söka igenom alla listor på en gång — efter listnamn, post, anteckning eller underordnad post. Träffar markeras medan du skriver. Utöver vanlig text förstår den jokertecken (car* / sun?creen) och, omslutet av snedstreck, ett fullständigt reguljärt uttryck (/sun\\w+/); en term utan träff faller tillbaka på en luddig delsekvensmatchning, så ”grcl” hittar ändå ”Grocery list”. Tryck på en träff för att hoppa direkt dit.",
     },
+    allIn: {
+      name: "Helt klart",
+      condition: "Bocka av en hel lista på en gång.",
+    },
     copyThat: {
       name: "Kopierat",
       condition: "Kopiera en checklista till urklipp.",

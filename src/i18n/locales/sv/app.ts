@@ -8,6 +8,8 @@ const app: AppCatalog = {
   addItemPlaceholder: "Lägg till rad…",
   check: "Bocka av rad",
   uncheck: "Avmarkera rad",
+  checkAll: "Bocka av alla",
+  uncheckAll: "Avmarkera alla",
   archive: "Arkivera",
   delete: "Ta bort",
   editItem: "Redigera rad",
@@ -29,6 +31,7 @@ const app: AppCatalog = {
   copied: "Kopierad",
   copyFailed: "Kunde inte kopiera till urklipp",
   itemCount: "{checked} av {total} poster bockade",
+  itemCountActions: "Bocka av eller avmarkera alla poster",
 };
 
 export default app;

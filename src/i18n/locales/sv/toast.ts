@@ -7,6 +7,8 @@ const toast: ToastCatalog = {
   itemEdited: "Redigerade ”{title}”",
   itemChecked: "Bockade av ”{title}”",
   itemUnchecked: "Bockade ur ”{title}”",
+  allChecked: "Bockade av alla poster",
+  allUnchecked: "Avmarkerade alla poster",
   itemDeleted: "Tog bort ”{title}”",
   emptyItemRemoved: "Tog bort tom rad",
   itemArchived: "Arkiverade ”{title}”",
