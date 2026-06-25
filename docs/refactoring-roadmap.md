@@ -41,42 +41,43 @@ and update this file in the same PR.
 
 ### Severity 7–8 — multipliers
 
-- **Split the sync engine's save-queue and retry-scheduler concerns out of
-  `use-checklist-sync.ts`.** `src/app/use-checklist-sync.ts` (698 lines) packs
-  three interwoven concerns into one hook: (a) the **debounced save queue** —
-  `saveTimer` / `pendingDoc` / `inFlight` / `saveGeneration` refs and the
-  flush coordination (lines ~182–205, `flushSaveRef`); (b) the **retry
-  scheduler** — `retryTimer` / `consecutiveThrottles` / `transientRetries`
-  refs, `armResave` (lines ~217–245) and the cooldown/backoff arithmetic; and
-  (c) the **error dispatcher** inside `performSave` (lines ~247–387), a
-  ~140-line `try/catch` that routes offline / throttle / retryable / conflict
-  / auth outcomes to status + reschedule. Re-verify with `grep -n
-  "saveGeneration\|armResave\|pendingDoc\|retryTimer\|consecutiveThrottles"
+- **Extract the retry-scheduler concern out of `use-checklist-sync.ts`**
+  (step 2 of 2 — step 1, the `SaveQueue` extraction, landed 2026-06).
+  `src/app/use-checklist-sync.ts` (689 lines) still keeps the **retry
+  scheduler** inline: `retryTimer` / `consecutiveThrottles` /
+  `transientRetries` refs, `armResave` (the generation-checked cooldown,
+  lines ~224–238) and the cooldown/backoff arithmetic scattered through
+  `performSave`'s `catch` (the throttle-floor escalation and transient-retry
+  branches, lines ~325–360) and the three cancel-and-reset sites (backend
+  swap, reload, unmount). Re-verify with `grep -n
+  "retryTimer\|consecutiveThrottles\|transientRetries\|armResave"
   src/app/use-checklist-sync.ts`.
-  - **Plan**: the error-classification *predicates* are **already** extracted
-    (`isOfflineError`, `describeStorageError` in `src/storage/cache/`;
-    `isRetryableSaveError`, `backoffDelayMs`, `MAX_TRANSIENT_SAVE_RETRIES`,
-    `OFFLINE_RESUME_MS` in `src/storage/save-retry.ts`) — so do **not**
-    re-extract an "ErrorClassifier". The genuine remaining seams are two pure,
-    framework-light state machines: a `SaveQueue` (owns `pendingDoc` /
-    `inFlight` / `saveGeneration` and the "newest snapshot wins, coalesce
-    pending writes" rule) and a `RetryScheduler` (owns `retryTimer` /
-    `consecutiveThrottles` / `transientRetries` and `armResave`'s
-    generation-checked cooldown). Extract each to its own module under
-    `src/app/` (or `src/storage/` if it ends up depending only on the adapter
-    contract), unit-test the coalescing and the generation-guard directly —
-    logic that today is only reachable through the full hook — and have
-    `useChecklistSync` compose them. Aim for two PRs (one seam each), each
-    leaving the hook working and shrinking it.
+  - **Plan**: the save-queue state machine is now a tested unit
+    (`src/app/save-queue.ts`, `SaveQueue` — owns `pendingDoc` / `inFlight` /
+    `saveGeneration`, the coalescing, and the generation guard); the error
+    *predicates* are already extracted (`isOfflineError`,
+    `describeStorageError` in `src/storage/cache/`; `isRetryableSaveError`,
+    `backoffDelayMs`, `MAX_TRANSIENT_SAVE_RETRIES`, `OFFLINE_RESUME_MS` in
+    `src/storage/save-retry.ts`) — so do **not** re-extract an
+    "ErrorClassifier". The genuine remaining seam is a `RetryScheduler` that
+    owns `retryTimer` / `consecutiveThrottles` / `transientRetries`, an
+    `arm(callback, waitMs)` that captures and re-checks the `SaveQueue`
+    generation, a `cancel()`, and the counter helpers (throttle floor +
+    escalate, next transient delay, reset on success / swap). It composes the
+    existing `SaveQueue` for the requeue + generation read. Unit-test the
+    cooldown's generation guard and the throttle escalation directly, then
+    have `useChecklistSync` compose it. One PR; leaves the hook working and
+    shrinking.
   - **Risk**: high blast radius — every backend's save path threads through
     this hook, and the cloud OAuth flows (Google Drive, Dropbox) have **no
-    automated coverage**. The generation/stale-result guard and the "coalesce
-    into `pendingDoc`" rule are correctness-critical (a regression silently
-    drops or double-writes edits). Pin the current behaviour with tests
-    against the pre-refactor code first, then refactor under them; manually
-    smoke-test offline→reconnect, throttle+transient-retry, and
-    conflict-on-autosave against LocalStorage plus at least one cloud backend.
-    Multi-PR plan. **Severity: 7.**
+    automated coverage**. The throttle/transient cooldown is
+    correctness-critical (a regression can hammer a rate-limited backend or
+    drop a queued retry). The hook's behaviour is well-pinned by
+    `tests/app/use-checklist-sync.test.ts` (throttle-recovery,
+    transient-retry-then-error, offline gentle-resume, saveNow-after-error);
+    refactor under those, then manually smoke-test throttle+transient-retry
+    and offline→reconnect against LocalStorage plus at least one cloud
+    backend. **Severity: 7.**
 
 ### Severity 5–6 — friction
 
@@ -130,7 +131,13 @@ _None pending._
 
 ## Landed
 
-_None yet — roadmap reset to a clean slate (2026-06)._
+- **Extracted the `SaveQueue` state machine out of `use-checklist-sync.ts`**
+  (2026-06) — step 1 of 2 of the sync-engine split. Moved the `pendingDoc` /
+  `inFlight` / `saveGeneration` refs and the serialized-save invariants
+  (single in-flight write, newest-snapshot-wins coalescing, stale-generation
+  guard) into a pure, framework-free `src/app/save-queue.ts`, unit-tested at
+  100% in `tests/app/save-queue.test.ts`. The hook composes it; the
+  retry-scheduler seam (step 2) remains in Pending.
 
 ## Investigated and skipped
 
