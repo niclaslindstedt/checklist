@@ -26,35 +26,19 @@ import {
   getBackend,
   setBackend as persistBackend,
 } from "./backend-preference.ts";
-import { wrapForEncryption } from "./backend-factory.ts";
-import { localCacheKey, withLocalCache } from "./cache/index.ts";
 import {
-  type DropboxAuth,
-  createDropboxAdapter,
-  createDropboxNamespaceStore,
-  createDropboxSettingsStore,
+  type BackendSelection,
+  createBackendFactory,
+  wrapForEncryption,
+} from "./backend-factory.ts";
+import {
   deleteDropboxNamespace,
   isDropboxConfigured,
 } from "./dropbox/index.ts";
-import {
-  createGdriveAdapter,
-  createGdriveNamespaceStore,
-  createGdriveSettingsStore,
-  deleteGdriveNamespace,
-  isGdriveConfigured,
-} from "./gdrive/index.ts";
-import {
-  BrowserLocalStorageAdapter,
-  deleteLocalNamespace,
-} from "./local/index.ts";
-import {
-  createFolderAdapter,
-  createFolderNamespaceStore,
-  createFolderSettingsStore,
-} from "./folder/index.ts";
+import { deleteGdriveNamespace, isGdriveConfigured } from "./gdrive/index.ts";
+import { deleteLocalNamespace } from "./local/index.ts";
 import { writeMovedDocument } from "./namespace-moves.ts";
 import type { SettingsStore } from "./settings-store.ts";
-import type { NamespaceRegistryStore } from "./namespace-store.ts";
 import { isFolderBackendAvailable } from "./folder/handle-store.ts";
 import {
   DEFAULT_NAMESPACE_SLUG,
@@ -208,16 +192,6 @@ function lockedAdapter(id: BackendId): StorageAdapter {
   };
 }
 
-// The resolved active backend, computed once per change so the
-// namespace-scoped document adapter and the root settings store are built
-// from the same branch instead of re-deriving the `backend && token` chain
-// twice. Carries exactly what each builder needs.
-type BackendSelection =
-  | { kind: "dropbox"; auth: DropboxAuth }
-  | { kind: "gdrive"; token: string }
-  | { kind: "folder"; handle: FileSystemDirectoryHandle }
-  | { kind: "browser" };
-
 export function useStorageBackend(): UseStorageBackend {
   const [backend, setBackendState] = useState<BackendId>(getBackend);
   const [activeNamespace, setActiveNamespaceState] = useState<string>(
@@ -307,48 +281,29 @@ export function useStorageBackend(): UseStorageBackend {
     folderHandleLoaded,
   ]);
 
-  // Build the unwrapped, namespace-scoped backend for any slug. Factored out
-  // of the `inner` memo so a cross-namespace move can spin up an adapter
-  // pointed at the *target* namespace's document without switching the active
-  // one. Cloud adapters get fresh tokens on every change so a reconnect
-  // rebuilds them; the Dropbox adapter persists any silently-refreshed access
-  // token back to localStorage and state via the selection's
-  // `onAccessTokenRefreshed`.
-  const makeInner = useCallback(
-    (slug: string): StorageAdapter => {
-      switch (selection.kind) {
-        // Cloud backends mirror their bytes into a local cache so the document
-        // can be unlocked, read, and edited offline (the cache holds the
-        // encrypted envelope when encryption is on). Folder / browser are
-        // already on-device, so they need no mirror.
-        case "dropbox":
-          return withLocalCache(
-            createDropboxAdapter(selection.auth, fetch, slug),
-            {
-              storage: globalThis.localStorage,
-              key: localCacheKey("dropbox", slug),
-            },
-          );
-        case "gdrive":
-          return withLocalCache(
-            createGdriveAdapter(selection.token, fetch, slug),
-            {
-              storage: globalThis.localStorage,
-              key: localCacheKey("gdrive", slug),
-            },
-          );
-        case "folder":
-          return createFolderAdapter({
-            directoryHandle: selection.handle,
-            namespace: slug,
-            onPermissionLost: markFolderPermissionLost,
-          });
-        case "browser":
-          return new BrowserLocalStorageAdapter(globalThis.localStorage, slug);
-      }
-    },
+  // One place that knows how to build every per-backend store from the active
+  // selection — the namespace-scoped document adapter (`makeInner`), the root
+  // settings store, and the root namespace registry store. Rebuilt only when
+  // the selection (or the folder permission callback) changes, so a namespace
+  // switch reuses it and rebuilds just the document adapter below. Adding a
+  // backend is one new case in `createBackendFactory`, not three switches kept
+  // in lockstep here.
+  const factory = useMemo(
+    () =>
+      createBackendFactory(selection, {
+        fetchImpl: fetch,
+        storage: globalThis.localStorage,
+        onFolderPermissionLost: markFolderPermissionLost,
+      }),
     [selection, markFolderPermissionLost],
   );
+
+  // The unwrapped, namespace-scoped backend builder. Held as its own binding so
+  // a cross-namespace move can spin up an adapter pointed at the *target*
+  // namespace's document (`makeInner(targetSlug)`) without switching the active
+  // one. Stable per `factory`, so the move callbacks that depend on it only
+  // rebuild when the selection changes.
+  const makeInner = factory.makeInner;
 
   // The active namespace's scoped backend — the document the app reads/writes.
   const inner = useMemo<StorageAdapter>(
@@ -356,47 +311,13 @@ export function useStorageBackend(): UseStorageBackend {
     [makeInner, activeNamespace],
   );
 
-  // The active backend's root settings store — the same selection as
-  // `inner` but rooted at the app folder (no namespace) and independent of
-  // encryption (settings are app-wide plaintext). Null for the browser
-  // backend (localStorage is its canonical settings home) and while a
-  // folder grant is unresolved.
-  const settingsStore = useMemo<SettingsStore | null>(() => {
-    switch (selection.kind) {
-      case "dropbox":
-        return createDropboxSettingsStore(selection.auth, fetch);
-      case "gdrive":
-        return createGdriveSettingsStore(selection.token, fetch);
-      case "folder":
-        return createFolderSettingsStore(
-          selection.handle,
-          markFolderPermissionLost,
-        );
-      case "browser":
-        return null;
-    }
-  }, [selection, markFolderPermissionLost]);
-
-  // The active backend's root namespace registry — `namespaces.json` beside
-  // `settings.json` at the app-folder root, so the list of namespaces travels
-  // with the synced/shared folder and lands on every device that connects
-  // the backend. Null for the browser backend (localStorage is its only home)
-  // and while a folder grant is unresolved.
-  const namespaceStore = useMemo<NamespaceRegistryStore | null>(() => {
-    switch (selection.kind) {
-      case "dropbox":
-        return createDropboxNamespaceStore(selection.auth, fetch);
-      case "gdrive":
-        return createGdriveNamespaceStore(selection.token, fetch);
-      case "folder":
-        return createFolderNamespaceStore(
-          selection.handle,
-          markFolderPermissionLost,
-        );
-      case "browser":
-        return null;
-    }
-  }, [selection, markFolderPermissionLost]);
+  // The active backend's root settings store (rooted at the app folder, no
+  // namespace, app-wide plaintext) and namespace registry (`namespaces.json`
+  // beside `settings.json`, so the namespace list travels with the synced /
+  // shared folder). Both null for the browser backend (localStorage is their
+  // only home) and while a folder grant is unresolved.
+  const settingsStore = factory.settingsStore;
+  const namespaceStore = factory.namespaceStore;
 
   // The device namespace registry: owns the `namespaces` state, mirrors each
   // mutation into the active backend's `namespaces.json`, and reconciles with
