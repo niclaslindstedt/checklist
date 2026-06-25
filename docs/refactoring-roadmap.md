@@ -49,27 +49,36 @@ _None pending._
 
 ### Severity 3–4 — nits with leverage
 
-- **Shared logged-fetch block still duplicated across the cloud
-  adapters.** The pure `requestLabel` / `describeError` helpers are now
-  shared (see Landed, 2026-06), but the surrounding logging *block* —
-  `performance.now()` start, `elapsed()`, the `try { … } catch` that warns
-  with `describeError`, and the final `→ status (ms)` info/warn line — is
-  still written out inline in gdrive's `createLoggedFetch` (~119–142) and
-  Dropbox's `createAuthedFetch` (~250–287). Dropbox interleaves a
-  401-silent-refresh retry between the catch and the final status line, so
-  the two are not byte-for-byte and a clean `createLoggedFetch(fetchImpl,
-  label)` factory has to thread that retry hook through. **Plan:** lift a
-  shared logger that takes the fetch thunk and an optional post-throw retry
-  callback; Dropbox composes it with its refresh step. **Risk:** threads
-  the request + auth hot path which has **no automated coverage** —
-  smoke-test a real Dropbox 401-refresh by hand. Lower value than the pure
-  helpers were. **Severity: 3.**
+_None pending._
 
 ### Easy wins
 
 _None pending._
 
 ## Landed
+
+- **Lifted the logged-fetch diagnostics block into a shared `createRequestLog`**
+  (2026-06). The surrounding logging *block* both cloud adapters wrote out
+  inline — `performance.now()` start + `elapsed()`, the `try { … } catch` that
+  warns with `describeError` and rethrows, and the closing `→ status (ms)`
+  info/warn line — now lives in one `createRequestLog(log, url, labelOverride?)`
+  in `src/storage/http-utils.ts` returning a `{ attempt, logStatus }` handle.
+  gdrive's `createLoggedFetch` is now `attempt(() => fetchImpl(url, init))` →
+  `logStatus(res)`; Dropbox's `authedFetch` composes the same two primitives
+  with its 401 silent-refresh retry interleaved (`attempt(…, " (post-refresh)")`
+  for the second try) instead of threading a retry callback through a single
+  wrapper — a cleaner seam than the roadmap's "post-throw retry callback" plan,
+  since the retry fires on a 401 *status*, not a throw. The shared `Logger` is
+  passed in (each adapter keeps its own `gdrive` / `dropbox` scope). Both
+  adapters dropped their now-unused `describeError` / `requestLabel` imports.
+  Added 7 direct unit tests against a mocked `Logger`
+  (`tests/storage/http-utils.test.ts`: success passthrough, throw-logs-and-
+  rethrows with and without a note, info-on-ok / warn-on-non-ok status lines,
+  caller label override) the buried inline block couldn't have. Pure
+  relocation, no behaviour change — the gdrive / dropbox adapter suites
+  (incl. the Dropbox 401-refresh regressions) pass unchanged; full suite
+  (965 tests) green. With this the cloud-adapter logged-fetch duplication is
+  fully resolved and **Pending is empty.**
 
 - **Collapsed the cross-namespace move verbs onto one `writeMovedDocument`
   helper** (2026-06). Seventh and final seam of the `useStorageBackend.ts`
