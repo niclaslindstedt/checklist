@@ -26,6 +26,7 @@ import {
   findItem,
   flattenItems,
   moveItemInto as moveItemIntoOp,
+  setAllChecked as setAllCheckedOp,
   setArchived,
   toggleItem as toggleItemOp,
   type DropMode,
@@ -110,6 +111,17 @@ export interface ChecklistEdits {
     fields: { title?: string; notes?: string },
   ) => void;
   toggle: (itemId: string) => void;
+  /**
+   * Check every active (non-archived) item in one sweep — the "Check all"
+   * action in the header count's dropdown. A no-op (everything already
+   * checked) leaves the list untouched.
+   */
+  checkAll: () => void;
+  /**
+   * Uncheck every active item in one sweep — the "Uncheck all" action in the
+   * header count's dropdown. A no-op (nothing checked) leaves it untouched.
+   */
+  uncheckAll: () => void;
   remove: (itemId: string) => void;
   /**
    * Delete an item that the user has emptied out — title (and body) erased —
@@ -337,6 +349,25 @@ export function useChecklistEdits(deps: {
     [commit, titleOf, t],
   );
 
+  const checkAll = useCallback(() => {
+    const next = setAllCheckedOp(listRef.current, true, now());
+    // Nothing to do (every item already checked) — skip the write and the
+    // undo step so the gesture leaves no trace.
+    if (next === listRef.current) return;
+    const label = t("toast.allChecked");
+    commit(next, label);
+    notify(label, "success");
+    unlock("allIn");
+  }, [commit, notify, t]);
+
+  const uncheckAll = useCallback(() => {
+    const next = setAllCheckedOp(listRef.current, false, now());
+    if (next === listRef.current) return;
+    const label = t("toast.allUnchecked");
+    commit(next, label);
+    notify(label);
+  }, [commit, notify, t]);
+
   const remove = useCallback(
     (itemId: string) => {
       const found = findOwner(itemId);
@@ -443,6 +474,8 @@ export function useChecklistEdits(deps: {
       importItemsAfter,
       editItem,
       toggle,
+      checkAll,
+      uncheckAll,
       remove,
       removeEmpty,
       archive,
@@ -459,6 +492,8 @@ export function useChecklistEdits(deps: {
       importItemsAfter,
       editItem,
       toggle,
+      checkAll,
+      uncheckAll,
       remove,
       removeEmpty,
       archive,

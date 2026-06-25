@@ -70,9 +70,9 @@ describe("isKeyDropTarget", () => {
   });
 
   it("never lights a zone the current drag can't land on", () => {
-    expect(isKeyDropTarget(CHECKLIST_DROP_ROOT, CHECKLIST_DROP_ROOT, null, "folder")).toBe(
-      false,
-    );
+    expect(
+      isKeyDropTarget(CHECKLIST_DROP_ROOT, CHECKLIST_DROP_ROOT, null, "folder"),
+    ).toBe(false);
     expect(isKeyDropTarget(NS_KEY, NS_KEY, null, "folder")).toBe(true);
   });
 });
