@@ -26,6 +26,7 @@ import {
   getBackend,
   setBackend as persistBackend,
 } from "./backend-preference.ts";
+import { wrapForEncryption } from "./backend-factory.ts";
 import { localCacheKey, withLocalCache } from "./cache/index.ts";
 import {
   type DropboxAuth,
@@ -35,7 +36,6 @@ import {
   deleteDropboxNamespace,
   isDropboxConfigured,
 } from "./dropbox/index.ts";
-import { withEncryption } from "./encrypting/index.ts";
 import {
   createGdriveAdapter,
   createGdriveNamespaceStore,
@@ -429,10 +429,7 @@ export function useStorageBackend(): UseStorageBackend {
   // replaced by the locked placeholder until the passphrase is supplied.
   const adapter = useMemo<StorageAdapter>(() => {
     if (locked) return lockedAdapter(backend);
-    if (encryption === "encrypted") {
-      return withEncryption(inner, { current: password });
-    }
-    return inner;
+    return wrapForEncryption(inner, encryption, password);
   }, [inner, encryption, password, locked, backend]);
 
   const selectBrowser = useCallback(() => {
@@ -444,9 +441,7 @@ export function useStorageBackend(): UseStorageBackend {
   // app does. A no-op when encryption is off (or locked).
   const wrapForActive = useCallback(
     (raw: StorageAdapter): StorageAdapter =>
-      encryption === "encrypted" && password !== null
-        ? withEncryption(raw, { current: password })
-        : raw,
+      wrapForEncryption(raw, encryption, password),
     [encryption, password],
   );
 

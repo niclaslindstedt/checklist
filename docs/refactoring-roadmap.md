@@ -39,36 +39,6 @@ and update this file in the same PR.
 
 ## Pending
 
-### Severity 7–8 — multipliers
-
-- **`useStorageBackend.ts` duplicates the encryption-wrapping decision and
-  rebuilds the adapter stack at every site** — `src/storage/useStorageBackend.ts`
-  (641 lines). `withEncryption(inner, { current: password })` is applied in two
-  places under the *same* `encryption === "encrypted" && password !== null`
-  guard: the `adapter` memo (line ~433) and the `wrapForActive` callback
-  (line ~448). Cross-namespace moves then recombine `wrapForActive(makeInner(targetSlug))`
-  by hand at two more sites (lines ~481 and ~515). Two copies of the
-  "should this be encrypted?" decision is two chances to diverge — if the
-  locked/plain/encrypted matrix ever gains a case, one site can be updated and
-  the other silently wrap bytes wrong. Adding a fourth backend means touching
-  the `makeInner` switch, the `settingsStore` selection, and the
-  `namespaceStore` selection independently. **Plan:** extract a
-  `createBackendFactory(selection)` (or a small `wrapForEncryption(raw, mode, password)`
-  pure helper at minimum) into `src/storage/backend-factory.ts` so the
-  encryption-wrapping decision lives in exactly one place and cross-namespace
-  moves call `factory.make(targetSlug)` instead of re-threading
-  `wrapForActive`+`makeInner`. The hook composes the factory once per
-  `selection` change. Ship the pure `wrapForEncryption` dedupe first (small,
-  unit-testable with a fake adapter) and the fuller factory as a follow-up if
-  warranted. **Risk:** storage backends have **no automated coverage** — the
-  three backends have different token-lifetime semantics (Dropbox refresh,
-  Drive re-prompt, folder permission revocation), so the factory must expose
-  the token-refresh seam rather than hide it. Smoke-test LocalStorage (default)
-  plus at least one cloud backend by hand: connect, write, lock/unlock with a
-  passphrase, and do a cross-namespace move with encryption on, confirming
-  bytes land readable. The `wrapForEncryption` extraction alone is pure and
-  directly testable. **Severity: 7.**
-
 ### Severity 5–6 — friction
 
 - **`ChecklistView.tsx` interleaves three composer modes through parallel
@@ -103,6 +73,25 @@ and update this file in the same PR.
   twice. **Risk:** purely presentational; verify both the desktop context-menu
   and the touch swipe-to-remove gestures still fire after the split. **Severity: 3.**
 
+- **`useStorageBackend.ts` re-derives the active selection across three
+  parallel `switch (selection.kind)` builders** — `src/storage/useStorageBackend.ts`
+  (637 lines). `makeInner` (line ~317), `settingsStore` (line ~363), and
+  `namespaceStore` (line ~384) each switch over the same `BackendSelection`
+  to build the document adapter, the root settings store, and the namespace
+  registry store respectively. Adding a fourth backend means filling in three
+  separate switches in lockstep; missing one is a silent gap. This is the
+  *remaining* half of the now-landed encryption-wrapping dedupe (the duplicate
+  "should this be encrypted?" decision is fixed; these three structural
+  switches are the lower-leverage residue). **Plan:** introduce a
+  `createBackendFactory(selection)` in `src/storage/backend-factory.ts`
+  exposing `{ makeInner(slug), settingsStore, namespaceStore }` so one place
+  knows how to build every per-backend store from a selection; the hook
+  composes it once per `selection` change. **Risk:** storage backends have
+  **no automated coverage** and the cloud builders take live tokens — smoke-test
+  LocalStorage plus one cloud backend (connect, write, switch namespace) by
+  hand before merging; the factory must keep the token-refresh seam exposed,
+  not hidden. **Severity: 4.**
+
 ### Easy wins
 
 - **Extract the inline `SyncLogPanel` out of `SyncDetailsModal.tsx`** —
@@ -118,6 +107,18 @@ and update this file in the same PR.
   beyond confirming the copy button and log rendering still work. **Severity: 4.**
 
 ## Landed
+
+- **`useStorageBackend.ts` encryption-wrapping decision deduped into a pure
+  helper** (2026-06) — pulled the twice-written
+  `encryption === "encrypted" && password !== null ? withEncryption(…) : raw`
+  decision (the `adapter` memo and the `wrapForActive` callback) into
+  `wrapForEncryption(raw, mode, password)` in `src/storage/backend-factory.ts`,
+  so the locked/plaintext/encrypted matrix lives in one place instead of two
+  that could diverge. Unit-tested across all three branches in
+  `tests/storage/backend-factory.test.ts` with a fake in-memory adapter —
+  coverage the inline expressions never had. The fuller `createBackendFactory`
+  consolidation of the three `selection.kind` builders is split out as a
+  narrower Severity-4 follow-up in Pending. Was Severity 7.
 
 - **`App.tsx` drag-drop dispatch extracted to a pure resolver** (2026-06) —
   pulled the parse→branch→dispatch logic out of the `dropHandlerRef` closure
