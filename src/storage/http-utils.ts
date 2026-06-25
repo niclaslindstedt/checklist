@@ -4,6 +4,8 @@
 // — and means a fix (a new fallback, a header quirk) lands once for every
 // backend.
 
+import type { Logger } from "../dev/logger.ts";
+
 /**
  * Read a response body as text for inclusion in an error message,
  * falling back to a placeholder when the body can't be read (already
@@ -64,4 +66,70 @@ export function parseRetryAfterMs(
  */
 export function bearerAuthHeader(token: string): { Authorization: string } {
   return { Authorization: `Bearer ${token}` };
+}
+
+/** The per-request diagnostics handle returned by {@link createRequestLog}. */
+export type RequestLog = {
+  /**
+   * Run one fetch attempt. On a network-level throw it logs a `… threw
+   * after <ms>ms[<note>]: <error>` warning and rethrows; otherwise it
+   * returns the response untouched. `note` annotates a follow-up attempt
+   * (e.g. `" (post-refresh)"`).
+   */
+  attempt(thunk: () => Promise<Response>, note?: string): Promise<Response>;
+  /**
+   * Emit the closing `… → <status> (<ms>ms)` line — `info` when the
+   * response is ok, `warn` otherwise — and return the response so callers
+   * can `return logStatus(res)`.
+   */
+  logStatus(res: Response): Response;
+};
+
+/**
+ * Per-request sync diagnostics shared by the cloud adapters' logged-fetch
+ * wrappers (Google Drive's `loggedFetch`, Dropbox's `authedFetch`). It
+ * records which endpoint / file ran (never the access token or the file
+ * contents — see {@link requestLabel}), how long it ran, and how it ended.
+ * That trio is what tells sync failures apart on a flaky link: a request
+ * that *throws* after several seconds is a timeout / dropped connection;
+ * one that throws in tens of ms is a refused / blocked request (CORS,
+ * Private Relay, a content blocker, or — in the installed PWA — the service
+ * worker); a load that logs several `→ 200` reads and one `threw` is an
+ * intermittent per-request drop, not the whole host being unreachable; and
+ * a single file that always throws while the rest succeed points at that
+ * file (e.g. a path-encoding bug on a nested entry).
+ *
+ * The two backends differ only in what sits between the fetch and the
+ * status line — Dropbox interleaves a 401 silent-refresh retry — so each
+ * composes its own flow from {@link RequestLog.attempt} and
+ * {@link RequestLog.logStatus} rather than sharing a single fetch wrapper.
+ */
+export function createRequestLog(
+  log: Logger,
+  url: string,
+  labelOverride?: string,
+): RequestLog {
+  const label = labelOverride
+    ? `${requestLabel(url)} ${labelOverride}`
+    : requestLabel(url);
+  const started = performance.now();
+  const elapsed = () => Math.round(performance.now() - started);
+  return {
+    async attempt(thunk, note = "") {
+      try {
+        return await thunk();
+      } catch (err) {
+        log.warn(
+          `${label} threw after ${elapsed()}ms${note}: ${describeError(err)}`,
+        );
+        throw err;
+      }
+    },
+    logStatus(res) {
+      const line = `${label} → ${res.status} (${elapsed()}ms)`;
+      if (res.ok) log.info(line);
+      else log.warn(line);
+      return res;
+    },
+  };
 }

@@ -31,10 +31,9 @@ import {
 } from "../namespace-store.ts";
 import {
   bearerAuthHeader,
-  describeError,
+  createRequestLog,
   parseRetryAfterMs,
   readErrorBody,
-  requestLabel,
 } from "../http-utils.ts";
 import {
   type OAuthConfig,
@@ -247,49 +246,26 @@ function createAuthedFetch(
     build: (token: string) => RequestInit,
     labelOverride?: string,
   ): Promise<Response> {
-    // Per-request diagnostics: which endpoint / file (never the token or the
-    // file contents), how long it ran, and how it ended. This is what tells
-    // sync failures apart on a flaky link: a download that *throws* after
-    // several seconds is a timeout / dropped connection; one that throws in
-    // tens of ms is a refused / blocked request (CORS, Private Relay); a load
-    // that logs five `→ 200` downloads and one `threw` is an intermittent
-    // per-request drop, not the whole host being unreachable; and a single
-    // file that always throws while the rest succeed points at that file
-    // (e.g. a path-encoding bug on the nested-folder entry).
-    const label = labelOverride
-      ? `${requestLabel(url)} ${labelOverride}`
-      : requestLabel(url);
-    const started = performance.now();
-    const elapsed = () => Math.round(performance.now() - started);
-    let res: Response;
-    try {
-      res = await fetchImpl(url, build(currentAccessToken));
-    } catch (err) {
-      log.warn(`${label} threw after ${elapsed()}ms: ${describeError(err)}`);
-      throw err;
-    }
+    // Per-request diagnostics via the shared `createRequestLog` (see its
+    // doc comment in `http-utils.ts`), with a 401 silent-refresh retry
+    // interleaved between the first attempt and the closing status line.
+    const rlog = createRequestLog(log, url, labelOverride);
+    let res = await rlog.attempt(() => fetchImpl(url, build(currentAccessToken)));
     if (res.status === 401) {
       log.info("401 — attempting silent refresh");
       const fresh = await refreshOnce();
       if (fresh) {
-        try {
-          res = await fetchImpl(url, build(fresh));
-        } catch (err) {
-          log.warn(
-            `${label} threw after ${elapsed()}ms (post-refresh): ${describeError(err)}`,
-          );
-          throw err;
-        }
+        res = await rlog.attempt(
+          () => fetchImpl(url, build(fresh)),
+          " (post-refresh)",
+        );
       }
     }
     if (res.status === 401) {
       const body = await readErrorBody(res);
       throw new AuthError(`Dropbox auth failed: 401 ${body}`);
     }
-    const line = `${label} → ${res.status} (${elapsed()}ms)`;
-    if (res.ok) log.info(line);
-    else log.warn(line);
-    return res;
+    return rlog.logStatus(res);
   };
 }
 

@@ -31,10 +31,9 @@ import {
 } from "../namespace-store.ts";
 import {
   bearerAuthHeader,
-  describeError,
+  createRequestLog,
   parseRetryAfterMs,
   readErrorBody,
-  requestLabel,
 } from "../http-utils.ts";
 
 const log = createLogger("gdrive");
@@ -102,17 +101,11 @@ function gdriveError(
   return status === 401 ? new AuthError(message) : new Error(message);
 }
 
-// A logged `fetch`: wraps the raw fetch with per-request sync diagnostics —
-// which endpoint / file (never the access token or the file contents), how
-// long it ran, and how it ended. Mirrors the Dropbox adapter's `authedFetch`,
-// since the two backends share the same flaky-link failure modes and this is
-// what tells them apart in the log: a download that *throws* after several
-// seconds is a timeout / dropped connection; one that throws in tens of ms is
-// a refused / blocked request (CORS, Private Relay, a content blocker, or — in
-// the installed PWA — the service worker); a load that logs several `→ 200`
-// reads and one `threw` is an intermittent per-request drop, not the whole
-// host being unreachable; and a single file that always throws while the rest
-// succeed points at that file (e.g. a path-encoding bug on a nested entry).
+// A logged `fetch`: wraps the raw fetch with per-request sync diagnostics
+// (which endpoint / file, how long it ran, how it ended) via the shared
+// `createRequestLog` — see its doc comment in `http-utils.ts` for what the
+// diagnostics tell apart on a flaky link. Mirrors the Dropbox adapter's
+// `authedFetch`, minus the 401 silent-refresh step Dropbox interleaves.
 type LoggedFetch = (
   url: string,
   init: RequestInit,
@@ -128,22 +121,9 @@ function createLoggedFetch(fetchImpl: FetchImpl): LoggedFetch {
     init: RequestInit,
     labelOverride?: string,
   ): Promise<Response> {
-    const label = labelOverride
-      ? `${requestLabel(url)} ${labelOverride}`
-      : requestLabel(url);
-    const started = performance.now();
-    const elapsed = () => Math.round(performance.now() - started);
-    let res: Response;
-    try {
-      res = await fetchImpl(url, init);
-    } catch (err) {
-      log.warn(`${label} threw after ${elapsed()}ms: ${describeError(err)}`);
-      throw err;
-    }
-    const line = `${label} → ${res.status} (${elapsed()}ms)`;
-    if (res.ok) log.info(line);
-    else log.warn(line);
-    return res;
+    const rlog = createRequestLog(log, url, labelOverride);
+    const res = await rlog.attempt(() => fetchImpl(url, init));
+    return rlog.logStatus(res);
   };
 }
 

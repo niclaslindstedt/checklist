@@ -1,12 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import type { Logger } from "../../src/dev/logger.ts";
 import {
   bearerAuthHeader,
+  createRequestLog,
   describeError,
   parseRetryAfterMs,
   readErrorBody,
   requestLabel,
 } from "../../src/storage/http-utils.ts";
+
+function fakeLogger(): {
+  log: Logger;
+  info: ReturnType<typeof vi.fn>;
+  warn: ReturnType<typeof vi.fn>;
+  error: ReturnType<typeof vi.fn>;
+} {
+  const info = vi.fn();
+  const warn = vi.fn();
+  const error = vi.fn();
+  return { log: { info, warn, error }, info, warn, error };
+}
+
+// Read the single-string argument of a mocked logger call.
+function lineOf(call: unknown[] | undefined): string {
+  return String(call?.[0]);
+}
 
 describe("bearerAuthHeader", () => {
   it("builds an RFC 6750 Authorization header from a token", () => {
@@ -96,5 +115,69 @@ describe("readErrorBody", () => {
       text: () => Promise.reject(new Error("already consumed")),
     } as unknown as Response;
     expect(await readErrorBody(res)).toBe("<unreadable>");
+  });
+});
+
+describe("createRequestLog", () => {
+  const url = "https://api.dropboxapi.com/2/files/download?foo=bar";
+
+  it("attempt returns the response untouched on success", async () => {
+    const { log, warn } = fakeLogger();
+    const res = new Response("ok");
+    const rlog = createRequestLog(log, url);
+    await expect(rlog.attempt(() => Promise.resolve(res))).resolves.toBe(res);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("attempt logs a throw with the labelled endpoint and rethrows", async () => {
+    const { log, warn } = fakeLogger();
+    const rlog = createRequestLog(log, url);
+    await expect(
+      rlog.attempt(() => Promise.reject(new TypeError("Load failed"))),
+    ).rejects.toThrow("Load failed");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(lineOf(warn.mock.calls[0])).toMatch(
+      /^api\.dropboxapi\.com\/2\/files\/download threw after \d+ms: TypeError: Load failed$/,
+    );
+  });
+
+  it("attempt threads a note into the throw line for a follow-up attempt", async () => {
+    const { log, warn } = fakeLogger();
+    const rlog = createRequestLog(log, url);
+    await expect(
+      rlog.attempt(() => Promise.reject(new Error("nope")), " (post-refresh)"),
+    ).rejects.toThrow("nope");
+    expect(lineOf(warn.mock.calls[0])).toMatch(
+      /threw after \d+ms \(post-refresh\): Error: nope$/,
+    );
+  });
+
+  it("logStatus logs at info for an ok response and returns it", () => {
+    const { log, info, warn } = fakeLogger();
+    const res = new Response("body", { status: 200 });
+    const rlog = createRequestLog(log, url);
+    expect(rlog.logStatus(res)).toBe(res);
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(warn).not.toHaveBeenCalled();
+    expect(lineOf(info.mock.calls[0])).toMatch(
+      /^api\.dropboxapi\.com\/2\/files\/download → 200 \(\d+ms\)$/,
+    );
+  });
+
+  it("logStatus logs at warn for a non-ok response", () => {
+    const { log, info, warn } = fakeLogger();
+    const rlog = createRequestLog(log, url);
+    rlog.logStatus(new Response("nope", { status: 500 }));
+    expect(info).not.toHaveBeenCalled();
+    expect(lineOf(warn.mock.calls[0])).toMatch(/→ 500 \(\d+ms\)$/);
+  });
+
+  it("prefixes the label with a caller override", () => {
+    const { log, info } = fakeLogger();
+    const rlog = createRequestLog(log, url, "download checklists/x.md");
+    rlog.logStatus(new Response("", { status: 200 }));
+    expect(lineOf(info.mock.calls[0])).toMatch(
+      /^api\.dropboxapi\.com\/2\/files\/download download checklists\/x\.md → 200/,
+    );
   });
 });
