@@ -26,17 +26,12 @@ permissions:
   contents: write
   pages: write
   id-token: write
-  # Lets `npm ci` pull @niclaslindstedt/oss-framework from GitHub Packages.
-  packages: read
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 env:
-  # Consumed by the committed `.npmrc` (`${GITHUB_TOKEN}`) so `npm ci` can
-  # authenticate to the GitHub Packages npm registry.
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   # Stable orphan branch in this repo that stores the most recently
   # dispatched /branch/ build. Created on demand by the first
   # workflow_dispatch with a branch_ref. Every Pages run rehydrates

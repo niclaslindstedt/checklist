@@ -15,12 +15,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # `packages: read` lets `npm ci` pull @niclaslindstedt/oss-framework from
-    # the GitHub Packages npm registry; the committed `.npmrc` expands
-    # `${GITHUB_TOKEN}` from the env set on the install step below.
-    permissions:
-      contents: read
-      packages: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -29,8 +23,6 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm ci
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
       - run: npm test
       - run: npm run lint
