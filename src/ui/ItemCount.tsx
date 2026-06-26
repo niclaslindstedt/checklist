@@ -140,7 +140,7 @@ export function ItemCount({
             }}
             className="flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left text-sm text-fg hover:bg-surface-3 hover:text-fg-bright disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg"
           >
-            <CheckIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
+            <CheckIcon className="h-3.5 w-3.5 shrink-0 text-success" />
             <span className="flex-1">{t("app.checkAll")}</span>
           </button>
           <button
@@ -153,7 +153,7 @@ export function ItemCount({
             }}
             className="flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left text-sm text-fg hover:bg-surface-3 hover:text-fg-bright disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-fg"
           >
-            <CloseIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
+            <CloseIcon className="h-3.5 w-3.5 shrink-0 text-danger" />
             <span className="flex-1">{t("app.uncheckAll")}</span>
           </button>
         </div>

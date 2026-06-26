@@ -112,6 +112,26 @@ describe("ItemCount", () => {
       ).toBe(false);
     });
 
+    it("colours the Check all glyph green and the Uncheck all glyph red", () => {
+      render(
+        <ItemCount
+          checked={1}
+          total={3}
+          onCheckAll={() => {}}
+          onUncheckAll={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      const checkAll = screen.getByRole("menuitem", { name: "Check all" });
+      const uncheckAll = screen.getByRole("menuitem", { name: "Uncheck all" });
+      expect(checkAll.querySelector("svg")!.getAttribute("class")).toContain(
+        "text-success",
+      );
+      expect(uncheckAll.querySelector("svg")!.getAttribute("class")).toContain(
+        "text-danger",
+      );
+    });
+
     it("disables Uncheck all when nothing is checked", () => {
       render(
         <ItemCount
