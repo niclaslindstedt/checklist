@@ -83,8 +83,35 @@ export interface Checklist {
    * projection of it.
    */
   folderId?: string;
+  /**
+   * Optional icon the user picked for this checklist — the name of a glyph in
+   * the shared glyph set (see `src/ui/glyphs.ts`). When set it stands in for
+   * the generic checklist mark shown beside the title in the header, tinted
+   * with {@link color} when one is chosen. Typed as a bare `string` so this
+   * pure module stays free of any `ui/` dependency; the UI validates it
+   * against the known glyph set on the way in. Absent (rather than `null`) on
+   * a list that hasn't been styled, so an older document needs no migration.
+   */
+  glyph?: string;
+  /**
+   * Optional accent colour (a CSS colour string) the user picked for this
+   * checklist. Tints the header glyph. Independent of {@link glyph}: a colour
+   * with no glyph still tints the default checklist mark.
+   */
+  color?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A partial appearance change for a checklist — set a field to a value, or
+ * `null` to clear it back to the default. Mirrors the namespace appearance
+ * patch shape, kept here in `domain/` so the pure layer owns the type rather
+ * than importing it from `storage/`.
+ */
+export interface ChecklistAppearance {
+  glyph?: string | null;
+  color?: string | null;
 }
 
 /**

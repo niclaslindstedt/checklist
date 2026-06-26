@@ -28,6 +28,7 @@ import {
   renameChecklist,
   setAllChecked,
   setArchived,
+  setChecklistAppearance,
   setChecklistArchived,
   sortCheckedToBottom,
   toggleItem,
@@ -450,6 +451,64 @@ describe("setChecklistArchived", () => {
     const restored = setChecklistArchived(archived, false, NOW);
     expect("archived" in restored).toBe(false);
     expect(restored.updatedAt).toBe(NOW);
+  });
+});
+
+describe("setChecklistAppearance", () => {
+  const NOW = "2026-01-01T00:00:00.000Z";
+  const LATER = "2026-02-02T00:00:00.000Z";
+  const base = createChecklist("c1", "Groceries", NOW);
+
+  it("sets a glyph and a colour and bumps updatedAt", () => {
+    const styled = setChecklistAppearance(
+      base,
+      { glyph: "cart", color: "#98c379" },
+      LATER,
+    );
+    expect(styled.glyph).toBe("cart");
+    expect(styled.color).toBe("#98c379");
+    expect(styled.updatedAt).toBe(LATER);
+    // Source untouched.
+    expect(base.glyph).toBeUndefined();
+    expect(base.color).toBeUndefined();
+  });
+
+  it("touches only the fields present in the patch", () => {
+    const withGlyph = setChecklistAppearance(base, { glyph: "cart" }, LATER);
+    const withColor = setChecklistAppearance(
+      withGlyph,
+      { color: "#98c379" },
+      LATER,
+    );
+    expect(withColor.glyph).toBe("cart");
+    expect(withColor.color).toBe("#98c379");
+  });
+
+  it("clears a field with null, dropping the key entirely", () => {
+    const styled = setChecklistAppearance(
+      base,
+      { glyph: "cart", color: "#98c379" },
+      NOW,
+    );
+    const cleared = setChecklistAppearance(styled, { glyph: null }, LATER);
+    expect("glyph" in cleared).toBe(false);
+    expect(cleared.color).toBe("#98c379");
+    expect(cleared.updatedAt).toBe(LATER);
+  });
+
+  it("is a no-op when nothing changes (same reference, no updatedAt bump)", () => {
+    expect(setChecklistAppearance(base, {}, LATER)).toBe(base);
+    expect(setChecklistAppearance(base, { glyph: null }, LATER)).toBe(base);
+    const styled = setChecklistAppearance(base, { glyph: "cart" }, NOW);
+    expect(setChecklistAppearance(styled, { glyph: "cart" }, LATER)).toBe(
+      styled,
+    );
+  });
+
+  it("treats an empty-string value as a clear", () => {
+    const styled = setChecklistAppearance(base, { glyph: "cart" }, NOW);
+    const cleared = setChecklistAppearance(styled, { glyph: "" }, LATER);
+    expect("glyph" in cleared).toBe(false);
   });
 });
 

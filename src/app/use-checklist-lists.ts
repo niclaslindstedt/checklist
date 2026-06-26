@@ -24,6 +24,7 @@ import {
   nextChecklistName,
   progress,
   renameChecklist as renameChecklistOp,
+  setChecklistAppearance as setChecklistAppearanceOp,
   setChecklistArchived,
 } from "../domain/checklists.ts";
 import {
@@ -34,7 +35,11 @@ import {
   setChecklistFolder,
   sortFoldersByCreated,
 } from "../domain/folders.ts";
-import type { Checklist, Snapshot } from "../domain/types.ts";
+import type {
+  Checklist,
+  ChecklistAppearance,
+  Snapshot,
+} from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import {
   getActiveChecklistId,
@@ -81,6 +86,12 @@ export interface ChecklistLists {
   addChecklist: () => void;
   /** Rename a checklist (the clickable header title). */
   renameChecklist: (id: string, name: string) => void;
+  /**
+   * Set (or, with `null` fields, clear) a checklist's icon and/or accent
+   * colour — the header glyph picker. Applies live and persists like any
+   * other list edit; a no-op change never writes.
+   */
+  setChecklistAppearance: (id: string, patch: ChecklistAppearance) => void;
   /**
    * Remove a checklist from the document. A no-op when it would leave no
    * active list behind (the views always need one to show). Recoverable via
@@ -234,6 +245,25 @@ export function useChecklistLists(deps: {
         },
         t("toast.listRenamed", { name: trimmed }),
       );
+    },
+    [docRef, commit, t],
+  );
+
+  const setChecklistAppearance = useCallback(
+    (id: string, patch: ChecklistAppearance) => {
+      const prev = docRef.current;
+      let changed = false;
+      const checklists = prev.checklists.map((c) => {
+        if (c.id !== id) return c;
+        const next = setChecklistAppearanceOp(c, patch, now());
+        if (next !== c) changed = true;
+        return next;
+      });
+      if (!changed) return;
+      // No toast: the header glyph updates in place as the user picks. The
+      // "List Stylist" trophy fires from a derived predicate over the document
+      // gaining its first styled list (see the catalog).
+      commit({ ...prev, checklists }, t("toast.listRestyled"));
     },
     [docRef, commit, t],
   );
@@ -491,6 +521,7 @@ export function useChecklistLists(deps: {
       selectChecklist,
       addChecklist,
       renameChecklist,
+      setChecklistAppearance,
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,
@@ -510,6 +541,7 @@ export function useChecklistLists(deps: {
       selectChecklist,
       addChecklist,
       renameChecklist,
+      setChecklistAppearance,
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,

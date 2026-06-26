@@ -34,7 +34,6 @@ import { UnlockGate } from "../ui/UnlockGate.tsx";
 import {
   applyFaviconHref,
   namespaceFaviconSrc,
-  namespaceLogoSrc,
 } from "../ui/namespace-favicon.ts";
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
 import { useSuppressEdgeSwipeBack } from "../ui/hooks/useSuppressEdgeSwipeBack.ts";
@@ -392,16 +391,12 @@ function AppShell() {
     dropHandlerRef.current(id, key);
   }, []);
 
-  // The active namespace's chosen glyph (if any) re-badges the app: it
-  // stands in for the header wordmark logo and the browser-tab favicon.
-  // Without a glyph, both fall back to the bundled checklist mark.
+  // The active namespace's chosen glyph (if any) re-badges the browser-tab
+  // favicon while that namespace is active. Without a glyph it falls back to
+  // the bundled checklist mark.
   const activeNamespaceEntry = useMemo(
     () => namespaces.find((n) => n.slug === storage.activeNamespace),
     [namespaces, storage.activeNamespace],
-  );
-  const logoSrc = useMemo(
-    () => namespaceLogoSrc(activeNamespaceEntry),
-    [activeNamespaceEntry],
   );
   const faviconSrc = useMemo(
     () => namespaceFaviconSrc(activeNamespaceEntry),
@@ -525,7 +520,6 @@ function AppShell() {
     () => ({
       ...checklist,
       sync,
-      logoSrc,
       disableItemNotes: settings.disableItemNotes,
       showItemCount: settings.showItemCount,
       includeArchivedInCopy: settings.includeArchivedInCopy,
@@ -536,7 +530,6 @@ function AppShell() {
     [
       checklist,
       sync,
-      logoSrc,
       settings.disableItemNotes,
       settings.showItemCount,
       settings.includeArchivedInCopy,

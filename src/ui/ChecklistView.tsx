@@ -6,6 +6,7 @@ import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { resolveActiveEditor } from "./activeEditor.ts";
+import { ChecklistGlyphButton } from "./ChecklistGlyphButton.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
@@ -65,8 +66,8 @@ function ChecklistViewImpl() {
     activeChecklistId,
     activeList,
     renameChecklist,
+    setChecklistAppearance,
     addItemPosition,
-    logoSrc,
     disableItemNotes,
     showItemCount,
     includeArchivedInCopy,
@@ -342,11 +343,12 @@ function ChecklistViewImpl() {
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
         <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
-          <img
-            src={logoSrc}
-            alt=""
-            aria-hidden
-            className="h-6 w-6 shrink-0 rounded"
+          <ChecklistGlyphButton
+            glyph={activeList.glyph ?? null}
+            color={activeList.color ?? null}
+            onChange={(patch) =>
+              setChecklistAppearance(activeChecklistId, patch)
+            }
           />
           <ChecklistTitle
             name={activeName}

@@ -1,13 +1,12 @@
-import { DEFAULT_NAMESPACE_GLYPH } from "./glyphs.ts";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 
-// A grid of glyph buttons — the "pick an icon" surface for a namespace.
-// The leading cell clears any custom icon back to the default folder glyph
-// (picking it is "no custom icon", which the app draws as the folder); the
-// rest are the named glyphs from `NAMESPACE_GLYPH_NAMES`. Presentational:
-// the caller owns the selected value and the tint colour. Ported from
-// budget's `GlyphGrid`, trimmed to the checklist's needs (no roving-tabindex
-// hook).
+// A grid of glyph buttons — the "pick an icon" surface for a namespace or a
+// checklist. The leading cell clears any custom icon back to the default
+// glyph (picking it is "no custom icon", which the app draws as `noneGlyph` —
+// the folder for a namespace, the checklist mark for a list); the rest are
+// the named glyphs the caller passes. Presentational: the caller owns the
+// selected value and the tint colour. Ported from budget's `GlyphGrid`,
+// trimmed to the checklist's needs (no roving-tabindex hook).
 
 type Props = {
   glyphs: readonly string[];
@@ -15,12 +14,14 @@ type Props = {
   value: string | null;
   /** Pick a glyph, or null to clear back to the default. */
   onChange: (glyph: string | null) => void;
-  /** Tints the selected cell — the namespace's accent colour, when set. */
+  /** Tints the selected cell — the accent colour, when set. */
   tintColor?: string | null;
   /** aria-label for the leading "no icon" cell. */
   noneLabel: string;
   /** Per-glyph aria-label prefix, e.g. "Icon" → "Icon home". */
   ariaLabelPrefix: string;
+  /** The glyph drawn in the leading "default" cell. */
+  noneGlyph: string;
 };
 
 export function GlyphGrid({
@@ -30,6 +31,7 @@ export function GlyphGrid({
   tintColor,
   noneLabel,
   ariaLabelPrefix,
+  noneGlyph,
 }: Props) {
   const tintStyle = (selected: boolean) =>
     selected && tintColor ? { color: tintColor } : undefined;
@@ -51,10 +53,7 @@ export function GlyphGrid({
         }`}
         style={tintStyle(value === null)}
       >
-        <NamespaceGlyph
-          name={DEFAULT_NAMESPACE_GLYPH}
-          className="h-3.5 w-3.5"
-        />
+        <NamespaceGlyph name={noneGlyph} className="h-3.5 w-3.5" />
       </button>
       {glyphs.map((name) => {
         const selected = name === value;

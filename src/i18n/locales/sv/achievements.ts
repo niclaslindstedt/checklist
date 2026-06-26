@@ -122,6 +122,12 @@ const achievements: AchievementsCatalog = {
       name: "Bortlagd",
       condition: "Flytta en checklista till en mapp.",
     },
+    listStylist: {
+      name: "Liststylisten",
+      condition: "Ge en checklista en egen ikon eller färg.",
+      learnMore:
+        "Tryck på märket bredvid en listas titel för att välja en ikon och en accentfärg bara för den listan — den valda symbolen ersätter det generiska checklistmärket i rubriken, så att du kan skilja dina listor åt med en blick. Valet följer med listan mellan dina enheter.",
+    },
     archivist: {
       name: "Arkivarien",
       condition: "Arkivera en post.",

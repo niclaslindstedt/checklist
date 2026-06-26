@@ -375,4 +375,36 @@ describe("markdown codec", () => {
       );
     });
   });
+
+  describe("appearance", () => {
+    it("writes the glyph and colour into the frontmatter when set", () => {
+      const md = checklistToMarkdown({
+        ...checklist,
+        glyph: "cart",
+        color: "#98c379",
+      });
+      expect(md).toContain("glyph: cart");
+      expect(md).toContain("color: #98c379");
+    });
+
+    it("omits the appearance fields for an unstyled checklist", () => {
+      const md = checklistToMarkdown(checklist);
+      expect(md).not.toContain("glyph:");
+      expect(md).not.toContain("color:");
+    });
+
+    it("round-trips the glyph and colour through frontmatter", () => {
+      const md = checklistToMarkdown({
+        ...checklist,
+        glyph: "cart",
+        color: "#98c379",
+      });
+      const parsed = parseEntry(md);
+      expect(parsed?.kind).toBe("checklist");
+      if (parsed?.kind === "checklist") {
+        expect(parsed.checklist.glyph).toBe("cart");
+        expect(parsed.checklist.color).toBe("#98c379");
+      }
+    });
+  });
 });

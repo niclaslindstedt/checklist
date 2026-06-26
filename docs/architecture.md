@@ -63,7 +63,11 @@ Three types live in `src/domain/types.ts`:
   `id` (UUIDv7).
 - `Checklist` — a checkable list. Either an instance of a template or a
   free-standing list (empty `templateId`). Holds a snapshot of the
-  items, each with a `checked` flag and an optional `archived` flag.
+  items, each with a `checked` flag and an optional `archived` flag, plus
+  optional appearance fields (`glyph`, `color`) the user picks from the
+  header mark. Both ride the markdown frontmatter (`glyph:` / `color:`)
+  so they round-trip on the file/cloud backends, and are absent (rather
+  than `null`) on an unstyled list so an older document needs no migration.
 - `Item` — `{ id, title, notes?, required? }`; a `ChecklistItem` adds
   `checked` and optional `archived`.
 
