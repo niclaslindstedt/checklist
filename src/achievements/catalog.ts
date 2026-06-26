@@ -92,6 +92,8 @@ const hasFiledChecklist = (snap: Snapshot) =>
   snap.checklists.some(
     (c) => typeof c.folderId === "string" && c.folderId !== "",
   );
+const hasStyledChecklist = (snap: Snapshot) =>
+  snap.checklists.some((c) => Boolean(c.glyph) || Boolean(c.color));
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
@@ -223,6 +225,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.snapshot.folders],
       predicate: (prev, next) =>
         !hasFolder(prev.snapshot) && hasFolder(next.snapshot),
+    },
+  },
+  {
+    id: "listStylist",
+    tier: "intermediate",
+    glyph: PaletteGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot.checklists],
+      predicate: (prev, next) =>
+        !hasStyledChecklist(prev.snapshot) && hasStyledChecklist(next.snapshot),
     },
   },
   {

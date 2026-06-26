@@ -159,6 +159,11 @@ export function checklistToMarkdown(checklist: Checklist): string {
   // round-trips as ungrouped. The folder's display name lives in the
   // `folders.json` sidecar, so this is just the authoritative link.
   if (checklist.folderId) front.folder = checklist.folderId;
+  // The list's chosen appearance (icon name and/or accent colour). Only
+  // written when set, so an unstyled list's frontmatter stays minimal and an
+  // older file round-trips with no appearance.
+  if (checklist.glyph) front.glyph = checklist.glyph;
+  if (checklist.color) front.color = checklist.color;
   return renderFrontmatter(front) + "\n" + checklistBodyMarkdown(checklist);
 }
 
@@ -311,6 +316,10 @@ export function parseEntry(text: string): ParsedEntry | null {
     // round-trips minimally. The directory adapter reconciles the name from
     // the `folders.json` registry.
     if (front.folder) checklist.folderId = front.folder;
+    // Per-list appearance, carried back only when present so an unstyled list
+    // round-trips minimally.
+    if (front.glyph) checklist.glyph = front.glyph;
+    if (front.color) checklist.color = front.color;
     return { kind: "checklist", checklist };
   }
   return null;

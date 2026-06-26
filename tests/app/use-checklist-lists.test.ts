@@ -96,6 +96,32 @@ describe("useChecklist multi-list verbs", () => {
     expect(parse(adapter.stored()).checklists[0]!.name).toBe("Groceries");
   });
 
+  it("sets and clears the active list's appearance, persisting it", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    const id = result.current.activeChecklistId;
+    act(() =>
+      result.current.setChecklistAppearance(id, {
+        glyph: "cart",
+        color: "#98c379",
+      }),
+    );
+    await waitFor(() =>
+      expect(parse(adapter.stored()).checklists[0]!.glyph).toBe("cart"),
+    );
+    expect(parse(adapter.stored()).checklists[0]!.color).toBe("#98c379");
+    expect(result.current.activeList.glyph).toBe("cart");
+
+    act(() => result.current.setChecklistAppearance(id, { glyph: null }));
+    await waitFor(() =>
+      expect("glyph" in parse(adapter.stored()).checklists[0]!).toBe(false),
+    );
+    // Clearing the glyph leaves the colour intact.
+    expect(parse(adapter.stored()).checklists[0]!.color).toBe("#98c379");
+  });
+
   it("removes a list and re-points the active selection at a survivor", async () => {
     const adapter = memoryAdapter();
     const { result } = renderHook(() => useChecklist(adapter));

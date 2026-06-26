@@ -62,12 +62,6 @@ export type ChecklistContextValue = UseChecklist & {
    */
   sync: SyncInfo | null;
   /**
-   * The header wordmark's logo `src` — the bundled favicon, or the active
-   * namespace's glyph (in its accent colour) when one is chosen. The
-   * browser-tab favicon is pointed at the same source (see `App`).
-   */
-  logoSrc: string;
-  /**
    * When true, the user has switched item notes off (Settings → Lists):
    * rows render title-only and the in-place editor hides its note field.
    * A presentational flag, mirrored from the synced `Settings`.

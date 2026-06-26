@@ -464,10 +464,30 @@ shortcuts, plus links to the privacy policy, the source on GitHub (with
 a build label), and — only when `VITE_DONATE_URL` is set — a Donate
 link. Dismisses on outside click or Escape.
 
+### Checklist glyph
+
+`src/ui/ChecklistGlyphButton.tsx` — the clickable mark at the left of the
+checklist header, beside the title. It draws the **active list's own
+glyph** (or the generic checklist mark, `DEFAULT_CHECKLIST_GLYPH = "list"`,
+when the list hasn't picked one), tinted with the list's accent `color`,
+and on tap opens a small `FloatingPanel` carrying the same Colour + Icon
+pickers the namespace editor uses (`ColorPalette` over `NAMESPACE_COLORS`,
+`GlyphGrid` over `CHECKLIST_GLYPH_NAMES`). Picking applies live through
+`setChecklistAppearance(activeChecklistId, patch)` — a per-list
+counterpart of `setNamespaceAppearance` — which folds the change into the
+active checklist (`src/domain/checklists.ts` `setChecklistAppearance`,
+wired in `src/app/use-checklist-lists.ts`). The chosen `glyph` / `color`
+live on the `Checklist` itself (so they sync with the document and ride
+the markdown frontmatter; see `docs/architecture.md`), not on device-local
+state. This replaced the old namespace-favicon image that used to sit in
+this slot — the namespace glyph now badges only the browser-tab favicon
+and the side menu, while the header mark belongs to the list. Giving a
+list a glyph or colour unlocks the **List Stylist** achievement.
+
 ### Checklist title
 
 `src/ui/ChecklistTitle.tsx` — the header wordmark slot beside the
-favicon. It shows the **active checklist's name** and doubles as the
+checklist glyph. It shows the **active checklist's name** and doubles as the
 rename affordance: clicking it swaps the text for an inline input
 (Enter or blur commits a trimmed, non-empty name via
 `renameChecklist`; Escape cancels). It also carries the PWA
@@ -1596,22 +1616,24 @@ whose leading cell is the default **folder** glyph — picking it is "no
 custom icon", drawn as the folder, so the folder is omitted from the rest
 of the grid to avoid a duplicate).
 
+The same catalogue and pickers back the per-list **Checklist glyph** (see
+that entry): `GlyphGrid` takes the default-cell glyph as a `noneGlyph` prop
+(the folder for namespaces, the checklist mark for lists), so the one
+component serves both pickers.
+
 In the **side menu** a customised namespace renders its own glyph tinted to
 its accent — only the glyph is coloured, never the row text — while an
 untouched one keeps the plain folder icon. The active namespace is marked
 by the row's accent-tinted highlight and left border (and the icon's accent
-tint), not by a swapped-in checkmark. When
-the active namespace has a glyph, that glyph (in its colour) **replaces the
-app logo**: `namespace-favicon.ts` resolves the header wordmark slot
-(`namespaceLogoSrc`, threaded through `ChecklistContext` as `logoSrc` and
-read by `ChecklistView`) and the browser-tab favicon
-(`namespaceFaviconSrc`, applied via `applyFaviconHref` from an effect in
-`App`). The two agree for a picked glyph, but differ for the default
-no-glyph mark: the header keeps the dark rounded badge (`favicon.svg`)
-while the in-tab favicon shows the bare, background-less check
-(`favicon-mark.svg`) — the PWA app icons, generated from `favicon.svg`,
-keep their opaque badge. A namespace with only a colour keeps the bundled
-mark — the favicon is re-badged only when a glyph is picked.
+tint), not by a swapped-in checkmark. When the active namespace has a
+glyph, that glyph (in its colour) **re-badges the browser-tab favicon**:
+`namespace-favicon.ts` resolves it (`namespaceFaviconSrc`, applied via
+`applyFaviconHref` from an effect in `App`); without a glyph the tab shows
+the bare, background-less check (`favicon-mark.svg`) — the PWA app icons,
+generated from `favicon.svg`, keep their opaque badge. A namespace with
+only a colour keeps the bundled mark — the favicon is re-badged only when a
+glyph is picked. (The header mark beside the list title is no longer the
+namespace logo — that slot now belongs to the per-list checklist glyph.)
 
 ### Storage tab
 

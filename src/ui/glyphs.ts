@@ -63,6 +63,19 @@ export const NAMESPACE_GLYPH_NAMES: readonly string[] = Object.keys(
   GLYPH_PATHS,
 ).filter((name) => name !== DEFAULT_NAMESPACE_GLYPH);
 
+/** Default glyph drawn for a checklist that hasn't picked one. */
+export const DEFAULT_CHECKLIST_GLYPH = "list";
+
+/**
+ * The glyphs offered in the per-checklist icon picker, in display order.
+ * Like {@link NAMESPACE_GLYPH_NAMES} but built around the checklist's own
+ * default (the `list` mark), which the picker's leading "default" cell stands
+ * for — so listing it again would be a duplicate.
+ */
+export const CHECKLIST_GLYPH_NAMES: readonly string[] = Object.keys(
+  GLYPH_PATHS,
+).filter((name) => name !== DEFAULT_CHECKLIST_GLYPH);
+
 /** Whether a string names a glyph this build knows how to draw. */
 export function isGlyphName(name: string | undefined): name is string {
   return name !== undefined && name in GLYPH_PATHS;

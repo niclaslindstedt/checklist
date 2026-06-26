@@ -7,7 +7,13 @@
 // (toggle, edit, delete, archive, sort) recurse through it so a sub-list
 // behaves like a miniature checklist of its own.
 
-import type { Checklist, ChecklistItem, Snapshot, Template } from "./types.ts";
+import type {
+  Checklist,
+  ChecklistAppearance,
+  ChecklistItem,
+  Snapshot,
+  Template,
+} from "./types.ts";
 
 // ── Tree helpers ───────────────────────────────────────────────────────────
 
@@ -168,6 +174,48 @@ export function renameChecklist(
   now: string,
 ): Checklist {
   return { ...checklist, name: name.trim(), updatedAt: now };
+}
+
+/**
+ * Set or clear a checklist's appearance (its icon and/or accent colour). A
+ * field set to a non-empty value is written; `null` (or an empty string)
+ * clears it, dropping the key entirely so an unstyled list round-trips
+ * minimally. A no-op (nothing actually changed) returns the same checklist
+ * untouched, so it never bumps `updatedAt` or triggers a write. Mirrors
+ * `setNamespaceAppearance` for the per-list case.
+ */
+export function setChecklistAppearance(
+  checklist: Checklist,
+  patch: ChecklistAppearance,
+  now: string,
+): Checklist {
+  const next: Checklist = { ...checklist };
+  let changed = false;
+  if ("glyph" in patch) {
+    if (patch.glyph) {
+      if (next.glyph !== patch.glyph) {
+        next.glyph = patch.glyph;
+        changed = true;
+      }
+    } else if (next.glyph !== undefined) {
+      delete next.glyph;
+      changed = true;
+    }
+  }
+  if ("color" in patch) {
+    if (patch.color) {
+      if (next.color !== patch.color) {
+        next.color = patch.color;
+        changed = true;
+      }
+    } else if (next.color !== undefined) {
+      delete next.color;
+      changed = true;
+    }
+  }
+  if (!changed) return checklist;
+  next.updatedAt = now;
+  return next;
 }
 
 /**

@@ -129,6 +129,12 @@ const achievements = {
       name: "Filed Away",
       condition: "Move a checklist into a folder.",
     },
+    listStylist: {
+      name: "List Stylist",
+      condition: "Give a checklist its own icon or colour.",
+      learnMore:
+        "Tap the mark beside a list's title to pick an icon and an accent colour just for that list — the chosen glyph replaces the generic checklist mark in the header, so you can tell your lists apart at a glance. The choice travels with the list across your devices.",
+    },
     archivist: {
       name: "Archivist",
       condition: "Archive an item.",

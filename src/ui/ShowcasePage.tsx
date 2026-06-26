@@ -140,6 +140,11 @@ export function ShowcasePage() {
               server.
             </li>
             <li>
+              <strong className="text-fg-bright">Give each list a face</strong>{" "}
+              — pick an icon and an accent colour for any checklist, shown
+              beside its title so you can tell your lists apart at a glance.
+            </li>
+            <li>
               <strong className="text-fg-bright">Make it yours</strong> — pick a
               theme, a font, a text size, and your language (English or
               Swedish); undo and redo your changes.

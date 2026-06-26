@@ -10,7 +10,7 @@ import { ColorPalette } from "./ColorPalette.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Button, ClearableInput } from "./form/index.ts";
 import { GlyphGrid } from "./GlyphGrid.tsx";
-import { NAMESPACE_GLYPH_NAMES } from "./glyphs.ts";
+import { DEFAULT_NAMESPACE_GLYPH, NAMESPACE_GLYPH_NAMES } from "./glyphs.ts";
 import { NAMESPACE_COLORS } from "./namespace-colors.ts";
 import { CheckIcon, CloseIcon, PencilIcon, TrashIcon } from "./icons.tsx";
 import { Modal } from "./Modal.tsx";
@@ -157,6 +157,7 @@ export function NamespacesModal({
               value={newGlyph}
               onChange={setNewGlyph}
               tintColor={newColor}
+              noneGlyph={DEFAULT_NAMESPACE_GLYPH}
               noneLabel={`${t("namespace.newAction")} ${t("namespace.glyphNone")}`}
               ariaLabelPrefix={`${t("namespace.newAction")} ${t("namespace.glyphLabel")}`}
             />
@@ -266,6 +267,7 @@ function NamespaceRow({
             value={namespace.glyph ?? null}
             onChange={(glyph) => onSetAppearance({ glyph })}
             tintColor={namespace.color}
+            noneGlyph={DEFAULT_NAMESPACE_GLYPH}
             noneLabel={t("namespace.glyphNone")}
             ariaLabelPrefix={t("namespace.glyphLabel")}
           />
