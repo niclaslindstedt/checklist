@@ -92,11 +92,32 @@ The package is published to the **GitHub Packages npm registry**, not npmjs.
 ## Step 1 — Read the framework's per-module migration guide
 
 Clone the framework and read the guide for the module you're migrating **before
-touching any app code**:
+touching any app code**. Use the **same helper the `copy-feature` skill uses**
+(`clone-sibling.mjs`) — passing `oss-framework` as the repo:
 
 ```sh
-git clone https://x-access-token:${GITHUB_PAT}@github.com/niclaslindstedt/oss-framework.git /tmp/oss-framework
+node .agent/skills/copy-feature/clone-sibling.mjs oss-framework   # -> /tmp/oss-framework
+# optional 2nd/3rd args: a destination and a ref
+node .agent/skills/copy-feature/clone-sibling.mjs oss-framework /tmp/oss-framework some-branch
 ```
+
+The framework push-mirrors itself to an external git host (its
+`.github/workflows/mirror.yml`), and that mirror is reachable over plain `git`
+even in the scoped sandbox where github.com egress is blocked (403). The helper
+clones the mirror directly — `oss-framework.git` appended to `MIRROR_BASE` —
+giving a real checkout of the **entire framework repo with full history**.
+**Don't hand-clone or hand-curl around it; the helper is the one supported
+path.**
+
+> **Config (provider-agnostic, via env).** `MIRROR_BASE` = the mirror
+> host+namespace, no scheme / no repo (e.g. `gitlab.com/niclaslindstedt`) —
+> **required**. `MIRROR_TOKEN` = the PAT, needed for a private mirror (omit for
+> a public one). `MIRROR_USER` optional (default `oauth2` for GitLab).
+
+If `MIRROR_BASE` isn't set, or the clone fails (no mirror yet, or no network),
+the helper stops with a clear error — fix the config / create the mirror, or ask
+the user to paste the relevant files. Don't guess from memory, and don't fall
+back to the scope-locked GitHub tools.
 
 Then read, in order:
 
