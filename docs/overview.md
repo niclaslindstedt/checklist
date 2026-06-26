@@ -1288,28 +1288,15 @@ theme is active.
 
 ### Theme engine
 
-The theme **data and projection engine are owned by the shared
-`@niclaslindstedt/oss-framework/theme` package** — it was seeded from this
-app, so the surface is identical (`ThemePreset` — the eleven presets plus
-`system` and `custom`, `FontFamilyId`, `CustomTheme`, `FONT_SCALES` and
-`FONT_SCALE_PRESETS`, the per-preset palettes, the lookup tables, the
-`customThemeSeed` / `coerceCustomTheme` helpers, the on-demand webfont
-loaders, and the `useApplyTheme` projection). The local `src/theme/`
-modules are now thin shims over it: `src/theme/themes.ts` re-exports the
-framework's theme data, `src/theme/fonts.ts` re-exports `loadFontFamily` /
-`loadAllFontFamilies`, and `src/theme/useTheme.ts` is a one-line adapter
-that maps the app's `Settings` onto the framework's `useApplyTheme`
-(projecting `data-theme`, the font CSS var, the font-scale multiplier, and
-the inline custom-theme overrides onto `<html>`). What stays app-side: the
-settings **store** that persists the choice (`src/settings/`), the
-Appearance **UI** that reads the data
-(`src/ui/settings/tabs/appearance.tsx` — it builds its descriptive
-text-size labels off the framework's `FONT_SCALES`), the static `mono`
-webfont import in `src/app/main.tsx`, and the CSS tokens in
-`src/styles/theme.css` and `src/styles/palettes.css` (the framework's
-CSS-variable contract). Vitest inlines the framework package
-(`vite.config.ts`) so its dynamic `@fontsource/*` CSS imports are
-transformed through Vite rather than Node's loader.
+`src/theme/themes.ts` (the data: `ThemePreset` — the eleven presets
+plus `system` and `custom`, `FontFamilyId`, `CustomTheme`,
+`FONT_SCALE_PRESETS`, the palettes and lookup tables),
+`src/theme/useTheme.ts` (the engine that projects `Settings` onto
+`<html>` — `data-theme`, the font CSS var, the font-scale multiplier,
+and the inline custom-theme overrides), and `src/theme/fonts.ts`
+(on-demand webfont loading; the default `mono` is statically bundled,
+the others lazy-load). CSS tokens live in `src/styles/theme.css` and
+`src/styles/palettes.css`.
 
 ## Achievements
 

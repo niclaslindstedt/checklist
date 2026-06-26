@@ -17,30 +17,6 @@ Run `oss-spec validate .` to verify conformance. When in doubt about a layout,
 naming, or workflow decision, consult the relevant section of `OSS_SPEC.md` —
 it is the source of truth for the conventions this repo follows.
 
-## Shared OSS framework (`@niclaslindstedt/oss-framework`)
-
-Code shared between the `checklist` and `notes` apps is being **migrated out
-into the [`niclaslindstedt/oss-framework`](https://github.com/niclaslindstedt/oss-framework)
-package** (GitHub Packages npm registry) so there is one implementation to
-maintain instead of two. The `theme` module already lives there (the local
-`src/theme/*.ts` are thin re-export shims over it); `storage` and `encryption`
-are planned next.
-
-- **Consume the framework, don't re-clone.** When you touch a subsystem that has
-  a framework counterpart, depend on the framework rather than editing a local
-  copy, and migrate new subsystems with the re-export-shim pattern.
-- **Keep the dependency current.** The framework ships fixes and newly-migrated
-  modules continuously. As a routine development step — when starting work that
-  touches a framework-backed subsystem, and before opening any PR — bump
-  `@niclaslindstedt/oss-framework` to the latest published version
-  (`GITHUB_TOKEN="$GITHUB_PAT" npm install @niclaslindstedt/oss-framework@latest`)
-  and re-run the suite, so the app always builds on the newest shared code.
-- **Migrating a subsystem onto the framework → use the `migrate-component`
-  skill.** It carries the full playbook: the registry/auth setup (the
-  `GITHUB_PAT`→`GITHUB_TOKEN` bridge, CI `packages: read`, the cross-repo access
-  grant), which framework docs to read first, the shim pattern, what stays
-  app-side, the Vitest CSS-inline gotcha, and the `no-changelog` decision.
-
 ## Build and test commands
 
 ```sh
@@ -464,6 +440,5 @@ Alongside the drift-sync skills above, the repo ships manual playbooks for recur
 | `design`            | Iterate on the look or layout of the UI through an edit / reload / screenshot loop against the dev server. |
 | `find-optimizations`| Survey the hot paths for order-of-magnitude performance wins (or report honestly that none remain). |
 | `fix-comments`      | Remove or rewrite changelog-style comments while preserving comments that explain current invariants. |
-| `migrate-component` | Move a subsystem onto the shared `@niclaslindstedt/oss-framework` package — registry/auth setup, which framework docs to read, the re-export-shim pattern, what stays app-side, and the Vitest/changeset caveats. |
 | `refactor`          | Work (or extend) the refactor backlog in `docs/refactoring-roadmap.md`, one roadmap row per PR. |
 | `tune-pwa-icons`    | Manage the PWA manifest (`vite.config.ts`) and icon assets in `public/`. |

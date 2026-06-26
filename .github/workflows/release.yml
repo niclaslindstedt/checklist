@@ -46,13 +46,6 @@ permissions:
   contents: write
   pages: write
   id-token: write
-  # Lets `npm ci` pull @niclaslindstedt/oss-framework from GitHub Packages.
-  packages: read
-
-env:
-  # Consumed by the committed `.npmrc` (`${GITHUB_TOKEN}`) so `npm ci` can
-  # authenticate to the GitHub Packages npm registry.
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   release:
