@@ -434,43 +434,65 @@ describe("ChecklistView", () => {
       }
     });
 
-    // On a touchscreen the gesture ends in `pointerup`, not a `click` — the
-    // add button only morphs into the bulk row mid-gesture, and iOS doesn't
-    // reliably synthesise a `click` on an element that appears that late.
-    // Archiving must fire from the pointerup alone.
-    it("archives finished items from a pointerup on the bulk button", () => {
+    // On a touchscreen a deliberate tap ends in `pointerup`, not a `click` —
+    // the add button only morphs into the bulk row mid-gesture, and iOS
+    // doesn't reliably synthesise a `click` on an element that appears that
+    // late. So the action must fire from the pointerup alone — but only from a
+    // *fresh* tap, never from the lift that ends the opening long-press.
+    it("archives finished items from a fresh tap, not the opening lift", () => {
       vi.useFakeTimers();
       try {
         const archiveFinished = vi.fn();
         renderView({ checkedCount: 1, archiveFinished });
-        fireEvent.pointerDown(screen.getByRole("button", { name: "Add item" }));
+        fireEvent.pointerDown(
+          screen.getByRole("button", { name: "Add item" }),
+          {
+            pointerId: 1,
+          },
+        );
         act(() => {
           vi.advanceTimersByTime(450);
         });
-        fireEvent.pointerUp(
-          screen.getByRole("button", { name: "Archive finished" }),
-        );
+        const archive = screen.getByRole("button", {
+          name: "Archive finished",
+        });
+        // The long-press finger lifts over the archive half-circle — ignored.
+        fireEvent.pointerUp(archive, { pointerId: 1 });
+        expect(archiveFinished).not.toHaveBeenCalled();
+        // A separate, deliberate tap archives from its pointerup alone.
+        fireEvent.pointerUp(archive, { pointerId: 2 });
         expect(archiveFinished).toHaveBeenCalledTimes(1);
       } finally {
         vi.useRealTimers();
       }
     });
 
-    // A real tap fires pointerup *and* a trailing synthetic click on the same
-    // button. Only the pointerup should count — the trailing click is
-    // swallowed so one physical tap deletes exactly once.
-    it("deletes exactly once across a pointerup+click tap", () => {
+    // The reported iOS bug: the finger that long-pressed to open the menu was
+    // archiving/deleting the instant it lifted. That lift (and the click
+    // trailing it) must do nothing; a fresh tap then deletes exactly once
+    // across its own pointerup + trailing click.
+    it("ignores the opening lift, then deletes once on a fresh tap", () => {
       vi.useFakeTimers();
       try {
         const deleteFinished = vi.fn();
         renderView({ checkedCount: 1, deleteFinished });
-        fireEvent.pointerDown(screen.getByRole("button", { name: "Add item" }));
+        fireEvent.pointerDown(
+          screen.getByRole("button", { name: "Add item" }),
+          {
+            pointerId: 1,
+          },
+        );
         act(() => {
           vi.advanceTimersByTime(450);
         });
-        // One physical tap = pointerup + trailing click; deletes just once.
         const del = screen.getByRole("button", { name: "Delete finished" });
-        fireEvent.pointerUp(del);
+        // The lift that ends the long-press, plus its trailing click — both
+        // ignored so the gesture that *opened* the menu can't also delete.
+        fireEvent.pointerUp(del, { pointerId: 1 });
+        fireEvent.click(del);
+        expect(deleteFinished).not.toHaveBeenCalled();
+        // One deliberate tap = pointerup + trailing click; deletes just once.
+        fireEvent.pointerUp(del, { pointerId: 2 });
         fireEvent.click(del);
         expect(deleteFinished).toHaveBeenCalledTimes(1);
       } finally {
