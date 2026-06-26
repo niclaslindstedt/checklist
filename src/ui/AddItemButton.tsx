@@ -66,6 +66,16 @@ export function AddItemButton({
   const plusRef = useRef<HTMLButtonElement>(null);
   const pointerId = useRef<number | null>(null);
 
+  // The pointer that opened the menu by long-pressing. Its *own* lift — the
+  // finger coming up off the (+) right after the hold — must NOT fire a bulk
+  // action: capture was just released, so that pointerup lands on whichever
+  // half-circle sits under the finger and would archive/delete on iOS without
+  // the user ever deliberately tapping. The actions fire on the *first tap*
+  // (see overview): a fresh pointer down, not the release of the long-press.
+  // So we remember the opening pointer and swallow its pointerup (and the
+  // click trailing it), keeping the menu open for that deliberate tap.
+  const openingPointerId = useRef<number | null>(null);
+
   // A bulk button just handled the gesture on `pointerup`; swallow the
   // synthetic `click` that trails it so the action doesn't fire twice.
   const pointerHandled = useRef(false);
@@ -79,13 +89,16 @@ export function AddItemButton({
 
   const collapse = useCallback(() => {
     setExpanded(false);
+    openingPointerId.current = null;
   }, []);
 
   useEscapeKey(expanded, collapse);
 
-  // Fan the menu out and release the (+)'s implicit pointer capture so the
-  // pointerup (whether the finger lifts in place or slides onto a button)
-  // lands on the bulk button under it rather than the hidden (+).
+  // Fan the menu out and release the (+)'s implicit pointer capture so events
+  // are no longer routed to the now-hidden (+). We record the pressing pointer
+  // as `openingPointerId` first, so the pointerup that ends this very hold is
+  // recognised and ignored rather than activating a bulk button (see
+  // `onActionPointerUp`).
   const expandMenu = useCallback(() => {
     longPressed.current = true;
     const el = plusRef.current;
@@ -97,6 +110,7 @@ export function AddItemButton({
     }
     setExpanded(true);
     const id = pointerId.current;
+    openingPointerId.current = id;
     if (el && id !== null && el.hasPointerCapture?.(id)) {
       el.releasePointerCapture(id);
     }
@@ -106,6 +120,7 @@ export function AddItemButton({
     (e: React.PointerEvent<HTMLButtonElement>) => {
       if (expanded) return;
       pointerId.current = e.pointerId;
+      openingPointerId.current = null;
       longPressed.current = false;
       // Clear any stale flag from a prior cycle (e.g. an archive that
       // collapsed before its trailing click arrived) so it can't swallow a
@@ -140,8 +155,18 @@ export function AddItemButton({
   // only appears mid-gesture — and mark the gesture handled so the trailing
   // synthetic `click` is dropped. The `click` path stays as the keyboard /
   // mouse fallback (Enter / Space fire no pointer events).
+  //
+  // But the very pointerup that ends the *opening* long-press must be
+  // ignored: it's the finger lifting off the (+) the instant the menu fanned
+  // out under it, not a deliberate tap. Swallow it (and its trailing click)
+  // and leave the menu open so the next, intentional tap fires the action.
   const onActionPointerUp = useCallback(
-    (run: () => void) => () => {
+    (run: () => void) => (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (e.pointerId === openingPointerId.current) {
+        openingPointerId.current = null;
+        pointerHandled.current = true;
+        return;
+      }
       pointerHandled.current = true;
       run();
     },

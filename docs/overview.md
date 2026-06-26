@@ -230,8 +230,11 @@ button even when the pinned sidebar offsets the content column. The row
 carries two buttons: **Archive finished** and
 **Delete finished**, both acting on every finished (checked, still-active)
 item at once via `archiveFinished` / `deleteFinished` (see [Archive /
-delete finished](#archive--delete-finished)). Both fire on the first tap;
-the delete carries no confirm step, since the sweep is undoable. Running
+delete finished](#archive--delete-finished)). Both fire on the first
+*deliberate* tap — the pointerup that ends the opening long-press (the
+finger lifting off the (+) the instant the row fans out under it) is
+ignored, so the same gesture that reveals the actions can never also run
+one; the delete carries no confirm step, since the sweep is undoable. Running
 either action, tapping outside (a
 `DismissBackdrop`), or pressing Escape transitions straight back to the
 (+). The bulk buttons are disabled when nothing is finished. The long-press
