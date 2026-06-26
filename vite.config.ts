@@ -448,5 +448,14 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["tests/**/*.test.{ts,tsx}"],
+    server: {
+      deps: {
+        // The shared theme engine's font loaders dynamically import
+        // `@fontsource/*` CSS. Inline the package so Vite transforms those
+        // imports through its CSS pipeline; left external, Node's native ESM
+        // loader chokes on the `.css` extension at runtime.
+        inline: ["@niclaslindstedt/oss-framework"],
+      },
+    },
   },
 });

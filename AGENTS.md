@@ -17,6 +17,82 @@ Run `oss-spec validate .` to verify conformance. When in doubt about a layout,
 naming, or workflow decision, consult the relevant section of `OSS_SPEC.md` —
 it is the source of truth for the conventions this repo follows.
 
+## Shared OSS framework (`@niclaslindstedt/oss-framework`)
+
+Code shared between the `checklist` and `notes` apps is being **migrated out
+into the [`niclaslindstedt/oss-framework`](https://github.com/niclaslindstedt/oss-framework)
+package** so there is one implementation to maintain instead of two. The
+`theme` module already lives there (the local `src/theme/*.ts` are thin
+re-export shims over it); `storage` and `encryption` are planned next. **When
+you touch a subsystem that has a framework counterpart, consume the framework
+rather than re-cloning code locally**, and prefer this same shim pattern for
+new migrations.
+
+### Registry, auth, and env vars
+
+- The package is published to the **GitHub Packages npm registry**, not npmjs.
+  The repo's committed `.npmrc` points the `@niclaslindstedt` scope at
+  `https://npm.pkg.github.com` and reads the token from `${GITHUB_TOKEN}`. The
+  token itself is **never committed** — only the env-var reference.
+- **Installing locally in this remote environment:** the auth token is in the
+  **`GITHUB_PAT`** env var (not `GITHUB_TOKEN`). Bridge it for the install:
+
+  ```sh
+  GITHUB_TOKEN="$GITHUB_PAT" npm install @niclaslindstedt/oss-framework@<version>
+  ```
+
+  A bare `npm install` / `npm ci` will 401 against GitHub Packages because
+  `${GITHUB_TOKEN}` expands to empty. Always set it.
+- **CI:** the `test` (ci.yml), `build` (pages.yml), and `release` (release.yml)
+  jobs each need `permissions: packages: read` **and** a `GITHUB_TOKEN` env
+  (`${{ secrets.GITHUB_TOKEN }}`) so `npm ci` can authenticate. These are
+  already wired — replicate the same two additions on any **new** workflow that
+  runs `npm ci`/`npm install`.
+- **Cross-repo access caveat (maintainer action):** the built-in
+  `GITHUB_TOKEN` can only read a package published from *another* repo once
+  that package grants the consuming repo access (oss-framework → Package
+  settings → *Manage Actions access* → add `niclaslindstedt/checklist`). A
+  `403`/`401` from `npm ci` in CI almost always means this grant is missing —
+  surface it to the maintainer rather than churning the workflow files.
+
+### Vitest gotcha when consuming the framework
+
+Vitest treats `node_modules` as external and hands their imports to Node's
+native ESM loader, which **cannot load `.css`**. The framework's font loaders
+dynamically `import("@fontsource/*…css")`, so a consuming test throws
+`ERR_UNKNOWN_FILE_EXTENSION` unless the package is **inlined** so Vite
+transforms it:
+
+```ts
+// vite.config.ts → test
+server: { deps: { inline: ["@niclaslindstedt/oss-framework"] } }
+```
+
+Add any future framework subpath that ships CSS (or other Vite-only) imports to
+this `inline` list.
+
+### Migration workflow
+
+1. **Clone the framework and read its per-module migration guide first** —
+   `git clone https://x-access-token:${GITHUB_PAT}@github.com/niclaslindstedt/oss-framework.git`,
+   then read `src/<module>/README.md` (e.g. `src/theme/README.md`). Each guide
+   lists what the framework owns vs. what stays app-side, the
+   variable/contract it expects, and a partial-match reconciliation checklist.
+2. **Keep the app's import paths stable** by reducing the local module to a
+   re-export shim (`export * from "@niclaslindstedt/oss-framework/<module>";`)
+   plus a thin adapter for any hook that maps app types onto the framework's
+   shape. This avoids touching every call site.
+3. **What stays app-side:** the persisted **store**, the **UI** that reads the
+   data, app-specific **CSS tokens/rules**, and any static asset import (e.g.
+   the `mono` webfont in `src/app/main.tsx`). The framework owns the data and
+   the logic; the app owns where the user's choice lives and how it renders.
+4. A behaviour-preserving framework migration is **invisible to users** — label
+   the PR `no-changelog` (don't write a changeset fragment). Adding the
+   dependency only touches `package.json` / `package-lock.json` / `.npmrc`;
+   `package-lock.json` and `vite.config.ts` are skip-listed, but `.npmrc`,
+   `package.json`, and `src/**` will trip the `changeset` check, hence the
+   label.
+
 ## Build and test commands
 
 ```sh
