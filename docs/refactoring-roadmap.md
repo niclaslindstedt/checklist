@@ -39,6 +39,18 @@ and update this file in the same PR.
 
 ## Pending
 
+### Severity 9–10 — architectural blockers
+
+_None pending._
+
+### Severity 7–8 — multipliers
+
+_None pending._
+
+### Severity 5–6 — friction
+
+_None pending._
+
 ### Severity 3–4 — nits with leverage
 
 _None pending._
@@ -49,78 +61,8 @@ _None pending._
 
 ## Landed
 
-- **`useStorageBackend.ts` three `selection.kind` builders consolidated into
-  `createBackendFactory`** (2026-06) — the `makeInner`, `settingsStore`, and
-  `namespaceStore` switches (each re-deriving the same per-backend branch) now
-  live as one switch with a single case per backend in
-  `createBackendFactory(selection, { fetchImpl, storage, onFolderPermissionLost })`
-  (`src/storage/backend-factory.ts`), returning `{ makeInner, settingsStore,
-  namespaceStore }`. Adding a backend is one new case, not three switches kept
-  in lockstep. The hook composes the factory once per `selection` change and
-  reads the three off it; behaviour and the Dropbox token-refresh seam
-  (`auth.onAccessTokenRefreshed`) are unchanged. The `fetch` / `localStorage`
-  globals are now injected, so the previously-unreachable dispatch is unit-tested
-  per backend (browser/dropbox/gdrive/folder) in
-  `tests/storage/backend-factory.test.ts` — 100% of the new factory. Pure
-  refactor; full suite (1085 tests) green. **Cloud OAuth flows have no automated
-  coverage — smoke-tested LocalStorage + a cloud backend (connect, write, switch
-  namespace) by hand before merge.** Was Severity 4.
-
-- **`FolderRow` split into desktop / touch variants** (2026-06) — the single
-  `FolderRow` in `src/ui/SideMenuRows.tsx` that branched on `desktop` (and so
-  mounted `useSwipeReveal` even on the desktop path that never uses it) is now
-  `FolderRowDesktop` / `FolderRowTouch`, dispatched by a thin `FolderRow` on the
-  `desktop` flag and sharing one `FolderRowHeader`. The swipe hook no longer
-  fires on desktop, and the desktop right-click context menu — previously
-  untested (jsdom has no `matchMedia`, so `SideMenu` renders touch-only) — is now
-  directly covered alongside the touch strip in `tests/ui/side-menu-rows.test.tsx`
-  (8 cases). Pure presentational relocation, no behaviour change. Was Severity 3.
-
-- **`ChecklistView.tsx` composer modes consolidated into a `useComposer` hook**
-  (2026-06) — replaced the three parallel composer states (`drafting`,
-  `childDraftParentId`, `afterDraftAnchorId`), their per-mode verb callbacks,
-  and the four depth/index memos with a single discriminated `ComposerState`
-  (`none | inline | child | after`) owned by `src/ui/hooks/useComposer.ts`
-  (218 lines). The hook derives the one active composer's splice index, depth,
-  and verbs in one place; ChecklistView keeps only display wiring and dropped
-  from 631 to 486 lines. Pure refactor, no behaviour change — the 41 existing
-  ChecklistView integration tests still pass, and the hook's previously-embedded
-  index/depth math and anchor-chaining are now directly unit-tested in
-  `tests/ui/hooks/use-composer.test.ts` (12 cases, ~91% of the new file). Was
-  Severity 6.
-
-- **`SyncLogPanel` extracted out of `SyncDetailsModal.tsx`** (2026-06) — moved
-  the developer sync-log sub-component, its `SYNC_LOG_SCOPES` filter, and the
-  `formatLogTime`/`formatLogLine`/`levelClass`/`railClass` helpers to
-  `src/ui/SyncLogPanel.tsx`, shrinking the near-cap modal from 737 to 586
-  lines. Pure presentational relocation, no behaviour change; the modal imports
-  the panel and is otherwise untouched. The extraction exposed the panel as a
-  directly-testable export, so `tests/ui/sync-log-panel.test.tsx` adds focused
-  coverage the modal tests lacked — the scope filter (drops out-of-scope noise)
-  and the clipboard copy (chronological order, success/failure labels) — taking
-  the new file to 100% branch/line coverage. Was Severity 4 (easy win).
-
-- **`useStorageBackend.ts` encryption-wrapping decision deduped into a pure
-  helper** (2026-06) — pulled the twice-written
-  `encryption === "encrypted" && password !== null ? withEncryption(…) : raw`
-  decision (the `adapter` memo and the `wrapForActive` callback) into
-  `wrapForEncryption(raw, mode, password)` in `src/storage/backend-factory.ts`,
-  so the locked/plaintext/encrypted matrix lives in one place instead of two
-  that could diverge. Unit-tested across all three branches in
-  `tests/storage/backend-factory.test.ts` with a fake in-memory adapter —
-  coverage the inline expressions never had. The fuller `createBackendFactory`
-  consolidation of the three `selection.kind` builders is split out as a
-  narrower Severity-4 follow-up in Pending. Was Severity 7.
-
-- **`App.tsx` drag-drop dispatch extracted to a pure resolver** (2026-06) —
-  pulled the parse→branch→dispatch logic out of the `dropHandlerRef` closure
-  into `resolveDragDrop(rawId, key): DragDropAction` in
-  `src/app/drag-drop-resolver.ts`. The ref handler is now a thin `switch` over
-  the discriminated action; the drop-target matrix (including the
-  illegal-folder-drop no-ops) is unit-tested in
-  `tests/app/drag-drop-resolver.test.ts` with no React/DOM, coverage the
-  closure never had. Was Severity 5.
+_None yet — roadmap reset to a clean slate (2026-07)._
 
 ## Investigated and skipped
 
-_None yet — roadmap reset to a clean slate (2026-06)._
+_None yet — roadmap reset to a clean slate (2026-07)._
