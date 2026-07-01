@@ -416,7 +416,11 @@ function ChecklistRowImpl({
             onClick={onTitleTap}
             aria-label={t("app.editItem")}
             aria-expanded={hasBody ? expanded : undefined}
-            className={`min-w-0 flex-1 truncate text-left ${
+            // A title too long for one line wraps onto the next instead of
+            // being clipped with an ellipsis; `break-words` also splits a
+            // single unbroken run (a long URL or word) so it can't overflow
+            // the row and shove the trailing glyphs off-screen.
+            className={`min-w-0 flex-1 break-words text-left ${
               nested ? "text-sm" : ""
             } ${item.checked ? "text-muted line-through" : "text-fg"}`}
           >

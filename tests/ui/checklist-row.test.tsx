@@ -127,6 +127,18 @@ describe("ChecklistRow swipe action layers", () => {
   });
 });
 
+describe("ChecklistRow title wrapping", () => {
+  it("wraps a long title instead of clipping it to one line", () => {
+    renderRow();
+    const title = screen.getByRole("button", { name: "Edit item" });
+    // The title reflows onto extra lines (`break-words`) rather than being cut
+    // off with an ellipsis (`truncate` sets `white-space: nowrap`), so a long
+    // item stays fully readable.
+    expect(title.className).toContain("break-words");
+    expect(title.className).not.toContain("truncate");
+  });
+});
+
 describe("ChecklistRow checkbox tap target", () => {
   it("pads the checkbox hit area without enlarging the visual box", () => {
     renderRow();
