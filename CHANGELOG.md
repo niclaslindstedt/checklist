@@ -12,6 +12,25 @@ changelog").
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-01
+
+### Added
+
+- **Include archived in copy** — A Lists setting (off by default) that appends a list's archived items to the markdown the copy button puts on your clipboard.
+- **Drag a folder to another namespace** — Drag a whole folder onto another namespace to move the folder and every list inside it there at once.
+- **Capitalise items** — A Lists setting (off by default) that capitalises the first letter of each item as you type it, so "buy milk" is added as "Buy milk".
+- **Check all / Uncheck all** — Press the header's checked/total count to open a dropdown that checks or unchecks every item in the list at once.
+- **Search** — Find any checklist, item, note, or sub-item across every list from the action bar — matches highlight as you type, and you can search with fuzzy text, wildcards, or a regex. [Learn more](feature:search)
+- **List icons and colours** — Tap the mark beside a checklist's title to give that list its own icon and accent colour, shown in the header so you can tell your lists apart at a glance.
+- **Swipe the sidebar away** — Swipe the open navigation drawer back toward its resting edge to slide it shut, the gesture counterpart to swiping it open.
+
+### Fixed
+
+- **Capitalised new items** — New checklist items now capitalise their first letter on a mobile keyboard, even when the previous item didn't end with a period.
+- **Long-press add button no longer mis-fires** — Lifting your finger after long-pressing the add (+) button to reveal the archive / delete bar no longer fires one of those buttons on iOS — the action now waits for a deliberate, separate tap.
+- **Safer encryption toggle** — Turning encryption off no longer risks losing checklists when a cloud backend rate-limits the change — it rides out the throttle and keeps the encrypted copy intact until every list is safely rewritten.
+- **Long item titles wrap** — A checklist item whose title is too long for one line now wraps onto the next instead of being clipped with an ellipsis.
+
 ## [1.2.1] - 2026-06-24
 
 ### Fixed
