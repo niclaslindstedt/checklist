@@ -319,6 +319,13 @@ as\|@ts-ignore\|@ts-expect-error" src/` — each hit is at least
   APIs (grep for `fetch(` / URLs and confirm every call is to an
   allowed origin and gated on the user choosing that backend); the
   1000-line cap.
+- **Run the repo's own gates on a clean tree.** `make lint`,
+  `make fmt-check`, and the changeset check on an untouched checkout
+  — any failure or warning on `main` is drift CI isn't gating (a
+  2026-07 sweep found `fmt-check` failing on 8 files after a Prettier
+  bump, and a lone `react-hooks/exhaustive-deps` warning, neither
+  enforced by `ci.yml`). Each such gap is an easy-win row: fix the
+  drift **and** add the missing CI step so it can't reopen.
 
 Delegate broad sweeps to `Agent(subagent_type: "Explore")` with a
 self-contained brief — Explore-mode surveys produce a lot of file
