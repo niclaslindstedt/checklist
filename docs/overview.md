@@ -1648,9 +1648,10 @@ glyph. Turning encryption on or off is the heaviest thing the tab does
 (key derivation, re-wrapping every list, re-saving), so the toggle
 buttons spin while it runs and a one-line **encryption status bar**
 flashes the phase it's on — `Reading…`, `Deriving encryption key…`,
-`Encrypting…`, `Saving…`, `Finalizing…` — fed by the `onProgress`
-callback the [storage backend hook](#usestoragebackend-hook) reports each
-phase through. The messages flash by too fast to read in full by design;
+`Encrypting…`, `Saving…`, `Waiting out a rate limit…`, `Finalizing…` — fed
+by the `onProgress` callback the
+[storage backend hook](#usestoragebackend-hook) reports each phase
+through. The messages flash by too fast to read in full by design;
 they're there to show *something is happening* during the
 otherwise-silent key-derivation pause. On success the bar vanishes and
 the heading's "Encryption is on / off" is all that's left. On failure the
@@ -1807,11 +1808,31 @@ decrypts them back. Disabling always re-saves the surfaced document as
 plaintext — even when a stale plaintext copy shadows the blob and the load
 returns that instead of the envelope — so the
 [markdown file store](#markdown-file-store) clears the superseded
-`checklist.json` and no ciphertext lingers behind. Both
-`enableEncryption` / `disableEncryption` (and `encryptText` /
+`checklist.json` and no ciphertext lingers behind.
+
+The toggle is **crash-safe and rate-limit resilient**, because a
+throttled disable used to lose lists: on a per-file cloud backend the
+disable writes the plaintext markdown first and drops the encrypted blob
+last, so a 429 mid-write left half-written markdown beside the intact
+envelope — and the next load read that partial markdown and then deleted
+the blob. Two guards close that: (1) the re-wrap saves ride out a
+`RateLimitError` with a bounded, cooldown-honouring retry
+(`withRateLimitRetries`) instead of aborting partway, force-writing with
+no base revision so a retry can't trip phantom-conflict detection on its
+own half-written document; and (2) the
+[markdown file store](#markdown-file-store)'s `readSnapshotText` treats an
+encrypted-envelope blob as authoritative over coexisting markdown **while
+the persisted mode is `encrypted`** (an interrupted disable), so the
+complete envelope is what a fresh load — or a retry — recovers, and can't
+be shadowed then deleted; under `plaintext` mode (an interrupted enable)
+the readable markdown still wins. The upshot: an interrupted toggle is
+recoverable rather than lossy.
+
+Both `enableEncryption` / `disableEncryption` (and `encryptText` /
 `decryptEnvelope` underneath) take an optional `onProgress` callback that
 fires once per phase (`reading → derivingKey →
-encrypting`/`decrypting → saving → finalizing`); the
+encrypting`/`decrypting → saving → finalizing`, plus a `throttled` phase —
+"Waiting out a rate limit…" — while a save waits out a 429); the
 [storage tab](#storage-tab) feeds it into its status bar. `unlock` threads
 the same callback through (`reading → derivingKey → decrypting →
 finalizing`) so the unlock gate can flash its status line.

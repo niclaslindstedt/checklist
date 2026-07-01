@@ -147,6 +147,7 @@ const settings: SettingsCatalog = {
     encryptionStepEncrypting: "Krypterar dina listor…",
     encryptionStepDecrypting: "Dekrypterar dina listor…",
     encryptionStepSaving: "Sparar dina listor…",
+    encryptionStepThrottled: "Väntar ut en hastighetsgräns…",
     encryptionStepFinalizing: "Slutför…",
     encryptionFailed: "Något gick fel. Tryck för att se loggen.",
     encryptionStatusAria: "Krypteringsförlopp",

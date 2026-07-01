@@ -11,6 +11,7 @@ export const STEP_MESSAGE_KEY: Record<EncryptionProgressStep, MessageKey> = {
   encrypting: "settings.storage.encryptionStepEncrypting",
   decrypting: "settings.storage.encryptionStepDecrypting",
   saving: "settings.storage.encryptionStepSaving",
+  throttled: "settings.storage.encryptionStepThrottled",
   finalizing: "settings.storage.encryptionStepFinalizing",
 };
 
