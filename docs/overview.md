@@ -445,6 +445,21 @@ chrome, but iOS still keeps its own edge swipe-back gesture alive there —
 see "Suppress edge swipe-back" for how that native navigation is cancelled
 so it doesn't fight the drawer.
 
+### Swipe to close the drawer
+
+`useSwipeCloseDrawer` (`src/ui/hooks/useSwipeCloseDrawer.ts`) is the mirror
+image of Edge swipe to open: while the floating drawer is open, a swipe back
+toward its resting edge (leftward when docked left, rightward when docked
+right) that travels past ~48px — staying more horizontal than vertical, so
+it doesn't fight a scroll of the drawer's own list — slides it shut. It's the
+gesture counterpart to tapping the backdrop or pressing Escape. Built like
+`useEdgeSwipeOpen` — a document-level, touch-only listener gated by an
+`enabled` flag (App enables it only while the drawer is open, unpinned, and no
+modal owns the screen) that watches `menuButtonPosition.side`. A swipe that
+begins on a row's own [swipe-to-remove](#swipe-to-remove-sidebar) surface
+(tagged `data-swipe-row`) is left alone: that gesture latches the row's trash
+open in the same direction, so the row owns it and the drawer stays put.
+
 ### Suppress edge swipe-back
 
 `useSuppressEdgeSwipeBack` (`src/ui/hooks/useSuppressEdgeSwipeBack.ts`)

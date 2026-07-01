@@ -62,6 +62,7 @@ names. Honour these when naming a new file, key, or string.
 | **Swipe to remove** (sidebar) / **swipe a list/namespace away** | `useSwipeReveal` (`src/ui/hooks/useSwipeReveal.ts`); the `SwipeToRemove` wrapper in `src/ui/SideMenu.tsx`. [→](overview.md#swipe-to-remove-sidebar) |
 | **Floating menu button** / **drag button** / **sidebar button** | `useDraggableMenuButton` (`src/ui/hooks/useDraggableMenuButton.ts`); `src/ui/sideMenuPosition.ts`; `showButton` in `nav-context.ts`. [→](overview.md#floating-menu-button) |
 | **Edge swipe to open** / **swipe in from the edge**     | `useEdgeSwipeOpen` (`src/ui/hooks/useEdgeSwipeOpen.ts`). [→](overview.md#edge-swipe-to-open) |
+| **Swipe to close the drawer** / **swipe away the sidebar** / **left swipe to dismiss** | `useSwipeCloseDrawer` (`src/ui/hooks/useSwipeCloseDrawer.ts`); the `data-swipe-row` guard in `src/ui/SideMenuRows.tsx`. [→](overview.md#swipe-to-close-the-drawer) |
 | **Suppress edge swipe-back** / **iOS PWA back-swipe** / **right swipe back** | `useSuppressEdgeSwipeBack` (`src/ui/hooks/useSuppressEdgeSwipeBack.ts`). [→](overview.md#suppress-edge-swipe-back) |
 | **About menu** / **About dropdown** / **the project links** | The footer "About" row + its upward-flipping `FloatingPanel` (source / privacy / "what's new") in `src/ui/SideMenu.tsx`; `menu.about` string. [→](overview.md#side-menu) |
 | **Header menu** / **burger menu**                      | `src/ui/HeaderMenu.tsx`. [→](overview.md#header-menu)                                                    |

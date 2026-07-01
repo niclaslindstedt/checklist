@@ -225,6 +225,7 @@ export function SwipeToRemove({
       </div>
       <div
         {...swipe.handlers}
+        data-swipe-row
         style={{ transform: `translateX(${swipe.offset}px)` }}
         className={`relative bg-surface [touch-action:pan-y] ${
           swipe.animating ? "transition-transform duration-200" : ""
@@ -345,6 +346,7 @@ export function ChecklistRowStrip({
       </div>
       <div
         {...swipe.handlers}
+        data-swipe-row
         style={{ transform: `translateX(${swipe.offset}px)` }}
         className={`relative bg-surface [touch-action:pan-y] ${
           swipe.animating ? "transition-transform duration-200" : ""
@@ -564,6 +566,7 @@ function FolderRowTouch({
           the surface fill (and adds the ring) right where it's visible. */}
       <div
         {...swipe.handlers}
+        data-swipe-row
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
