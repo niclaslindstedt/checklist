@@ -16,10 +16,26 @@ import type { DisplayRow } from "../../../src/domain/checklists.ts";
 //   2  c2    (depth 1)  child of p
 //   3  s     (depth 0)  sibling of p
 const ROWS: DisplayRow[] = [
-  { item: { id: "p", title: "P", checked: false }, depth: 0, hasChildren: true },
-  { item: { id: "c1", title: "C1", checked: false }, depth: 1, hasChildren: false },
-  { item: { id: "c2", title: "C2", checked: false }, depth: 1, hasChildren: false },
-  { item: { id: "s", title: "S", checked: false }, depth: 0, hasChildren: false },
+  {
+    item: { id: "p", title: "P", checked: false },
+    depth: 0,
+    hasChildren: true,
+  },
+  {
+    item: { id: "c1", title: "C1", checked: false },
+    depth: 1,
+    hasChildren: false,
+  },
+  {
+    item: { id: "c2", title: "C2", checked: false },
+    depth: 1,
+    hasChildren: false,
+  },
+  {
+    item: { id: "s", title: "S", checked: false },
+    depth: 0,
+    hasChildren: false,
+  },
 ];
 
 function makeOpts(overrides: Partial<ComposerOptions> = {}): ComposerOptions {

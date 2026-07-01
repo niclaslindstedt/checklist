@@ -127,7 +127,10 @@ export function createBackendFactory(
             namespace: slug,
             onPermissionLost: onFolderPermissionLost,
           }),
-        settingsStore: createFolderSettingsStore(handle, onFolderPermissionLost),
+        settingsStore: createFolderSettingsStore(
+          handle,
+          onFolderPermissionLost,
+        ),
         namespaceStore: createFolderNamespaceStore(
           handle,
           onFolderPermissionLost,

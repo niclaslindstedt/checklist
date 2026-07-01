@@ -24,7 +24,11 @@ import {
 export type DragDropAction =
   | { type: "none" }
   | { type: "moveFolderToNamespace"; folderId: string; slug: string }
-  | { type: "moveChecklistToFolder"; checklistId: string; folderId: string | null }
+  | {
+      type: "moveChecklistToFolder";
+      checklistId: string;
+      folderId: string | null;
+    }
   | { type: "archiveChecklist"; checklistId: string }
   | { type: "moveChecklistToNamespace"; checklistId: string; slug: string };
 

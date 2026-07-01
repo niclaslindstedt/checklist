@@ -60,7 +60,10 @@ describe("resolveDragDrop", () => {
   describe("a dragged folder", () => {
     it("relocates the whole group on a namespace row", () => {
       expect(
-        resolveDragDrop(folderDragId("folder-7"), checklistDropNamespaceKey("home")),
+        resolveDragDrop(
+          folderDragId("folder-7"),
+          checklistDropNamespaceKey("home"),
+        ),
       ).toEqual({
         type: "moveFolderToNamespace",
         folderId: "folder-7",
@@ -69,7 +72,9 @@ describe("resolveDragDrop", () => {
     });
 
     it("is a no-op over the ungrouped zone", () => {
-      expect(resolveDragDrop(folderDragId("folder-7"), CHECKLIST_DROP_ROOT)).toEqual({
+      expect(
+        resolveDragDrop(folderDragId("folder-7"), CHECKLIST_DROP_ROOT),
+      ).toEqual({
         type: "none",
       });
     });

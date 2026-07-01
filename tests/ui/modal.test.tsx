@@ -48,7 +48,12 @@ describe("Modal", () => {
     function Host() {
       const inputRef = useRef<HTMLInputElement>(null);
       return (
-        <Modal open onClose={() => {}} labelledBy="t" initialFocusRef={inputRef}>
+        <Modal
+          open
+          onClose={() => {}}
+          labelledBy="t"
+          initialFocusRef={inputRef}
+        >
           <h2 id="t">Title</h2>
           <input ref={inputRef} aria-label="field" />
         </Modal>
