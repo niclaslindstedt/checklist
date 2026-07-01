@@ -151,6 +151,7 @@ const settings = {
     encryptionStepEncrypting: "Encrypting your lists…",
     encryptionStepDecrypting: "Decrypting your lists…",
     encryptionStepSaving: "Saving your lists…",
+    encryptionStepThrottled: "Waiting out a rate limit…",
     encryptionStepFinalizing: "Finalizing…",
     encryptionFailed: "Something went wrong. Tap to see the log.",
     encryptionStatusAria: "Encryption progress",

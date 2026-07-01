@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
 import { AuthError, ConflictError } from "../../src/storage/adapter.ts";
-import { encryptText, isEncryptedEnvelope } from "../../src/storage/crypto.ts";
+import {
+  decryptEnvelope,
+  encryptText,
+  isEncryptedEnvelope,
+} from "../../src/storage/crypto.ts";
 import {
   BLOB_FILE_NAME,
   createDirectoryAdapter,
@@ -356,6 +360,95 @@ describe("directory adapter", () => {
     );
     expect(store.paths()).not.toContain(BLOB_FILE_NAME);
     expect(store.paths().every((p) => p.endsWith(".md"))).toBe(true);
+  });
+
+  // Regression: "turn encryption off, get rate limited, retry" used to make
+  // checklists vanish. Disabling writes plaintext markdown first and drops the
+  // encrypted blob last, so a failure mid-write leaves *partial* markdown beside
+  // the still-intact envelope. The mode flip to "plaintext" only happens on
+  // success, so a load during the interrupted window is still in "encrypted"
+  // mode — where the complete envelope must win, so the partial markdown can't
+  // shadow (and a follow-up re-save delete) the real document.
+  it("prefers the intact encrypted blob over shadowing markdown in encrypted mode", async () => {
+    const store = new MemoryFileStore();
+    const encrypted = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      encryptionMode: () => "encrypted",
+    });
+    // Half-written plaintext markdown (a single list) …
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(snapshot),
+    );
+    // … beside the complete encrypted envelope of the full two-list document.
+    const envelope = await encryptText(serialize(twoLists), "pw");
+    await store.write(BLOB_FILE_NAME, envelope);
+
+    const loaded = await encrypted.load();
+    expect(loaded!.text).toBe(envelope);
+    // Decrypting recovers all the checklists — nothing was lost to the shadow.
+    const recovered = parse(await decryptEnvelope(loaded!.text, "pw"));
+    expect(recovered.checklists.map((c) => c.id).sort()).toEqual([
+      "cl1",
+      "cl2",
+    ]);
+  });
+
+  // The symmetric case: an interrupted *enable* leaves a lingering envelope
+  // beside the plaintext markdown while the mode is still "plaintext" (the app
+  // holds no key). There the readable markdown must win, so the load doesn't
+  // hand back an envelope nothing can decrypt.
+  it("yields to plaintext markdown when a stale envelope lingers in plaintext mode", async () => {
+    const store = new MemoryFileStore();
+    const plaintext = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      encryptionMode: () => "plaintext",
+    });
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(snapshot),
+    );
+    await store.write(
+      BLOB_FILE_NAME,
+      await encryptText(serialize(twoLists), "pw"),
+    );
+
+    const loaded = await plaintext.load();
+    expect(isEncryptedEnvelope(loaded!.text)).toBe(false);
+    expect(parse(loaded!.text).checklists.map((c) => c.id)).toEqual(["cl1"]);
+  });
+
+  // The full recovery arc: from the interrupted-disable state, re-saving the
+  // recovered plaintext (what the encryption toggle does on retry) drops the
+  // blob and leaves a clean, markdown-only store holding every checklist.
+  it("recovers cleanly when the decrypted document is re-saved from the shadowed state", async () => {
+    const store = new MemoryFileStore();
+    const encrypted = createDirectoryAdapter(store, {
+      id: "dev",
+      label: "M",
+      encryptionMode: () => "encrypted",
+    });
+    await createDirectoryAdapter(store, { id: "dev", label: "M" }).save(
+      serialize(snapshot),
+    );
+    await store.write(
+      BLOB_FILE_NAME,
+      await encryptText(serialize(twoLists), "pw"),
+    );
+
+    const loaded = await encrypted.load();
+    const plaintext = await decryptEnvelope(loaded!.text, "pw");
+    await encrypted.save(plaintext);
+
+    const paths = store.paths();
+    expect(paths).not.toContain(BLOB_FILE_NAME);
+    expect(paths.every((p) => p.endsWith(".md"))).toBe(true);
+    const reloaded = await encrypted.load();
+    expect(
+      parse(reloaded!.text)
+        .checklists.map((c) => c.id)
+        .sort(),
+    ).toEqual(["cl1", "cl2"]);
   });
 
   it("raises a ConflictError when the directory moved past baseRevision", async () => {

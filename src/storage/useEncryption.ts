@@ -17,7 +17,11 @@ import { useCallback, useState } from "react";
 // bus's `unlock` comes in under a distinct name.
 import { unlock as unlockAchievement } from "../achievements/bus.ts";
 import { createLogger } from "../dev/logger.ts";
-import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
+import {
+  RateLimitError,
+  type StorageAdapter,
+  type StoredSnapshot,
+} from "./adapter.ts";
 import {
   type EncryptionMode,
   getEncryption,
@@ -39,8 +43,54 @@ export type EncryptionProgressStep =
   | "encrypting"
   | "decrypting"
   | "saving"
+  | "throttled"
   | "finalizing";
 export type EncryptionProgress = (step: EncryptionProgressStep) => void;
+
+// How many times an enable/disable re-wrap rides out a backend rate limit (HTTP
+// 429) before giving up, and the ceiling on each honoured cooldown. The
+// steady-state save path parks in `throttled` and retries forever, but the
+// encryption toggle drives the backend directly and outside that loop, so it
+// needs its own bounded retry: without it a 429 aborts the re-wrap partway,
+// which is precisely what stranded the document (see `directory-adapter`'s
+// `readSnapshotText`). Bounded so a genuinely stuck backend still surfaces as a
+// failure — which, thanks to the staging guard, is now recoverable rather than
+// lossy.
+const RATE_LIMIT_MAX_RETRIES = 8;
+const RATE_LIMIT_MAX_WAIT_MS = 30_000;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// Run a storage op, riding out a backend rate limit instead of letting it abort
+// the re-wrap. Honours the backend's `retryAfterMs` (capped), flashes the
+// `throttled` phase so the UI shows it's waiting rather than stalled, and
+// rethrows any non-429 error (and the 429 itself once the budget is spent) so a
+// real failure still surfaces.
+async function withRateLimitRetries<T>(
+  op: () => Promise<T>,
+  onThrottle: () => void,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await op();
+    } catch (err) {
+      if (
+        !(err instanceof RateLimitError) ||
+        attempt >= RATE_LIMIT_MAX_RETRIES
+      ) {
+        throw err;
+      }
+      const waitMs = Math.min(err.retryAfterMs, RATE_LIMIT_MAX_WAIT_MS);
+      log.warn(
+        `encryption toggle throttled — retry in ${waitMs}ms ` +
+          `(attempt ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES})`,
+      );
+      onThrottle();
+      await sleep(waitMs);
+    }
+  }
+}
 
 export interface Encryption {
   /** Encryption mode (`plaintext` | `encrypted`). */
@@ -93,12 +143,19 @@ export function useEncryption(inner: StorageAdapter): Encryption {
       // Re-wrap whatever the inner backend currently holds so existing
       // plaintext becomes an envelope. A first run with no data is a
       // no-op beyond flipping the flag.
+      const throttle = () => onProgress?.("throttled");
       onProgress?.("reading");
-      const snap = await inner.load();
+      const snap = await withRateLimitRetries(() => inner.load(), throttle);
       if (snap && !isEncryptedEnvelope(snap.text)) {
         const payload = await encryptText(snap.text, next, onProgress);
         onProgress?.("saving");
-        await inner.save(payload, snap.revision);
+        // No base revision: the re-wrap is a deliberate whole-document rewrite,
+        // and a 429 that lands mid-write moves the aggregate revision, so
+        // re-basing on the pre-write revision would surface our own retry as a
+        // phantom conflict. The prior representation stays authoritative until
+        // this write lands whole, so force-writing is safe (see
+        // `directory-adapter`'s `readSnapshotText`).
+        await withRateLimitRetries(() => inner.save(payload), throttle);
       }
       onProgress?.("finalizing");
       persistEncryption("encrypted");
@@ -124,14 +181,22 @@ export function useEncryption(inner: StorageAdapter): Encryption {
       // superseded `checklist.json`, so disabling can't leave the envelope
       // behind — gating the re-save on the load happening to surface the
       // envelope is what let the file linger.
+      const throttle = () => onProgress?.("throttled");
       onProgress?.("reading");
-      const snap = await inner.load();
+      const snap = await withRateLimitRetries(() => inner.load(), throttle);
       if (snap) {
         const plaintext = isEncryptedEnvelope(snap.text)
           ? await decryptEnvelope(snap.text, password, onProgress)
           : snap.text;
         onProgress?.("saving");
-        await inner.save(plaintext, snap.revision);
+        // No base revision: force-write the decrypted plaintext. A 429 can land
+        // after some markdown files are written, moving the aggregate revision;
+        // re-basing on the pre-write revision would then surface our own
+        // half-written document as a phantom conflict and abort the retry. The
+        // encrypted blob stays authoritative (and is what a fresh load recovers)
+        // until this write fully lands and drops it — so an interrupted attempt
+        // is recoverable, never lossy.
+        await withRateLimitRetries(() => inner.save(plaintext), throttle);
       }
       onProgress?.("finalizing");
       persistEncryption("plaintext");

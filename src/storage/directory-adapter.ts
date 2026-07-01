@@ -30,6 +30,7 @@ import { createLogger } from "../dev/logger.ts";
 import type { Folder, Snapshot } from "../domain/types.ts";
 import type { StorageAdapter, StoredSnapshot } from "./adapter.ts";
 import { AuthError, ConflictError } from "./adapter.ts";
+import { type EncryptionMode, getEncryption } from "./backend-preference.ts";
 import { isOfflineError } from "./cache/index.ts";
 import { isEncryptedEnvelope } from "./crypto.ts";
 import type { FileEntry, FileStore } from "./file-store.ts";
@@ -119,6 +120,15 @@ export type DirectoryAdapterOptions = {
    * folder backend never raises network errors, so this is inert there.
    */
   retryDelaysMs?: readonly number[];
+  /**
+   * Reads the persisted at-rest encryption mode. It decides which side wins
+   * when an encrypted-envelope `checklist.json` blob and markdown files
+   * coexist — the fingerprint of an interrupted enable/disable (see
+   * `readSnapshotText`). Defaults to the device-global {@link getEncryption};
+   * injected in tests that need to exercise the encrypted-mode branch without a
+   * `localStorage`.
+   */
+  encryptionMode?: () => EncryptionMode;
 };
 
 /** Per-(backend, namespace) persistence for the phantom-conflict write log. */
@@ -194,6 +204,8 @@ export function createDirectoryAdapter(
     rawStore,
     options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS,
   );
+
+  const readEncryptionMode = options.encryptionMode ?? getEncryption;
 
   // The canonical JSON of the folder registry as it currently stands on disk
   // (null = no `folders.json` sidecar exists). Set on every load and after
@@ -316,6 +328,29 @@ export function createDirectoryAdapter(
     entries: readonly FileEntry[],
   ): Promise<string | null> {
     const mdPaths = entries.map((e) => e.path).filter(isMarkdownPath);
+    const hasBlob = entries.some((e) => e.path === BLOB_FILE_NAME);
+
+    // An encrypted-envelope blob and markdown files never coexist in a healthy
+    // store — enabling encryption clears the markdown, disabling clears the
+    // blob. When both are present an encryption transition was interrupted (a
+    // throttled or half-finished enable/disable), and which side is
+    // authoritative turns on the persisted encryption mode — the exact bit the
+    // transition flips only on success:
+    //   - "encrypted": the complete envelope wins. An interrupted *disable*
+    //     writes plaintext markdown first and drops the blob last, so a failure
+    //     mid-write leaves half-written markdown beside the intact blob. Reading
+    //     that partial markdown (and then re-saving it, which deletes the blob)
+    //     is exactly how "turn encryption off, get rate limited, retry" made
+    //     checklists vanish. Preferring the blob keeps the full document
+    //     recoverable and unshadowable until the plaintext side lands whole.
+    //   - "plaintext": the markdown wins. An interrupted *enable* leaves a
+    //     lingering envelope beside the plaintext; the app holds no key in
+    //     plaintext mode, so the readable markdown is the right thing to load.
+    if (hasBlob && mdPaths.length > 0 && readEncryptionMode() === "encrypted") {
+      const blob = await store.read(BLOB_FILE_NAME);
+      if (blob !== null && isEncryptedEnvelope(blob)) return blob;
+    }
+
     if (mdPaths.length > 0) {
       const files = await Promise.all(
         mdPaths.map(async (path) => ({
@@ -328,7 +363,7 @@ export function createDirectoryAdapter(
     // No markdown yet: fall back to the single-file blob (an encrypted
     // envelope, or a legacy JSON document the cloud backends wrote before
     // markdown). Returned verbatim so the pipeline can decrypt / migrate.
-    if (entries.some((e) => e.path === BLOB_FILE_NAME)) {
+    if (hasBlob) {
       return store.read(BLOB_FILE_NAME);
     }
     return null;
