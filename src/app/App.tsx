@@ -36,6 +36,7 @@ import {
   namespaceFaviconSrc,
 } from "../ui/namespace-favicon.ts";
 import { useEdgeSwipeOpen } from "../ui/hooks/useEdgeSwipeOpen.ts";
+import { useSwipeCloseDrawer } from "../ui/hooks/useSwipeCloseDrawer.ts";
 import { useSuppressEdgeSwipeBack } from "../ui/hooks/useSuppressEdgeSwipeBack.ts";
 import { useMediaQuery } from "../ui/hooks/useMediaQuery.ts";
 import { useSidebarInset } from "../ui/hooks/useSidebarInset.ts";
@@ -491,6 +492,16 @@ function AppShell() {
     side: settings.menuButtonPosition.side,
     enabled: !showMenuButton && !anyModalOpen && !menuOpen && !pinned,
     onOpen: openMenu,
+  });
+
+  // The mirror gesture: while the drawer is open, a swipe back toward its
+  // resting edge slides it shut — the natural counterpart to the inward open
+  // swipe and the tap-the-backdrop close. Only for the floating-drawer variant
+  // (a pinned sidebar has nothing to dismiss) and never over a modal.
+  useSwipeCloseDrawer({
+    side: settings.menuButtonPosition.side,
+    enabled: menuOpen && !pinned && !anyModalOpen,
+    onClose: closeMenu,
   });
 
   // iOS keeps its left-edge swipe-back gesture alive inside an installed PWA,
