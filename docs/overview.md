@@ -71,10 +71,12 @@ for the local backend.
 
 `src/ui/ChecklistRow.tsx` — one item line, with a three-layer
 swipe-to-reveal interaction driven by `useRowSwipe`. The foreground
-holds a `Checkbox`, the title (struck through when checked), a body-hint
-note glyph (only on items that carry a note — muted while the body is
-collapsed, accent-coloured while it's revealed), and a grip handle for
-vertical reordering. Swiping **left** latches open a Delete button
+holds a `Checkbox`, the title (struck through when checked, and wrapped
+onto extra lines when it's too long for one — `break-words`, so even a
+single unbroken run can't overflow the row), a body-hint note glyph
+(only on items that carry a note — muted while the body is collapsed,
+accent-coloured while it's revealed), and a grip handle for vertical
+reordering. Swiping **left** latches open a Delete button
 (two-step, so a delete is never a single flick); swiping **right**
 archives the row (hidden, not destroyed). The two action layers are
 gated on the swipe direction (`swipe.offset`'s sign): the left-aligned
