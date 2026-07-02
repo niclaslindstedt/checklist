@@ -50,14 +50,13 @@ import {
 import {
   BarButton,
   ChecklistRowStrip,
-  FolderEditRow,
-  FolderRow,
   MenuButton,
   MenuLink,
   NavItem,
   SectionHeader,
   SwipeToRemove,
 } from "./SideMenuRows.tsx";
+import { FolderEditRow, FolderRow } from "./SideMenuFolderRow.tsx";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 import { TrophyButton } from "./achievements/TrophyButton.tsx";
 import { FloatingPanel } from "./FloatingPanel.tsx";

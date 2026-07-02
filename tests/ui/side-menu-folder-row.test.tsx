@@ -2,16 +2,17 @@
 //
 // FolderRow renders two different action affordances depending on the pointer
 // type: a right-click Rename / Delete context menu on desktop, and a
-// swipe-revealed Edit / Delete strip on touch. The two are now separate
-// components (`FolderRowDesktop` / `FolderRowTouch`) dispatched by the
-// `desktop` flag, so the swipe hook never mounts on the desktop path. These
-// exercise each branch directly — the desktop context menu in particular has
-// no coverage through `SideMenu`, which renders touch-only under jsdom (no
-// `matchMedia`).
+// swipe-revealed Edit / Delete strip on touch. The variants
+// (`FolderRowDesktop` / `FolderRowTouch`) are dispatched by the `desktop`
+// flag, so the swipe hook never mounts on the desktop path. These exercise
+// each branch directly — the desktop context menu in particular has no
+// coverage through `SideMenu`, which renders touch-only under jsdom (no
+// `matchMedia`). FolderEditRow's commit / cancel / latch rules are pinned
+// here too.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { FolderRow } from "../../src/ui/SideMenuRows.tsx";
+import { FolderEditRow, FolderRow } from "../../src/ui/SideMenuFolderRow.tsx";
 import type { ContextMenuItem } from "../../src/ui/hooks/useContextMenu.ts";
 
 afterEach(cleanup);
@@ -132,5 +133,72 @@ describe("FolderRow touch", () => {
     renderRow({ desktop: false, openMenu });
     fireEvent.contextMenu(screen.getByRole("button", { name: /Work/ }));
     expect(openMenu).not.toHaveBeenCalled();
+  });
+});
+
+describe("FolderEditRow", () => {
+  function renderEdit(
+    overrides: Partial<React.ComponentProps<typeof FolderEditRow>> = {},
+  ) {
+    const onCommit = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <FolderEditRow
+        placeholder="Folder name"
+        onCommit={onCommit}
+        onCancel={onCancel}
+        {...overrides}
+      />,
+    );
+    const input = screen.getByPlaceholderText<HTMLInputElement>("Folder name");
+    return { input, onCommit, onCancel };
+  }
+
+  it("focuses the input on mount and seeds it with the initial name", () => {
+    const { input } = renderEdit({ initial: "Work" });
+    expect(input.value).toBe("Work");
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("commits the trimmed name on Enter", () => {
+    const { input, onCommit, onCancel } = renderEdit();
+    fireEvent.change(input, { target: { value: "  Recipes  " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith("Recipes");
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("commits on blur with a non-empty name", () => {
+    const { input, onCommit } = renderEdit();
+    fireEvent.change(input, { target: { value: "Recipes" } });
+    fireEvent.blur(input);
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith("Recipes");
+  });
+
+  it("cancels on blur when the name is empty or whitespace", () => {
+    const { input, onCommit, onCancel } = renderEdit();
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.blur(input);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("cancels on Escape without committing, even with a name typed", () => {
+    const { input, onCommit, onCancel } = renderEdit();
+    fireEvent.change(input, { target: { value: "Recipes" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onCommit).not.toHaveBeenCalled();
+    // The committed latch also swallows the blur that follows the Escape.
+    fireEvent.blur(input);
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("commits only once when Enter is followed by the blur it causes", () => {
+    const { input, onCommit } = renderEdit();
+    fireEvent.change(input, { target: { value: "Recipes" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.blur(input);
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith("Recipes");
   });
 });
