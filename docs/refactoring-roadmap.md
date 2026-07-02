@@ -49,30 +49,46 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`src/domain/checklists.ts` (905 lines) — split the domain grab-bag before
-  it breaches the 1000-line cap.** The file is pure and well-tested but has
-  grown to 32 exported functions spanning five distinct concerns: tree
-  helpers (`flattenItems`, `findItem`, `withChildren`, `updateItem`,
-  `removeItem`, `mapTree`, ~lines 25–135), checklist-level CRUD/metadata
-  (`createChecklist`, `renameChecklist`, `setChecklistAppearance`,
-  `setChecklistArchived`, `nextChecklistName`, ~137–280), item operations
-  (`addItem*`, `editItem`, `deleteItem`, `toggleItem`, `setAllChecked`,
-  ~281–711), archive operations (`archiveChecked`, `deleteChecked`,
-  `setArchived`, `activeItems`, `archivedItems`, `archivedByChecklist`,
-  ~484–611), and move/reorder/display transforms (`moveItem`,
-  `moveItemInto`, `insertRelative`, `sortCheckedToBottom`, `displayItems`,
-  `moveDisplayedItem`, `flattenForDisplay`, `progress`, ~612–905). At 95
-  lines of headroom under the CI-enforced cap (§20.5), the next few domain
-  features force either a rushed split or an unjustified
-  `allow-large-file` opt-out. **Plan:** split by the five concerns above
-  into sibling modules (e.g. `item-tree.ts`, `checklist-ops.ts`,
-  `item-ops.ts`, `archive-ops.ts`, `item-display.ts`); keep
-  `checklists.ts` as a barrel re-export so the 10 importing files stay
-  untouched, then split `tests/domain/checklists.test.ts` to mirror. Ship
-  as two PRs if the diff exceeds ~500 lines (item ops first, display
-  second). **Risk:** low — pure functions, no DOM/I/O, full mirror test
-  coverage pins behaviour; the barrel keeps the public API byte-identical.
-  Verify coverage per new file doesn't drop. **Severity: 5.**
+- **`src/domain/checklists.ts` (800 lines) — split the domain grab-bag before
+  it breaches the 1000-line cap.** Multi-PR split by concern into sibling
+  modules, with `checklists.ts` kept as a barrel re-export so the ~10
+  importing files stay untouched and the public API stays byte-identical.
+  **Step 1 landed (2026-07):** the tree primitives (`withChildren`,
+  `flattenItems`, `findItem`, `updateItem`, `removeItem`, `mapTree`) moved to
+  `src/domain/item-tree.ts` (128 lines, the shared foundation every other
+  concern imports); the barrel re-exports the two public ones and imports the
+  four internal helpers for local use. `checklists.ts` dropped 905→800.
+  **Remaining seams (one PR each, in dependency order):**
+  - **`checklist-ops.ts`** — checklist-level CRUD/metadata (`instantiate`,
+    `createChecklist`, `renameChecklist`, `setChecklistAppearance`,
+    `setChecklistArchived`, `activeChecklists`, `archivedChecklists`,
+    `nextChecklistName`). Independent leaf: uses no tree helpers, so it can be
+    lifted in isolation. ~130 lines.
+  - **`archive-ops.ts`** — `archiveChecked`, `deleteChecked`, `setArchived`,
+    `activeItems`, `archivedItems`, `archivedByChecklist` (+ `ArchivedGroup`).
+    Imports `flattenItems`/`mapTree`/`withChildren`/`updateItem` from
+    `item-tree.ts`. Extract before `item-ops`/`item-display` since both import
+    `activeItems` from it.
+  - **`item-ops.ts`** — add/edit/delete/toggle (`addItem`, `addItems`,
+    `addItemAfter`, `addItemsAfter`, `editItem`, `deleteItem`, `toggleItem`,
+    `setAllChecked`, + private `spliceAfter`). Imports tree helpers and
+    `activeItems` (for `setAllChecked`).
+  - **`item-display.ts`** — move/reorder/display transforms (`moveItem`,
+    `moveItemInto`, `sortCheckedToBottom`, `displayItems`, `moveDisplayedItem`,
+    `isComplete`, `progress`, `flattenForDisplay`, + private `structureKey`,
+    `insertRelative`; `DropMode`, `DisplayRow`). Imports tree helpers +
+    `activeItems`.
+
+  Each seam re-exports its public names through the barrel; internal-only
+  helpers stay out of the barrel. The existing `tests/domain/checklists.test.ts`
+  keeps importing the barrel and passes unchanged, so a per-seam test-file
+  mirror is optional polish, not required — but a newly-exposed private helper
+  (as `item-tree`'s four were) is the moment to add its direct unit tests.
+  **Risk:** low — pure functions, no DOM/I/O; the barrel keeps the public API
+  byte-identical and the full suite pins behaviour. Watch for a `no-op returns
+  the same reference` contract when moving helpers: several callers rely on it
+  to skip writes. Verify coverage per new file doesn't drop (`item-tree.ts`
+  landed at 100%). **Severity: 5.**
 
 ### Severity 3–4 — nits with leverage
 
