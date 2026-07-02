@@ -157,7 +157,10 @@ describe("createBackendFactory", () => {
 
   it("writes the browser adapter's bytes into the injected storage", async () => {
     const storage = fakeStorage();
-    const factory = createBackendFactory({ kind: "browser" }, deps({ storage }));
+    const factory = createBackendFactory(
+      { kind: "browser" },
+      deps({ storage }),
+    );
     await factory.makeInner("work").save('{"v":1}');
     // The bytes land in the injected store, not a real localStorage.
     expect(storage.length).toBe(1);

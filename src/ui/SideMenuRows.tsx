@@ -592,7 +592,10 @@ function FolderRowTouch({
 // Desktop right-click offers Rename / Delete; touch reveals an Edit / Delete
 // strip on a left swipe. Splitting on `desktop` here (rather than branching
 // inside one component) keeps the swipe hook off the desktop path entirely.
-export function FolderRow({ desktop, ...props }: FolderRowProps & {
+export function FolderRow({
+  desktop,
+  ...props
+}: FolderRowProps & {
   desktop: boolean;
 }) {
   return desktop ? (

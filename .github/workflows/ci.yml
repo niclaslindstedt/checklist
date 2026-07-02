@@ -26,6 +26,7 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run lint
+      - run: npm run fmt:check
       # Fail if public/favicon.svg was edited without rerunning
       # `make icons` and committing the regenerated PNG/ICO set.
       - run: make icons-check

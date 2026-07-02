@@ -98,17 +98,6 @@ _None pending._
 
 - The `SideMenuRows.tsx` folder-row extraction above is mechanical
   (component relocation plus a test re-point) and qualifies as an easy win.
-- **`make fmt-check` fails on `main` — 8 source files drifted from the
-  lockfile's Prettier (3.8.4).** `src/app/drag-drop-resolver.ts`,
-  `src/storage/backend-factory.ts`, `src/ui/hooks/useComposer.ts`,
-  `src/ui/SideMenuRows.tsx`, and 4 test files fail `prettier --check .`;
-  CI never catches it because `ci.yml` runs build/test/lint but **not**
-  `fmt-check`, so the drift (likely from a Prettier minor bump that
-  changed output) sits unnoticed while the PR-template checklist tells
-  every contributor to run it. **Plan:** run `make fmt`, commit the 8
-  reformatted files, and add a `make fmt-check` step to `ci.yml` so the
-  gap can't reopen. **Risk:** none — whitespace-only diff; `make test`
-  confirms. **Severity: 3.**
 - **`src/app/App.tsx:458` — the repo's only lint warning
   (`react-hooks/exhaustive-deps`).** The sync-status `useMemo` lists
   `checklist.reload` in its dependency array but the closure reads it as
@@ -125,7 +114,13 @@ _None pending._
 
 ## Landed
 
-_None yet — roadmap reset to a clean slate (2026-07)._
+- **`make fmt-check` drift fixed and gated in CI** (2026-07) — reformatted
+  the 8 files that had drifted from the lockfile's Prettier 3.8.4
+  (`src/app/drag-drop-resolver.ts`, `src/storage/backend-factory.ts`,
+  `src/ui/hooks/useComposer.ts`, `src/ui/SideMenuRows.tsx`, and 4 test
+  files; line-wrap-only diff) and added `npm run fmt:check` to the `test`
+  job in `ci.yml` so formatting drift now fails CI instead of sitting
+  unnoticed. Full suite (1119 tests) green. Was Severity 3 (easy win).
 
 ## Investigated and skipped
 

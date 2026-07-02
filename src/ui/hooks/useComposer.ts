@@ -214,5 +214,12 @@ export function useComposer(opts: ComposerOptions): Composer {
     close,
   ]);
 
-  return { kind: state.kind, active, startInline, startChild, startAfter, close };
+  return {
+    kind: state.kind,
+    active,
+    startInline,
+    startChild,
+    startAfter,
+    close,
+  };
 }
