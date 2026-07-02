@@ -394,6 +394,19 @@ describe("addItemAfter", () => {
     const next = addItemAfter(seeded, { id: "x", title: "X" }, "ghost", NOW);
     expect(next.items.map((i) => i.id)).toEqual(["a", "b", "c", "x"]);
   });
+
+  it("leaves an earlier parent's subtree untouched when inserting after a nested item", () => {
+    let c = addItem(base, { id: "p1", title: "P1" }, NOW);
+    c = addItem(c, { id: "p1k", title: "P1 Kid" }, NOW, "bottom", "p1");
+    c = addItem(c, { id: "p2", title: "P2" }, NOW);
+    c = addItem(c, { id: "p2k", title: "P2 Kid" }, NOW, "bottom", "p2");
+    // afterId lives under the second parent — the first parent's subtree is
+    // recursed into, finds nothing, and is returned as-is.
+    const next = addItemAfter(c, { id: "x", title: "X" }, "p2k", NOW);
+    expect(next.items.map((i) => i.id)).toEqual(["p1", "p2"]);
+    expect(next.items[0]?.children?.map((i) => i.id)).toEqual(["p1k"]);
+    expect(next.items[1]?.children?.map((i) => i.id)).toEqual(["p2k", "x"]);
+  });
 });
 
 describe("addItemsAfter", () => {
@@ -887,6 +900,22 @@ describe("nested sub-items", () => {
       expect(moveItemInto(c, "i9", "i1", "into", LATER)).toBe(c);
       // Dropping i1 before i2 is where it already sits — no change.
       expect(moveItemInto(c, "i1", "i2", "before", LATER)).toBe(c);
+    });
+
+    it("drops before a nested target, leaving an earlier parent's subtree intact", () => {
+      let c = listOf("A", "B", "C", "D", "E");
+      c = moveItemInto(c, "i2", "i1", "into", NOW); // B under A
+      c = moveItemInto(c, "i4", "i3", "into", NOW); // D under C
+      // Drag E before D (nested under C). A's subtree is recursed first, finds
+      // nothing, and is returned as-is; the insert lands inside C.
+      const moved = moveItemInto(c, "i5", "i4", "before", LATER);
+      expect(moved.items.map((it) => it.id)).toEqual(["i1", "i3"]);
+      expect(moved.items[0]!.children?.map((it) => it.id)).toEqual(["i2"]);
+      expect(moved.items[1]!.children?.map((it) => it.id)).toEqual([
+        "i5",
+        "i4",
+      ]);
+      expect(moved.updatedAt).toBe(LATER);
     });
   });
 
