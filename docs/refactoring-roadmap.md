@@ -76,28 +76,10 @@ _None pending._
 
 ### Severity 3–4 — nits with leverage
 
-- **`src/ui/SideMenuRows.tsx` (732 lines) — extract the folder-row family
-  into `SideMenuFolderRow.tsx`.** The file mixes generic drawer building
-  blocks (`SectionHeader`, `NavItem`, `SwipeToRemove`, `MenuButton`,
-  `MenuLink`, ~lines 38–301) with the folder-specific composite
-  (`FolderRowHeader`, `FolderRowDesktop`, `FolderRowTouch`, `FolderRow`,
-  `FolderEditRow`, ~lines 391–666). The two variants also each render
-  `<FolderRowHeader …>` with an identical prop set (lines 498–505 and
-  578–585), so any header prop change must be made twice. **Plan:** move
-  the five folder components to `src/ui/SideMenuFolderRow.tsx` (~275
-  lines, leaving `SideMenuRows.tsx` at ~460), and have the variants share
-  the header element (built once in the thin `FolderRow` dispatcher or a
-  local helper) so the prop set lives in one place. Re-point the folder
-  cases in `tests/ui/side-menu-rows.test.tsx` to the new module in the
-  same PR. **Risk:** very low — pure presentational relocation with
-  existing test coverage of both desktop (context menu) and touch (swipe
-  strip) paths; smoke-check folder expand/collapse, rename, delete in the
-  drawer. **Severity: 4.**
+_None pending._
 
 ### Easy wins
 
-- The `SideMenuRows.tsx` folder-row extraction above is mechanical
-  (component relocation plus a test re-point) and qualifies as an easy win.
 - **`src/app/App.tsx:458` — the repo's only lint warning
   (`react-hooks/exhaustive-deps`).** The sync-status `useMemo` lists
   `checklist.reload` in its dependency array but the closure reads it as
@@ -113,6 +95,22 @@ _None pending._
   warnings). **Severity: 3.**
 
 ## Landed
+
+- **Folder-row family extracted from `SideMenuRows.tsx` into
+  `SideMenuFolderRow.tsx`** (2026-07) — moved `FolderRowHeader`,
+  `FolderRowDesktop`, `FolderRowTouch`, `FolderRow`, `FolderEditRow`, the
+  `OpenMenu` type, and `FOLDER_DROP_CLASS` to the new module (335 lines),
+  leaving `SideMenuRows.tsx` (411 lines) to the generic drawer building
+  blocks; `REMOVE_ACTION_W` is now exported so both files share one swipe-
+  strip geometry. The twice-rendered `FolderRowHeader` prop set is deduped:
+  the thin `FolderRow` dispatcher builds the header element once and hands
+  it to whichever variant it mounts. Pure presentational relocation, no
+  behaviour change — the 8 existing folder-row cases moved to
+  `tests/ui/side-menu-folder-row.test.tsx`, and `FolderEditRow`'s
+  previously-unpinned commit / cancel / `committed`-latch rules gained 6
+  direct cases (written green against the pre-refactor code first). New
+  module at 100% line/function coverage; full suite 1125 tests green. Was
+  Severity 4 (easy win).
 
 - **`make fmt-check` drift fixed and gated in CI** (2026-07) — reformatted
   the 8 files that had drifted from the lockfile's Prettier 3.8.4
