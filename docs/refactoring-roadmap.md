@@ -80,21 +80,21 @@ _None pending._
 
 ### Easy wins
 
-- **`src/app/App.tsx:458` — the repo's only lint warning
-  (`react-hooks/exhaustive-deps`).** The sync-status `useMemo` lists
-  `checklist.reload` in its dependency array but the closure reads it as
-  `() => void checklist.reload()`, so eslint demands the whole `checklist`
-  object. The listed field-level deps make the memo behave correctly
-  today, but the warning defeats the "zero-warning linter" claim in
-  `AGENTS.md` and trains readers to ignore lint output. **Plan:**
-  destructure `const { reload } = checklist` (or reference a
-  pre-captured callback) so the closure's dependency matches the array;
-  no dependency-array change, no behaviour change. **Risk:** none —
-  verify the memo still recreates on the same transitions
-  (`tests/` sync-status coverage plus `make lint` going to zero
-  warnings). **Severity: 3.**
+_None pending._
 
 ## Landed
+
+- **`src/app/App.tsx` sync-status `useMemo` lint warning cleared**
+  (2026-07) — the memo's `onReload` closure called `checklist.reload()`
+  through the whole object, so `react-hooks/exhaustive-deps` demanded
+  `checklist` in the dependency array even though every field was listed
+  individually. A `reload` local was already destructured a few lines up
+  (`const { reload } = checklist` at line 244, for the pull-to-refresh
+  wrapper), so the fix was to point the closure at that existing local and
+  swap `checklist.reload` for `reload` in the dep array — no new
+  destructure, no behaviour change (same callback reference). `make lint`
+  now reports zero warnings; full suite 1125 tests green. Was Severity 3
+  (easy win); narrower than the roadmap plan (no new destructure needed).
 
 - **Folder-row family extracted from `SideMenuRows.tsx` into
   `SideMenuFolderRow.tsx`** (2026-07) — moved `FolderRowHeader`,
