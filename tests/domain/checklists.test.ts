@@ -496,12 +496,29 @@ describe("setChecklistAppearance", () => {
     expect(cleared.updatedAt).toBe(LATER);
   });
 
+  it("clears the colour with null, keeping the glyph and bumping updatedAt", () => {
+    const styled = setChecklistAppearance(
+      base,
+      { glyph: "cart", color: "#98c379" },
+      NOW,
+    );
+    const cleared = setChecklistAppearance(styled, { color: null }, LATER);
+    expect("color" in cleared).toBe(false);
+    expect(cleared.glyph).toBe("cart");
+    expect(cleared.updatedAt).toBe(LATER);
+  });
+
   it("is a no-op when nothing changes (same reference, no updatedAt bump)", () => {
     expect(setChecklistAppearance(base, {}, LATER)).toBe(base);
     expect(setChecklistAppearance(base, { glyph: null }, LATER)).toBe(base);
+    expect(setChecklistAppearance(base, { color: null }, LATER)).toBe(base);
     const styled = setChecklistAppearance(base, { glyph: "cart" }, NOW);
     expect(setChecklistAppearance(styled, { glyph: "cart" }, LATER)).toBe(
       styled,
+    );
+    const colored = setChecklistAppearance(base, { color: "#98c379" }, NOW);
+    expect(setChecklistAppearance(colored, { color: "#98c379" }, LATER)).toBe(
+      colored,
     );
   });
 

@@ -49,7 +49,7 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`src/domain/checklists.ts` (800 lines) — split the domain grab-bag before
+- **`src/domain/checklists.ts` (675 lines) — split the domain grab-bag before
   it breaches the 1000-line cap.** Multi-PR split by concern into sibling
   modules, with `checklists.ts` kept as a barrel re-export so the ~10
   importing files stay untouched and the public API stays byte-identical.
@@ -58,12 +58,12 @@ _None pending._
   `src/domain/item-tree.ts` (128 lines, the shared foundation every other
   concern imports); the barrel re-exports the two public ones and imports the
   four internal helpers for local use. `checklists.ts` dropped 905→800.
+  **Step 2 landed (2026-07):** checklist-level CRUD/metadata moved to
+  `src/domain/checklist-ops.ts` (148 lines, the independent leaf — no tree
+  helpers); the barrel re-exports all eight. `checklists.ts` dropped 800→675.
+  Closed the pre-existing `setChecklistAppearance` colour-branch coverage gap
+  in the same PR — `checklist-ops.ts` landed at 100% across all metrics.
   **Remaining seams (one PR each, in dependency order):**
-  - **`checklist-ops.ts`** — checklist-level CRUD/metadata (`instantiate`,
-    `createChecklist`, `renameChecklist`, `setChecklistAppearance`,
-    `setChecklistArchived`, `activeChecklists`, `archivedChecklists`,
-    `nextChecklistName`). Independent leaf: uses no tree helpers, so it can be
-    lifted in isolation. ~130 lines.
   - **`archive-ops.ts`** — `archiveChecked`, `deleteChecked`, `setArchived`,
     `activeItems`, `archivedItems`, `archivedByChecklist` (+ `ArchivedGroup`).
     Imports `flattenItems`/`mapTree`/`withChildren`/`updateItem` from
