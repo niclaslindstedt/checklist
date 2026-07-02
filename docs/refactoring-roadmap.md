@@ -49,53 +49,7 @@ _None pending._
 
 ### Severity 5–6 — friction
 
-- **`src/domain/checklists.ts` (562 lines) — split the domain grab-bag before
-  it breaches the 1000-line cap.** Multi-PR split by concern into sibling
-  modules, with `checklists.ts` kept as a barrel re-export so the ~10
-  importing files stay untouched and the public API stays byte-identical.
-  **Step 1 landed (2026-07):** the tree primitives (`withChildren`,
-  `flattenItems`, `findItem`, `updateItem`, `removeItem`, `mapTree`) moved to
-  `src/domain/item-tree.ts` (128 lines, the shared foundation every other
-  concern imports); the barrel re-exports the two public ones and imports the
-  four internal helpers for local use. `checklists.ts` dropped 905→800.
-  **Step 2 landed (2026-07):** checklist-level CRUD/metadata moved to
-  `src/domain/checklist-ops.ts` (148 lines, the independent leaf — no tree
-  helpers); the barrel re-exports all eight. `checklists.ts` dropped 800→675.
-  Closed the pre-existing `setChecklistAppearance` colour-branch coverage gap
-  in the same PR — `checklist-ops.ts` landed at 100% across all metrics.
-  **Step 3 landed (2026-07):** archive operations moved to
-  `src/domain/archive-ops.ts` (141 lines) — `archiveChecked`, `deleteChecked`,
-  `setArchived`, `activeItems`, `archivedItems`, `archivedByChecklist` (+
-  `ArchivedGroup`); it imports `flattenItems`/`mapTree`/`withChildren`/
-  `updateItem` from `item-tree.ts`. The barrel imports `activeItems` back for
-  local use (the item/display ops still need it) and re-exports the rest.
-  `checklists.ts` dropped 675→562, and its now-unused `mapTree`/`Snapshot`
-  imports were removed. Closed the `setArchived` no-op-branch coverage gap —
-  `archive-ops.ts` landed at 100% across all metrics.
-  **Remaining seam (the last PR):**
-  - **`item-ops.ts` + `item-display.ts`** — everything left in `checklists.ts`:
-    add/edit/delete/toggle (`addItem`, `addItems`, `addItemAfter`,
-    `addItemsAfter`, `editItem`, `deleteItem`, `toggleItem`, `setAllChecked`, +
-    private `spliceAfter`) and the move/reorder/display transforms (`moveItem`,
-    `moveItemInto`, `sortCheckedToBottom`, `displayItems`, `moveDisplayedItem`,
-    `isComplete`, `progress`, `flattenForDisplay`, + private `structureKey`,
-    `insertRelative`; `DropMode`, `DisplayRow`). Both import the tree helpers
-    and `activeItems` from `archive-ops.ts`. At 562 lines `checklists.ts` is
-    already comfortably under the cap, so this last split is optional polish —
-    ship it as one PR (both modules) or two (`item-ops` first). After it the
-    barrel is a pure re-export shell.
-
-  Each seam re-exports its public names through the barrel; internal-only
-  helpers stay out of the barrel. The existing `tests/domain/checklists.test.ts`
-  keeps importing the barrel and passes unchanged, so a per-seam test-file
-  mirror is optional polish, not required — but a newly-exposed private helper
-  (as `item-tree`'s four were) is the moment to add its direct unit tests.
-  **Risk:** low — pure functions, no DOM/I/O; the barrel keeps the public API
-  byte-identical and the full suite pins behaviour. Watch for a `no-op returns
-  the same reference` contract when moving helpers: several callers rely on it
-  to skip writes (each split so far has closed one such gap the move exposed).
-  Verify coverage per new file doesn't drop (`item-tree`, `checklist-ops`, and
-  `archive-ops` each landed at 100%). **Severity: 5.**
+_None pending._
 
 ### Severity 3–4 — nits with leverage
 
@@ -106,6 +60,29 @@ _None pending._
 _None pending._
 
 ## Landed
+
+- **`src/domain/checklists.ts` (905 lines) split into cohesive sibling
+  modules behind a barrel** (2026-07) — a four-PR, one-seam-per-PR split that
+  left the public API byte-identical (the ~10 importing files and
+  `tests/domain/checklists.test.ts` never changed their imports) and took
+  `checklists.ts` from 905 lines to a **63-line pure re-export shell**:
+  - `item-tree.ts` (128) — tree primitives (`withChildren`, `flattenItems`,
+    `findItem`, `updateItem`, `removeItem`, `mapTree`); the four formerly-private
+    helpers gained direct unit tests (`tests/domain/item-tree.test.ts`, 18
+    cases).
+  - `checklist-ops.ts` (148) — checklist-level CRUD/metadata (the independent
+    leaf: no tree helpers).
+  - `archive-ops.ts` (141) — archive/restore items and the archived-items
+    queries; exports `activeItems`, which the item/display ops import back.
+  - `item-ops.ts` (287) — add/edit/delete/toggle + bulk check.
+  - `item-display.ts` (257) — move/reorder + the display-order view transforms.
+
+  Each move closed the reference-equality / branch coverage gap it exposed, so
+  `item-tree`, `checklist-ops`, and `archive-ops` each landed at 100% across
+  all metrics and `item-ops`/`item-display` at 100% line/function coverage
+  (remaining gaps are near-unreachable defensive guards, unchanged from the
+  pre-split code). Pure relocation, no behaviour change; full suite green at
+  each step (1147 tests after the final PR). Was Severity 5.
 
 - **`src/app/App.tsx` sync-status `useMemo` lint warning cleared**
   (2026-07) — the memo's `onReload` closure called `checklist.reload()`
