@@ -192,6 +192,18 @@ describe("free-standing checklist item operations", () => {
     expect(activeItems(restored).map((it) => it.id)).toEqual(["i1"]);
   });
 
+  it("is a no-op when the archived state is unchanged (same reference)", () => {
+    const later = "2026-02-02T00:00:00.000Z";
+    const withItem = addItem(base, { id: "i1", title: "A" }, NOW);
+    // Restoring an already-active item, and archiving an already-archived one,
+    // both leave the document untouched — no updatedAt bump, no write.
+    expect(setArchived(withItem, "i1", false, later)).toBe(withItem);
+    const archived = setArchived(withItem, "i1", true, NOW);
+    expect(setArchived(archived, "i1", true, later)).toBe(archived);
+    // An unknown id can't change anything either.
+    expect(setArchived(withItem, "ghost", true, later)).toBe(withItem);
+  });
+
   it("deletes an item entirely", () => {
     const withItem = addItem(base, { id: "i1", title: "A" }, NOW);
     expect(deleteItem(withItem, "i1", NOW).items).toHaveLength(0);
