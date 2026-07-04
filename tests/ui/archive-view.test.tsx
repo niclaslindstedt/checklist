@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import { ArchiveView } from "../../src/ui/ArchiveView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
@@ -75,5 +75,23 @@ describe("ArchiveView", () => {
     renderView({ remove });
     fireEvent.click(screen.getAllByLabelText("Delete")[0]!);
     expect(remove).toHaveBeenCalledWith("i1");
+  });
+
+  it("hides the empty-archive button when nothing is archived", () => {
+    renderView({ archivedGroups: [] });
+    expect(screen.queryByLabelText("Empty archive")).toBeNull();
+  });
+
+  it("empties the archive after confirming", async () => {
+    const emptyArchive = vi.fn();
+    renderView({ emptyArchive });
+    // The header button only opens the confirm; it must not empty on its own.
+    fireEvent.click(screen.getByLabelText("Empty archive"));
+    expect(emptyArchive).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("alertdialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Empty archive" }),
+    );
+    await waitFor(() => expect(emptyArchive).toHaveBeenCalledTimes(1));
   });
 });

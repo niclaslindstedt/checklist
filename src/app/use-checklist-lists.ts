@@ -21,6 +21,7 @@ import type { MutableRefObject } from "react";
 import { unlock } from "../achievements/bus.ts";
 import {
   createChecklist,
+  emptyArchive as emptyArchiveOp,
   nextChecklistName,
   progress,
   renameChecklist as renameChecklistOp,
@@ -107,6 +108,13 @@ export interface ChecklistLists {
   archiveChecklist: (id: string) => void;
   /** Restore an archived checklist back into the switcher and select it. */
   unarchiveChecklist: (id: string) => void;
+  /**
+   * Permanently empty the archive in one sweep — drop every archived
+   * checklist and every archived item across the document, the bulk
+   * counterpart to the archive view's per-row Delete. A no-op when nothing is
+   * archived. Recoverable via undo (`commit` records the whole document).
+   */
+  emptyArchive: () => void;
   /** The folders defined in this namespace, oldest first, with their counts. */
   folders: FolderSummary[];
   /** Create a new, empty folder and add it to the registry. */
@@ -345,6 +353,19 @@ export function useChecklistLists(deps: {
     [docRef, commit, notify, t, setActiveId],
   );
 
+  const emptyArchive = useCallback(() => {
+    const prev = docRef.current;
+    const next = emptyArchiveOp(prev, now());
+    // Nothing archived anywhere — leave the document (and the undo timeline)
+    // untouched so the gesture is a true no-op. Emptying only drops archived
+    // things, so the active list always survives and the selection stays put.
+    if (next === prev) return;
+    const label = t("toast.archiveEmptied");
+    commit(next, label);
+    notify(label);
+    unlock("archiveEmptied");
+  }, [docRef, commit, notify, t]);
+
   const createFolder = useCallback(
     (name: string) => {
       const trimmed = name.trim();
@@ -525,6 +546,7 @@ export function useChecklistLists(deps: {
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,
+      emptyArchive,
       folders,
       createFolder,
       renameFolder,
@@ -545,6 +567,7 @@ export function useChecklistLists(deps: {
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,
+      emptyArchive,
       folders,
       createFolder,
       renameFolder,

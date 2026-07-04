@@ -21,6 +21,9 @@ const nav = {
   archivedLists: "Archived lists",
   storage: "Storage",
   archiveEmpty: "Nothing archived yet.",
+  emptyArchive: "Empty archive",
+  emptyArchiveConfirm:
+    "Permanently delete everything in the archive — archived items and archived lists alike? You can still undo this.",
   restore: "Restore item",
   restoreList: "Restore list",
   undo: "Undo",

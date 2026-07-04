@@ -173,6 +173,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Håll inne lägg-till-knappen (+) och tryck på Ta bort avklarade — ett tryck rensar varje avbockad post från listan på en gång, och ångra tar tillbaka dem om du råkade fel.",
     },
+    archiveEmptied: {
+      name: "Töm valvet",
+      condition: "Töm hela arkivet på en gång.",
+      learnMore:
+        "Öppna Arkivvyn (längst ner i sidomenyn) och tryck på Töm arkivet i dess rubrik — en bekräftelse rensar varje arkiverad post och arkiverad lista på en gång. Ångra tar tillbaka alltihop om du ändrar dig.",
+    },
     seeker: {
       name: "Sökare",
       condition: "Sök igenom dina checklistor.",

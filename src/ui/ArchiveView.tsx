@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useT } from "../i18n";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
@@ -40,6 +41,7 @@ function ArchiveViewImpl() {
     archivedChecklists,
     unarchiveChecklist,
     removeChecklist,
+    emptyArchive,
   } = useChecklistContext();
   const t = useT();
   const desktop = useDesktopPointer();
@@ -48,6 +50,10 @@ function ArchiveViewImpl() {
     open: openMenu,
     close: closeMenu,
   } = useContextMenu();
+  // Guards the destructive "empty the archive" sweep behind a confirm beat —
+  // it wipes every archived list and item at once, so unlike a single-row
+  // delete it asks first.
+  const [confirmingEmpty, setConfirmingEmpty] = useState(false);
   // Which archived-item groups the user has collapsed. Default-expanded, so
   // only the ids that have been toggled shut live here. Local view state —
   // it doesn't travel with the document.
@@ -67,11 +73,24 @@ function ArchiveViewImpl() {
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
-      <header className="mb-2 flex items-center justify-between border-b border-line px-1 pb-3">
+      <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
         <h1 className="text-lg font-semibold tracking-wide text-fg-bright">
           {t("nav.archive")}
         </h1>
-        <span className="text-sm text-muted tabular-nums">{count}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted tabular-nums">{count}</span>
+          {count > 0 && (
+            <button
+              type="button"
+              onClick={() => setConfirmingEmpty(true)}
+              aria-label={t("nav.emptyArchive")}
+              title={t("nav.emptyArchive")}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded text-muted hover:bg-danger/10 hover:text-danger"
+            >
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto [overscroll-behavior:contain]">
@@ -192,6 +211,19 @@ function ArchiveViewImpl() {
           onClose={closeMenu}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmingEmpty}
+        title={t("nav.emptyArchive")}
+        description={t("nav.emptyArchiveConfirm")}
+        confirmLabel={t("nav.emptyArchive")}
+        tone="danger"
+        onConfirm={() => {
+          emptyArchive();
+          setConfirmingEmpty(false);
+        }}
+        onCancel={() => setConfirmingEmpty(false)}
+      />
     </div>
   );
 }
