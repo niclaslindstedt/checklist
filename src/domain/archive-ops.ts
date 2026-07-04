@@ -56,6 +56,28 @@ export function deleteChecked(checklist: Checklist, now: string): Checklist {
 }
 
 /**
+ * Permanently empty the archive across the whole document: drop every
+ * wholly-archived checklist, and prune every archived item (and its subtree)
+ * from the surviving active lists. The bulk counterpart to the archive view's
+ * per-row Delete, acting on both kinds of archived thing at once. A no-op
+ * (nothing archived anywhere) returns the same snapshot, so it never writes.
+ */
+export function emptyArchive(snapshot: Snapshot, now: string): Snapshot {
+  const hasArchived = snapshot.checklists.some(
+    (c) => c.archived || flattenItems(c.items).some((it) => it.archived),
+  );
+  if (!hasArchived) return snapshot;
+  const checklists = snapshot.checklists
+    .filter((c) => !c.archived)
+    .map((c) =>
+      flattenItems(c.items).some((it) => it.archived)
+        ? { ...c, items: activeItems(c), updatedAt: now }
+        : c,
+    );
+  return { ...snapshot, checklists };
+}
+
+/**
  * Mark an item archived (hidden) or active again, without destroying it. The
  * flag rides one node only — its subtree travels with it, hidden along with
  * its archived parent and restored when the parent is.

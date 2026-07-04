@@ -48,6 +48,7 @@ export function makeChecklistValue(
     removeChecklist: noop,
     archiveChecklist: noop,
     unarchiveChecklist: noop,
+    emptyArchive: noop,
     folders: [],
     createFolder: noop,
     renameFolder: noop,

@@ -316,6 +316,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "archiveEmptied",
+    tier: "intermediate",
+    glyph: TrashGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "seeker",
     tier: "intermediate",
     glyph: SearchGlyph,

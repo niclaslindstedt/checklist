@@ -180,6 +180,12 @@ const achievements = {
       learnMore:
         "Long-press the add (+) button and tap Delete finished — one tap clears every checked item from the list in one go, and undo brings them back if you slipped.",
     },
+    archiveEmptied: {
+      name: "Empty the Vault",
+      condition: "Empty the whole archive at once.",
+      learnMore:
+        "Open the Archive view (foot of the side menu) and tap Empty archive in its header — one confirm wipes every archived item and archived list at once. Undo brings the whole lot back if you change your mind.",
+    },
     seeker: {
       name: "Seeker",
       condition: "Search across your checklists.",

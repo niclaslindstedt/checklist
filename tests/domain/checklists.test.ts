@@ -14,6 +14,7 @@ import {
   deleteChecked,
   deleteItem,
   displayItems,
+  emptyArchive,
   editItem,
   findItem,
   flattenForDisplay,
@@ -583,6 +584,98 @@ describe("active / archived checklist selectors", () => {
       checklists: [activeList, archivedList, c],
     });
     expect(groups.map((g) => g.id)).toEqual(["a"]);
+  });
+});
+
+describe("emptyArchive", () => {
+  const LATER = "2026-02-02T00:00:00.000Z";
+
+  it("drops archived lists and prunes archived items, keeping active ones", () => {
+    // Active list `a`: one archived item `ai`, one live item `live`.
+    let a = addItem(
+      createChecklist("a", "Active", NOW),
+      {
+        id: "ai",
+        title: "buried",
+      },
+      NOW,
+    );
+    a = addItem(a, { id: "live", title: "kept" }, NOW);
+    a = setArchived(a, "ai", true, NOW);
+    // Wholly-archived list `b`.
+    const b = setChecklistArchived(
+      createChecklist("b", "Gone", NOW),
+      true,
+      NOW,
+    );
+
+    const next = emptyArchive({ templates: [], checklists: [a, b] }, LATER);
+
+    // The archived list is gone; only the active list survives.
+    expect(next.checklists.map((c) => c.id)).toEqual(["a"]);
+    // Its archived item is pruned, its live item kept.
+    expect(next.checklists[0]!.items.map((i) => i.id)).toEqual(["live"]);
+    expect(next.checklists[0]!.updatedAt).toBe(LATER);
+  });
+
+  it("prunes an archived item nested under a live parent", () => {
+    let a = addItem(
+      createChecklist("a", "Active", NOW),
+      {
+        id: "p",
+        title: "Parent",
+      },
+      NOW,
+    );
+    a = addItem(a, { id: "k", title: "Kid" }, NOW, "bottom", "p");
+    a = setArchived(a, "k", true, NOW);
+
+    const next = emptyArchive({ templates: [], checklists: [a] }, LATER);
+
+    expect(flattenItems(next.checklists[0]!.items).map((i) => i.id)).toEqual([
+      "p",
+    ]);
+  });
+
+  it("returns the same snapshot when nothing is archived", () => {
+    const a = addItem(
+      createChecklist("a", "Active", NOW),
+      {
+        id: "i1",
+        title: "kept",
+      },
+      NOW,
+    );
+    const snapshot = { templates: [], checklists: [a] };
+    expect(emptyArchive(snapshot, LATER)).toBe(snapshot);
+  });
+
+  it("leaves a list with no archived items untouched", () => {
+    // One list has an archived item, another is all-active; only the first
+    // should be rewritten (and get a bumped updatedAt).
+    let a = addItem(
+      createChecklist("a", "Has archive", NOW),
+      {
+        id: "ai",
+        title: "buried",
+      },
+      NOW,
+    );
+    a = setArchived(a, "ai", true, NOW);
+    const b = addItem(
+      createChecklist("b", "Clean", NOW),
+      {
+        id: "bi",
+        title: "kept",
+      },
+      NOW,
+    );
+
+    const next = emptyArchive({ templates: [], checklists: [a, b] }, LATER);
+
+    // `b` is referentially unchanged; `a` is a fresh object.
+    expect(next.checklists[1]).toBe(b);
+    expect(next.checklists[0]).not.toBe(a);
   });
 });
 

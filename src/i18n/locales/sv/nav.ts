@@ -16,6 +16,9 @@ const nav: NavCatalog = {
   archivedLists: "Arkiverade listor",
   storage: "Lagring",
   archiveEmpty: "Inget arkiverat än.",
+  emptyArchive: "Töm arkivet",
+  emptyArchiveConfirm:
+    "Radera allt i arkivet permanent — både arkiverade poster och arkiverade listor? Du kan fortfarande ångra detta.",
   restore: "Återställ rad",
   restoreList: "Återställ lista",
   undo: "Ångra",

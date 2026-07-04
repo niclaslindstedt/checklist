@@ -35,6 +35,7 @@ export {
   archivedByChecklist,
   archivedItems,
   deleteChecked,
+  emptyArchive,
   setArchived,
 } from "./archive-ops.ts";
 export type { ArchivedGroup } from "./archive-ops.ts";

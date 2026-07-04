@@ -312,9 +312,25 @@ the row actions live in the [right-click menu](#right-click-menu); on
 touch they're inline buttons. Each item-group header is a disclosure
 button (carrying its item count and a chevron) that collapses just that
 list's items; the collapsed set is local, default-expanded view state and
-doesn't travel with the document. There is no composer and no reordering —
-items only ever enter the archive by being archived in the checklist
-view. Reached from the side menu.
+doesn't travel with the document. The header also carries an
+[Empty the archive](#empty-the-archive) button. There is no composer and
+no reordering — items only ever enter the archive by being archived in the
+checklist view. Reached from the side menu.
+
+### Empty the archive
+
+`emptyArchive` (`src/domain/archive-ops.ts`, wired through
+`src/app/use-checklist-lists.ts` and surfaced on the archive view's
+header). A trash button appears beside the header count whenever the
+archive holds anything (`count > 0`); tapping it raises a danger-tone
+[ConfirmDialog](#confirmation-dialog) before the sweep. Confirming
+permanently drops **every** archived thing at once — each wholly-archived
+checklist and every archived item (with its subtree) across the surviving
+active lists — the bulk counterpart to a per-row Delete. The active list is
+never archived, so it always survives and the selection stays put; a
+document with nothing archived is left untouched (a true no-op). The whole
+sweep is recorded on the undo timeline, so a single Undo brings it all
+back. Emptying the archive unlocks the **Empty the Vault** trophy.
 
 ### Side menu
 

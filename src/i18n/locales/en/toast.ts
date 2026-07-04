@@ -24,6 +24,7 @@ const toast = {
   itemsImported: "Imported {count} items",
   itemsArchived: "Archived {count} finished",
   itemsDeleted: "Deleted {count} finished",
+  archiveEmptied: "Emptied the archive",
   listCreated: "Created list “{name}”",
   listRenamed: "Renamed list to “{name}”",
   listRestyled: "Restyled list",
