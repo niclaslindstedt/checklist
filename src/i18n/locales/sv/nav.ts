@@ -21,6 +21,8 @@ const nav: NavCatalog = {
     "Radera allt i arkivet permanent — både arkiverade poster och arkiverade listor? Du kan fortfarande ångra detta.",
   restore: "Återställ rad",
   restoreList: "Återställ lista",
+  archiveDrawerTitle: "Arkiverat i {name}",
+  archiveDrawerEmpty: "Inget arkiverat i den här listan än.",
   undo: "Ångra",
   redo: "Gör om",
   search: "Sök",

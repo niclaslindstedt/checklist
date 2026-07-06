@@ -655,4 +655,67 @@ describe("ChecklistView", () => {
       // composer didn't swallow it as an import.
     });
   });
+
+  describe("archived drawer", () => {
+    // The active list in the harness is "list-0" (see context-harness), so an
+    // archived group under that id belongs to the list on screen.
+    const archivedGroups = [
+      {
+        id: "list-0",
+        name: "Checklist",
+        items: [
+          { id: "a1", title: "Old milk", checked: true, archived: true },
+        ] as ChecklistItem[],
+      },
+    ];
+
+    // Fake a single-finger touch on `el` (jsdom has no TouchEvent).
+    function touch(el: Element, type: string, y: number | null) {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "touches", {
+        value: y === null ? [] : [{ clientY: y }],
+      });
+      el.dispatchEvent(event);
+    }
+
+    // The scrolling item region carries the swipe-up listener.
+    const scrollRegion = (root: HTMLElement) =>
+      root.querySelector(".overflow-y-auto") as HTMLElement;
+
+    it("reveals the active list's archive on a swipe up at the bottom", () => {
+      const { container } = renderView({ archivedGroups });
+      // No drawer until the gesture crosses the trigger distance.
+      expect(screen.queryByRole("dialog")).toBeNull();
+      const region = scrollRegion(container);
+      act(() => touch(region, "touchstart", 200));
+      act(() => touch(region, "touchmove", 0));
+      act(() => touch(region, "touchend", null));
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toBeTruthy();
+      expect(screen.getByText("Old milk")).toBeTruthy();
+    });
+
+    it("does not arm when the active list has nothing archived", () => {
+      // Something archived, but in a different list than the one on screen.
+      const { container } = renderView({
+        archivedGroups: [{ ...archivedGroups[0]!, id: "other-list" }],
+      });
+      const region = scrollRegion(container);
+      act(() => touch(region, "touchstart", 200));
+      act(() => touch(region, "touchmove", 0));
+      act(() => touch(region, "touchend", null));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("restores an archived item from the drawer", () => {
+      const unarchive = vi.fn();
+      const { container } = renderView({ archivedGroups, unarchive });
+      const region = scrollRegion(container);
+      act(() => touch(region, "touchstart", 200));
+      act(() => touch(region, "touchmove", 0));
+      act(() => touch(region, "touchend", null));
+      fireEvent.click(screen.getByLabelText("Restore item"));
+      expect(unarchive).toHaveBeenCalledWith("a1");
+    });
+  });
 });

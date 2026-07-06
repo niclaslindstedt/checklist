@@ -1,11 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import { findItem, flattenForDisplay } from "../domain/checklists.ts";
 import { archivedTitlePool } from "../domain/suggestions.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
+import { ArchivedDrawer } from "./ArchivedDrawer.tsx";
 import { resolveActiveEditor } from "./activeEditor.ts";
 import { ChecklistGlyphButton } from "./ChecklistGlyphButton.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
@@ -24,6 +26,7 @@ import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 import { useReorderFlip } from "./hooks/useReorderFlip.ts";
+import { useSwipeUpReveal } from "./hooks/useSwipeUpReveal.ts";
 import { ArchiveIcon, TrashIcon } from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
@@ -61,6 +64,8 @@ function ChecklistViewImpl() {
     archive,
     archiveFinished,
     deleteFinished,
+    unarchive,
+    archivedGroups,
     reorder,
     sync,
     checklists,
@@ -349,6 +354,34 @@ function ChecklistViewImpl() {
     />
   ) : null;
 
+  // The active list's archived items, revealed by swiping up at the foot of
+  // the list. Derived from the whole-document archive grouping, filtered to
+  // this list — the drawer stays scoped to the list in front of the user.
+  const archivedForActive = useMemo(
+    () => archivedGroups.find((g) => g.id === activeChecklistId)?.items ?? [],
+    [archivedGroups, activeChecklistId],
+  );
+  const [archiveDrawerOpen, setArchiveDrawerOpen] = useState(false);
+  const closeArchiveDrawer = useCallback(() => setArchiveDrawerOpen(false), []);
+  const openArchiveDrawer = useCallback(() => {
+    setArchiveDrawerOpen(true);
+    unlock("peekBehind");
+  }, []);
+
+  // The scrolling item region — the swipe-up gesture arms only while it's at
+  // its bottom. Suppressed with nothing to reveal, while the drawer is
+  // already up, and while an editor or a reorder drag owns the surface.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useSwipeUpReveal(scrollRef, {
+    enabled:
+      archivedForActive.length > 0 &&
+      !archiveDrawerOpen &&
+      !editingId &&
+      !active &&
+      reorderCtl.draggingId === null,
+    onReveal: openArchiveDrawer,
+  });
+
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
       <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
@@ -390,7 +423,10 @@ function ChecklistViewImpl() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 [overscroll-behavior:contain] overflow-y-auto pb-24 sm:pb-0">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 [overscroll-behavior:contain] overflow-y-auto pb-24 sm:pb-0"
+      >
         {addItemPosition === "top" && draftRow}
         {items.length === 0 ? (
           !inline && (
@@ -491,6 +527,15 @@ function ChecklistViewImpl() {
           onClose={closeMenu}
         />
       )}
+
+      <ArchivedDrawer
+        open={archiveDrawerOpen}
+        onClose={closeArchiveDrawer}
+        listName={activeName}
+        items={archivedForActive}
+        onRestore={unarchive}
+        onDelete={remove}
+      />
     </div>
   );
 }
