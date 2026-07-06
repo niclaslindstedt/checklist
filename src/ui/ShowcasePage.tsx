@@ -94,7 +94,8 @@ export function ShowcasePage() {
               — typing a new item suggests matching titles from the list&apos;s
               archived items (fuzzy-matched, highlighted); press one to put it
               straight back on the list, so a groceries list gets faster the
-              longer you use it.
+              longer you use it. Swipe up at the foot of a list to peek at its
+              archive in a drawer and restore items directly.
             </li>
             <li>
               <strong className="text-fg-bright">Nest sub-items</strong> — drag

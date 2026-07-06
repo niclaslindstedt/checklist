@@ -344,6 +344,28 @@ doesn't travel with the document. The header also carries an
 no reordering — items only ever enter the archive by being archived in the
 checklist view. Reached from the side menu.
 
+### Archived drawer
+
+`src/ui/ArchivedDrawer.tsx` — a bottom sheet that surfaces **just the
+active list's** archived items without leaving for the full
+[Archive view](#archive-view). At the foot of a checklist, swiping up
+raises it: `useSwipeUpReveal` (`src/ui/hooks/useSwipeUpReveal.ts`) arms an
+upward drag that begins while the scrolling item region is at its bottom —
+the mirror image of [pull-to-refresh](#reload--pull-to-refresh) — and fires
+once the finger crosses the trigger distance and releases. `ChecklistView`
+derives the drawer's contents by filtering `archivedGroups` to the active
+list (`archivedForActive`); the gesture is suppressed with nothing to
+reveal, while the drawer is already open, and while an editor or a reorder
+drag owns the surface. Each row offers Restore (back into this list) and
+Delete (permanent), reusing the same `unarchive` / `remove` verbs as the
+archive view. The drawer is dismissed by swiping its header down (the
+header doubles as the grab area and tracks the finger, snapping back or
+sliding out on release), tapping the X in the header, pressing Escape, or
+tapping the backdrop; it slides up on open and down on close via a
+transform transition. Touch-only, like the other swipe gestures — the full
+archive stays the desktop path. First opening it unlocks the **Peek
+Behind** trophy.
+
 ### Empty the archive
 
 `emptyArchive` (`src/domain/archive-ops.ts`, wired through

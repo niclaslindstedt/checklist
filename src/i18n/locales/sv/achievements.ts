@@ -144,6 +144,13 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Arkivvyn (längst ner i sidomenyn) listar allt du arkiverat, grupperat efter källista. Återställ sätter tillbaka posten där den kom ifrån.",
     },
+    peekBehind: {
+      name: "Tjuvkika",
+      condition:
+        "Svep uppåt längst ner i en lista för att öppna dess arkivlåda.",
+      learnMore:
+        "Längst ner i en lista, svep uppåt för att fälla upp en låda med just den listans arkiverade poster — återställ eller radera dem utan att lämna för den fullständiga arkivvyn. Svep lådans rubrik nedåt eller tryck på X för att stänga den.",
+    },
     dejaVu: {
       name: "Déjà vu",
       condition: "Lägg till en rad genom att välja ett förslag från arkivet.",

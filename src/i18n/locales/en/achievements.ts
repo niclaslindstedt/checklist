@@ -151,6 +151,12 @@ const achievements = {
       learnMore:
         "The Archive view (foot of the side menu) lists everything you've archived, grouped by source list. Restore puts an item back where it came from.",
     },
+    peekBehind: {
+      name: "Peek Behind",
+      condition: "Swipe up at the bottom of a list to open its archive drawer.",
+      learnMore:
+        "At the foot of a list, swipe up to raise a drawer of just that list's archived items — restore or delete them without leaving for the full Archive view. Swipe the drawer's header down or tap the X to dismiss it.",
+    },
     dejaVu: {
       name: "Déjà Vu",
       condition: "Add an item by picking a suggestion from the archive.",

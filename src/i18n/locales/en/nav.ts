@@ -26,6 +26,8 @@ const nav = {
     "Permanently delete everything in the archive — archived items and archived lists alike? You can still undo this.",
   restore: "Restore item",
   restoreList: "Restore list",
+  archiveDrawerTitle: "Archived in {name}",
+  archiveDrawerEmpty: "Nothing archived in this list yet.",
   undo: "Undo",
   redo: "Redo",
   search: "Search",

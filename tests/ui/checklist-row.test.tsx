@@ -125,6 +125,26 @@ describe("ChecklistRow swipe action layers", () => {
     const archiveLayer = screen.getByText("Archive") as HTMLElement;
     expect(archiveLayer.className).toContain("invisible");
   });
+
+  it("holds focus on a Delete tap so an open editor isn't blurred out from under it", () => {
+    // Regression: with the add-item composer (or another row's editor) open,
+    // tapping Delete used to blur it first — the blur closed the editor,
+    // reflowed the list, and slid the button away before the click landed, so
+    // the delete was lost and the row stayed swiped open. The button must
+    // preventDefault its mousedown to keep focus put until the click fires.
+    renderRow();
+    const deleteBtn = screen.getByText("Delete");
+    const mousedown = createEvent.mouseDown(deleteBtn);
+    fireEvent(deleteBtn, mousedown);
+    expect(mousedown.defaultPrevented).toBe(true);
+  });
+
+  it("deletes the item when the revealed Delete button is clicked", () => {
+    const onDelete = vi.fn();
+    renderRow({ onDelete });
+    fireEvent.click(screen.getByText("Delete"));
+    expect(onDelete).toHaveBeenCalledWith("i1");
+  });
 });
 
 describe("ChecklistRow title wrapping", () => {

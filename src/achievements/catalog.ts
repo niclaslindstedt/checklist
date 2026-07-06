@@ -283,6 +283,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     trigger: { kind: "manual" },
   },
   {
+    id: "peekBehind",
+    tier: "intermediate",
+    glyph: ArchiveGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "dejaVu",
     tier: "intermediate",
     glyph: LightbulbGlyph,
