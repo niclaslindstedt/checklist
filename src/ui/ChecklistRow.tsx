@@ -331,6 +331,15 @@ function ChecklistRowImpl({
           >
             <button
               type="button"
+              // Hold focus so tapping Delete doesn't first blur an open editor
+              // elsewhere — the add-item composer, or another row's editor. That
+              // blur commits and closes the editor, which reflows the list and
+              // slides this button out from under the finger before the click
+              // lands, so the delete is silently lost and the row stays swiped
+              // open. Preventing the mousedown default keeps focus put until the
+              // click fires (mirrors the composer's suggestion rows and the
+              // row's own title tap). The click still deletes; the editor stays.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => onDelete(item.id)}
               className="h-full w-24 bg-danger text-xs font-semibold tracking-wide text-white uppercase"
             >
