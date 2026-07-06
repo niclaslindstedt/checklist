@@ -144,6 +144,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Arkivvyn (längst ner i sidomenyn) listar allt du arkiverat, grupperat efter källista. Återställ sätter tillbaka posten där den kom ifrån.",
     },
+    dejaVu: {
+      name: "Déjà vu",
+      condition: "Lägg till en rad genom att välja ett förslag från arkivet.",
+      learnMore:
+        "När en lista har arkiverade rader minns skrivfältet dem: skriv några bokstäver så visas matchande arkiverade titlar under fältet, med träffen markerad. Tryck på ett förslag så hamnar raden direkt på listan igen — på en inköpslista är förra veckans basvaror ett tryck bort.",
+    },
     reshuffle: {
       name: "Omflyttning",
       condition: "Dra en post för att flytta om den.",

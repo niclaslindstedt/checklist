@@ -88,6 +88,15 @@ export function ShowcasePage() {
               left stands out.
             </li>
             <li>
+              <strong className="text-fg-bright">
+                Re-add from the archive
+              </strong>{" "}
+              — typing a new item suggests matching titles from the list&apos;s
+              archived items (fuzzy-matched, highlighted); press one to put it
+              straight back on the list, so a groceries list gets faster the
+              longer you use it.
+            </li>
+            <li>
               <strong className="text-fg-bright">Nest sub-items</strong> — drag
               one item onto another, or use &ldquo;Add sub-item&rdquo; while
               editing, to tuck it underneath; a parent indents its children,
