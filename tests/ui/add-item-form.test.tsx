@@ -60,4 +60,81 @@ describe("AddItemForm", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onAdd).toHaveBeenCalledWith("Buy milk");
   });
+
+  describe("archive typeahead", () => {
+    const pool = ["Car", "Carrots", "Bread"];
+
+    function typed(value: string, over: Parameters<typeof renderForm>[0] = {}) {
+      const utils = renderForm({ suggestionPool: pool, ...over });
+      const input = screen.getByLabelText("Add item") as HTMLInputElement;
+      fireEvent.change(input, { target: { value } });
+      return { input, ...utils };
+    }
+
+    it("suggests matching archived titles while typing", () => {
+      typed("car");
+      const listbox = screen.getByRole("listbox");
+      expect(listbox).toBeTruthy();
+      const options = screen.getAllByRole("option");
+      expect(options.map((o) => o.textContent)).toEqual(["Car", "Carrots"]);
+    });
+
+    it("highlights the matched letters", () => {
+      typed("car");
+      const carrots = screen
+        .getAllByRole("option")
+        .find((o) => o.textContent === "Carrots")!;
+      expect(carrots.querySelector("mark")?.textContent).toBe("Car");
+    });
+
+    it("shows nothing for an empty draft or without a pool", () => {
+      renderForm({ suggestionPool: pool });
+      expect(screen.queryByRole("listbox")).toBeNull();
+      cleanup();
+      renderForm();
+      const input = screen.getByLabelText("Add item") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "car" } });
+      expect(screen.queryByRole("listbox")).toBeNull();
+    });
+
+    it("pressing a suggestion adds it verbatim and clears the field", () => {
+      const onAdd = vi.fn();
+      // Capitalise on: the picked title must keep its stored spelling, not
+      // get re-capitalised.
+      const { input } = typed("car", { onAdd, capitalize: true });
+      const carrots = screen
+        .getAllByRole("option")
+        .find((o) => o.textContent === "Carrots")!;
+      fireEvent.click(carrots.querySelector("button")!);
+      expect(onAdd).toHaveBeenCalledWith("Carrots");
+      expect(input.value).toBe("");
+      // The composer stays open, ready for the next entry.
+      expect(screen.getByLabelText("Add item")).toBeTruthy();
+    });
+
+    it("arrow keys walk the list and Enter picks the highlighted one", () => {
+      const onAdd = vi.fn();
+      const { input } = typed("car", { onAdd });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(onAdd).toHaveBeenCalledWith("Carrots");
+      expect(input.value).toBe("");
+    });
+
+    it("Enter without a highlight commits the raw draft", () => {
+      const onAdd = vi.fn();
+      const { input } = typed("car", { onAdd });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(onAdd).toHaveBeenCalledWith("car");
+    });
+
+    it("Escape dismisses the dropdown until the draft changes", () => {
+      const { input } = typed("car");
+      fireEvent.keyDown(input, { key: "Escape" });
+      expect(screen.queryByRole("listbox")).toBeNull();
+      fireEvent.change(input, { target: { value: "carr" } });
+      expect(screen.getByRole("listbox")).toBeTruthy();
+    });
+  });
 });

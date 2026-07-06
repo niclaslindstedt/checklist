@@ -193,10 +193,13 @@ export function parseQuery(raw: string): ParsedQuery {
 
 // ── Matching ───────────────────────────────────────────────────────────
 
-interface Match {
+/** A successful match: the ranges to highlight and a ranking score. */
+export interface TextMatch {
   ranges: MatchRange[];
   score: number;
 }
+
+type Match = TextMatch;
 
 /** Merge overlapping/adjacent ranges so the UI never double-marks a span. */
 function mergeRanges(ranges: MatchRange[]): MatchRange[] {
@@ -295,15 +298,22 @@ function matchFuzzy(text: string, needle: string): Match | null {
   return { ranges: mergeRanges(ranges), score };
 }
 
+/**
+ * Match `needle` against `text` the way a bare search term does: substring
+ * first, with the fuzzy subsequence as the fallback. Exposed so the
+ * composer's archive typeahead ranks and highlights exactly like search.
+ */
+export function matchPlainText(text: string, needle: string): TextMatch | null {
+  return matchSubstring(text, needle) ?? matchFuzzy(text, needle);
+}
+
 function matchEntry(text: string, matcher: Matcher): Match | null {
   switch (matcher.kind) {
     case "regex":
     case "wildcard":
       return matchRegExp(text, matcher.re);
     case "text":
-      return (
-        matchSubstring(text, matcher.needle) ?? matchFuzzy(text, matcher.needle)
-      );
+      return matchPlainText(text, matcher.needle);
   }
 }
 

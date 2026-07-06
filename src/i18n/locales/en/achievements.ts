@@ -151,6 +151,12 @@ const achievements = {
       learnMore:
         "The Archive view (foot of the side menu) lists everything you've archived, grouped by source list. Restore puts an item back where it came from.",
     },
+    dejaVu: {
+      name: "Déjà Vu",
+      condition: "Add an item by picking a suggestion from the archive.",
+      learnMore:
+        "Once a list has archived items, the composer remembers them: type a few letters and matching archived titles appear beneath the field, with the match highlighted. Press one to put it straight back on the list — on a groceries list, last week's staples are one tap away.",
+    },
     reshuffle: {
       name: "Reshuffle",
       condition: "Drag an item to reorder it.",

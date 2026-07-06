@@ -16,6 +16,7 @@ const app = {
   listGlyphNone: "Checklist (default)",
   addItem: "Add item",
   addItemPlaceholder: "Add item…",
+  suggestions: "Suggestions from the archive",
   check: "Check item",
   uncheck: "Uncheck item",
   checkAll: "Check all",

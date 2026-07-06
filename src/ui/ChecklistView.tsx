@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { findItem, flattenForDisplay } from "../domain/checklists.ts";
+import { archivedTitlePool } from "../domain/suggestions.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
@@ -98,6 +99,13 @@ function ChecklistViewImpl() {
   const rows = useMemo(
     () => flattenForDisplay(items, collapsed),
     [items, collapsed],
+  );
+
+  // Archived titles feed the composer's typeahead: a previously archived
+  // item ("Carrots") is re-added with one press instead of retyped.
+  const suggestionPool = useMemo(
+    () => archivedTitlePool(activeList),
+    [activeList],
   );
 
   // A row can't be dropped onto itself or one of its own descendants (that
@@ -315,6 +323,7 @@ function ChecklistViewImpl() {
       }
       notesDisabled={disableItemNotes}
       capitalize={capitalizeItems}
+      suggestionPool={suggestionPool}
     />
   ) : null;
 
@@ -336,6 +345,7 @@ function ChecklistViewImpl() {
       notesDisabled={disableItemNotes}
       capitalize={capitalizeItems}
       depth={inListDraft.depth}
+      suggestionPool={suggestionPool}
     />
   ) : null;
 

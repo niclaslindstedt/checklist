@@ -10,6 +10,7 @@ const app: AppCatalog = {
   listGlyphNone: "Checklista (standard)",
   addItem: "Lägg till rad",
   addItemPlaceholder: "Lägg till rad…",
+  suggestions: "Förslag från arkivet",
   check: "Bocka av rad",
   uncheck: "Avmarkera rad",
   checkAll: "Bocka av alla",

@@ -278,6 +278,33 @@ paste is swallowed and the items are appended to the current list rather
 than landing as literal text. A zero lets ordinary text paste through
 untouched.
 
+Typing in the composer also consults the list's archive — see
+[Archive typeahead](#archive-typeahead).
+
+### Archive typeahead
+
+`suggestionPool` on `src/ui/AddItemForm.tsx`, fed by `archivedTitlePool`
+and `suggestTitles` (`src/domain/suggestions.ts`). As a draft is typed in
+the composer, the titles of the active list's archived items are matched
+against it — substring first, then the search engine's fuzzy-subsequence
+fallback (`matchPlainText`, `src/domain/search.ts`) — and up to five
+appear as a dropdown under the field with the matched letters highlighted
+(the same `<mark>` treatment as the [search modal](#search)). Pressing a
+suggestion adds that item verbatim (its stored spelling survives even with
+"Capitalise items" on) and clears the field while keeping the composer
+open and focused, so the next entry can be typed straight away — a
+recurring item on a groceries list is one press instead of retyped, and
+the list gets easier to run the longer it's lived in. Arrow keys walk the
+dropdown, Enter picks the highlighted suggestion (plain Enter with no
+highlight still commits the raw draft, and Shift+Enter keeps its
+add-with-body meaning), Escape dismisses the dropdown until the draft
+changes. The pool is the archived subtrees' titles in document order,
+deduplicated case-insensitively and excluding titles already active on
+the list (suggesting a visible row is noise); `ChecklistView` memoises it
+per document change and hands it to all three composers (inline,
+sub-item, after-a-row). Picking a suggestion unlocks the **Déjà Vu**
+achievement.
+
 ### Copy checklist
 
 `src/ui/CopyButton.tsx` — the header glyph just left of the cloud-sync
