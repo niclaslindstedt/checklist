@@ -132,12 +132,21 @@ describe("useComposer", () => {
 
   it("advances the after-composer's anchor to each newly added item", () => {
     const addItemAfter = vi.fn(() => "added");
-    const { result } = setup({ addItemAfter });
+    // The added item is present in the rows on the same commit that re-anchors
+    // onto it (as it is in the app), so the composer keeps chaining below it.
+    const rows: DisplayRow[] = [
+      ...ROWS,
+      {
+        item: { id: "added", title: "Sub", checked: false },
+        depth: 0,
+        hasChildren: false,
+      },
+    ];
+    const { result } = setup({ addItemAfter, rows });
     act(() => result.current.startAfter("p"));
     act(() => result.current.active!.onAdd("Sub"));
     expect(addItemAfter).toHaveBeenCalledWith("Sub", "p");
-    // The new item becomes the anchor so the next add chains below it; with
-    // the new id absent from ROWS, the splice falls back to -1.
+    // The new item becomes the anchor so the next add chains below it.
     expect(result.current.active).toMatchObject({ kind: "after" });
     act(() => result.current.active!.onAdd("Sub2"));
     expect(addItemAfter).toHaveBeenLastCalledWith("Sub2", "added");
@@ -146,7 +155,17 @@ describe("useComposer", () => {
   it("advances the anchor past a pasted block to the importer's last id", () => {
     const importItemsAfter = vi.fn(() => ({ count: 3, lastId: "tail" }));
     const addItemAfter = vi.fn(() => "z");
-    const { result } = setup({ importItemsAfter, addItemAfter });
+    // The pasted block's tail is present in the rows on the same commit, so the
+    // composer re-anchors past it instead of closing.
+    const rows: DisplayRow[] = [
+      ...ROWS,
+      {
+        item: { id: "tail", title: "c", checked: false },
+        depth: 0,
+        hasChildren: false,
+      },
+    ];
+    const { result } = setup({ importItemsAfter, addItemAfter, rows });
     act(() => result.current.startAfter("p"));
     let count = 0;
     act(() => {
@@ -181,10 +200,40 @@ describe("useComposer", () => {
     expect(result.current.kind).toBe("none");
   });
 
-  it("reports -1 when the child composer's parent is no longer in the rows", () => {
+  it("closes the after-composer when its anchor is deleted from the rows", () => {
+    // Regression: the after-composer re-anchors onto each item it adds, so
+    // deleting the item you just added removes the anchor its draft row splices
+    // against. The composer must close (not linger with a dead anchor), else
+    // the add button stays hidden with no field left to dismiss.
+    const { result, rerender } = setup();
+    act(() => result.current.startAfter("s"));
+    expect(result.current.kind).toBe("after");
+    // The anchor row "s" is deleted — the rows no longer contain it.
+    rerender(makeOpts({ rows: ROWS.filter((r) => r.item.id !== "s") }));
+    expect(result.current.kind).toBe("none");
+    expect(result.current.active).toBeNull();
+  });
+
+  it("closes the child-composer when its parent is deleted from the rows", () => {
+    const { result, rerender } = setup();
+    act(() => result.current.startChild("p"));
+    expect(result.current.kind).toBe("child");
+    // The parent row "p" (and its subtree) is deleted from the rows.
+    rerender(
+      makeOpts({
+        rows: ROWS.filter((r) => r.depth === 0 && r.item.id === "s"),
+      }),
+    );
+    expect(result.current.kind).toBe("none");
+    expect(result.current.active).toBeNull();
+  });
+
+  it("closes a composer opened against a parent that is not in the rows", () => {
     const { result } = setup();
     act(() => result.current.startChild("gone"));
-    // A missing anchor can't be spliced; -1 keeps it from rendering anywhere.
-    expect(result.current.active).toMatchObject({ spliceIndex: -1, depth: 0 });
+    // A missing anchor can't be spliced anywhere, so the composer stands down
+    // rather than lingering invisibly.
+    expect(result.current.kind).toBe("none");
+    expect(result.current.active).toBeNull();
   });
 });
