@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { DisplayRow } from "../../domain/checklists.ts";
 
@@ -100,6 +100,27 @@ export function useComposer(opts: ComposerOptions): Composer {
   } = opts;
 
   const [state, setState] = useState<ComposerState>({ kind: "none" });
+
+  // Close the composer if the anchor it hangs off is deleted out from under it.
+  // A `child` / `after` draft splices into the list relative to its parent /
+  // anchor row; when that row leaves the flattened `rows` — most notably when
+  // the user deletes the very item they just added, which the after-composer
+  // has re-anchored onto — its `spliceIndex` collapses to -1 and the draft row
+  // unmounts, but the composer would otherwise stay "open", leaving the add
+  // button hidden with no field left to dismiss. A freshly added anchor is
+  // already present in `rows` on the same commit that re-anchors onto it, so
+  // this never fires on the normal add-and-chain path.
+  useEffect(() => {
+    const anchorId =
+      state.kind === "child"
+        ? state.parentId
+        : state.kind === "after"
+          ? state.anchorId
+          : null;
+    if (anchorId !== null && !rows.some((r) => r.item.id === anchorId)) {
+      setState({ kind: "none" });
+    }
+  }, [state, rows]);
 
   const close = useCallback(() => setState({ kind: "none" }), []);
   const startInline = useCallback(() => setState({ kind: "inline" }), []);
