@@ -79,6 +79,60 @@ describe("useChecklist save / undo / reload cycle", () => {
     expect(result.current.canRedo).toBe(false);
   });
 
+  it("keeps a box checked when it's toggled while the mount load is still in flight", async () => {
+    // The "check a box on open and watch it uncheck itself" race: a slow
+    // (cloud) backend's load() is still in flight when the user checks a box.
+    // When the read finally resolves it carries the PRE-edit document —
+    // adopting it would revert the check the user just made. The engine must
+    // detect the interleaved edit and keep the local document.
+    let seedList = createChecklist("l1", "List", "2026-01-01T00:00:00.000Z");
+    seedList = addItem(
+      seedList,
+      { id: "i1", title: "buy milk" },
+      "2026-01-01T00:00:00.000Z",
+      "bottom",
+    );
+    const seed = serialize({ ...emptySnapshot(), checklists: [seedList] });
+
+    let releaseLoad!: (v: StoredSnapshot) => void;
+    const loadGate = new Promise<StoredSnapshot>((res) => {
+      releaseLoad = res;
+    });
+    let saved: string | null = null;
+    const adapter: StorageAdapter = {
+      id: "gdrive",
+      label: "mem-cloud",
+      capabilities: new Set(["loadSync"]),
+      loadSync: () => ({ text: seed, revision: "r1" }),
+      // The mount read hangs until the test releases it, modelling a slow
+      // network round-trip.
+      load: () => loadGate,
+      save: async (next: string) => {
+        saved = next;
+        return { text: next, revision: "r2" };
+      },
+      saveDebounceMs: 0,
+    };
+
+    const { result } = renderHook(() => useChecklist(adapter));
+    // The synchronous loadSync seed shows the unchecked item immediately.
+    expect(result.current.items[0]!.checked).toBe(false);
+
+    // The user checks the box while load() is still unresolved.
+    act(() => result.current.toggle("i1"));
+    expect(result.current.items[0]!.checked).toBe(true);
+
+    // The slow backend read finally resolves — with the pre-edit document.
+    await act(async () => {
+      releaseLoad({ text: seed, revision: "r1" });
+      await loadGate;
+    });
+
+    // The check survives (not reverted by the late load) and was persisted.
+    expect(result.current.items[0]!.checked).toBe(true);
+    expect(parse(saved).checklists[0]!.items[0]!.checked).toBe(true);
+  });
+
   it("serializes saves: edits during an in-flight save queue and drain without self-conflict", async () => {
     // A revision-checking cloud adapter whose `save()` is held open until the
     // test releases it, so edits can pile up while one write is in flight.
