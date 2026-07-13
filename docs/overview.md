@@ -2027,6 +2027,15 @@ wholesale (backend swap, reload, conflict-adopt), lets a save that
 resolves against a vanished baseline drop its result instead of writing
 it back.
 
+The mount load guards the reverse race: with a cloud backend the async
+`load()` round-trips for hundreds of milliseconds behind the instant
+`loadSync` paint, and a box checked in that window would otherwise be
+reverted when the read resolves with the pre-edit document. A monotonic
+edit counter (bumped by every `scheduleSave`) is snapshotted before the
+read starts; if it has moved by the time the read resolves, a user edit
+interleaved, so the load keeps the local (already-persisted) document
+instead of adopting the stale bytes it read.
+
 A failed save doesn't immediately go red. The retry policy lives in the
 pure, unit-testable `src/storage/save-retry.ts` (`backoffDelayMs`,
 `isRetryableSaveError`, `MAX_TRANSIENT_SAVE_RETRIES`); the sync engine

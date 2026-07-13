@@ -153,6 +153,13 @@ export function useChecklistSync(deps: {
   // Adapter and concurrency token survive re-renders.
   const adapterRef = useRef(active);
   const revisionRef = useRef<string | undefined>(undefined);
+  // Monotonic count of user edits (every `scheduleSave`). The async backend
+  // load captures this at launch and re-checks it on completion: if it moved,
+  // the user edited while the read was in flight, so adopting the loaded
+  // (pre-edit) document would silently revert that edit — the "check a box on
+  // open and watch it uncheck itself" race. The load keeps the local edit
+  // instead. See the load effect below.
+  const editSeqRef = useRef(0);
 
   // Seed from the adapter's synchronous fast path so the first paint
   // shows stored data instead of a flash of empty list.
@@ -381,6 +388,9 @@ export function useChecklistSync(deps: {
 
   const scheduleSave = useCallback(
     (next: Snapshot) => {
+      // Record that a user edit happened, so an in-flight backend load that
+      // resolves after this can tell it must not clobber the edit.
+      editSeqRef.current += 1;
       queue.enqueue(next);
       setDirty(true);
       const ms = adapterRef.current.saveDebounceMs ?? 0;
@@ -425,10 +435,24 @@ export function useChecklistSync(deps: {
     setLoaded(false);
     log.info(`load: loading from backend [${active.id}]`);
     let cancelled = false;
+    // Snapshot the edit counter before the read starts. If the user checks a
+    // box (or makes any edit) while the load is in flight, this moves and the
+    // completion handler keeps the local document instead of overwriting it.
+    const editSeqAtLoad = editSeqRef.current;
     void active
       .load()
       .then((stored) => {
         if (cancelled) return;
+        // A user edit raced the load. The on-screen document already reflects
+        // it (and `scheduleSave` has persisted it), while `stored` is the
+        // pre-edit document we began reading before the click — adopting it
+        // would revert the edit in front of the user. Keep the local document;
+        // just mark the load resolved so the achievement watcher un-gates.
+        if (editSeqRef.current !== editSeqAtLoad) {
+          log.info("load: local edit raced the read — keeping local edits");
+          setLoaded(true);
+          return;
+        }
         revisionRef.current = stored?.revision;
         log.info(
           `load: ok (revision=${stored?.revision ?? "none"}` +
