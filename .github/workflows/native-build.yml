@@ -1,0 +1,85 @@
+name: Native build (EAS)
+
+# Manual-only. A maintainer dispatches this to build the Expo app in
+# `native/` with EAS Build. It is intentionally NOT wired to push /
+# pull_request: every run consumes EAS build credits, so builds happen
+# only when someone explicitly asks for one (keeps costs down).
+#
+# The job merely *queues* the build on Expo's infrastructure and exits
+# (`--no-wait`), so it uses almost no GitHub Actions minutes — the actual
+# native compile runs on EAS. Watch progress at https://expo.dev.
+#
+# Requires an `EXPO_TOKEN` repository secret (a robot/personal access
+# token from https://expo.dev/accounts/[account]/settings/access-tokens)
+# with access to the EAS project referenced by `native/app.json`
+# (extra.eas.projectId).
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to build."
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - android
+          - ios
+      profile:
+        description: "eas.json build profile."
+        required: true
+        type: choice
+        default: preview
+        options:
+          - development
+          - preview
+          - production
+      submit:
+        description: "Also submit to the stores after the build (production only)."
+        required: false
+        type: boolean
+        default: false
+
+# One manual build at a time; a second dispatch waits rather than racing.
+concurrency:
+  group: native-build
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Queue EAS build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Set up EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Queue build on EAS
+        working-directory: native
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          PROFILE: ${{ inputs.profile }}
+          SUBMIT: ${{ inputs.submit }}
+        run: |
+          args=(--platform "$PLATFORM" --profile "$PROFILE" --non-interactive --no-wait)
+          if [ "$SUBMIT" = "true" ]; then
+            if [ "$PROFILE" != "production" ]; then
+              echo "::error::submit=true is only supported with the production profile." >&2
+              exit 1
+            fi
+            args+=(--auto-submit)
+          fi
+          echo "Running: eas build ${args[*]}"
+          eas build "${args[@]}"
