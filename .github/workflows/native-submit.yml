@@ -1,0 +1,81 @@
+name: Native submit (EAS)
+
+# Manual-only. Submits an already-built binary to the App Store
+# (TestFlight) / Google Play (internal track) with EAS Submit, without
+# spending a build. Use `Native build (EAS)` with submit=true to build
+# and submit in one shot; use this when you want to (re)submit a build
+# that already exists on EAS.
+#
+# By default it submits the latest finished build for the platform
+# (`--latest`); pass a specific `build_id` to submit a particular one.
+#
+# Requires:
+#   - `EXPO_TOKEN` secret (see native-build.yml).
+#   - Store credentials wired into eas.json → submit.production
+#     (Apple appleId/ascAppId/appleTeamId; Android service-account key).
+#     See native/RELEASING.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to submit."
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - android
+          - ios
+      profile:
+        description: "eas.json submit profile."
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+      build_id:
+        description: "Specific EAS build ID to submit. Leave empty to submit the latest finished build."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: native-submit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Submit build to stores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Set up EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Submit via EAS
+        working-directory: native
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          PROFILE: ${{ inputs.profile }}
+          BUILD_ID: ${{ inputs.build_id }}
+        run: |
+          args=(--platform "$PLATFORM" --profile "$PROFILE" --non-interactive)
+          if [ -n "$BUILD_ID" ]; then
+            args+=(--id "$BUILD_ID")
+          else
+            args+=(--latest)
+          fi
+          echo "Running: eas submit ${args[*]}"
+          eas submit "${args[@]}"

@@ -80,6 +80,29 @@ eas build --platform all --profile production
 For a quick install on a device/simulator before going to the stores, use
 the `preview` profile (Android APK / iOS simulator build) instead.
 
+### Building from GitHub Actions
+
+You don't have to build from a laptop. Two **manual-only** workflows drive
+EAS from CI (they never run on push/PR, so no build is ever queued unless a
+maintainer asks — this is the cost control):
+
+- **Native build (EAS)** (`.github/workflows/native-build.yml`) — dispatch
+  with a `platform` (all/android/ios), a `profile`
+  (development/preview/production), and an optional `submit` toggle
+  (production only). It queues the build on EAS and exits (`--no-wait`), so it
+  burns almost no Actions minutes; the compile runs on Expo's servers. With
+  `submit: true` it passes `--auto-submit` so EAS submits the finished
+  production build to the stores automatically.
+- **Native submit (EAS)** (`.github/workflows/native-submit.yml`) — submits an
+  already-built binary without spending a build. Submits the latest finished
+  build by default, or a specific one via the `build_id` input.
+
+Both require an **`EXPO_TOKEN`** repository secret — create an access token at
+`https://expo.dev/accounts/[account]/settings/access-tokens` with access to
+this EAS project (`extra.eas.projectId` in `app.json`) and add it under the
+repo's *Settings → Secrets and variables → Actions*. Store submission still
+needs the credentials wired into `eas.json` → `submit.production` (steps 4–5).
+
 ## 4. Google Play submission
 
 1. In the **Play Console**, create the app once (name "checklist", default
