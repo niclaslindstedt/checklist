@@ -407,4 +407,89 @@ describe("markdown codec", () => {
       }
     });
   });
+
+  describe("deadlines", () => {
+    const dated: Checklist = {
+      ...checklist,
+      items: [
+        {
+          id: "1",
+          title: "Renew passport",
+          checked: false,
+          deadline: "2026-08-01",
+        },
+        {
+          id: "2",
+          title: "Water plants",
+          checked: false,
+          deadline: "2026-07-20",
+          recurrence: { unit: "week", interval: 2 },
+        },
+        {
+          id: "3",
+          title: "File taxes",
+          checked: false,
+          deadline: "2027-04-15",
+          recurrence: { unit: "year", interval: 1 },
+        },
+      ],
+    };
+
+    it("renders the due marker, with recurrence when set", () => {
+      const md = checklistToMarkdown(dated);
+      expect(md).toContain("- [ ] Renew passport *(due 2026-08-01)*");
+      expect(md).toContain(
+        "- [ ] Water plants *(due 2026-07-20, every 2 weeks)*",
+      );
+      expect(md).toContain("- [ ] File taxes *(due 2027-04-15, every year)*");
+    });
+
+    it("omits the marker for an undated item", () => {
+      const md = checklistToMarkdown(checklist);
+      expect(md).not.toContain("*(due");
+    });
+
+    it("round-trips deadlines and recurrence through parse", () => {
+      const parsed = parseEntry(checklistToMarkdown(dated));
+      expect(parsed?.kind).toBe("checklist");
+      if (parsed?.kind === "checklist") {
+        const items = parsed.checklist.items;
+        expect(items[0]?.deadline).toBe("2026-08-01");
+        expect(items[0]?.recurrence).toBeUndefined();
+        expect(items[1]?.deadline).toBe("2026-07-20");
+        expect(items[1]?.recurrence).toEqual({ unit: "week", interval: 2 });
+        expect(items[2]?.recurrence).toEqual({ unit: "year", interval: 1 });
+      }
+    });
+
+    it("keeps the title clean alongside a required marker", () => {
+      const md = checklistToMarkdown({
+        ...checklist,
+        items: [
+          {
+            id: "1",
+            title: "Passport",
+            checked: false,
+            required: true,
+            deadline: "2026-08-01",
+          },
+        ],
+      });
+      expect(md).toContain("- [ ] Passport *(required)* *(due 2026-08-01)*");
+      const parsed = parseEntry(md);
+      if (parsed?.kind === "checklist") {
+        expect(parsed.checklist.items[0]?.title).toBe("Passport");
+        expect(parsed.checklist.items[0]?.required).toBe(true);
+        expect(parsed.checklist.items[0]?.deadline).toBe("2026-08-01");
+      }
+    });
+
+    it("recovers deadlines from a pasted checklist", () => {
+      const items = parseItemsFromMarkdown(
+        "- [ ] Water plants *(due 2026-07-20, every 2 weeks)*",
+      );
+      expect(items[0]?.deadline).toBe("2026-07-20");
+      expect(items[0]?.recurrence).toEqual({ unit: "week", interval: 2 });
+    });
+  });
 });

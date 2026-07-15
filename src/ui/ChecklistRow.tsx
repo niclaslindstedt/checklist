@@ -11,10 +11,17 @@ import type { DropMode } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
+import { DeadlineRow } from "./DeadlineRow.tsx";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
-import { CaretRightIcon, GripIcon, NoteIcon } from "./icons.tsx";
+import {
+  CaretRightIcon,
+  ClockIcon,
+  GripIcon,
+  NoteIcon,
+  TrashIcon,
+} from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
 
 // Horizontal step per nesting level. A sub-item sits this much further right
@@ -55,6 +62,12 @@ type Props = {
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, fields: { title?: string; notes?: string }) => void;
+  /**
+   * Open the deadline modal for this item — fired by the clock button
+   * revealed on a left swipe (and the desktop right-click menu). Sets or
+   * clears the item's due date and recurrence.
+   */
+  onEditDeadline?: (id: string) => void;
   /**
    * Delete this item because the user emptied it out — committed with a blank
    * title and no body, or backspaced past the start of an empty line. Lets the
@@ -144,6 +157,7 @@ function ChecklistRowImpl({
   onArchive,
   onDelete,
   onEdit,
+  onEditDeadline,
   onRemoveEmpty,
   onBackspaceEmpty,
   onAddAfter,
@@ -329,21 +343,32 @@ function ChecklistRowImpl({
               swipe.offset < 0 ? "" : "invisible"
             }`}
           >
+            {/* The trailing action buttons, uncovered by a left swipe: a clock
+                to set a deadline and a trash to delete. Both hold focus on
+                mousedown so a tap doesn't first blur an open editor elsewhere —
+                that blur commits and closes the editor, reflows the list, and
+                slides the button out from under the finger before the click
+                lands, silently losing the action and leaving the row swiped
+                open. Preventing the mousedown default keeps focus put until the
+                click fires (mirrors the composer's suggestion rows and the row's
+                own title tap). */}
             <button
               type="button"
-              // Hold focus so tapping Delete doesn't first blur an open editor
-              // elsewhere — the add-item composer, or another row's editor. That
-              // blur commits and closes the editor, which reflows the list and
-              // slides this button out from under the finger before the click
-              // lands, so the delete is silently lost and the row stays swiped
-              // open. Preventing the mousedown default keeps focus put until the
-              // click fires (mirrors the composer's suggestion rows and the
-              // row's own title tap). The click still deletes; the editor stays.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onEditDeadline?.(item.id)}
+              aria-label={t("app.setDeadline")}
+              className="flex h-full w-16 items-center justify-center bg-surface-3 text-fg"
+            >
+              <ClockIcon className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onDelete(item.id)}
-              className="h-full w-24 bg-danger text-xs font-semibold tracking-wide text-white uppercase"
+              aria-label={t("app.delete")}
+              className="flex h-full w-16 items-center justify-center bg-danger text-white"
             >
-              {t("app.delete")}
+              <TrashIcon className="h-5 w-5" />
             </button>
           </div>
         </>
@@ -363,6 +388,11 @@ function ChecklistRowImpl({
           dragging ? "bg-surface-2" : "bg-page-bg"
         } ${!desktop && swipe.animating ? "transition-transform duration-200" : ""}`}
       >
+        {/* The slim, colour-coded date row above a dated item's title. */}
+        {item.deadline && (
+          <DeadlineRow deadline={item.deadline} recurrence={item.recurrence} />
+        )}
+
         {/* The whole row line is a pointer target for editing: a click that
             isn't on one of the real controls (checkbox, caret, note glyph,
             grip, or the title button) edits the item, so tapping the dead space

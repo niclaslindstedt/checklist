@@ -104,6 +104,14 @@ export function ShowcasePage() {
               folds them away, and checking it checks the whole group.
             </li>
             <li>
+              <strong className="text-fg-bright">Set deadlines</strong> — give
+              an item a due date (and an optional repeat like &ldquo;every 2
+              weeks&rdquo;); dated items gather at the bottom of the list under
+              a date row that warms from yellow to orange to red as the day
+              nears and passes, and checking off a recurring one rolls it to its
+              next due date.
+            </li>
+            <li>
               <strong className="text-fg-bright">Reuse templates</strong> — turn
               a recurring list into a template and spin up a fresh copy whenever
               you need it.

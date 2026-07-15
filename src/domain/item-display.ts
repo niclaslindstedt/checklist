@@ -161,16 +161,51 @@ export function sortCheckedToBottom(
 }
 
 /**
+ * Float the unchecked items that carry a `deadline` to the bottom of the
+ * unchecked group, sorted by due date (soonest — and overdue — first), so
+ * every dated task clusters together just above the checked items with its
+ * date row on show. Undated unchecked items and checked items keep their
+ * incoming relative order; the dated ones slot in right after the last
+ * unchecked item. Recurses into each sub-list so nested dated items float the
+ * same way. A pure view transform — it never touches the stored document
+ * order — and leaves an undated level's order untouched.
+ */
+export function floatDatedToBottom(
+  items: readonly ChecklistItem[],
+): ChecklistItem[] {
+  const mapped = items.map((it) =>
+    it.children ? withChildren(it, floatDatedToBottom(it.children)) : it,
+  );
+  const isDated = (it: ChecklistItem) => !it.checked && Boolean(it.deadline);
+  if (!mapped.some(isDated)) return mapped;
+  const dated = mapped
+    .filter(isDated)
+    .sort((a, b) => a.deadline!.localeCompare(b.deadline!));
+  const rest = mapped.filter((it) => !isDated(it));
+  // Insert the dated cluster right after the last unchecked item — the bottom
+  // of the unchecked group — so it sits above any checked rows.
+  let insertAt = 0;
+  rest.forEach((it, i) => {
+    if (!it.checked) insertAt = i + 1;
+  });
+  return [...rest.slice(0, insertAt), ...dated, ...rest.slice(insertAt)];
+}
+
+/**
  * The active items in the order the checklist view renders them: plain
- * document order, or — when `sinkChecked` is on — with the checked items
- * sorted to the bottom (see `sortCheckedToBottom`).
+ * document order (or, when `sinkChecked` is on, with the checked items sorted
+ * to the bottom — see `sortCheckedToBottom`), then with any dated unchecked
+ * items floated to the bottom of the unchecked group (see
+ * `floatDatedToBottom`). The dated float always applies; the checked sink is
+ * opt-in.
  */
 export function displayItems(
   checklist: Checklist,
   sinkChecked: boolean,
 ): ChecklistItem[] {
   const active = activeItems(checklist);
-  return sinkChecked ? sortCheckedToBottom(active) : active;
+  const sunk = sinkChecked ? sortCheckedToBottom(active) : active;
+  return floatDatedToBottom(sunk);
 }
 
 /**

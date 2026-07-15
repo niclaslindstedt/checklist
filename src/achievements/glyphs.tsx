@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import {
   ArchiveIcon,
   CheckIcon,
+  ClockIcon,
   CodeIcon,
   CopyIcon,
   FolderIcon,
@@ -429,5 +430,6 @@ export const UndoGlyph: Glyph = UndoIcon;
 export const CopyGlyph: Glyph = CopyIcon;
 export const FolderGlyph: Glyph = FolderIcon;
 export const TrashGlyph: Glyph = TrashIcon;
+export const ClockGlyph: Glyph = ClockIcon;
 export const CodeGlyph: Glyph = CodeIcon;
 export const SparklesGlyph: Glyph = SparklesIcon;

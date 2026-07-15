@@ -28,10 +28,16 @@ import {
   moveItemInto as moveItemIntoOp,
   setAllChecked as setAllCheckedOp,
   setArchived,
+  setItemDeadline as setItemDeadlineOp,
   toggleItem as toggleItemOp,
   type DropMode,
 } from "../domain/checklists.ts";
-import type { Checklist, ChecklistItem, Snapshot } from "../domain/types.ts";
+import type {
+  Checklist,
+  ChecklistItem,
+  Recurrence,
+  Snapshot,
+} from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import type { AddItemPosition } from "../settings/types.ts";
 import {
@@ -111,6 +117,18 @@ export interface ChecklistEdits {
     fields: { title?: string; notes?: string },
   ) => void;
   toggle: (itemId: string) => void;
+  /**
+   * Set or clear an item's due date and how it repeats — the clock
+   * affordance on a swiped-open row. Pass a `YYYY-MM-DD` date (with an
+   * optional `recurrence`) to schedule it, or `null` / `null` to clear the
+   * deadline (which drops any recurrence with it). A no-op leaves the list
+   * untouched.
+   */
+  setDeadline: (
+    itemId: string,
+    deadline: string | null,
+    recurrence: Recurrence | null,
+  ) => void;
   /**
    * Check every active (non-archived) item in one sweep — the "Check all"
    * action in the header count's dropdown. A no-op (everything already
@@ -339,14 +357,49 @@ export function useChecklistEdits(deps: {
   const toggle = useCallback(
     (itemId: string) => {
       const title = titleOf(itemId);
-      const willCheck = !findItem(listRef.current.items, itemId)?.checked;
-      // No toast: the checkbox flips in place. The label still feeds undo.
-      commit(
-        toggleItemOp(listRef.current, itemId, now()),
-        t(willCheck ? "toast.itemChecked" : "toast.itemUnchecked", { title }),
+      const target = findItem(listRef.current.items, itemId);
+      const willCheck = !target?.checked;
+      // A recurring item isn't checked off — it rolls forward to its next due
+      // date (see `toggleItem`), so it earns its own label rather than the
+      // "Checked" one, which would read wrong for a row that stays unchecked.
+      const reschedules = Boolean(
+        willCheck && target?.recurrence && target?.deadline,
       );
+      const label = reschedules
+        ? t("toast.itemRescheduled", { title })
+        : t(willCheck ? "toast.itemChecked" : "toast.itemUnchecked", { title });
+      // No toast: the checkbox flips (or the date rolls) in place. The label
+      // still feeds undo.
+      commit(toggleItemOp(listRef.current, itemId, now()), label);
     },
     [commit, titleOf, t],
+  );
+
+  const setDeadline = useCallback(
+    (
+      itemId: string,
+      deadline: string | null,
+      recurrence: Recurrence | null,
+    ) => {
+      const found = findOwner(itemId);
+      if (!found) return;
+      const next = setItemDeadlineOp(
+        found.checklist,
+        itemId,
+        deadline,
+        recurrence,
+        now(),
+      );
+      // A no-op (the same date already set, or clearing an undated item)
+      // returns the same list — skip the write and the undo step.
+      if (next === found.checklist) return;
+      const label = deadline
+        ? t("toast.deadlineSet", { title: found.item.title })
+        : t("toast.deadlineCleared", { title: found.item.title });
+      commit(next, label);
+      notify(label);
+    },
+    [commit, findOwner, notify, t],
   );
 
   const checkAll = useCallback(() => {
@@ -474,6 +527,7 @@ export function useChecklistEdits(deps: {
       importItemsAfter,
       editItem,
       toggle,
+      setDeadline,
       checkAll,
       uncheckAll,
       remove,
@@ -492,6 +546,7 @@ export function useChecklistEdits(deps: {
       importItemsAfter,
       editItem,
       toggle,
+      setDeadline,
       checkAll,
       uncheckAll,
       remove,

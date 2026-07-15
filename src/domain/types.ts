@@ -10,6 +10,21 @@ export interface Item {
   required?: boolean;
 }
 
+/** The unit a recurring deadline repeats on. */
+export type RecurrenceUnit = "week" | "month" | "year";
+
+/**
+ * How a dated item repeats. `interval` is a whole number of `unit`s (>= 1) —
+ * "every 2 weeks" is `{ unit: "week", interval: 2 }`. Only meaningful
+ * alongside a `deadline`, which anchors the schedule: checking a recurring
+ * item rolls its `deadline` forward one interval (see `toggleItem`) instead
+ * of ticking it off, so the task reappears on its next due date.
+ */
+export interface Recurrence {
+  unit: RecurrenceUnit;
+  interval: number;
+}
+
 /** A reusable, named list of items. Identified by a stable UUIDv7 `id`. */
 export interface Template {
   /** Reserved for future migrations; there is only one version today. */
@@ -50,6 +65,23 @@ export interface ChecklistItem extends Item {
    * leaf round-trips byte-for-byte.
    */
   children?: ChecklistItem[];
+  /**
+   * An optional due date (a plain `YYYY-MM-DD` calendar day, no time zone).
+   * Set from the clock affordance on a swiped-open row. A dated item floats
+   * to the bottom of the unchecked items (see `displayItems`) and shows a
+   * colour-coded "date row" above it that warms from muted → yellow → orange
+   * → red as the day approaches and passes (see `deadlineStatus`). Absent
+   * (rather than `null`) when undated, so an older document needs no
+   * migration.
+   */
+  deadline?: string;
+  /**
+   * How this item's {@link deadline} repeats, if at all. Only carried
+   * alongside a `deadline` (recurrence needs an anchor date); checking a
+   * recurring item advances its `deadline` by one interval and leaves it
+   * unchecked rather than ticking it off. Absent on a one-off dated item.
+   */
+  recurrence?: Recurrence;
 }
 
 /**

@@ -100,7 +100,7 @@ describe("ChecklistRow swipe action layers", () => {
     dispatchPointer(fg, "pointerdown", { x: 0, y: 0 });
     dispatchPointer(fg, "pointermove", { x: 120, y: 0 });
 
-    const deleteBtn = screen.getByText("Delete");
+    const deleteBtn = screen.getByLabelText("Delete");
     const deleteLayer = deleteBtn.parentElement as HTMLElement;
     // The right-aligned Delete layer must stay hidden so it is never bared
     // as the foreground clears the row to the right.
@@ -117,7 +117,8 @@ describe("ChecklistRow swipe action layers", () => {
     dispatchPointer(fg, "pointerdown", { x: 0, y: 0 });
     dispatchPointer(fg, "pointermove", { x: -60, y: 0 });
 
-    const deleteLayer = screen.getByText("Delete").parentElement as HTMLElement;
+    const deleteLayer = screen.getByLabelText("Delete")
+      .parentElement as HTMLElement;
     expect(deleteLayer.className).not.toContain("invisible");
     expect(deleteLayer.getAttribute("aria-hidden")).toBe("false");
 
@@ -133,7 +134,7 @@ describe("ChecklistRow swipe action layers", () => {
     // the delete was lost and the row stayed swiped open. The button must
     // preventDefault its mousedown to keep focus put until the click fires.
     renderRow();
-    const deleteBtn = screen.getByText("Delete");
+    const deleteBtn = screen.getByLabelText("Delete");
     const mousedown = createEvent.mouseDown(deleteBtn);
     fireEvent(deleteBtn, mousedown);
     expect(mousedown.defaultPrevented).toBe(true);
@@ -142,8 +143,41 @@ describe("ChecklistRow swipe action layers", () => {
   it("deletes the item when the revealed Delete button is clicked", () => {
     const onDelete = vi.fn();
     renderRow({ onDelete });
-    fireEvent.click(screen.getByText("Delete"));
+    fireEvent.click(screen.getByLabelText("Delete"));
     expect(onDelete).toHaveBeenCalledWith("i1");
+  });
+
+  it("opens the deadline editor from the revealed clock button", () => {
+    const onEditDeadline = vi.fn();
+    renderRow({ onEditDeadline });
+    fireEvent.click(screen.getByLabelText("Set deadline"));
+    expect(onEditDeadline).toHaveBeenCalledWith("i1");
+  });
+});
+
+describe("ChecklistRow date row", () => {
+  it("shows a colour-coded, overdue date row for a past deadline", () => {
+    renderRow({ item: { ...item, deadline: "2000-01-01" } });
+    const label = screen.getByText(/Overdue/);
+    // Overdue paints the row red (the danger token).
+    expect(label.closest("div")?.className).toContain("text-danger");
+    expect(label.textContent).toContain("2000");
+  });
+
+  it("summarises a recurrence in the date row", () => {
+    renderRow({
+      item: {
+        ...item,
+        deadline: "2000-01-01",
+        recurrence: { unit: "week", interval: 2 },
+      },
+    });
+    expect(screen.getByText("every 2 weeks")).toBeTruthy();
+  });
+
+  it("shows no date row for an undated item", () => {
+    renderRow();
+    expect(screen.queryByText(/Overdue/)).toBeNull();
   });
 });
 

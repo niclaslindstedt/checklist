@@ -11,6 +11,7 @@ import { ArchivedDrawer } from "./ArchivedDrawer.tsx";
 import { resolveActiveEditor } from "./activeEditor.ts";
 import { ChecklistGlyphButton } from "./ChecklistGlyphButton.tsx";
 import { ChecklistRow } from "./ChecklistRow.tsx";
+import { DeadlineModal } from "./DeadlineModal.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
 import { DragGhostRow } from "./DragGhostRow.tsx";
@@ -27,7 +28,7 @@ import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 import { useReorderFlip } from "./hooks/useReorderFlip.ts";
 import { useSwipeUpReveal } from "./hooks/useSwipeUpReveal.ts";
-import { ArchiveIcon, TrashIcon } from "./icons.tsx";
+import { ArchiveIcon, ClockIcon, TrashIcon } from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
 // column reminiscent of a plain-text editor. State-free — it reads the
@@ -57,6 +58,7 @@ function ChecklistViewImpl() {
     importItemsAfter,
     editItem,
     toggle,
+    setDeadline,
     checkAll,
     uncheckAll,
     remove,
@@ -98,6 +100,14 @@ function ChecklistViewImpl() {
       return next;
     });
   }, []);
+
+  // The item whose deadline modal is open (null when none). Set from a row's
+  // clock affordance (or the desktop right-click menu); the item itself is
+  // resolved from the live tree so the modal always reflects the current date.
+  const [deadlineItemId, setDeadlineItemId] = useState<string | null>(null);
+  const openDeadline = useCallback((id: string) => setDeadlineItemId(id), []);
+  const closeDeadline = useCallback(() => setDeadlineItemId(null), []);
+  const deadlineItem = deadlineItemId ? findItem(items, deadlineItemId) : null;
 
   // The item tree flattened into the ordered, depth-tagged rows the list
   // renders; a collapsed item's children are skipped.
@@ -198,6 +208,11 @@ function ChecklistViewImpl() {
       openMenu(
         [
           {
+            label: t("app.setDeadline"),
+            icon: <ClockIcon className="h-4 w-4" />,
+            onSelect: () => openDeadline(id),
+          },
+          {
             label: t("app.archive"),
             icon: <ArchiveIcon className="h-4 w-4" />,
             onSelect: () => archive(id),
@@ -212,7 +227,7 @@ function ChecklistViewImpl() {
         e,
       );
     },
-    [openMenu, t, archive, remove],
+    [openMenu, t, archive, remove, openDeadline],
   );
 
   // While a row is lifted, the rows of its own subtree are hidden: the subtree
@@ -452,6 +467,7 @@ function ChecklistViewImpl() {
                   onArchive={archive}
                   onDelete={remove}
                   onEdit={editItem}
+                  onEditDeadline={openDeadline}
                   onRemoveEmpty={removeEmpty}
                   onBackspaceEmpty={backspaceEmpty}
                   onAddAfter={composer.startAfter}
@@ -536,6 +552,17 @@ function ChecklistViewImpl() {
         onRestore={unarchive}
         onDelete={remove}
       />
+
+      {deadlineItem && (
+        <DeadlineModal
+          key={deadlineItem.id}
+          item={deadlineItem}
+          onSubmit={(deadline, recurrence) =>
+            setDeadline(deadlineItem.id, deadline, recurrence)
+          }
+          onClose={closeDeadline}
+        />
+      )}
     </div>
   );
 }

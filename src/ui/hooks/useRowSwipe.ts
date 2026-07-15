@@ -3,8 +3,9 @@
 // horizontal axis past a small threshold — but it drives a live
 // transform and two outcomes instead of a single reveal toggle:
 //
-//   • swipe LEFT  → latch the foreground open to uncover a Delete button
-//                   (a deliberate two-step so a delete is never one flick).
+//   • swipe LEFT  → latch the foreground open to uncover the trailing action
+//                   buttons (a clock to set a deadline and a Delete button —
+//                   a deliberate two-step so a delete is never one flick).
 //   • swipe RIGHT → archive once past the threshold; the foreground slides
 //                   off and the caller drops the row on the next render.
 //
@@ -13,8 +14,9 @@
 
 import { useCallback, useRef, useState, type PointerEvent } from "react";
 
-// Mirrors the action-strip width the row renders behind the foreground.
-const ACTION_W = 96;
+// Mirrors the action-strip width the row renders behind the foreground — wide
+// enough for the two trailing buttons (clock + delete), 64px apiece.
+const ACTION_W = 128;
 // Left-swipe distance that latches the delete drawer open.
 const OPEN_AT = 48;
 // Right-swipe distance that triggers archive.
