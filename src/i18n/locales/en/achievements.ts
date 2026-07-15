@@ -135,6 +135,12 @@ const achievements = {
       learnMore:
         "Tap the mark beside a list's title to pick an icon and an accent colour just for that list — the chosen glyph replaces the generic checklist mark in the header, so you can tell your lists apart at a glance. The choice travels with the list across your devices.",
     },
+    onTheClock: {
+      name: "On the Clock",
+      condition: "Give an item a deadline.",
+      learnMore:
+        "Swipe an item left and tap the clock to set a due date — and, if the task comes back around, a repeat like “every 2 weeks”. Dated items sink to the bottom of the unchecked list under a date row that warms from yellow to orange to red as the day nears and passes; checking off a recurring one rolls it to its next due date instead of ticking it away.",
+    },
     archivist: {
       name: "Archivist",
       condition: "Archive an item.",

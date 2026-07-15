@@ -48,12 +48,22 @@ export {
   deleteItem,
   editItem,
   setAllChecked,
+  setItemDeadline,
   toggleItem,
 } from "./item-ops.ts";
 
 export {
+  addRecurrence,
+  daysUntil,
+  deadlineStatus,
+  nextOccurrence,
+} from "./deadlines.ts";
+export type { DeadlineStatus } from "./deadlines.ts";
+
+export {
   displayItems,
   flattenForDisplay,
+  floatDatedToBottom,
   isComplete,
   moveDisplayedItem,
   moveItem,

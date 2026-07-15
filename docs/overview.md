@@ -76,15 +76,18 @@ onto extra lines when it's too long for one — `break-words`, so even a
 single unbroken run can't overflow the row), a body-hint note glyph
 (only on items that carry a note — muted while the body is collapsed,
 accent-coloured while it's revealed), and a grip handle for vertical
-reordering. Swiping **left** latches open a Delete button
-(two-step, so a delete is never a single flick); swiping **right**
-archives the row (hidden, not destroyed). The two action layers are
-gated on the swipe direction (`swipe.offset`'s sign): the left-aligned
-Archive strip is visible only while sliding right, the right-aligned
-Delete button only while sliding left. That gating matters for the
-archive slide-off — the foreground travels the full row width to the
-right, so without it the trailing-edge Delete button would be bared as
-the row clears the screen on its way to the archive.
+reordering. Swiping **left** latches open a trailing pair of buttons — a
+neutral **clock** that opens the [deadline modal](#deadlines) and a red
+**trash** (an icon, not the word) that deletes (two-step, so a delete is
+never a single flick); swiping **right** archives the row (hidden, not
+destroyed). The two action layers are gated on the swipe direction
+(`swipe.offset`'s sign): the left-aligned Archive strip is visible only
+while sliding right, the right-aligned button pair only while sliding
+left. That gating matters for the archive slide-off — the foreground
+travels the full row width to the right, so without it the trailing-edge
+buttons would be bared as the row clears the screen on its way to the
+archive. A dated item also renders a slim [date row](#deadlines) above
+its title, inside the sliding foreground so it travels with the swipe.
 
 **Editing the text — reveal, then edit.** An item with a markdown
 **body** (`notes`) shows a note glyph to the right of its title (muted when
@@ -973,14 +976,56 @@ checklist](#copy-checklist) for the inverse.
 ### Toggle item
 
 `toggleItem` (`src/domain/checklists.ts`) — flips a single item's
-`checked` flag. Surfaced by tapping the row's checkbox.
+`checked` flag (cascading through its subtree). Surfaced by tapping the
+row's checkbox. A **recurring** dated item is the exception: checking it
+doesn't tick it off but rolls its `deadline` forward to the next
+occurrence and leaves it unchecked (see [Deadlines](#deadlines)), so the
+task reappears on its next due date.
 
 ### Delete item
 
 `deleteItem` (`src/domain/checklists.ts`) — permanently drops the item
-from the list. Reached by swiping a row left (or Delete in the archive
-view). Recoverable only via undo, which resurrects it from the prior
+from the list. Reached by swiping a row left and tapping the **trash**
+glyph (or Delete in the archive view / the desktop right-click menu).
+Recoverable only via undo, which resurrects it from the prior
 whole-document snapshot.
+
+### Deadlines
+
+A checklist item can carry a **deadline** (an optional `deadline`
+`YYYY-MM-DD` day on `ChecklistItem`) and a **recurrence** (`recurrence`:
+`{ unit: "week" | "month" | "year", interval }`, only alongside a
+deadline). Set from the **clock** button revealed on a left swipe (or the
+desktop right-click menu), which opens `DeadlineModal`
+(`src/ui/DeadlineModal.tsx`) — a date field plus a repeat picker — and
+commits through the `setDeadline` edit verb over the pure
+`setItemDeadline` (`src/domain/item-ops.ts`). Clearing the date drops the
+recurrence with it.
+
+Three behaviours hang off a deadline:
+
+- **Date row.** A dated item shows `DeadlineRow`
+  (`src/ui/DeadlineRow.tsx`) above its title — a slim, small-font line
+  with the formatted due date (and a repeat glyph + summary when
+  recurring), colour-coded by `deadlineStatus`
+  (`src/domain/deadlines.ts`): muted while far off, then **yellow**
+  (`text-meta`, within a week), **orange** (`text-flag`, within a day),
+  and **red** (`text-danger`, overdue).
+- **Ordering.** `floatDatedToBottom` (folded into `displayItems`,
+  `src/domain/item-display.ts`) floats the dated unchecked items to the
+  bottom of the unchecked group, sorted by due date (soonest first), so
+  every dated task clusters together just above the checked items. This
+  applies whatever the "sort checked to the bottom" setting is.
+- **Recurrence.** Checking a recurring item advances its `deadline` by
+  `nextOccurrence` (`src/domain/deadlines.ts`) instead of marking it
+  checked — the date-math helpers (`addRecurrence`, clamping the day of
+  month) live there. Giving any item a deadline unlocks the **On the
+  Clock** [achievement](#achievements).
+
+On the file / cloud backends the deadline and recurrence round-trip
+through the markdown codec as an italic `*(due 2026-07-20, every 2
+weeks)*` marker on the item line (`src/storage/markdown/codec.ts`), the
+same human-readable, tool-friendly convention as `*(required)*`.
 
 ### Archive / unarchive item
 

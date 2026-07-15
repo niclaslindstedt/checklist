@@ -128,6 +128,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Tryck på märket bredvid en listas titel för att välja en ikon och en accentfärg bara för den listan — den valda symbolen ersätter det generiska checklistmärket i rubriken, så att du kan skilja dina listor åt med en blick. Valet följer med listan mellan dina enheter.",
     },
+    onTheClock: {
+      name: "På klockan",
+      condition: "Ge en post en deadline.",
+      learnMore:
+        "Svep en post åt vänster och tryck på klockan för att ange ett förfallodatum — och, om uppgiften återkommer, en upprepning som ”var 2:e vecka”. Daterade poster sjunker till botten av de ej avbockade under en datumrad som går från gul till orange till röd när dagen närmar sig och passeras; att bocka av en återkommande post rullar den fram till nästa förfallodatum istället för att stryka den.",
+    },
     archivist: {
       name: "Arkivarien",
       condition: "Arkivera en post.",

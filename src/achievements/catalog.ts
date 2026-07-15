@@ -17,6 +17,7 @@ import {
   BellOffGlyph,
   BoxesGlyph,
   CheckGlyph,
+  ClockGlyph,
   CloudGlyph,
   CloudOffGlyph,
   CloudSearchGlyph,
@@ -95,6 +96,8 @@ const hasFiledChecklist = (snap: Snapshot) =>
   );
 const hasStyledChecklist = (snap: Snapshot) =>
   snap.checklists.some((c) => Boolean(c.glyph) || Boolean(c.color));
+const hasDatedItem = (snap: Snapshot) =>
+  someItem(snap, (it) => typeof it.deadline === "string" && it.deadline !== "");
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
@@ -249,6 +252,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.snapshot.checklists],
       predicate: (prev, next) =>
         !hasFiledChecklist(prev.snapshot) && hasFiledChecklist(next.snapshot),
+    },
+  },
+  {
+    id: "onTheClock",
+    tier: "intermediate",
+    glyph: ClockGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot],
+      predicate: (prev, next) =>
+        !hasDatedItem(prev.snapshot) && hasDatedItem(next.snapshot),
     },
   },
   {

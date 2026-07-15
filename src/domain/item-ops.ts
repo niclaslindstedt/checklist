@@ -7,6 +7,7 @@
 // and DOM-free.
 
 import { activeItems } from "./archive-ops.ts";
+import { nextOccurrence } from "./deadlines.ts";
 import {
   findItem,
   flattenItems,
@@ -14,7 +15,13 @@ import {
   updateItem,
   withChildren,
 } from "./item-tree.ts";
-import type { Checklist, ChecklistItem } from "./types.ts";
+import type { Checklist, ChecklistItem, Recurrence } from "./types.ts";
+
+/** True when two recurrences describe the same cadence. */
+function sameRecurrence(a?: Recurrence, b?: Recurrence): boolean {
+  if (!a || !b) return a === b;
+  return a.unit === b.unit && a.interval === b.interval;
+}
 
 /**
  * Add a fresh, unchecked item to the list. `position` controls where it
@@ -213,6 +220,51 @@ export function editItem(
   return { ...checklist, items, updatedAt: now };
 }
 
+/**
+ * Set (or clear) an item's due date and how it repeats. `deadline` is a
+ * `YYYY-MM-DD` day or `null` to clear it; `recurrence` describes the repeat
+ * cadence or `null` for a one-off. Clearing the deadline drops any recurrence
+ * with it (recurrence needs an anchor date), and a `recurrence` supplied
+ * without a `deadline` is ignored for the same reason. A no-op (nothing
+ * actually changed) returns the same checklist untouched, so it never bumps
+ * `updatedAt` or triggers a write.
+ */
+export function setItemDeadline(
+  checklist: Checklist,
+  itemId: string,
+  deadline: string | null,
+  recurrence: Recurrence | null,
+  now: string,
+): Checklist {
+  const items = updateItem(checklist.items, itemId, (it) => {
+    const next: ChecklistItem = { ...it };
+    let changed = false;
+    if (deadline) {
+      if (it.deadline !== deadline) {
+        next.deadline = deadline;
+        changed = true;
+      }
+    } else if (it.deadline !== undefined) {
+      delete next.deadline;
+      changed = true;
+    }
+    // Recurrence only rides alongside a live deadline.
+    const rec = deadline ? recurrence : null;
+    if (rec) {
+      if (!sameRecurrence(it.recurrence, rec)) {
+        next.recurrence = rec;
+        changed = true;
+      }
+    } else if (it.recurrence !== undefined) {
+      delete next.recurrence;
+      changed = true;
+    }
+    return changed ? next : it;
+  });
+  if (items === checklist.items) return checklist;
+  return { ...checklist, items, updatedAt: now };
+}
+
 /** Permanently remove an item — and its whole subtree — from the list. */
 export function deleteItem(
   checklist: Checklist,
@@ -231,11 +283,22 @@ export function toggleItem(
 ): Checklist {
   const target = findItem(checklist.items, itemId);
   if (!target) return checklist;
+  const check = !target.checked;
+  // A recurring item isn't ticked off — checking it rolls its deadline
+  // forward to the next occurrence and leaves it unchecked, so the task
+  // reappears on its next due date instead of vanishing into the checked
+  // group. One-off dated items and plain items fall through to the toggle.
+  if (check && target.recurrence && target.deadline) {
+    const items = updateItem(checklist.items, itemId, (it) => ({
+      ...it,
+      deadline: nextOccurrence(it.deadline!, it.recurrence!, now),
+    }));
+    return { ...checklist, items, updatedAt: now };
+  }
   // Checking a parent cascades down its whole subtree, and unchecking clears
   // it — so a checked-off group reads as done top to bottom. Checking stamps
   // `checkedAt` (the recency key the "sort checked to the bottom" view sorts
   // on); unchecking drops it so it never lingers on an active item.
-  const check = !target.checked;
   const apply = (it: ChecklistItem): ChecklistItem => {
     const next: ChecklistItem = check
       ? { ...it, checked: true, checkedAt: now }

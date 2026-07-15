@@ -22,6 +22,8 @@ import type {
   ChecklistItem,
   Folder,
   Item,
+  Recurrence,
+  RecurrenceUnit,
   Snapshot,
   Template,
 } from "../../domain/types.ts";
@@ -41,6 +43,14 @@ export const TEMPLATES_DIR = "templates";
 // "(required)" by every markdown viewer, so it reads as a meaningful cue
 // to a human while still round-tripping the `required` flag.
 const REQUIRED_MARKER = "*(required)*";
+
+// Trailing marker that carries an item's due date and (optionally) how it
+// repeats, e.g. `*(due 2026-07-20)*` or `*(due 2026-07-20, every 2 weeks)*`.
+// Rendered as an italic aside by every markdown viewer — human-readable and
+// round-trippable, in the same spirit as REQUIRED_MARKER. Recurrence emits a
+// bare `every <unit>` for an interval of one and `every <n> <unit>s` above.
+const DUE_MARKER_RE =
+  /\s*\*\(due (\d{4}-\d{2}-\d{2})(?:, every (?:(\d+) )?(week|month|year)s?)?\)\*/;
 
 // -- Filenames --------------------------------------------------------
 
@@ -222,13 +232,27 @@ function renderChecklistItem(item: ChecklistItem, depth: number): string[] {
   const pad = indentFor(depth);
   const box = item.checked ? "x" : " ";
   const lines = [
-    `${pad}- [${box}] ${renderItemTitle(item)}`,
+    `${pad}- [${box}] ${renderItemTitle(item)}${renderDueMarker(item)}`,
     ...renderNotes(item.notes, pad),
   ];
   for (const child of item.children ?? []) {
     lines.push(...renderChecklistItem(child, depth + 1));
   }
   return lines;
+}
+
+/** The ` *(due …)*` suffix for a dated item, or "" when it has no deadline. */
+function renderDueMarker(item: ChecklistItem): string {
+  if (!item.deadline) return "";
+  const parts = [`due ${item.deadline}`];
+  if (item.recurrence) parts.push(renderRecurrence(item.recurrence));
+  return ` *(${parts.join(", ")})*`;
+}
+
+function renderRecurrence(recurrence: Recurrence): string {
+  return recurrence.interval === 1
+    ? `every ${recurrence.unit}`
+    : `every ${recurrence.interval} ${recurrence.unit}s`;
 }
 
 // Templates are flat (the `Item` model carries no children), so they render
@@ -331,6 +355,10 @@ export interface ImportedItem {
   checked: boolean;
   required: boolean;
   notes?: string;
+  /** A due date (`YYYY-MM-DD`) recovered from a `*(due …)*` marker. */
+  deadline?: string;
+  /** How the deadline repeats, recovered alongside it. Only with a deadline. */
+  recurrence?: Recurrence;
   /** Nested sub-items, recovered from indented task lines. */
   children?: ImportedItem[];
 }
@@ -356,6 +384,8 @@ export function parseItemsFromMarkdown(text: string): ImportedItem[] {
       required: raw.required,
     };
     if (raw.notes) item.notes = raw.notes;
+    if (raw.deadline) item.deadline = raw.deadline;
+    if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
     if (raw.children && raw.children.length > 0) {
       item.children = raw.children.map(toImported);
     }
@@ -370,6 +400,8 @@ type RawItem = {
   required: boolean;
   notes?: string;
   archived?: boolean;
+  deadline?: string;
+  recurrence?: Recurrence;
   children?: RawItem[];
 };
 
@@ -395,6 +427,8 @@ function toChecklistItem(raw: RawItem, id: string): ChecklistItem {
   if (raw.notes) item.notes = raw.notes;
   if (raw.required) item.required = true;
   if (raw.archived) item.archived = true;
+  if (raw.deadline) item.deadline = raw.deadline;
+  if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
   if (raw.children && raw.children.length > 0) {
     // Ids are regenerated deterministically from the path so a load with no
     // edit stays idempotent (see the round-trip note at the top of the file).
@@ -506,15 +540,50 @@ function parseItemLine(line: string): { indent: number; item: RawItem } | null {
   const indent = m[1]!.length;
   const rest = m[2]!;
   const task = /^\[([ xX])\]\s+(.*)$/.exec(rest);
-  if (task) {
-    const { title, required } = stripRequired(task[2]!);
-    return {
-      indent,
-      item: { title, checked: task[1]!.toLowerCase() === "x", required },
-    };
+  const checked = task ? task[1]!.toLowerCase() === "x" : false;
+  const body = task ? task[2]! : rest;
+  const meta = parseItemMeta(body);
+  return {
+    indent,
+    item: {
+      title: meta.title,
+      checked,
+      required: meta.required,
+      ...(meta.deadline ? { deadline: meta.deadline } : {}),
+      ...(meta.deadline && meta.recurrence
+        ? { recurrence: meta.recurrence }
+        : {}),
+    },
+  };
+}
+
+// Peel the trailing `*(required)*` / `*(due …)*` markers off an item's text,
+// returning the clean title plus whatever the markers carried. The due marker
+// may sit anywhere in the string (it's spliced out in place), and required is
+// stripped last from the tail — mirroring how they render (required first,
+// then due).
+function parseItemMeta(raw: string): {
+  title: string;
+  required: boolean;
+  deadline?: string;
+  recurrence?: Recurrence;
+} {
+  let text = raw;
+  let deadline: string | undefined;
+  let recurrence: Recurrence | undefined;
+  const due = DUE_MARKER_RE.exec(text);
+  if (due) {
+    deadline = due[1];
+    if (due[3]) {
+      recurrence = {
+        unit: due[3] as RecurrenceUnit,
+        interval: due[2] ? Number(due[2]) : 1,
+      };
+    }
+    text = text.slice(0, due.index) + text.slice(due.index + due[0].length);
   }
-  const { title, required } = stripRequired(rest);
-  return { indent, item: { title, checked: false, required } };
+  const { title, required } = stripRequired(text);
+  return { title, required, deadline, recurrence };
 }
 
 function stripRequired(raw: string): { title: string; required: boolean } {

@@ -63,6 +63,7 @@ export function makeChecklistValue(
     importItemsAfter: () => ({ count: 0, lastId: null }),
     editItem: noop,
     toggle: noop,
+    setDeadline: noop,
     checkAll: noop,
     uncheckAll: noop,
     remove: noop,

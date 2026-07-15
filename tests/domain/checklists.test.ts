@@ -19,6 +19,7 @@ import {
   findItem,
   flattenForDisplay,
   flattenItems,
+  floatDatedToBottom,
   instantiate,
   isComplete,
   moveDisplayedItem,
@@ -31,6 +32,7 @@ import {
   setArchived,
   setChecklistAppearance,
   setChecklistArchived,
+  setItemDeadline,
   sortCheckedToBottom,
   toggleItem,
 } from "../../src/domain/checklists.ts";
@@ -1200,5 +1202,125 @@ describe("moveDisplayedItem", () => {
   it("returns the checklist unchanged for an unknown item", () => {
     const c = listOf("A", "B");
     expect(moveDisplayedItem(c, "nope", 0, true, LATER)).toBe(c);
+  });
+});
+
+describe("setItemDeadline", () => {
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+  const LATER = "2026-02-01T00:00:00.000Z";
+
+  it("sets a due date on an item", () => {
+    const c = setItemDeadline(listOf("A"), "i1", "2026-07-20", null, LATER);
+    expect(findItem(c.items, "i1")?.deadline).toBe("2026-07-20");
+    expect(c.updatedAt).toBe(LATER);
+  });
+
+  it("stores a recurrence alongside a deadline", () => {
+    const c = setItemDeadline(
+      listOf("A"),
+      "i1",
+      "2026-07-20",
+      { unit: "week", interval: 2 },
+      LATER,
+    );
+    expect(findItem(c.items, "i1")?.recurrence).toEqual({
+      unit: "week",
+      interval: 2,
+    });
+  });
+
+  it("drops a recurrence supplied without a deadline", () => {
+    const c = setItemDeadline(
+      listOf("A"),
+      "i1",
+      null,
+      { unit: "week", interval: 2 },
+      LATER,
+    );
+    expect(findItem(c.items, "i1")?.deadline).toBeUndefined();
+    expect(findItem(c.items, "i1")?.recurrence).toBeUndefined();
+  });
+
+  it("clears the deadline and any recurrence with it", () => {
+    let c = setItemDeadline(
+      listOf("A"),
+      "i1",
+      "2026-07-20",
+      { unit: "month", interval: 1 },
+      LATER,
+    );
+    c = setItemDeadline(c, "i1", null, null, LATER);
+    const it = findItem(c.items, "i1");
+    expect(it?.deadline).toBeUndefined();
+    expect(it?.recurrence).toBeUndefined();
+  });
+
+  it("is a no-op (same reference) when nothing changes", () => {
+    const c = setItemDeadline(listOf("A"), "i1", "2026-07-20", null, LATER);
+    expect(setItemDeadline(c, "i1", "2026-07-20", null, NOW)).toBe(c);
+  });
+});
+
+describe("toggleItem with a recurrence", () => {
+  function dated(recurring: boolean) {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "i1", title: "Water plants" }, NOW);
+    return setItemDeadline(
+      c,
+      "i1",
+      "2026-07-20",
+      recurring ? { unit: "week", interval: 1 } : null,
+      NOW,
+    );
+  }
+
+  it("rolls a recurring item forward instead of checking it off", () => {
+    const c = toggleItem(dated(true), "i1", "2026-07-15T12:00:00.000Z");
+    const it = findItem(c.items, "i1");
+    expect(it?.checked).toBe(false);
+    expect(it?.deadline).toBe("2026-07-27");
+  });
+
+  it("checks a one-off dated item normally", () => {
+    const c = toggleItem(dated(false), "i1", NOW);
+    expect(findItem(c.items, "i1")?.checked).toBe(true);
+    expect(findItem(c.items, "i1")?.deadline).toBe("2026-07-20");
+  });
+});
+
+describe("displayItems with dated items", () => {
+  function listOf(...titles: string[]) {
+    let c = createChecklist("c1", "List", NOW);
+    titles.forEach((t, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: t }, NOW);
+    });
+    return c;
+  }
+  const ids = (items: { id: string }[]) => items.map((it) => it.id);
+
+  it("floats dated unchecked items below undated ones, soonest first", () => {
+    let c = listOf("A", "B", "C", "D");
+    c = setItemDeadline(c, "i1", "2026-08-01", null, NOW); // later
+    c = setItemDeadline(c, "i3", "2026-07-20", null, NOW); // sooner
+    expect(ids(displayItems(c, false))).toEqual(["i2", "i4", "i3", "i1"]);
+  });
+
+  it("keeps dated unchecked items above the checked group when sinking", () => {
+    let c = listOf("A", "B", "C");
+    c = setItemDeadline(c, "i1", "2026-07-20", null, NOW); // dated
+    c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z"); // checked
+    // Undated unchecked (i3), then dated unchecked (i1), then checked (i2).
+    expect(ids(displayItems(c, true))).toEqual(["i3", "i1", "i2"]);
+  });
+
+  it("leaves an undated level's order untouched", () => {
+    const items = listOf("A", "B").items;
+    expect(ids(floatDatedToBottom(items))).toEqual(["i1", "i2"]);
   });
 });
