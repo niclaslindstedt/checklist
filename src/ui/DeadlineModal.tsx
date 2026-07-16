@@ -34,7 +34,15 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
   const [unit, setUnit] = useState<RepeatChoice>(
     item.recurrence?.unit ?? "none",
   );
-  const [interval, setInterval] = useState(item.recurrence?.interval ?? 1);
+  // The interval is held as free-form text so mid-edit states — an empty
+  // field, a leading zero — don't fight a controlled number input (which
+  // coerces "" to 0 and then wedges on "03"). It's normalised to a valid
+  // integer on blur and again on save.
+  const [intervalText, setIntervalText] = useState(
+    String(item.recurrence?.interval ?? 1),
+  );
+
+  const parsedInterval = Math.max(1, parseInt(intervalText, 10) || 1);
 
   const repeatOptions = [
     { value: "none" as const, label: t("app.deadline.noRepeat") },
@@ -47,9 +55,7 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
     const deadline = date || null;
     // Recurrence only rides with a date, and only when a real unit is chosen.
     const recurrence: Recurrence | null =
-      deadline && unit !== "none"
-        ? { unit, interval: Math.max(1, Math.round(interval) || 1) }
-        : null;
+      deadline && unit !== "none" ? { unit, interval: parsedInterval } : null;
     onSubmit(deadline, recurrence);
     onClose();
   };
@@ -99,13 +105,18 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
                   {t("app.deadline.every")}
                 </span>
                 <input
-                  type="number"
-                  min={1}
-                  value={interval}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={intervalText}
                   aria-label={t("app.deadline.interval")}
                   disabled={!date}
-                  onChange={(e) => setInterval(Number(e.target.value))}
-                  className="w-16 rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright focus:border-accent focus:outline-none disabled:opacity-50"
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) =>
+                    setIntervalText(e.target.value.replace(/[^0-9]/g, ""))
+                  }
+                  onBlur={() => setIntervalText(String(parsedInterval))}
+                  className="w-16 rounded border border-line bg-surface-2 px-2 py-1.5 text-center text-sm text-fg-bright focus:border-accent focus:outline-none disabled:opacity-50"
                 />
               </>
             )}
