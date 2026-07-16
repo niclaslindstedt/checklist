@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 
 import type {
   ChecklistItem,
@@ -7,6 +7,7 @@ import type {
 } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { Modal } from "./Modal.tsx";
+import { DatePicker } from "./form/DatePicker.tsx";
 import { SelectPicker } from "./form/SelectPicker.tsx";
 import { ClockIcon } from "./icons.tsx";
 
@@ -28,7 +29,6 @@ type Props = {
 export function DeadlineModal({ item, onSubmit, onClose }: Props) {
   const t = useT();
   const headingId = useId();
-  const dateRef = useRef<HTMLInputElement>(null);
 
   const [date, setDate] = useState(item.deadline ?? "");
   const [unit, setUnit] = useState<RepeatChoice>(
@@ -66,7 +66,6 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
       labelledBy={headingId}
       centered
       size="max-w-sm"
-      initialFocusRef={dateRef}
     >
       <div className="flex flex-col gap-4 p-5">
         <h2
@@ -81,12 +80,11 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
           <span className="text-xs font-medium tracking-wide text-muted uppercase">
             {t("app.deadline.dueDate")}
           </span>
-          <input
-            ref={dateRef}
-            type="date"
+          <DatePicker
             value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded border border-line bg-surface-2 px-2 py-1.5 text-sm text-fg-bright focus:border-accent focus:outline-none"
+            onChange={setDate}
+            ariaLabel={t("app.deadline.dueDate")}
+            placeholder={t("app.deadline.pickDate")}
           />
         </label>
 

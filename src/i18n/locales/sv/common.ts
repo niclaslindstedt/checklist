@@ -7,6 +7,8 @@ const common: CommonCatalog = {
   resetToDefaults: "Återställ till standard",
   dismiss: "Stäng",
   back: "Tillbaka",
+  prevMonth: "Föregående månad",
+  nextMonth: "Nästa månad",
 };
 
 export default common;

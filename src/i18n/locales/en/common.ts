@@ -7,6 +7,8 @@ const common = {
   resetToDefaults: "Reset to defaults",
   dismiss: "Dismiss",
   back: "Back",
+  prevMonth: "Previous month",
+  nextMonth: "Next month",
 } as const;
 
 export type CommonCatalog = Widen<typeof common>;

@@ -735,6 +735,31 @@ These are pared-down ports of the budget project's equivalents — no
 swipeable-row coordinator, and no inline body-scroll lock since the only
 caller opens inside the already-locked settings `Modal`.
 
+### Date picker
+
+`src/ui/form/DatePicker.tsx` (`DatePicker`) — the custom calendar that
+replaces the native `<input type="date">` for choosing a due date in the
+[deadline modal](#deadlines). The app ships its own picker because the
+native control is unusable inside an iOS **standalone PWA**: its popover
+calendar dismisses itself the instant you tap the month header to
+navigate, so a user had to reopen it and land on the right month by luck
+(the bug this component fixes). The trigger is a button wearing the
+`field-input` look that shows the selected day (or a placeholder); opening
+it portals a `role="dialog"` calendar into the shared `FloatingPanel` —
+prev / next month arrows around a localized `Month YYYY` caption over a
+seven-column grid of day buttons, with the selected day filled in the
+accent colour and today ringed. Because month navigation is now ordinary
+in-page interaction, iOS can't tear it down.
+
+Value is a plain `YYYY-MM-DD` string (empty for "no date"), and **all the
+calendar arithmetic is pure** and lives in `src/domain/calendar.ts`
+(`buildMonthGrid` lays out the six-week grid with the leading / trailing
+spill-over days; `addMonths`, `parseISODate`, `toISODate` round out the
+maths) so it stays DOM-free and unit-tested like the rest of `domain/`.
+The component only renders that grid, tracks which month is on screen, and
+reads the active locale (`useLang` / `bcp47`) for the weekday headers,
+month caption, and week-start column (`Intl.DateTimeFormat`).
+
 ### Right-click menu
 
 `src/ui/ContextMenu.tsx` (`ContextMenu`) with its state helper
@@ -997,10 +1022,11 @@ A checklist item can carry a **deadline** (an optional `deadline`
 `{ unit: "week" | "month" | "year", interval }`, only alongside a
 deadline). Set from the **clock** button revealed on a left swipe (or the
 desktop right-click menu), which opens `DeadlineModal`
-(`src/ui/DeadlineModal.tsx`) — a date field plus a repeat picker — and
-commits through the `setDeadline` edit verb over the pure
+(`src/ui/DeadlineModal.tsx`) — a **date picker** plus a repeat picker —
+and commits through the `setDeadline` edit verb over the pure
 `setItemDeadline` (`src/domain/item-ops.ts`). Clearing the date drops the
-recurrence with it.
+recurrence with it. The date field is the custom
+[date picker](#date-picker), not a native `<input type="date">`.
 
 Three behaviours hang off a deadline:
 
