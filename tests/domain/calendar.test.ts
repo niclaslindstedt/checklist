@@ -5,6 +5,7 @@ import {
   buildMonthGrid,
   parseISODate,
   toISODate,
+  yearRangeStart,
 } from "../../src/domain/calendar.ts";
 
 describe("toISODate", () => {
@@ -47,6 +48,23 @@ describe("addMonths", () => {
     expect(addMonths(2026, 12, 1)).toEqual({ year: 2027, month: 1 });
     expect(addMonths(2026, 1, -1)).toEqual({ year: 2025, month: 12 });
     expect(addMonths(2026, 6, -12)).toEqual({ year: 2025, month: 6 });
+  });
+});
+
+describe("yearRangeStart", () => {
+  it("aligns to fixed, non-overlapping 12-year blocks", () => {
+    // 2026 → 2016–2027; the block start is a multiple of the size.
+    expect(yearRangeStart(2026)).toBe(2016);
+    expect(yearRangeStart(2016)).toBe(2016);
+    expect(yearRangeStart(2027)).toBe(2016);
+    expect(yearRangeStart(2028)).toBe(2028);
+    expect(yearRangeStart(2015)).toBe(2004);
+  });
+
+  it("honours a custom block size", () => {
+    expect(yearRangeStart(2026, 10)).toBe(2020);
+    expect(yearRangeStart(2029, 10)).toBe(2020);
+    expect(yearRangeStart(2030, 10)).toBe(2030);
   });
 });
 
