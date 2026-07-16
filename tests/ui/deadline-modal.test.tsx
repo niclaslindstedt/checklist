@@ -76,4 +76,60 @@ describe("DeadlineModal", () => {
     fireEvent.click(screen.getByText("Save"));
     expect(onSubmit).toHaveBeenCalledWith(null, null);
   });
+
+  it("lets the interval be retyped freely and saves the new value", () => {
+    const onSubmit = vi.fn();
+    render(
+      <DeadlineModal
+        item={{
+          ...base,
+          deadline: "2026-08-01",
+          recurrence: { unit: "week", interval: 1 },
+        }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    const field = screen.getByLabelText("Repeat interval") as HTMLInputElement;
+    // A digit-only pad on mobile; not the punctuation-heavy number keyboard.
+    expect(field.getAttribute("inputmode")).toBe("numeric");
+    // Retype the interval — the string-backed field never wedges on the
+    // controlled-number "03" bug.
+    fireEvent.change(field, { target: { value: "3" } });
+    expect(field.value).toBe("3");
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith("2026-08-01", {
+      unit: "week",
+      interval: 3,
+    });
+  });
+
+  it("normalises a cleared interval back to 1 on blur and rejects non-digits", () => {
+    const onSubmit = vi.fn();
+    render(
+      <DeadlineModal
+        item={{
+          ...base,
+          deadline: "2026-08-01",
+          recurrence: { unit: "month", interval: 4 },
+        }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    const field = screen.getByLabelText("Repeat interval") as HTMLInputElement;
+    // Non-digit characters never make it into the field.
+    fireEvent.change(field, { target: { value: "1a2" } });
+    expect(field.value).toBe("12");
+    // Clearing it leaves an empty field mid-edit, which blur repairs to 1.
+    fireEvent.change(field, { target: { value: "" } });
+    expect(field.value).toBe("");
+    fireEvent.blur(field);
+    expect(field.value).toBe("1");
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith("2026-08-01", {
+      unit: "month",
+      interval: 1,
+    });
+  });
 });
