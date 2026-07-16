@@ -355,7 +355,14 @@ function ChecklistRowImpl({
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onEditDeadline?.(item.id)}
+              onClick={() => {
+                // Slide the row shut as the deadline modal opens, so once it
+                // closes (whether the date was set or cancelled) the row is
+                // back in its resting position rather than stranded swiped
+                // open over the clock / delete buttons.
+                swipe.close();
+                onEditDeadline?.(item.id);
+              }}
               aria-label={t("app.setDeadline")}
               className="flex h-full w-16 items-center justify-center bg-surface-3 text-fg"
             >

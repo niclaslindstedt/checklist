@@ -9,6 +9,12 @@ const common = {
   back: "Back",
   prevMonth: "Previous month",
   nextMonth: "Next month",
+  prevYear: "Previous year",
+  nextYear: "Next year",
+  prevYears: "Previous years",
+  nextYears: "Next years",
+  chooseMonth: "Choose month",
+  chooseYear: "Choose year",
 } as const;
 
 export type CommonCatalog = Widen<typeof common>;

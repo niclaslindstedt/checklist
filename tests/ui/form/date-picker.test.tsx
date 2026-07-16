@@ -82,4 +82,59 @@ describe("DatePicker", () => {
     );
     expect(onChange).toHaveBeenCalledWith("2026-09-10");
   });
+
+  it("jumps to a far-off year through the month and year drill-downs", () => {
+    const onChange = vi.fn();
+    render(
+      <DatePicker
+        value="2026-08-01"
+        onChange={onChange}
+        ariaLabel="Due date"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+
+    // Day view → tap the caption to reach the month grid for the shown year.
+    fireEvent.click(screen.getByRole("button", { name: "Choose month" }));
+    expect(screen.getByText("2026")).toBeTruthy();
+
+    // Month grid → tap the year caption to reach the year grid.
+    fireEvent.click(screen.getByRole("button", { name: "Choose year" }));
+    // 2026 sits in the 2016–2027 block.
+    expect(screen.getByText("2016–2027")).toBeTruthy();
+
+    // Page back one block and pick a year — that drops back to the month grid.
+    fireEvent.click(screen.getByRole("button", { name: "Previous years" }));
+    expect(screen.getByText("2004–2015")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "2010" }));
+
+    // Month grid for 2010 → pick March, which drops back to that month's days.
+    expect(screen.getByText("2010")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "March" }));
+    expect(screen.getByText("March 2010")).toBeTruthy();
+
+    // Nothing committed until a day is chosen.
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /\b12 March 2010$/ }));
+    expect(onChange).toHaveBeenCalledWith("2010-03-12");
+  });
+
+  it("steps the year from the month grid without leaving it", () => {
+    const onChange = vi.fn();
+    render(
+      <DatePicker
+        value="2026-08-01"
+        onChange={onChange}
+        ariaLabel="Due date"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose month" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Next year" }));
+    expect(screen.getByText("2027")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Previous year" }));
+    expect(screen.getByText("2026")).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

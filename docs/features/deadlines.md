@@ -12,6 +12,11 @@ task comes back around, how often it repeats — every so many weeks,
 months, or years. Save, and the item is dated. On a computer the same
 options live in the item's right-click menu.
 
+The date picker is a small calendar. Step month by month with the arrows,
+or tap the month-and-year heading to jump straight there: once for a grid
+of months, again for a grid of years — so a date years away is a couple of
+taps, not a long scroll.
+
 To clear a date later, open the picker again and use "Clear deadline" —
 that also drops any repeat you'd set, since a repeat needs a date to
 anchor it.

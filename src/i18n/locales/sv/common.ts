@@ -9,6 +9,12 @@ const common: CommonCatalog = {
   back: "Tillbaka",
   prevMonth: "Föregående månad",
   nextMonth: "Nästa månad",
+  prevYear: "Föregående år",
+  nextYear: "Nästa år",
+  prevYears: "Föregående år",
+  nextYears: "Nästa år",
+  chooseMonth: "Välj månad",
+  chooseYear: "Välj år",
 };
 
 export default common;

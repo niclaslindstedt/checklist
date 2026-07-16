@@ -64,6 +64,16 @@ export function addMonths(
   return { year: Math.floor(total / 12), month: (total % 12) + 1 };
 }
 
+/**
+ * The first year of the fixed-size block that contains `year`, so the picker's
+ * year grid pages through stable, non-overlapping ranges (…2004–2015,
+ * 2016–2027, …) rather than a window that drifts with wherever you started.
+ * `size` defaults to 12 (a 3×4 grid, matching the month grid's shape).
+ */
+export function yearRangeStart(year: number, size = 12): number {
+  return year - (((year % size) + size) % size);
+}
+
 /** Day of week (0 = Sunday … 6 = Saturday) for a 1-based year / month / day. */
 function weekdayOf(year: number, month: number, day: number): number {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();

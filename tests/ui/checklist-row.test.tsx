@@ -153,6 +153,23 @@ describe("ChecklistRow swipe action layers", () => {
     fireEvent.click(screen.getByLabelText("Set deadline"));
     expect(onEditDeadline).toHaveBeenCalledWith("i1");
   });
+
+  it("slides the row shut when the clock button opens the deadline editor", () => {
+    renderRow({ onEditDeadline: noop });
+    const fg = foreground();
+    stubPointerCapture(fg);
+
+    // Latch the row open with a left-swipe past the threshold, then tap the
+    // clock — the foreground must return to its resting position so the row is
+    // visible again once the deadline modal closes.
+    dispatchPointer(fg, "pointerdown", { x: 0, y: 0 });
+    dispatchPointer(fg, "pointermove", { x: -60, y: 0 });
+    dispatchPointer(fg, "pointerup", { x: -60, y: 0 });
+    expect(fg.style.transform).toBe("translateX(-128px)");
+
+    fireEvent.click(screen.getByLabelText("Set deadline"));
+    expect(fg.style.transform).toBe("translateX(0px)");
+  });
 });
 
 describe("ChecklistRow date row", () => {

@@ -751,14 +751,25 @@ seven-column grid of day buttons, with the selected day filled in the
 accent colour and today ringed. Because month navigation is now ordinary
 in-page interaction, iOS can't tear it down.
 
+Like the native control, the header caption **drills through three views**
+so a far-off date is a couple of taps away rather than dozens of month
+steps: tapping the `Month YYYY` caption opens a **months** grid (the
+twelve months of the shown year, with its own prev / next-year arrows);
+tapping that view's year caption opens a **years** grid (a fixed
+twelve-year block whose arrows page whole blocks). Picking a month drops
+back to its days and picking a year drops back to its months — the `value`
+only commits when an actual **day** is chosen, so browsing the drill-downs
+never fires `onChange`.
+
 Value is a plain `YYYY-MM-DD` string (empty for "no date"), and **all the
 calendar arithmetic is pure** and lives in `src/domain/calendar.ts`
 (`buildMonthGrid` lays out the six-week grid with the leading / trailing
-spill-over days; `addMonths`, `parseISODate`, `toISODate` round out the
-maths) so it stays DOM-free and unit-tested like the rest of `domain/`.
-The component only renders that grid, tracks which month is on screen, and
-reads the active locale (`useLang` / `bcp47`) for the weekday headers,
-month caption, and week-start column (`Intl.DateTimeFormat`).
+spill-over days; `yearRangeStart` aligns the year grid to stable blocks;
+`addMonths`, `parseISODate`, `toISODate` round out the maths) so it stays
+DOM-free and unit-tested like the rest of `domain/`. The component only
+renders those grids, tracks which month / view is on screen, and reads the
+active locale (`useLang` / `bcp47`) for the weekday headers, month and year
+captions, month names, and week-start column (`Intl.DateTimeFormat`).
 
 ### Right-click menu
 
@@ -1026,7 +1037,11 @@ desktop right-click menu), which opens `DeadlineModal`
 and commits through the `setDeadline` edit verb over the pure
 `setItemDeadline` (`src/domain/item-ops.ts`). Clearing the date drops the
 recurrence with it. The date field is the custom
-[date picker](#date-picker), not a native `<input type="date">`.
+[date picker](#date-picker), not a native `<input type="date">`. Tapping
+the clock also slides the swiped-open row shut (`useRowSwipe`'s `close`),
+so once the modal dismisses — whether a date was set or cancelled — the
+row is back in its resting position rather than stranded open over the
+clock / delete buttons.
 
 Three behaviours hang off a deadline:
 
