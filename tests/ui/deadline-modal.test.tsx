@@ -20,9 +20,15 @@ describe("DeadlineModal", () => {
         onClose={noop}
       />,
     );
-    const date = screen.getByLabelText("Due date") as HTMLInputElement;
-    expect(date.value).toBe("2026-08-01");
-    fireEvent.change(date, { target: { value: "2026-09-01" } });
+    const trigger = screen.getByRole("button", { name: "Due date" });
+    expect(trigger.textContent).toContain("1 Aug 2026");
+    // Open the calendar, step to the next month, and pick a day there — the
+    // native input this replaced could not survive that navigation on iOS.
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /\b1 September 2026$/ }),
+    );
     fireEvent.click(screen.getByText("Save"));
     expect(onSubmit).toHaveBeenCalledWith("2026-09-01", null);
   });

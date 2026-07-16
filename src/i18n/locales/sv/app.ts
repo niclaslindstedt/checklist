@@ -21,6 +21,7 @@ const app: AppCatalog = {
   deadline: {
     title: "Deadline",
     dueDate: "Förfallodatum",
+    pickDate: "Välj ett datum",
     repeat: "Upprepa",
     noRepeat: "Upprepas inte",
     every: "Var",

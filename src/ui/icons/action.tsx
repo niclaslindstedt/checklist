@@ -122,6 +122,26 @@ export function ChevronRightIcon({ className }: IconProps) {
   );
 }
 
+// The slim "<" twin of `ChevronRightIcon` — steps the date picker's calendar
+// back to the previous month.
+export function ChevronLeftIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="m10 4-4 4 4 4" />
+    </svg>
+  );
+}
+
 // A small filled disclosure triangle — the toggle on a row that has
 // sub-items. Deliberately distinct from `NoteIcon` (the note-body toggle) so
 // the two reveals read differently: this one is a solid triangle that points

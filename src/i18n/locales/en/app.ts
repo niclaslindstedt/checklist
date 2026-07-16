@@ -27,6 +27,7 @@ const app = {
   deadline: {
     title: "Deadline",
     dueDate: "Due date",
+    pickDate: "Pick a date",
     repeat: "Repeat",
     noRepeat: "Doesn’t repeat",
     every: "Every",
