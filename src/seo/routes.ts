@@ -28,13 +28,7 @@ import {
 export type OgType = "website" | "article";
 
 export type ChangeFreq =
-  | "always"
-  | "hourly"
-  | "daily"
-  | "weekly"
-  | "monthly"
-  | "yearly"
-  | "never";
+  "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
 
 export interface SitemapEntry {
   changefreq: ChangeFreq;

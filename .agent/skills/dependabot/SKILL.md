@@ -144,14 +144,21 @@ pins above. No install needed.
 Run the exact chain CI's `test` job runs (`.github/workflows/ci.yml`):
 
 ```
-npm run build && npm test && npm run lint && make icons-check
+npm run build && npm test && npm run lint && npm run fmt:check && make icons-check
 ```
 
 (`npm run lint` is `eslint . && tsc --noEmit` — it _is_ the typecheck;
-there is no separate `make typecheck`. **CI does not run `fmt-check`** —
-prettier formatting is not gated, so don't reformat unrelated
-preexisting files to chase a green `prettier --check .`; just keep your
-own changed files prettier-clean.)
+there is no separate `make typecheck`. **CI's `test` job _does_ gate
+`npm run fmt:check`** (`prettier --check .`) — it runs after `lint`. The
+trap: `rm -rf package-lock.json && npm install` floats _every_ dep to
+latest-in-range, not just the Dependabot targets, so a `prettier` patch
+inside its existing caret (e.g. 3.8→3.9, which collapses short union
+types onto one line and hugs arrow-returned object literals) can
+reformat **preexisting** files you never touched and turn `fmt:check`
+red. When that happens it's a real prettier move, not scope creep — run
+`prettier --write <the flagged files>` and commit them (a small
+`style:` commit is fine). This `SKILL.md` itself is prettier-ignored
+(lives under `.agent`/`.claude`), so it never shows up.)
 
 **`make icons-check` _is_ gated** and regenerates every icon from
 `public/favicon.svg` via `@vite-pwa/assets-generator`. Bumping that
@@ -190,8 +197,10 @@ package-lock.json` before trusting the trace.
 - New `recommended` lint rules from a major → disable (with a comment),
   don't refactor. `eslint-plugin-react-hooks` 7 adds
   `react-hooks/set-state-in-effect` and `react-hooks/refs`.
-- CI does **not** run `fmt-check` — don't reformat unrelated preexisting
-  files chasing a green `prettier --check .`; this `SKILL.md` is itself
+- CI's `test` job **does** gate `fmt:check`. A full lock regen floats
+  `prettier` within its caret (3.8→3.9 reflows short unions / arrow-return
+  objects), reformatting preexisting files → `prettier --write` the
+  flagged files and commit them (`style:`). This `SKILL.md` is itself
   prettier-ignored (lives under `.agent`/`.claude`).
 - Don't merge the PRs individually — consolidate into one.
 
