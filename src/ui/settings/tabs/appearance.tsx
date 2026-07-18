@@ -112,13 +112,11 @@ export function AppearanceTab({
             value={settings.fontFamily}
             onChange={(v) => onUpdate("fontFamily", v)}
             ariaLabel={t("settings.appearance.fontFamily")}
-            options={FONT_FAMILIES.map(
-              (f): SelectOption<FontFamilyId> => ({
-                value: f.id,
-                label: f.label,
-                labelStyle: { fontFamily: f.stack },
-              }),
-            )}
+            options={FONT_FAMILIES.map((f): SelectOption<FontFamilyId> => ({
+              value: f.id,
+              label: f.label,
+              labelStyle: { fontFamily: f.stack },
+            }))}
           />
         </Field>
         <Field label={t("settings.appearance.textSize")}>
@@ -127,12 +125,10 @@ export function AppearanceTab({
             onChange={(v) => onUpdate("fontScale", v)}
             ariaLabel={t("settings.appearance.textSize")}
             triggerClassName="field-input flex w-full cursor-pointer items-center gap-2 rounded border border-line bg-surface-2 px-2 py-1.5 text-left text-sm tabular-nums text-fg-bright hover:border-accent focus-visible:outline-none"
-            options={FONT_SCALE_PRESETS.map(
-              (p): SelectOption<number> => ({
-                value: p.scale,
-                label: p.label,
-              }),
-            )}
+            options={FONT_SCALE_PRESETS.map((p): SelectOption<number> => ({
+              value: p.scale,
+              label: p.label,
+            }))}
           />
         </Field>
       </Section>
