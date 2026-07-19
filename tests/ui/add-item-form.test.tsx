@@ -62,7 +62,11 @@ describe("AddItemForm", () => {
   });
 
   describe("archive typeahead", () => {
-    const pool = ["Car", "Carrots", "Bread"];
+    const pool = [
+      { title: "Car", count: 1 },
+      { title: "Carrots", count: 1 },
+      { title: "Bread", count: 1 },
+    ];
 
     function typed(value: string, over: Parameters<typeof renderForm>[0] = {}) {
       const utils = renderForm({ suggestionPool: pool, ...over });
@@ -77,6 +81,19 @@ describe("AddItemForm", () => {
       expect(listbox).toBeTruthy();
       const options = screen.getAllByRole("option");
       expect(options.map((o) => o.textContent)).toEqual(["Car", "Carrots"]);
+    });
+
+    it("orders the most-used matching title first", () => {
+      renderForm({
+        suggestionPool: [
+          { title: "Car", count: 1 },
+          { title: "Carrots", count: 9 },
+        ],
+      });
+      const input = screen.getByLabelText("Add item") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "car" } });
+      const options = screen.getAllByRole("option");
+      expect(options.map((o) => o.textContent)).toEqual(["Carrots", "Car"]);
     });
 
     it("highlights the matched letters", () => {

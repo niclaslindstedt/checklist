@@ -292,19 +292,28 @@ the composer, the titles of the active list's archived items are matched
 against it — substring first, then the search engine's fuzzy-subsequence
 fallback (`matchPlainText`, `src/domain/search.ts`) — and up to five
 appear as a dropdown under the field with the matched letters highlighted
-(the same `<mark>` treatment as the [search modal](#search)). Pressing a
-suggestion adds that item verbatim (its stored spelling survives even with
-"Capitalise items" on) and clears the field while keeping the composer
-open and focused, so the next entry can be typed straight away — a
-recurring item on a groceries list is one press instead of retyped, and
-the list gets easier to run the longer it's lived in. Arrow keys walk the
-dropdown, Enter picks the highlighted suggestion (plain Enter with no
-highlight still commits the raw draft, and Shift+Enter keeps its
-add-with-body meaning), Escape dismisses the dropdown until the draft
-changes. The pool is the archived subtrees' titles in document order,
-deduplicated case-insensitively and excluding titles already active on
-the list (suggesting a visible row is noise); `ChecklistView` memoises it
-per document change and hands it to all three composers (inline,
+(the same `<mark>` treatment as the [search modal](#search)). The rows
+render a touch larger than the item text so they're easy to tell apart
+and tap. Pressing a suggestion adds that item verbatim (its stored
+spelling survives even with "Capitalise items" on) and clears the field
+while keeping the composer open and focused, so the next entry can be
+typed straight away — a recurring item on a groceries list is one press
+instead of retyped, and the list gets easier to run the longer it's lived
+in. Arrow keys walk the dropdown, Enter picks the highlighted suggestion
+(plain Enter with no highlight still commits the raw draft, and
+Shift+Enter keeps its add-with-body meaning), Escape dismisses the
+dropdown until the draft changes.
+
+The pool is the archived subtrees' titles, deduplicated
+case-insensitively and excluding titles already active on the list
+(suggesting a visible row is noise). Each surviving title carries a usage
+count — how many archived copies it has — and the dropdown orders the
+**most-used titles first** (ties break on match score, then
+alphabetically), so a weekly staple floats above a one-off. The count
+works because a re-add never *reuses* the archived copy: `addItem` always
+mints a fresh row, so every complete-and-archive cycle leaves another
+archived copy behind and the tally climbs. `ChecklistView` memoises the
+pool per document change and hands it to all three composers (inline,
 sub-item, after-a-row). Picking a suggestion unlocks the **Déjà Vu**
 achievement.
 

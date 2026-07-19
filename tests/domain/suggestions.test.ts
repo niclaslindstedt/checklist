@@ -4,6 +4,7 @@ import {
   MAX_SUGGESTIONS,
   archivedTitlePool,
   suggestTitles,
+  type TitleCount,
 } from "../../src/domain/suggestions.ts";
 import type { Checklist, ChecklistItem } from "../../src/domain/types.ts";
 
@@ -29,14 +30,19 @@ function list(items: ChecklistItem[]): Checklist {
   };
 }
 
+/** A one-off pool entry, or with an explicit usage count. */
+function tc(title: string, count = 1): TitleCount {
+  return { title, count };
+}
+
 describe("archivedTitlePool", () => {
-  it("collects archived titles in document order", () => {
+  it("collects archived titles in document order, each counted once", () => {
     const c = list([
       item("a", "Milk"),
       item("b", "Carrots", { archived: true }),
       item("c", "Car", { archived: true }),
     ]);
-    expect(archivedTitlePool(c)).toEqual(["Carrots", "Car"]);
+    expect(archivedTitlePool(c)).toEqual([tc("Carrots"), tc("Car")]);
   });
 
   it("includes the descendants of an archived subtree", () => {
@@ -46,15 +52,31 @@ describe("archivedTitlePool", () => {
         children: [item("b", "Pasta"), item("c", "Sauce")],
       }),
     ]);
-    expect(archivedTitlePool(c)).toEqual(["Dinner", "Pasta", "Sauce"]);
+    expect(archivedTitlePool(c)).toEqual([
+      tc("Dinner"),
+      tc("Pasta"),
+      tc("Sauce"),
+    ]);
   });
 
-  it("dedupes case-insensitively, keeping the first spelling", () => {
+  it("tallies duplicate archived titles into a usage count", () => {
+    const c = list([
+      item("a", "Milk", { archived: true }),
+      item("b", "Carrots", { archived: true }),
+      item("c", "Milk", { archived: true }),
+      item("d", "Milk", { archived: true }),
+    ]);
+    // Milk was archived three times; it keeps its first-occurrence position
+    // in the pool but carries a count of 3.
+    expect(archivedTitlePool(c)).toEqual([tc("Milk", 3), tc("Carrots", 1)]);
+  });
+
+  it("dedupes case-insensitively, keeping the first spelling and summing", () => {
     const c = list([
       item("a", "Carrots", { archived: true }),
       item("b", "carrots", { archived: true }),
     ]);
-    expect(archivedTitlePool(c)).toEqual(["Carrots"]);
+    expect(archivedTitlePool(c)).toEqual([tc("Carrots", 2)]);
   });
 
   it("excludes titles already on the active list", () => {
@@ -63,7 +85,7 @@ describe("archivedTitlePool", () => {
       item("b", "milk", { archived: true }),
       item("c", "Bread", { archived: true }),
     ]);
-    expect(archivedTitlePool(c)).toEqual(["Bread"]);
+    expect(archivedTitlePool(c)).toEqual([tc("Bread")]);
   });
 
   it("skips blank titles", () => {
@@ -73,7 +95,12 @@ describe("archivedTitlePool", () => {
 });
 
 describe("suggestTitles", () => {
-  const pool = ["Car", "Carrots", "Vinegar", "Bread"];
+  const pool: TitleCount[] = [
+    tc("Car"),
+    tc("Carrots"),
+    tc("Vinegar"),
+    tc("Bread"),
+  ];
 
   it("matches by substring, case-insensitively", () => {
     const titles = suggestTitles(pool, "car").map((s) => s.title);
@@ -82,21 +109,33 @@ describe("suggestTitles", () => {
     expect(titles).not.toContain("Bread");
   });
 
-  it("ranks a word-start hit above a mid-word one", () => {
-    const titles = suggestTitles(["Scarf", "Carrots"], "car").map(
+  it("places the most-used matching title first", () => {
+    const p = [tc("Car", 1), tc("Carrots", 5)];
+    const titles = suggestTitles(p, "car").map((s) => s.title);
+    expect(titles).toEqual(["Carrots", "Car"]);
+  });
+
+  it("carries the usage count on each suggestion", () => {
+    const [first] = suggestTitles([tc("Carrots", 4)], "car");
+    expect(first).toBeDefined();
+    expect(first!.count).toBe(4);
+  });
+
+  it("ranks a word-start hit above a mid-word one when counts tie", () => {
+    const titles = suggestTitles([tc("Scarf"), tc("Carrots")], "car").map(
       (s) => s.title,
     );
     expect(titles).toEqual(["Carrots", "Scarf"]);
   });
 
   it("returns the ranges to highlight", () => {
-    const [first] = suggestTitles(["Carrots"], "car");
+    const [first] = suggestTitles([tc("Carrots")], "car");
     expect(first).toBeDefined();
     expect(first!.ranges).toEqual([[0, 3]]);
   });
 
   it("falls back to fuzzy subsequence matching", () => {
-    const [hit] = suggestTitles(["Grocery list"], "grcl");
+    const [hit] = suggestTitles([tc("Grocery list")], "grcl");
     expect(hit).toBeDefined();
     expect(hit!.title).toBe("Grocery list");
   });
@@ -107,7 +146,7 @@ describe("suggestTitles", () => {
   });
 
   it("caps the list at the limit", () => {
-    const wide = Array.from({ length: 20 }, (_, i) => `Carton ${i}`);
+    const wide = Array.from({ length: 20 }, (_, i) => tc(`Carton ${i}`));
     expect(suggestTitles(wide, "car")).toHaveLength(MAX_SUGGESTIONS);
     expect(suggestTitles(wide, "car", 2)).toHaveLength(2);
   });
