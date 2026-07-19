@@ -54,8 +54,8 @@ export function buildInjectedBridge(
   platform: string,
   hasICloud: boolean,
 ): string {
-  // Kept as one IIFE string. `PLATFORM` / `__HAS_ICLOUD__` are substituted
-  // below; everything else runs verbatim inside the WebView.
+  // Kept as one IIFE string: the platform string and the iCloud-present flag
+  // are interpolated in; everything else runs verbatim inside the WebView.
   return `(function () {
   if (window.__native) return;
   var pending = {};
