@@ -1,0 +1,17 @@
+# When present, EAS Build uses this INSTEAD of .gitignore to decide what to
+# upload. It exists for exactly one reason: `webroot/` is gitignored (it is a
+# build artifact) but must reach the build, because `expo prebuild` runs on
+# the EAS worker and the `withWebroot` plugin copies the tree into the native
+# projects there.
+#
+# Without this file the upload would honour .gitignore, drop `webroot/`, and
+# the plugin would fail the build — or, if the guard in withWebroot.js were
+# ever relaxed, ship an app whose WebView loads a 404. Keep `webroot/`
+# absent from this list.
+
+node_modules/
+.expo/
+dist/
+ios/
+android/
+*.log

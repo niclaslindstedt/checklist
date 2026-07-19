@@ -60,6 +60,16 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # The wrapper has no UI of its own — it serves this bundle. It must be
+      # built before `eas build` uploads the project, because the upload is
+      # what carries `native/webroot` to the EAS worker where `expo prebuild`
+      # runs. `native/.easignore` is what keeps the artifact in the upload
+      # despite being gitignored.
+      - name: Build the embedded web bundle
+        run: |
+          npm ci
+          npm run build:native
+
       - name: Set up EAS CLI
         uses: expo/expo-github-action@v8
         with:

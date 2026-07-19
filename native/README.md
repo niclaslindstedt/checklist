@@ -1,109 +1,116 @@
-# checklist — React Native app
+# checklist — native wrapper
 
-A React Native (Expo) front-end for **checklist**, sharing the entire
-platform-agnostic core with the web PWA. This is a separate Expo project that
-lives alongside the web app; today it runs in Expo Go and the simulators, and
-[`RELEASING.md`](RELEASING.md) is the step-by-step for building and submitting
-it to the App Store and Google Play via EAS.
+A **thin native wrapper** around the checklist web app. It ships no UI of its
+own: it embeds the built web bundle, serves it from a loopback HTTP origin,
+and shows it in a full-screen WebView. What you get on iOS and Android is the
+same app as the web, running entirely offline from inside the app binary.
 
-## How it reuses the web app
+> This replaced an earlier React Native re-implementation that rebuilt the
+> checklist UI in native views. That app only ever covered a fraction of the
+> web feature set and drifted from it; the wrapper is feature-complete by
+> construction. The old implementation is in git history (`a2f6a73`,
+> `afdb7ef`) if it is ever needed.
 
-The web app's architecture (see [`../AGENTS.md`](../AGENTS.md)) keeps a clean
-split between platform-agnostic logic and the DOM presentation layer. The
-native app imports the logic verbatim from `../src` and supplies its own
-React Native views in `native/src/`:
+## How it works
 
-| Layer | Source | Shared with web? |
-|---|---|---|
-| Data model + pure operations | `../src/domain/` | ✅ verbatim |
-| App state, edits, undo/redo, persistence engine | `../src/app/use-checklist*.ts`, `use-undo-redo.ts` | ✅ verbatim |
-| Storage contract, serialize, migrations, namespaces | `../src/storage/{adapter,serialize,migrations,namespaces}.ts` | ✅ verbatim |
-| i18n runtime + catalogs | `../src/i18n/` | ✅ verbatim |
-| **Local storage backend** | `native/src/storage/asyncStorageAdapter.ts` | ⛔ native (AsyncStorage) |
-| **iCloud storage backend (iOS only)** | `native/src/storage/icloudStorageAdapter.ts` | ⛔ native (iCloud KVS) |
-| **Presentation** | `native/src/components/`, `native/src/App.tsx` | ⛔ native (`View`/`Text`/…) |
-| **Theme tokens** | `native/src/theme.ts` | ⛔ native (no CSS variables) |
+```
+../src  ──vite build (VITE_NATIVE=1)──▶  native/webroot/
+                                              │
+                              expo prebuild + plugins/withWebroot.js
+                                              │
+                                   ios/…/webroot   android/…/assets/webroot
+                                              │
+                              @dr.pogodin/react-native-static-server
+                                              │
+                                   http://localhost:8791
+                                              │
+                                        react-native-webview
+```
 
-The shared core required **no refactoring** to be consumed here: every web
-global it touches (`localStorage`, `navigator`) is already behind a `typeof
-… === "undefined"` guard, so on React Native it transparently falls back
-(single default namespace, English locale, empty `loadSync`). The only
-runtime shim is a `crypto.randomUUID` polyfill — see
-`native/src/polyfills.ts`.
+| Piece | File |
+|---|---|
+| Web build in native flavour | `../vite.config.ts` (`VITE_NATIVE=1`), `npm run build:native` |
+| Copy the bundle into the native projects | `plugins/withWebroot.js` |
+| Extract + locate the bundle at runtime | `src/webroot.ts` |
+| Start / stop the loopback server | `src/useStaticServer.ts` |
+| The WebView and its navigation rules | `src/App.tsx` |
 
-The `AsyncStorageAdapter` implements the same `StorageAdapter` contract as the
-web's `BrowserLocalStorageAdapter`, so `useChecklist` drives it unchanged. It
-does not advertise the synchronous `loadSync` capability (AsyncStorage has no
-sync read); `useChecklistSync` already tolerates that by seeding empty and
-loading in its mount effect.
+### Why a local HTTP server and not `file://`
 
-## iCloud backend (iOS only)
+`file://` is not a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts)
+in WebKit, and the app depends on APIs that are gated behind one:
 
-On iOS the app offers a second backend, **iCloud**
-(`native/src/storage/icloudStorageAdapter.ts`), which stores the document in
-Apple's iCloud key-value store (`NSUbiquitousKeyValueStore`, via
-`react-native-icloudstore`) so it syncs across the signed-in user's devices
-with no accounts, OAuth, or network code of our own. It implements the same
-`StorageAdapter` contract as the on-device backend and advertises the `watch`
-capability — when another device pushes an edit, iCloud fires a change event,
-the adapter re-reads its key, and `App.tsx` calls `reload()` so the new state
-appears live.
+- `crypto.randomUUID()` (`../src/app/side-effects.ts`) — used for every id the
+  app mints. Undefined on `file://`, so **adding an item throws**.
+- `crypto.subtle` (`../src/storage/crypto.ts`, `../src/storage/oauth-pkce.ts`)
+  — at-rest encryption and the Dropbox / Google Drive OAuth PKCE exchange.
 
-The backend is **only exposed on iOS**: `native/src/storage/backends.ts` is
-the single platform gate — `availableBackends()` appends iCloud only when
-`Platform.OS === "ios"`, and the iCloud adapter module (which pulls the
-iOS-only native dependency) is required lazily so it never loads on Android or
-web. The choice is persisted per device in AsyncStorage
-(`backendPreference.ts`) and surfaced as a **Storage** picker in the
-list-switcher sheet, which renders only when more than one backend is
-available — i.e. only on iOS. The on-device default is unchanged everywhere.
+WKWebView also treats `file://` as an opaque origin, which breaks
+`localStorage` — where every checklist lives. Serving from `http://localhost`
+gives the page a real, stable, secure origin and the app behaves exactly as it
+does in a browser tab.
 
-> iCloud key-value sync needs the
-> `com.apple.developer.ubiquity-kvstore-identifier` entitlement (declared in
-> `app.json` under `ios.entitlements`) and a native build — it is inert in
-> Expo Go, which can't load the custom native module. Selecting it there
-> simply falls back to "no data" reads until the app runs as a dev/standalone
-> build signed with the entitlement.
+The server binds to the loopback address, but the WebView must address it as
+`localhost`, **not** the literal `127.0.0.1`: App Transport Security blocks the
+numeric form from WKWebView even with an exception domain declared, and the
+failure mode is a silent blank page. Since the hostname is part of the origin,
+changing it after release would orphan stored data — see the comment in
+`src/useStaticServer.ts`.
 
-## What's implemented
+### Why the port is pinned
 
-The core checklist flows, all backed by the shared hook:
+A web origin is scheme + host + **port**. The static server defaults to
+picking any free port, which would give the WebView a *different origin on
+every launch* — and therefore an empty `localStorage` every launch, silently
+discarding the user's data. `src/useStaticServer.ts` pins the port and, if it
+is taken, walks a short deterministic ladder rather than falling back to a
+random port.
 
-- View the active checklist; check / uncheck items (strike-through + header
-  count), add items via the bottom composer.
-- Archive an item (hidden, not destroyed) and Restore / Delete it from the
-  Archive screen.
-- Delete an item (recoverable via Undo).
-- Switch between checklists, create a new one, rename the active list inline
-  from the header, and remove a list — all from the list-switcher sheet.
-- Undo / Redo across the whole-document timeline.
+### What the native build drops
 
-### Not yet ported (web-only for now)
+The embedded bundle is built with `VITE_NATIVE=1`, which omits the PWA layer:
+no service worker, no precache manifest, no install or update prompt. The
+assets already ship inside the binary, so a service worker would only add a
+second, staler cache in front of them, and updates arrive through the App
+Store rather than through a "reload to apply" toast. `IS_NATIVE`
+(`../src/build-env.ts`) gates the runtime side.
 
-Cloud backends (Dropbox / Google Drive), at-rest encryption + unlock gate,
-the full theme engine (presets / custom colours / fonts), settings UI,
-sharing, templates UI, swipe gestures (archive/delete are explicit buttons
-here), and pull-to-refresh. These layers are either DOM/CSS-bound or depend
-on browser-only APIs; they can grow into `native/` incrementally without
-touching the shared core.
+The crawler-facing files (`robots.txt`, `sitemap.xml`, `llms.txt`) and the
+`/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —
+the side menu links to it as a real in-app navigation.
 
 ## Running it
 
-> Requires the native app's own dependencies. From this directory:
+**Expo Go will not work.** The static server is a custom native TurboModule
+compiled from C (lighttpd), so this needs a dev build. You also need `cmake`
+and `pkg-config` on the build host (`brew install cmake pkg-config`).
 
 ```sh
 cd native
-npm install          # or: npx expo install (to align versions with the SDK)
-npx expo start       # then press i / a, or scan the QR with Expo Go
+npm install
+npm run ios       # builds the web bundle, then expo run:ios
+npm run android
 ```
 
-Metro is configured (`metro.config.js`) to watch the repo root so the
-shared modules in `../src` are transformed and hot-reloaded as part of the
-app. `react` and `react-native` are pinned to this app's `node_modules` so
-the shared hooks bind to the same React instance the renderer uses.
-
-Type-check the native app (includes the shared core it imports):
+`npm run ios` / `npm run android` rebuild `webroot/` first. If you change
+anything under `../src`, re-run them — the bundle is copied into the native
+project at prebuild time, so a stale `webroot/` means a stale app.
 
 ```sh
 npm run typecheck
 ```
+
+## Not yet ported
+
+The old native app had an **iCloud key-value storage backend** (accountless
+cross-device sync). It is not in the wrapper: reaching a native module from
+inside the WebView needs a `postMessage` bridge, plus a new backend wired
+through the web app's storage layer — tracked in #262.
+
+**Cloud sign-in is likely broken here.** The Drive / Dropbox OAuth redirect
+targets the web app's own origin, which only exists inside the app process, so
+the round trip cannot complete — see #274 before offering those backends on
+mobile.
+
+Widgets (#263), deadline notifications (#268) and the rest of the native
+backlog are tracked in the issue tracker.

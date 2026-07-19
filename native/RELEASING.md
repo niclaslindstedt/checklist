@@ -3,8 +3,10 @@
 This is the step-by-step for shipping the Expo app in this directory to
 **Apple's App Store** and **Google Play**. It builds the real native binary
 with [EAS Build](https://docs.expo.dev/build/introduction/) and uploads it
-with [EAS Submit](https://docs.expo.dev/submit/introduction/) — we do **not**
-wrap the web PWA in a web-view shell.
+with [EAS Submit](https://docs.expo.dev/submit/introduction/).
+
+The app is a **WebView wrapper** around the web app's bundle, embedded and
+served offline from the app binary — see [`README.md`](README.md).
 
 Both store identities are already wired in [`app.json`](app.json):
 
@@ -25,7 +27,7 @@ source mark (`../public/favicon.svg`) — see "Artwork" below.
 
 - **Expo account** — free. `npm i -g eas-cli` then `eas login`.
 - **Apple Developer Program** — $99/year, identity verification (can take a
-  day or two). Needed for the iCloud key-value entitlement this app declares.
+  day or two).
 - **Google Play Developer account** — one-time $25, identity verification.
 - A **Mac is not required** — EAS builds iOS in the cloud and manages the
   signing certificates for you.
@@ -65,6 +67,18 @@ If the brand mark in `favicon.svg` changes, re-run the script to keep these in
 sync.
 
 ## 3. Build
+
+> **Build the embedded web bundle first.** The wrapper has no UI of its own —
+> it serves `native/webroot`, produced by `npm run build:native` at the repo
+> root. That directory is gitignored, so `native/.easignore` is what keeps it
+> in the EAS upload; without the build step the `withWebroot` config plugin
+> fails the build with a clear error rather than shipping an empty app.
+>
+> ```sh
+> npm --prefix .. run build:native
+> ```
+>
+> The CI workflow below does this automatically.
 
 ```sh
 # Android App Bundle (.aab) for Play
@@ -121,7 +135,8 @@ needs the credentials wired into `eas.json` → `submit.production` (steps 4–5
 4. Complete the Play Console listing: short + full description, 512×512 icon,
    1024×500 feature graphic, ≥2 phone screenshots, content-rating
    questionnaire, and the **Data safety** form. Declare: no data collected by
-   us; cloud sync only when the user opts into a backend (iCloud on iOS).
+   us; cloud sync only when the user opts into a backend (Google Drive or
+   Dropbox).
    Point the privacy-policy URL at `https://checklist.niclaslindstedt.se/privacy`.
 
 ## 5. Apple App Store submission
@@ -138,15 +153,9 @@ needs the credentials wired into `eas.json` → `submit.production` (steps 4–5
 3. Complete the App Store Connect listing: description, keywords, screenshots
    for the required device sizes (6.7", 6.5", and iPad since
    `ios.supportsTablet` is true), the **App Privacy** "nutrition label" (no
-   tracking; iCloud sync is the user's own iCloud), and the privacy-policy
+   tracking; any cloud sync goes to the user's own Drive/Dropbox account),
+   and the privacy-policy
    URL above. Then submit for review.
-
-   > **Guideline 4.2 ("minimum functionality").** Apple scrutinizes apps that
-   > feel like a wrapped website. This app is genuinely native (React Native
-   > views, on-device + iCloud storage, offline-first), so lead with that in
-   > the review notes. The web-only features not yet ported (cloud backends,
-   > themes, sharing, templates UI — see [`README.md`](README.md)) don't block
-   > a release, but a fuller feature set lowers rejection risk.
 
 ## 6. Subsequent releases
 

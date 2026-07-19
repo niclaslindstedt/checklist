@@ -1,239 +1,142 @@
-// Root of the React Native app. It is deliberately thin: all of the state,
-// persistence, undo/redo and domain logic come from the shared `useChecklist`
-// hook under ../../src/app — the very same code the web PWA runs. This file
-// only wires that surface to native views and owns the small bits of
-// screen-local UI state (which view is showing, the switcher sheet, the
-// transient toast).
-
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  FlatList,
-  KeyboardAvoidingView,
+  ActivityIndicator,
+  AppState,
+  BackHandler,
+  Linking,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { WebView, type WebViewNavigation } from "react-native-webview";
+import { useStaticServer } from "./useStaticServer";
 
-import type { Notify } from "../../src/app/notify.ts";
-import { useChecklist } from "../../src/app/use-checklist.ts";
-import { useT } from "../../src/i18n";
-
-import { AddItemBar } from "./components/AddItemBar.tsx";
-import { ArchiveView } from "./components/ArchiveView.tsx";
-import { ChecklistRow } from "./components/ChecklistRow.tsx";
-import { Header } from "./components/Header.tsx";
-import { ListSwitcher } from "./components/ListSwitcher.tsx";
-import { Toast } from "./components/Toast.tsx";
-import { NativeLanguageProvider } from "./i18n/NativeLanguageProvider.tsx";
-import {
-  availableBackends,
-  backendById,
-  type NativeBackendId,
-} from "./storage/backends.ts";
-import {
-  loadBackendPreference,
-  saveBackendPreference,
-} from "./storage/backendPreference.ts";
-import { spacing, useTokens } from "./theme.ts";
-
-const TOAST_MS = 2600;
-
-function AppInner() {
-  const t = useT();
-  const tokens = useTokens();
-
-  // Which storage backend is active. Starts on the on-device default and is
-  // reconciled with the persisted choice once it loads from AsyncStorage.
-  // The set of options is platform-gated: `availableBackends()` only includes
-  // iCloud on iOS, so the picker below is empty everywhere else.
-  const backends = useMemo(() => availableBackends(), []);
-  const [backendId, setBackendId] = useState<NativeBackendId>("browser");
-
-  useEffect(() => {
-    let cancelled = false;
-    void loadBackendPreference().then((id) => {
-      if (!cancelled) setBackendId(id);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const selectBackend = useCallback((id: NativeBackendId) => {
-    setBackendId(id);
-    void saveBackendPreference(id);
-  }, []);
-
-  // The active backend instance. Rebuilt when the choice changes so the sync
-  // engine — which reloads on adapter identity change — picks up the new
-  // backend's document.
-  const adapter = useMemo(() => backendById(backendId).create(), [backendId]);
-
-  // The transient action banner. `notify` is the sink the shared edit verbs
-  // call for results the user can't otherwise see (delete, archive, undo…).
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const notify = useCallback<Notify>((message) => {
-    setToast(message);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
-  }, []);
-
-  const cl = useChecklist(adapter, "bottom", notify);
-
-  // Live cross-device sync: backends that push remote changes (iCloud, via
-  // its `watch` capability) wake the app so another device's edit appears
-  // without a manual refresh. Backends without `watch` (the on-device one)
-  // skip this entirely.
-  const reload = cl.reload;
-  useEffect(() => {
-    if (!adapter.watch) return;
-    return adapter.watch(() => {
-      void reload();
-    });
-  }, [adapter, reload]);
-
-  const [view, setView] = useState<"checklist" | "archive">("checklist");
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const archivedCount = useMemo(
-    () => cl.archivedGroups.reduce((n, g) => n + g.items.length, 0),
-    [cl.archivedGroups],
-  );
-
-  return (
-    <SafeAreaView style={[styles.root, { backgroundColor: tokens.bg }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        {view === "checklist" ? (
-          <>
-            <Header
-              name={cl.activeList.name}
-              checkedCount={cl.checkedCount}
-              total={cl.items.length}
-              onRename={(name) =>
-                cl.renameChecklist(cl.activeChecklistId, name)
-              }
-              onOpenMenu={() => setMenuOpen(true)}
-            />
-            <FlatList
-              data={cl.items}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => (
-                <ChecklistRow
-                  item={item}
-                  onToggle={cl.toggle}
-                  onArchive={cl.archive}
-                  onDelete={cl.remove}
-                />
-              )}
-              ListEmptyComponent={
-                <Text style={[styles.empty, { color: tokens.textMuted }]}>
-                  {t("app.empty")}
-                </Text>
-              }
-            />
-            <AddItemBar onAdd={cl.addItem} />
-          </>
-        ) : (
-          <>
-            <View style={[styles.archiveBar, { borderColor: tokens.border }]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("common.close")}
-                hitSlop={8}
-                onPress={() => setView("checklist")}
-              >
-                <Text style={[styles.back, { color: tokens.accent }]}>
-                  ‹ {t("nav.checklist")}
-                </Text>
-              </Pressable>
-              <Text style={[styles.archiveTitle, { color: tokens.text }]}>
-                {t("nav.archive")}
-              </Text>
-            </View>
-            <ArchiveView
-              groups={cl.archivedGroups}
-              onRestore={cl.unarchive}
-              onDelete={cl.remove}
-            />
-          </>
-        )}
-      </KeyboardAvoidingView>
-
-      <ListSwitcher
-        visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        checklists={cl.checklists}
-        activeId={cl.activeChecklistId}
-        onSelect={cl.selectChecklist}
-        onAdd={cl.addChecklist}
-        onRemove={cl.removeChecklist}
-        archivedCount={archivedCount}
-        onOpenArchive={() => setView("archive")}
-        backends={backends}
-        activeBackendId={backendId}
-        onSelectBackend={selectBackend}
-        canUndo={cl.canUndo}
-        canRedo={cl.canRedo}
-        onUndo={cl.undo}
-        onRedo={cl.redo}
-      />
-
-      <Toast message={toast} />
-      <StatusBar style="auto" />
-    </SafeAreaView>
-  );
-}
+// Matches the app's dark chrome so the area behind the WebView never flashes
+// white during startup or over-scroll.
+const BACKGROUND = "#1f2933";
 
 export default function App() {
+  const server = useStaticServer();
+  const webViewRef = useRef<WebView>(null);
+  const [origin, setOrigin] = useState<string | null>(null);
+  const canGoBack = useRef(false);
+
+  useEffect(() => {
+    if (server.status === "ready") setOrigin(server.origin);
+  }, [server]);
+
+  // iOS tears the server down in the background (see `useStaticServer`). If
+  // it came back on a different port the loaded page is pointing at a dead
+  // origin, so reload once the origin we hold has actually changed.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") return;
+      if (server.status !== "ready") return;
+      if (origin && server.origin !== origin) {
+        setOrigin(server.origin);
+      }
+    });
+    return () => sub.remove();
+  }, [server, origin]);
+
+  // The app navigates within its own origin in a few places — the privacy
+  // page linked from the side menu is a separate document, not a modal — so
+  // the wrapper has to provide the "back" the browser chrome would. Android
+  // routes the hardware button; iOS gets the edge-swipe via
+  // `allowsBackForwardNavigationGestures`. Without this the privacy link is
+  // a dead end with no way back to the checklist.
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!canGoBack.current) return false; // fall through: exit the app
+      webViewRef.current?.goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Keep the WebView on the embedded app. Anything else — a Drive or Dropbox
+  // OAuth page, a link in an item note — belongs in the system browser, both
+  // because OAuth inside an embedded WebView is blocked by the providers and
+  // because App Review expects external links to open externally.
+  const onShouldStartLoadWithRequest = useCallback(
+    (request: WebViewNavigation) => {
+      if (!origin) return false;
+      if (request.url.startsWith(origin)) return true;
+      if (request.url.startsWith("about:")) return true;
+      void Linking.openURL(request.url);
+      return false;
+    },
+    [origin],
+  );
+
+  if (server.status === "failed") {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.center}>
+          <StatusBar style="light" />
+          <Text style={styles.errorTitle}>Could not start checklist</Text>
+          <Text style={styles.errorBody}>{server.error.message}</Text>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
-      <NativeLanguageProvider>
-        <AppInner />
-      </NativeLanguageProvider>
+      <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
+        <StatusBar style="light" />
+        {origin ? (
+          <WebView
+            ref={webViewRef}
+            source={{ uri: origin }}
+            originWhitelist={["http://localhost:*"]}
+            style={styles.fill}
+            javaScriptEnabled
+            // Android: without this localStorage is unavailable entirely.
+            domStorageEnabled
+            // Never set `incognito` — it makes WKWebView storage
+            // non-persistent, which would drop every checklist on exit.
+            incognito={false}
+            allowsBackForwardNavigationGestures
+            setSupportMultipleWindows={false}
+            onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+            onNavigationStateChange={(nav) => {
+              canGoBack.current = nav.canGoBack;
+            }}
+            // The app draws its own scroll surfaces; bouncing the WebView
+            // itself exposes the native background behind the layout.
+            bounces={false}
+            overScrollMode="never"
+          />
+        ) : (
+          <View style={styles.center}>
+            <ActivityIndicator color="#8fa3b0" />
+          </View>
+        )}
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  fill: { flex: 1, backgroundColor: BACKGROUND },
+  center: {
     flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  listContent: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  empty: {
-    textAlign: "center",
-    marginTop: spacing.xl,
-    fontSize: 15,
-  },
-  archiveBar: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+    backgroundColor: BACKGROUND,
+    padding: 24,
   },
-  back: {
-    fontSize: 16,
+  errorTitle: {
+    color: "#e8eef2",
+    fontSize: 18,
     fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
   },
-  archiveTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
+  errorBody: { color: "#8fa3b0", fontSize: 14, textAlign: "center" },
 });

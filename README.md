@@ -98,16 +98,18 @@ in [`public/CNAME`](public/CNAME). Releases are cut by dispatching the
 `Release` workflow; see [`AGENTS.md`](AGENTS.md) → "Releases and
 changelog".
 
-## React Native app
+## Native app
 
-A React Native (Expo) front-end lives under [`native/`](native/). It reuses
-the entire platform-agnostic core — the domain model, the `useChecklist`
-app-state/undo/persistence hooks, serialize/migrations, and i18n — verbatim
-from `src/`, and adds only a native presentation layer plus an AsyncStorage
-backend. Building it for the app stores is a later problem; today it runs in
-Expo Go and the simulators (`cd native && npm install && npx expo start`).
-See [`native/README.md`](native/README.md) for what's implemented and how the
-code is shared.
+A **thin native wrapper** lives under [`native/`](native/). It ships no UI of
+its own: it embeds this web app's build, serves it from a loopback HTTP origin
+inside the app binary, and shows it in a full-screen WebView. iOS and Android
+therefore run the same app as the web, fully offline — no feature subset to
+keep in sync.
+
+Building it needs a dev build rather than Expo Go (the embedded server is a
+native module): `cd native && npm install && npm run ios`. See
+[`native/README.md`](native/README.md) for the architecture and
+[`native/RELEASING.md`](native/RELEASING.md) for store submission.
 
 ## Usage
 

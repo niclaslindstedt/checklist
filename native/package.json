@@ -2,24 +2,28 @@
   "name": "checklist-native",
   "version": "0.1.0",
   "private": true,
-  "description": "React Native (Expo) front-end for the checklist app. Shares the platform-agnostic core (domain, storage interface, app hooks, i18n) with the web PWA under ../src.",
+  "description": "Thin native wrapper around the checklist web app. Embeds the built web bundle and serves it from a loopback origin inside a WebView.",
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "build:web": "npm --prefix .. run build:native",
+    "prebuild": "npm run build:web && expo prebuild --clean",
+    "start": "expo start --dev-client",
+    "ios": "npm run build:web && expo run:ios",
+    "android": "npm run build:web && expo run:android",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "2.1.2",
+    "@dr.pogodin/react-native-fs": "^2.39.2",
+    "@dr.pogodin/react-native-static-server": "^0.27.0",
     "expo": "~53.0.0",
+    "expo-application": "~6.1.5",
+    "expo-build-properties": "~0.14.6",
+    "expo-dev-client": "~5.2.4",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.2",
-    "react-native-get-random-values": "~1.11.0",
-    "react-native-icloudstore": "0.9.0",
-    "react-native-safe-area-context": "5.4.0"
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-webview": "13.13.5"
   },
   "devDependencies": {
     "@types/react": "~19.0.10",

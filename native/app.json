@@ -13,11 +13,33 @@
       "resizeMode": "contain",
       "backgroundColor": "#0f1115"
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 28,
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "./plugins/withWebroot"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "se.niclaslindstedt.checklist",
-      "entitlements": {
-        "com.apple.developer.ubiquity-kvstore-identifier": "$(TeamIdentifierPrefix)se.niclaslindstedt.checklist"
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoadsInWebContent": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": false
+            }
+          }
+        }
       }
     },
     "android": {
@@ -26,9 +48,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1f2933"
       }
-    },
-    "web": {
-      "bundler": "metro"
     },
     "extra": {
       "eas": {
