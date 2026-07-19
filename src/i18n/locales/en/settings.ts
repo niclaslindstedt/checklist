@@ -107,11 +107,14 @@ const settings = {
     backendBlurb:
       "Choose where your lists are saved. Cloud backends sync the same document across your devices; this device keeps it in this browser only.",
     backendBrowser: "This device",
+    backendICloud: "iCloud",
     backendFolder: "Local folder",
     backendDropbox: "Dropbox",
     backendGoogleDrive: "Google Drive",
     browserHint:
       "Your lists live in this browser's storage. Nothing leaves this device.",
+    icloudConnected:
+      "Your lists sync across your Apple devices through iCloud — no account here, no sign-in, nothing leaves Apple's store.",
     folderConnected:
       "Connected. Each list is saved as a markdown file in your folder — open or edit it with any tool.",
     folderUnconnected:

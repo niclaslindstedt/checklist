@@ -7,10 +7,11 @@
 // checklist has no accounts) and a thin localStorage shim.
 
 import { createLogger } from "../dev/logger.ts";
+import { isICloudAvailable } from "./native-bridge.ts";
 
 const log = createLogger("backend-pref");
 
-export type BackendId = "browser" | "folder" | "dropbox" | "gdrive";
+export type BackendId = "browser" | "folder" | "dropbox" | "gdrive" | "icloud";
 
 // Whether stored bytes are wrapped in the AES-GCM envelope before being
 // handed to the adapter. Defaults to "plaintext" — encryption is an
@@ -58,6 +59,11 @@ export function getBackend(): BackendId {
   if (raw === "dropbox") return "dropbox";
   if (raw === "gdrive") return "gdrive";
   if (raw === "folder") return "folder";
+  // iCloud is only selectable inside the iOS native wrapper. All three web
+  // deploy slots share one origin (and localStorage), so a stored "icloud"
+  // preference could otherwise follow the user into a plain browser where the
+  // bridge doesn't exist — downgrade to browser unless the bridge is live.
+  if (raw === "icloud" && isICloudAvailable()) return "icloud";
   // Legacy value "local" predates the rename to "browser" — silently
   // migrate. Any unknown / missing value also falls through to browser.
   return "browser";

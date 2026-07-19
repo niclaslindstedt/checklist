@@ -28,6 +28,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "se.niclaslindstedt.checklist",
+      "entitlements": {
+        "com.apple.developer.ubiquity-kvstore-identifier": "$(TeamIdentifierPrefix)se.niclaslindstedt.checklist"
+      },
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false,

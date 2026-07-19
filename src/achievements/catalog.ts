@@ -11,6 +11,7 @@
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import {
   AccessibilityGlyph,
+  AppleGlyph,
   ArchiveGlyph,
   ArrowUpDownGlyph,
   AsteriskGlyph,
@@ -468,6 +469,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "cloudWalker",
     tier: "pro",
     glyph: CloudGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "icloudSync",
+    tier: "pro",
+    glyph: AppleGlyph,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

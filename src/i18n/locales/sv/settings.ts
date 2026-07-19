@@ -103,11 +103,14 @@ const settings: SettingsCatalog = {
     backendBlurb:
       "Välj var dina listor sparas. Molnlagring synkar samma dokument mellan dina enheter; den här enheten behåller det endast i den här webbläsaren.",
     backendBrowser: "Den här enheten",
+    backendICloud: "iCloud",
     backendFolder: "Lokal mapp",
     backendDropbox: "Dropbox",
     backendGoogleDrive: "Google Drive",
     browserHint:
       "Dina listor finns i den här webbläsarens lagring. Inget lämnar den här enheten.",
+    icloudConnected:
+      "Dina listor synkas mellan dina Apple-enheter via iCloud — inget konto här, ingen inloggning, inget lämnar Apples lagring.",
     folderConnected:
       "Ansluten. Varje lista sparas som en markdown-fil i din mapp — öppna eller redigera den med valfritt verktyg.",
     folderUnconnected:

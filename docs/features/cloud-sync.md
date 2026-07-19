@@ -16,4 +16,4 @@ Losing your connection doesn't lock you out, either. A cloud backend keeps a cop
 4. Tap that icon to open a **sync details** dialog. It spells out what the sync is doing, and when a save fails it shows the exact reason — with buttons to **reconnect** or **try again** without leaving your list.
 5. When two devices clash, pick the copy to keep in the conflict dialog.
 
-On the iOS app you can instead store your lists in **iCloud**, keeping them in step across your Apple devices — choose it under **Storage** in the list menu. To keep lists in separate buckets that sync independently, see [namespaces](feature:namespaces).
+On the iOS app you can instead sync through **[iCloud](feature:icloud-sync)** — the one option that needs no account or sign-in at all. To keep lists in separate buckets that sync independently, see [namespaces](feature:namespaces).
