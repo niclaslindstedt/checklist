@@ -31,6 +31,7 @@ import {
   createGdriveSettingsStore,
 } from "./gdrive/index.ts";
 import { BrowserLocalStorageAdapter } from "./local/index.ts";
+import { createICloudAdapter } from "./icloud/index.ts";
 import {
   createFolderAdapter,
   createFolderNamespaceStore,
@@ -51,6 +52,7 @@ export type BackendSelection =
   | { kind: "dropbox"; auth: DropboxAuth }
   | { kind: "gdrive"; token: string }
   | { kind: "folder"; handle: FileSystemDirectoryHandle }
+  | { kind: "icloud" }
   | { kind: "browser" };
 
 /** The injectable side-effecting seams the cloud / cache builders reach for. */
@@ -137,6 +139,18 @@ export function createBackendFactory(
         ),
       };
     }
+    case "icloud":
+      // The iCloud key-value store syncs the per-namespace document across
+      // the user's signed-in devices with no account. It is a flat KVS with
+      // no root folder, so — like the browser backend — it keeps settings and
+      // the namespace registry device-local (both stores null); only the
+      // document travels. No offline cache wrapper: the KVS is already a
+      // local-first mirror the OS syncs in the background.
+      return {
+        makeInner: (slug) => createICloudAdapter(slug),
+        settingsStore: null,
+        namespaceStore: null,
+      };
     case "browser":
       return {
         makeInner: (slug) => new BrowserLocalStorageAdapter(storage, slug),

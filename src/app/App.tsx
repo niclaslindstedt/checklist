@@ -416,7 +416,8 @@ function AppShell() {
     !fakeData &&
     (storage.backend === "folder" ||
       storage.backend === "dropbox" ||
-      storage.backend === "gdrive");
+      storage.backend === "gdrive" ||
+      storage.backend === "icloud");
   // Memoised so the published `ChecklistContext` value stays stable across
   // renders that don't touch the sync state (it is the stable `null` for a
   // local session, and only changes with the save status for a cloud one).
@@ -443,7 +444,9 @@ function AppShell() {
                 ? "Dropbox"
                 : storage.backend === "gdrive"
                   ? "Google Drive"
-                  : "Local folder",
+                  : storage.backend === "icloud"
+                    ? "iCloud"
+                    : "Local folder",
             status: checklist.status,
             statusDetail: checklist.statusDetail,
             dirty: checklist.dirty,

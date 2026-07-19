@@ -36,6 +36,7 @@ import {
   isDropboxConfigured,
 } from "./dropbox/index.ts";
 import { deleteGdriveNamespace, isGdriveConfigured } from "./gdrive/index.ts";
+import { deleteICloudNamespace, isICloudAvailable } from "./icloud/index.ts";
 import { deleteLocalNamespace } from "./local/index.ts";
 import { writeMovedDocument } from "./namespace-moves.ts";
 import type { SettingsStore } from "./settings-store.ts";
@@ -82,6 +83,14 @@ export interface UseStorageBackend {
   /** Whether each cloud backend currently holds a usable token. */
   dropboxConnected: boolean;
   gdriveConnected: boolean;
+  /**
+   * Whether the iCloud backend can be offered — true only inside the iOS
+   * native wrapper, feature-detected from the injected bridge. The web build
+   * never sees it. See `isICloudAvailable`.
+   */
+  icloudAvailable: boolean;
+  /** Whether iCloud is the active backend (its "connected" has no token). */
+  icloudConnected: boolean;
   /** Whether this browser exposes the File System Access directory picker. */
   folderAvailable: boolean;
   /** Whether a picked folder is connected and usable right now. */
@@ -97,6 +106,8 @@ export interface UseStorageBackend {
   /** True when encryption is on but no passphrase is held yet (needs unlock). */
   locked: boolean;
   selectBrowser: () => void;
+  /** Switch to the iCloud backend (native iOS wrapper only). */
+  selectICloud: () => void;
   /** Pick a folder, seed it from the current document, and switch to it. */
   connectFolder: () => Promise<void>;
   /** Re-confirm the OS grant on the already-picked folder. */
@@ -264,6 +275,12 @@ export function useStorageBackend(): UseStorageBackend {
     if (backend === "gdrive" && gdriveToken) {
       return { kind: "gdrive", token: gdriveToken };
     }
+    // iCloud backend: only inside the native wrapper where the bridge is
+    // injected. Fall through to the browser store on the web build (or a
+    // wrapper where the bridge went missing) so editing keeps working.
+    if (backend === "icloud" && isICloudAvailable()) {
+      return { kind: "icloud" };
+    }
     // Folder backend: only once the boot probe has resolved with a live,
     // permission-granted handle. While probing, or after a revoked grant,
     // fall through to the browser store so editing keeps working.
@@ -355,6 +372,15 @@ export function useStorageBackend(): UseStorageBackend {
 
   const selectBrowser = useCallback(() => {
     switchToBackend("browser");
+  }, [switchToBackend]);
+
+  // Switch to the iCloud backend. Unlike the cloud backends there is no token
+  // to fetch or OAuth to run — the native store is already authenticated by
+  // the signed-in Apple account — so this is a plain switch plus the unlock,
+  // raised inline so the catalog test's static `unlock("<id>")` scan sees it.
+  const selectICloud = useCallback(() => {
+    switchToBackend("icloud");
+    unlockAchievement("icloudSync");
   }, [switchToBackend]);
 
   // Wrap a raw adapter in the session's encryption envelope so a folder
@@ -500,6 +526,10 @@ export function useStorageBackend(): UseStorageBackend {
           await deleteDropboxNamespace(dropboxToken, slug);
         } else if (backend === "gdrive" && gdriveToken) {
           await deleteGdriveNamespace(gdriveToken, slug);
+        } else if (backend === "icloud" && isICloudAvailable()) {
+          // Drop the namespace's KVS entry so its bytes don't linger in the
+          // shared store (and on the user's other devices) after removal.
+          await deleteICloudNamespace(slug);
         }
       } catch (err) {
         log.warn(`removeNamespace: data delete failed for ${slug}`, err);
@@ -528,12 +558,15 @@ export function useStorageBackend(): UseStorageBackend {
     gdriveConfigured: isGdriveConfigured(),
     dropboxConnected: dropboxToken !== null,
     gdriveConnected: gdriveToken !== null,
+    icloudAvailable: isICloudAvailable(),
+    icloudConnected: backend === "icloud" && isICloudAvailable(),
     folderAvailable: isFolderBackendAvailable(),
     folderConnected: backend === "folder" && folderHandle !== null,
     folderReconnectNeeded,
     encryption,
     locked,
     selectBrowser,
+    selectICloud,
     connectFolder,
     reconnectFolder,
     disconnectFolder,

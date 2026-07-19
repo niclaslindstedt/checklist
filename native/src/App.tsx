@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import { useStaticServer } from "./useStaticServer";
+import { useNativeBridge } from "./nativeBridge";
 
 // Matches the app's dark chrome so the area behind the WebView never flashes
 // white during startup or over-scroll.
@@ -23,6 +24,12 @@ export default function App() {
   const webViewRef = useRef<WebView>(null);
   const [origin, setOrigin] = useState<string | null>(null);
   const canGoBack = useRef(false);
+
+  // The native ↔ web bridge: injects `window.__native` (the iCloud key-value
+  // backend the web app feature-detects) and answers its calls over
+  // `postMessage`. A no-op surface on Android / when iCloud is unavailable.
+  const { injectedJavaScriptBeforeContentLoaded, onMessage } =
+    useNativeBridge(webViewRef);
 
   useEffect(() => {
     if (server.status === "ready") setOrigin(server.origin);
@@ -103,6 +110,12 @@ export default function App() {
             incognito={false}
             allowsBackForwardNavigationGestures
             setSupportMultipleWindows={false}
+            // Native bridge: expose `window.__native` before the page loads,
+            // and answer its `postMessage` calls (see `nativeBridge.ts`).
+            injectedJavaScriptBeforeContentLoaded={
+              injectedJavaScriptBeforeContentLoaded
+            }
+            onMessage={onMessage}
             onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
             onNavigationStateChange={(nav) => {
               canGoBack.current = nav.canGoBack;

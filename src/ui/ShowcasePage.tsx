@@ -187,6 +187,14 @@ export function ShowcasePage() {
             a cloud backend. That choice — and nothing else — is what the
             permission request below is about.
           </p>
+          <p>
+            In the <strong className="text-fg-bright">iOS app</strong> you can
+            also choose <strong className="text-fg-bright">iCloud</strong>,
+            which syncs your lists across your Apple devices through
+            Apple&apos;s own iCloud — with no account, no sign-in, and no server
+            of ours in the middle. Nothing leaves Apple&apos;s device-to-device
+            sync.
+          </p>
         </Section>
 
         <Section

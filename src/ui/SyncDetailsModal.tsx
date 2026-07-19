@@ -104,6 +104,12 @@ function providerView(backend: BackendId, namespace: string): ProviderView {
       url: gdriveWebUrl(null),
     };
   }
+  if (backend === "icloud") {
+    // iCloud key-value store: a flat, account-less store with no browsable
+    // path or web URL. Name it so the Details grid reads "iCloud" rather than
+    // a bare namespace slug.
+    return { path: `iCloud · ${folder}`, url: null };
+  }
   // Local folder: no web URL, and the OS path isn't exposed to the app.
   return { path: folder, url: null };
 }

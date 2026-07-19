@@ -33,11 +33,14 @@ export function StorageTab({ storage }: Props) {
     gdriveConfigured,
     dropboxConnected,
     gdriveConnected,
+    icloudAvailable,
+    icloudConnected,
     folderAvailable,
     folderConnected,
     folderReconnectNeeded,
     encryption,
     selectBrowser,
+    selectICloud,
     connectFolder,
     reconnectFolder,
     disconnectFolder,
@@ -57,6 +60,16 @@ export function StorageTab({ storage }: Props) {
     disabled?: boolean;
   }[] = [
     { value: "browser", label: t("settings.storage.backendBrowser") },
+    // iCloud is offered only inside the iOS native wrapper (feature-detected),
+    // so the web build never shows this option at all.
+    ...(icloudAvailable
+      ? [
+          {
+            value: "icloud" as const,
+            label: t("settings.storage.backendICloud"),
+          },
+        ]
+      : []),
     {
       value: "folder",
       label: t("settings.storage.backendFolder"),
@@ -78,6 +91,7 @@ export function StorageTab({ storage }: Props) {
     setGdriveError(null);
     if (next === backend) return;
     if (next === "browser") selectBrowser();
+    else if (next === "icloud") selectICloud();
     else if (next === "folder") void connectFolder();
     else if (next === "dropbox") connectDropbox();
     else void connectGdriveWithCapture();
@@ -129,6 +143,19 @@ export function StorageTab({ storage }: Props) {
           <p className="text-xs text-muted">
             {t("settings.storage.browserHint")}
           </p>
+        )}
+
+        {backend === "icloud" && (
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted">
+              {t("settings.storage.icloudConnected")}
+            </p>
+            {icloudConnected && (
+              <span className="text-xs text-success">
+                {t("settings.storage.connected")}
+              </span>
+            )}
+          </div>
         )}
 
         {backend === "folder" && (

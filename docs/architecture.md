@@ -121,13 +121,22 @@ which reads and writes a single JSON document in `localStorage` under
 the key `checklist:v1` and implements the synchronous `loadSync` fast
 path so the first paint shows stored data.
 
-The `"icloud"` id is currently **unused**. It was claimed by an iOS-only
-iCloud key-value backend in the previous React Native app, which the WebView
-wrapper replaced (see [`native/README.md`](../native/README.md)). The id is
-kept in the union deliberately: bringing iCloud sync back as a `postMessage`
-bridge from the WebView to a native adapter is planned, and the id is part of
-the persisted backend preference, so removing and later re-adding it would
-churn stored values.
+The `"icloud"` backend syncs the document through Apple's iCloud key-value
+store (`NSUbiquitousKeyValueStore`) — the one **account-less** sync backend
+(Dropbox and Drive both need an OAuth sign-in). It is offered **only inside
+the iOS native wrapper**, where the WebView injects a `window.__native` host
+object; the web build (GitHub Pages) never sees it, feature-detected via
+`isICloudAvailable()` in `src/storage/native-bridge.ts`. The web-side adapter
+(`src/storage/icloud/index.ts`) is a thin `StorageAdapter` that translates
+`load` / `save` / `remove` and a `watch` subscription into `postMessage`
+round-trips to the native side (`native/src/nativeBridge.ts`), which owns the
+KVS via `react-native-icloudstore`. The store is a flat string→string map with
+no folders and no revision concept — Apple resolves cross-device writes itself
+(last writer wins per key) — so the adapter advertises only `watch` and, like
+the browser backend, keeps settings and the namespace registry device-local
+(only the per-namespace document travels). The native side requires the
+`com.apple.developer.ubiquity-kvstore-identifier` entitlement (declared in
+`native/app.json`).
 
 **Namespaces.** Each adapter is scoped to a *namespace* — a named bucket
 holding its own document. The registry is read synchronously from

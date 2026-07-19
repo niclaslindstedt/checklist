@@ -34,6 +34,8 @@ same app as the web, running entirely offline from inside the app binary.
 | Extract + locate the bundle at runtime | `src/webroot.ts` |
 | Start / stop the loopback server | `src/useStaticServer.ts` |
 | The WebView and its navigation rules | `src/App.tsx` |
+| Native ↔ web bridge (`window.__native`) | `src/nativeBridge.ts` |
+| iCloud key-value store (iOS only) | `src/icloud.ts` |
 
 ### Why a local HTTP server and not `file://`
 
@@ -78,6 +80,30 @@ Store rather than through a "reload to apply" toast. `IS_NATIVE`
 The crawler-facing files (`robots.txt`, `sitemap.xml`, `llms.txt`) and the
 `/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —
 the side menu links to it as a real in-app navigation.
+
+### The native ↔ web bridge (iCloud)
+
+The WebView otherwise walls the web app off from native capabilities. A small
+bridge crosses that wall:
+
+- `src/nativeBridge.ts` injects `window.__native` into the page *before it
+  loads* and answers its calls. The web build reads that object through
+  `../src/storage/native-bridge.ts` (`isICloudAvailable()`), so it
+  **feature-detects** the capability rather than assuming it from the platform
+  — on the web there is no bridge, and on Android there is no `icloud`.
+- Each web-side call (`load` / `save` / `remove` / `getRevision` / a change
+  subscription) is a `postMessage` request the native side fulfils from
+  Apple's `NSUbiquitousKeyValueStore` (`src/icloud.ts`, via
+  `react-native-icloudstore`), replying by injecting a resolver back into the
+  page. Cross-device edits arrive as `NSUbiquitousKeyValueStore` change
+  notifications, forwarded into the page so the list re-reads.
+
+This powers the **iCloud** storage backend (`Settings → Storage`) — the one
+account-less sync option, offered only here on iOS. It needs the
+`com.apple.developer.ubiquity-kvstore-identifier` entitlement, declared in
+`app.json`; Apple queries unused entitlements, so it ships only with this
+feature. The same bridge is the channel the Home Screen widgets (#263) will
+build on.
 
 ## Running it
 

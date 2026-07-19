@@ -278,6 +278,12 @@ const achievements = {
       learnMore:
         "Dropbox or Google Drive keeps your lists in sync across devices. No account here — you connect your own cloud, and the app talks only to it.",
     },
+    icloudSync: {
+      name: "Head in the iCloud",
+      condition: "Sync your lists through iCloud on the iOS app.",
+      learnMore:
+        "In the iOS app, iCloud keeps your lists in sync across your Apple devices with no account and no sign-in — the store rides your signed-in Apple ID, and nothing leaves Apple's device-to-device sync.",
+    },
     freshPull: {
       name: "Fresh Pull",
       condition: "Pull down to refresh.",

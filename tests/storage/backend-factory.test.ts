@@ -145,6 +145,15 @@ describe("createBackendFactory", () => {
     expect(factory.makeInner("work").id).toBe("folder");
   });
 
+  it("builds an iCloud backend with no root stores (device-local like browser)", () => {
+    // iCloud syncs only the per-namespace document; settings and the namespace
+    // registry stay device-local (both stores null), matching the browser case.
+    const factory = createBackendFactory({ kind: "icloud" }, deps());
+    expect(factory.settingsStore).toBeNull();
+    expect(factory.namespaceStore).toBeNull();
+    expect(factory.makeInner("work").id).toBe("icloud");
+  });
+
   it("scopes the document adapter to the slug it's asked for", () => {
     // makeInner is a factory, not a singleton: a cross-namespace move builds an
     // adapter for the target slug without disturbing the active one. Distinct

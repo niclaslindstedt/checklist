@@ -1956,9 +1956,28 @@ app stores. `IS_NATIVE` in `src/build-env.ts` gates the runtime half.
 
 An earlier `native/` rebuilt the checklist UI in React Native views over the
 shared core, including an **iOS-only iCloud key-value backend**. It covered
-only part of the web feature set, and was replaced by the wrapper; the iCloud
-backend is intended to return as a `postMessage` bridge to a native storage
-adapter.
+only part of the web feature set, and was replaced by the wrapper.
+
+**iCloud sync — the native bridge.** The iCloud backend is back, this time
+reachable from inside the WebView. The wrapper injects a small host object,
+`window.__native` (`native/src/nativeBridge.ts`), before the page loads; on
+iOS it carries an `icloud` surface with promise-based `load` / `save` /
+`remove` / `getRevision` and a change subscription, each a `postMessage`
+round-trip the native side answers from Apple's `NSUbiquitousKeyValueStore`
+(via `react-native-icloudstore`, wrapped in `native/src/icloud.ts`). The web
+app feature-detects that surface in `src/storage/native-bridge.ts`
+(`isICloudAvailable()`), so the [storage tab](#storage-tab) offers the
+**iCloud** backend only in the iOS wrapper and never on the web build. The
+web-side adapter (`src/storage/icloud/index.ts`) is a thin `StorageAdapter`
+that syncs the per-namespace document across the user's signed-in Apple
+devices with no account, no OAuth, and no network code of our own — the only
+sync backend that needs no sign-in. It advertises `watch` (another device's
+edit fires `NSUbiquitousKeyValueStore`'s change notification, which the bridge
+forwards into the page so the list re-reads); settings and the namespace
+registry stay device-local, like the browser backend. The native side needs
+the `com.apple.developer.ubiquity-kvstore-identifier` entitlement
+(`native/app.json`). The same bridge is the channel the widgets work (#263)
+will build on.
 
 ### At-rest encryption / unlock
 

@@ -20,6 +20,7 @@ import {
 
 afterEach(() => {
   localStorage.clear();
+  delete (globalThis as { __native?: unknown }).__native;
   vi.restoreAllMocks();
 });
 
@@ -43,6 +44,22 @@ describe("backend preference", () => {
   it("falls back to browser for an unknown stored value", () => {
     localStorage.setItem("checklist:backend", "carrier-pigeon");
     expect(getBackend()).toBe("browser");
+  });
+
+  it("downgrades a stored 'icloud' to browser when the bridge is absent", () => {
+    // The web build (no native bridge) must never resolve to iCloud, even if a
+    // stored preference from the native wrapper leaked across the shared origin.
+    localStorage.setItem("checklist:backend", "icloud");
+    expect(getBackend()).toBe("browser");
+  });
+
+  it("resolves 'icloud' only when the native iCloud bridge is present", () => {
+    (globalThis as { __native?: unknown }).__native = {
+      platform: "ios",
+      icloud: {},
+    };
+    localStorage.setItem("checklist:backend", "icloud");
+    expect(getBackend()).toBe("icloud");
   });
 });
 
