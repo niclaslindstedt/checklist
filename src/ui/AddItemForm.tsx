@@ -9,7 +9,7 @@ import {
 
 import { unlock } from "../achievements/bus.ts";
 import { segmentMatches } from "../domain/search.ts";
-import { suggestTitles } from "../domain/suggestions.ts";
+import { suggestTitles, type TitleCount } from "../domain/suggestions.ts";
 import { capitalizeFirst } from "../domain/text.ts";
 import { useT } from "../i18n";
 import { INDENT_PER_LEVEL } from "./ChecklistRow.tsx";
@@ -38,7 +38,9 @@ import { ClearableInput } from "./form/index.ts";
 // Typing also consults the list's archive (`suggestionPool`): titles that
 // match the draft — substring or fuzzy, the search engine's semantics —
 // appear as a typeahead below the field with the matched letters
-// highlighted. Pressing one adds that item verbatim and clears the field
+// highlighted, the most-used titles first. Pressing one adds that item
+// verbatim (a fresh copy — the archived original is never reused, so its
+// usage count keeps climbing) and clears the field
 // for the next entry, so a recurring item ("Carrots" on the groceries
 // list) is one press instead of retyped. Arrow keys walk the suggestions,
 // Enter picks the highlighted one, Escape dismisses them until the draft
@@ -89,10 +91,11 @@ export function AddItemForm({
    */
   depth?: number;
   /**
-   * Archived titles the typeahead draws from (see `archivedTitlePool`).
-   * Absent or empty, the composer never shows suggestions.
+   * Archived titles the typeahead draws from, each with its usage count (see
+   * `archivedTitlePool`). Absent or empty, the composer never shows
+   * suggestions.
    */
-  suggestionPool?: readonly string[];
+  suggestionPool?: readonly TitleCount[];
 }) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -329,7 +332,7 @@ export function AddItemForm({
                 tabIndex={-1}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pickSuggestion(s.title)}
-                className={`block w-full rounded-sm px-1 py-1 text-left text-sm ${
+                className={`block w-full rounded-sm px-2 py-2 text-left text-base ${
                   i === selected
                     ? "bg-surface-3 text-fg"
                     : "text-muted hover:bg-surface-3 hover:text-fg"
