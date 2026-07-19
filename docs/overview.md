@@ -307,9 +307,12 @@ dropdown until the draft changes.
 The pool is the archived subtrees' titles, deduplicated
 case-insensitively and excluding titles already active on the list
 (suggesting a visible row is noise). Each surviving title carries a usage
-count — how many archived copies it has — and the dropdown orders the
-**most-used titles first** (ties break on match score, then
-alphabetically), so a weekly staple floats above a one-off. The count
+count — how many archived copies it has — and the dropdown orders
+**titles that start with what you typed first, then most-used first**
+(remaining ties break on match score, then alphabetically). A prefix
+match beats frequency, so typing "B" surfaces "Bananer" above a far
+more-used "Jordgubbar" that only holds a "b" mid-word; within the
+prefix group a weekly staple still floats above a one-off. The count
 works because a re-add never *reuses* the archived copy: `addItem` always
 mints a fresh row, so every complete-and-archive cycle leaves another
 archived copy behind and the tally climbs. `ChecklistView` memoises the

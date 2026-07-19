@@ -75,12 +75,15 @@ export function archivedTitlePool(checklist: Checklist): TitleCount[] {
 }
 
 /**
- * Rank `pool` against the draft text. The most-used titles come first
- * (order by archived-copy count, descending), so a recurring entry rises to
- * the top; ties break on the search engine's match score (substring and
- * word-start hits above fuzzy ones), then alphabetically. Capped at
- * `limit`. An empty or blank draft suggests nothing — the dropdown only
- * appears once there's something to match.
+ * Rank `pool` against the draft text. A title that *starts with* the draft
+ * comes first — a prefix match beats frequency, so typing "B" surfaces
+ * "Bananer" above a far more-used "Jordgubbar" that only contains a "b"
+ * mid-word. Within each of those two groups the most-used titles lead (order
+ * by archived-copy count, descending), so a recurring entry rises to the top;
+ * remaining ties break on the search engine's match score (earlier and
+ * word-start hits above fuzzy ones), then alphabetically. Capped at `limit`.
+ * An empty or blank draft suggests nothing — the dropdown only appears once
+ * there's something to match.
  */
 export function suggestTitles(
   pool: readonly TitleCount[],
@@ -89,17 +92,24 @@ export function suggestTitles(
 ): TitleSuggestion[] {
   const needle = query.trim();
   if (!needle) return [];
-  const hits: { suggestion: TitleSuggestion; score: number }[] = [];
+  const lowNeedle = needle.toLowerCase();
+  const hits: {
+    suggestion: TitleSuggestion;
+    score: number;
+    prefix: boolean;
+  }[] = [];
   for (const { title, count } of pool) {
     const m = matchPlainText(title, needle);
     if (m)
       hits.push({
         suggestion: { title, ranges: m.ranges, count },
         score: m.score,
+        prefix: title.trim().toLowerCase().startsWith(lowNeedle),
       });
   }
   hits.sort(
     (a, b) =>
+      Number(b.prefix) - Number(a.prefix) ||
       b.suggestion.count - a.suggestion.count ||
       b.score - a.score ||
       a.suggestion.title.localeCompare(b.suggestion.title),

@@ -115,6 +115,20 @@ describe("suggestTitles", () => {
     expect(titles).toEqual(["Carrots", "Car"]);
   });
 
+  it("ranks a prefix match above a more-used mid-word match", () => {
+    // "Jordgubbar" only contains a "b" mid-word but has been used far more
+    // often; "Bananer" starts with the typed "B". The prefix wins anyway.
+    const p = [tc("Jordgubbar", 10), tc("Bananer", 1)];
+    const titles = suggestTitles(p, "B").map((s) => s.title);
+    expect(titles).toEqual(["Bananer", "Jordgubbar"]);
+  });
+
+  it("orders prefix matches among themselves by usage count", () => {
+    const p = [tc("Bread", 1), tc("Bananer", 5)];
+    const titles = suggestTitles(p, "B").map((s) => s.title);
+    expect(titles).toEqual(["Bananer", "Bread"]);
+  });
+
   it("carries the usage count on each suggestion", () => {
     const [first] = suggestTitles([tc("Carrots", 4)], "car");
     expect(first).toBeDefined();
