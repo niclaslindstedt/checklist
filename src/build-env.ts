@@ -15,3 +15,10 @@ export const APP_VERSION: string = __APP_VERSION__;
 // `<commit>` is the short commit hash. Local builds collapse to just
 // `<version>`.
 export const BUILD_LABEL: string = __BUILD_LABEL__;
+
+// True only in the bundle embedded in the native wrapper (`native/`),
+// which is served from a loopback origin inside a WebView and ships
+// without a service worker. Gates the PWA surfaces — SW registration,
+// the update prompt, and the install prompt — that have no meaning when
+// updates arrive through the App Store instead.
+export const IS_NATIVE: boolean = __NATIVE__;

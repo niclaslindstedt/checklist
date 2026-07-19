@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Workbox } from "workbox-window";
+import { IS_NATIVE } from "../build-env";
 
 // Single source of truth for the PWA update lifecycle, shared by the
 // `UpdateToast` ("a new build is ready — reload to apply" prompt) and
@@ -219,6 +220,9 @@ function start() {
   if (started) return;
   started = true;
   if (import.meta.env.DEV) return;
+  // The native wrapper embeds this bundle and ships no `sw.js`; registering
+  // would 404, and an App Store build has no in-app update to advertise.
+  if (IS_NATIVE) return;
   if (typeof navigator === "undefined") return;
   if (!("serviceWorker" in navigator)) return;
 

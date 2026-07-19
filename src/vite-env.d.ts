@@ -8,8 +8,11 @@
 // `__BUILD_LABEL__` is the short build identifier rendered in the header
 // — `<version>[.<run>][-<slot>][+<commit>]`, collapsing to just
 // `<version>` for local builds.
+// `__NATIVE__` is true only for the bundle embedded in the native wrapper
+// (`VITE_NATIVE=1`), which ships without a service worker.
 declare const __APP_VERSION__: string;
 declare const __BUILD_LABEL__: string;
+declare const __NATIVE__: boolean;
 
 // Optional build-time env: the URL the header menu's "Donate" entry
 // links to. Unset (or blank) hides the entry entirely. Set it at build

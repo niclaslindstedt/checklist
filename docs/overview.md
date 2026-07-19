@@ -1933,28 +1933,32 @@ folder). The GIS script is lazy-loaded only when the user connects.
 throttle-and-resume path engages. A genuine 403 permission error stays a
 plain error.
 
-### iCloud backend (iOS)
+### Native wrapper
 
-`native/src/storage/icloudStorageAdapter.ts` — the React Native app's
-iOS-only backend, storing the document in Apple's iCloud key-value store
-(`NSUbiquitousKeyValueStore`, via `react-native-icloudstore`) under the same
-per-namespace key the on-device backend uses. It implements the shared
-`StorageAdapter` contract (so `useChecklist` drives it unchanged) and is the
-one backend in the native app that advertises the `watch` capability: iCloud's
-`onStoreDidChange` event fires when another device pushes an edit, the adapter
-re-reads its key, and `App.tsx` calls `reload()` so the change appears live.
+`native/` is a thin WebView wrapper, not a second implementation of the app.
+`npm run build:native` builds this web app with `VITE_NATIVE=1` into
+`native/webroot`; the `withWebroot` config plugin copies that tree into the
+iOS and Android projects at `expo prebuild` time; and at runtime
+`native/src/useStaticServer.ts` serves it over `http://localhost` for
+`native/src/App.tsx` to load in a `WebView`. Everything the user sees is the
+web app.
 
-It is **only exposed on iOS**. `native/src/storage/backends.ts` is the single
-platform gate — `availableBackends()` lists the on-device backend everywhere
-and appends iCloud only when `Platform.OS === "ios"`, requiring the iCloud
-adapter module (and its native dependency) lazily so it never loads on
-Android/web. The choice is persisted per device in AsyncStorage
-(`native/src/storage/backendPreference.ts`) and surfaced as a **Storage**
-picker in the list-switcher sheet (`native/src/components/ListSwitcher.tsx`),
-which renders only when more than one backend is available — i.e. only on iOS.
-iCloud key-value sync needs the
-`com.apple.developer.ubiquity-kvstore-identifier` entitlement (`app.json`) and
-a native build; it is inert in Expo Go.
+The loopback server exists because `file://` is not a secure context in
+WebKit: `crypto.randomUUID` (which mints every id) and `crypto.subtle` (at-rest
+encryption, OAuth PKCE) are undefined there, and WKWebView treats `file://` as
+an opaque origin, which breaks the `localStorage` every checklist lives in. The
+port is **pinned** for the same reason — an origin is scheme + host + port, so
+a per-launch random port would present a fresh, empty origin on every start.
+
+The native build drops the PWA layer (no service worker, no update or install
+prompt): the assets already ship in the binary and updates arrive through the
+app stores. `IS_NATIVE` in `src/build-env.ts` gates the runtime half.
+
+An earlier `native/` rebuilt the checklist UI in React Native views over the
+shared core, including an **iOS-only iCloud key-value backend**. It covered
+only part of the web feature set, and was replaced by the wrapper; the iCloud
+backend is intended to return as a `postMessage` bridge to a native storage
+adapter.
 
 ### At-rest encryption / unlock
 

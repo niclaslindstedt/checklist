@@ -4,15 +4,9 @@
     "strict": true,
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
+    "noUncheckedIndexedAccess": true,
     "skipLibCheck": true
   },
-  "include": [
-    "index.js",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "../src/**/*.ts",
-    "../src/**/*.tsx"
-  ]
+  "include": ["index.js", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "webroot", "ios", "android"]
 }

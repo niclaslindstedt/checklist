@@ -121,11 +121,13 @@ which reads and writes a single JSON document in `localStorage` under
 the key `checklist:v1` and implements the synchronous `loadSync` fast
 path so the first paint shows stored data.
 
-The `"icloud"` id has no web counterpart: it belongs to the React Native
-app's iOS-only iCloud backend (`native/src/storage/icloudStorageAdapter.ts`),
-which stores the document in Apple's iCloud key-value store and is offered
-only on iOS. It lives in the shared union so the native adapter satisfies the
-same contract — see [`native/README.md`](../native/README.md).
+The `"icloud"` id is currently **unused**. It was claimed by an iOS-only
+iCloud key-value backend in the previous React Native app, which the WebView
+wrapper replaced (see [`native/README.md`](../native/README.md)). The id is
+kept in the union deliberately: bringing iCloud sync back as a `postMessage`
+bridge from the WebView to a native adapter is planned, and the id is part of
+the persisted backend preference, so removing and later re-adding it would
+churn stored values.
 
 **Namespaces.** Each adapter is scoped to a *namespace* — a named bucket
 holding its own document. The registry is read synchronously from

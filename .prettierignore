@@ -4,6 +4,12 @@ dev-dist
 node_modules
 package-lock.json
 
+# The web bundle embedded in the native wrapper — a `vite build` artifact,
+# not source. Produced by `npm run build:native`.
+native/webroot
+native/ios
+native/android
+
 # Prose and hand-authored docs are managed by humans / the maintenance skills,
 # not reflowed by Prettier.
 **/*.md
