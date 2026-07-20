@@ -11,12 +11,18 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { WebView, type WebViewNavigation } from "react-native-webview";
+import {
+  WebView,
+  type WebViewMessageEvent,
+  type WebViewNavigation,
+} from "react-native-webview";
 import { useStaticServer } from "./useStaticServer";
 import { useNativeBridge } from "./nativeBridge";
+import { useNativeTheme } from "./nativeTheme";
 
-// Matches the app's dark chrome so the area behind the WebView never flashes
-// white during startup or over-scroll.
+// Fallback chrome shown before the page reports its theme (startup, over-scroll,
+// the server-failed screen). Matches the dark preset so nothing flashes white;
+// once the WebView paints, `useNativeTheme` takes over with the live theme.
 const BACKGROUND = "#1f2933";
 
 export default function App() {
@@ -28,8 +34,26 @@ export default function App() {
   // The native ↔ web bridge: injects `window.__native` (the iCloud key-value
   // backend the web app feature-detects) and answers its calls over
   // `postMessage`. A no-op surface on Android / when iCloud is unavailable.
-  const { injectedJavaScriptBeforeContentLoaded, onMessage } =
+  const { injectedJavaScriptBeforeContentLoaded, onMessage: onBridgeMessage } =
     useNativeBridge(webViewRef);
+
+  // Propagate the web app's resolved theme onto the native chrome so the
+  // status bar and safe-area bands follow the picker instead of the dark
+  // constant above. `theme` is null until the page reports one.
+  const { injectedJavaScript, theme, onThemeMessage } = useNativeTheme();
+
+  // One `onMessage` feeds both channels: theme reports are consumed here, and
+  // everything else (the `window.__native` bridge traffic) falls through.
+  const onMessage = useCallback(
+    (event: WebViewMessageEvent) => {
+      if (onThemeMessage(event)) return;
+      onBridgeMessage(event);
+    },
+    [onThemeMessage, onBridgeMessage],
+  );
+
+  const background = theme?.background ?? BACKGROUND;
+  const barStyle = theme?.barStyle ?? "light";
 
   useEffect(() => {
     if (server.status === "ready") setOrigin(server.origin);
@@ -94,14 +118,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.fill} edges={["top", "bottom"]}>
-        <StatusBar style="light" />
+      <SafeAreaView
+        style={[styles.fill, { backgroundColor: background }]}
+        edges={["top", "bottom"]}
+      >
+        <StatusBar style={barStyle} />
         {origin ? (
           <WebView
             ref={webViewRef}
             source={{ uri: origin }}
             originWhitelist={["http://localhost:*"]}
-            style={styles.fill}
+            style={[styles.fill, { backgroundColor: background }]}
             javaScriptEnabled
             // Android: without this localStorage is unavailable entirely.
             domStorageEnabled
@@ -115,6 +142,9 @@ export default function App() {
             injectedJavaScriptBeforeContentLoaded={
               injectedJavaScriptBeforeContentLoaded
             }
+            // Report the resolved theme (page background + status-bar style)
+            // to native after the page paints, and on every live theme switch.
+            injectedJavaScript={injectedJavaScript}
             onMessage={onMessage}
             onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
             onNavigationStateChange={(nav) => {
