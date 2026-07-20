@@ -138,6 +138,19 @@ the browser backend, keeps settings and the namespace registry device-local
 `com.apple.developer.ubiquity-kvstore-identifier` entitlement (declared in
 `native/app.json`).
 
+**Widget mirror.** The native app's Home Screen / Lock Screen widgets run in a
+separate OS process that can't read `localStorage`, so they never touch the
+document directly. Instead the app publishes a compact, **derived** projection
+of it — `buildWidgetSnapshot` (`src/domain/widget-snapshot.ts`) — to a shared
+container (an App Group on iOS, a shared `SharedPreferences` file on Android)
+over the same `window.__native` bridge, feature-detected via
+`isWidgetsAvailable()`. The WebView storage stays the single source of truth;
+the mirror is read-optimised and one-directional except for the interactive
+check-off widget, whose taps queue actions the app drains on foreground and
+replays through the ordinary edit path (`applyWidgetAction`), so a widget write
+never bypasses the save / conflict machinery. See
+[overview](overview.md#home-screen-widgets).
+
 **Namespaces.** Each adapter is scoped to a *namespace* — a named bucket
 holding its own document. The registry is read synchronously from
 `localStorage` (`src/storage/namespaces.ts`) for first paint and adapter

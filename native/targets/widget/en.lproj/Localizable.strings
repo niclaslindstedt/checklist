@@ -1,0 +1,25 @@
+/* Widget display names and copy (English). SwiftUI `Text("…")` uses the string
+   as a lookup key, so these keys mirror the literals in the widget views. */
+
+"List progress" = "List progress";
+"How far through your active checklist you are." = "How far through your active checklist you are.";
+"done" = "done";
+"No items" = "No items";
+
+"Due today" = "Due today";
+"Tasks due today or overdue, across your lists." = "Tasks due today or overdue, across your lists.";
+"Nothing due" = "Nothing due";
+"%lld more" = "%lld more";
+
+"Check off" = "Check off";
+"Tick off items from a list without opening the app." = "Tick off items from a list without opening the app.";
+"All done 🎉" = "All done 🎉";
+"No list" = "No list";
+
+"Quick add" = "Quick add";
+"Jump straight to adding an item to your active list." = "Jump straight to adding an item to your active list.";
+"Add item" = "Add item";
+"Add to checklist" = "Add to checklist";
+
+"Choose a checklist" = "Choose a checklist";
+"Pick which checklist this widget shows." = "Pick which checklist this widget shows.";

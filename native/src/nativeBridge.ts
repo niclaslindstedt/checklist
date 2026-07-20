@@ -14,23 +14,30 @@
 //     forwards iCloud's cross-device change events by injecting
 //     `window.__nativeBridgeChange(changedKeys)`.
 //
-// Only iCloud is wired today; the same channel is what the widgets work
-// (#263) will build on. The shim advertises `icloud` only when the native KVS
-// is actually available (iOS with the module loaded), so on Android and on
-// any failure the web app feature-detects it as absent and never offers the
-// backend.
+// Two capabilities ride this channel: the iCloud key-value store (iOS) and
+// the Home Screen widget host (both platforms). Each is advertised on
+// `window.__native` only when its native module actually loaded, so the web
+// app feature-detects it as absent otherwise — on Android there is no
+// `icloud`, and a build without the widget module has no `widgets`.
 
 import { useCallback, useEffect, useMemo, type RefObject } from "react";
 import { Platform } from "react-native";
 import type { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { getICloudKVS } from "./icloud";
+import { getWidgetHost } from "./widgets";
 
 // A bridge request as it arrives from the page.
 interface BridgeRequest {
   __checklistBridge: true;
   id: number;
-  method: "load" | "save" | "remove" | "getRevision";
+  method:
+    | "load"
+    | "save"
+    | "remove"
+    | "getRevision"
+    | "widgetPublish"
+    | "widgetPending";
   key: string;
   text?: string;
 }
@@ -53,14 +60,16 @@ function encode(value: unknown): string {
 export function buildInjectedBridge(
   platform: string,
   hasICloud: boolean,
+  hasWidgets: boolean,
 ): string {
-  // Kept as one IIFE string: the platform string and the iCloud-present flag
-  // are interpolated in; everything else runs verbatim inside the WebView.
+  // Kept as one IIFE string: the platform string and the capability flags are
+  // interpolated in; everything else runs verbatim inside the WebView.
   return `(function () {
   if (window.__native) return;
   var pending = {};
   var seq = 0;
   var listeners = [];
+  var widgetListeners = [];
   window.__nativeBridgeResolve = function (id, result) {
     var p = pending[id];
     if (p) { delete pending[id]; p.resolve(result); }
@@ -72,6 +81,11 @@ export function buildInjectedBridge(
   window.__nativeBridgeChange = function (changedKeys) {
     for (var i = 0; i < listeners.length; i++) {
       try { listeners[i](changedKeys); } catch (e) {}
+    }
+  };
+  window.__nativeBridgeWidgetAction = function () {
+    for (var i = 0; i < widgetListeners.length; i++) {
+      try { widgetListeners[i](); } catch (e) {}
     }
   };
   function call(method, key, text) {
@@ -98,7 +112,18 @@ export function buildInjectedBridge(
       };
     }
   } : undefined;
-  window.__native = { platform: ${JSON.stringify(platform)}, icloud: icloud };
+  var widgets = ${hasWidgets ? "true" : "false"} ? {
+    publish: function (json) { return call("widgetPublish", "", json); },
+    pending: function () { return call("widgetPending", ""); },
+    subscribe: function (listener) {
+      widgetListeners.push(listener);
+      return function () {
+        var i = widgetListeners.indexOf(listener);
+        if (i >= 0) widgetListeners.splice(i, 1);
+      };
+    }
+  } : undefined;
+  window.__native = { platform: ${JSON.stringify(platform)}, icloud: icloud, widgets: widgets };
 })();
 true;`;
 }
@@ -114,10 +139,11 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
   onMessage: (event: WebViewMessageEvent) => void;
 } {
   const kvs = useMemo(() => getICloudKVS(), []);
+  const widgets = useMemo(() => getWidgetHost(), []);
 
   const injectedJavaScriptBeforeContentLoaded = useMemo(
-    () => buildInjectedBridge(Platform.OS, kvs !== null),
-    [kvs],
+    () => buildInjectedBridge(Platform.OS, kvs !== null, widgets !== null),
+    [kvs, widgets],
   );
 
   // Forward remote iCloud edits (another device pushed a change) into the page
@@ -133,6 +159,18 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
     });
   }, [kvs, webViewRef]);
 
+  // Forward the "a widget queued an action" signal into the page so the web
+  // app drains the queue immediately (the interactive check-off widget's tap)
+  // rather than waiting for the next foreground.
+  useEffect(() => {
+    if (!widgets) return;
+    return widgets.onAction(() => {
+      webViewRef.current?.injectJavaScript(
+        `window.__nativeBridgeWidgetAction && window.__nativeBridgeWidgetAction(); true;`,
+      );
+    });
+  }, [widgets, webViewRef]);
+
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
       let msg: BridgeRequest;
@@ -142,9 +180,9 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
         return; // not our message
       }
       if (!msg || msg.__checklistBridge !== true) return;
-      void handleRequest(kvs, msg, webViewRef);
+      void handleRequest(kvs, widgets, msg, webViewRef);
     },
-    [kvs, webViewRef],
+    [kvs, widgets, webViewRef],
   );
 
   return { injectedJavaScriptBeforeContentLoaded, onMessage };
@@ -155,6 +193,7 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
 // than hang on a promise that never settles.
 async function handleRequest(
   kvs: ReturnType<typeof getICloudKVS>,
+  widgets: ReturnType<typeof getWidgetHost>,
   msg: BridgeRequest,
   webViewRef: RefObject<WebView | null>,
 ): Promise<void> {
@@ -170,6 +209,26 @@ async function handleRequest(
         message,
       )}); true;`,
     );
+
+  // Widget calls go to the widget host, not the iCloud store, so they're
+  // handled before the iCloud availability gate below.
+  if (msg.method === "widgetPublish" || msg.method === "widgetPending") {
+    if (!widgets) {
+      reject("widgets are not available");
+      return;
+    }
+    try {
+      if (msg.method === "widgetPublish") {
+        await widgets.setSnapshot(msg.text ?? "");
+        resolve(null);
+      } else {
+        resolve(await widgets.takePendingActions());
+      }
+    } catch (err) {
+      reject(err instanceof Error ? err.message : String(err));
+    }
+    return;
+  }
 
   if (!kvs) {
     reject("iCloud is not available");

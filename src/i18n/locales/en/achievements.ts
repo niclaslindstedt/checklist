@@ -316,6 +316,12 @@ const achievements = {
       name: "Quiet Life",
       condition: "Silence the toast notifications.",
     },
+    widgeteer: {
+      name: "Widgeteer",
+      condition: "Tick off an item straight from a Home Screen widget.",
+      learnMore:
+        "On the native app, add a checklist widget to your Home or Lock Screen: a progress ring, what's due today, or an interactive list you can tick off with a single tap — the check lands back in the app the next time you open it. Tap this trophy's condition once you've checked something off without opening the app.",
+    },
 
     // ── Expert ────────────────────────────────────────────────────────
     paranoidMode: {

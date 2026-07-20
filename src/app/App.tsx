@@ -56,6 +56,9 @@ import { SearchModalHost } from "./modals/SearchModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
 import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
+import { useWidgetMirror } from "./use-widget-mirror.ts";
+import { useWidgetDeepLink } from "./use-widget-deep-link.ts";
+import type { WidgetAction } from "../domain/widget-snapshot.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
 // hooks and publish their state through two focused contexts instead of
@@ -246,6 +249,31 @@ function AppShell() {
     unlock("freshPull");
     return reload();
   }, [reload]);
+
+  // Native widgets. Mirror a compact snapshot out to the shared container on
+  // every change, and replay the interactive check-off widget's queued taps
+  // through the normal edit path. A no-op on the web build (no bridge).
+  const { toggleItemInList, selectChecklist } = checklist;
+  const applyWidgetAction = useCallback(
+    (action: WidgetAction) => {
+      if (action.type === "toggle") {
+        unlock("widgeteer");
+        toggleItemInList(action.listId, action.itemId);
+      }
+    },
+    [toggleItemInList],
+  );
+  useWidgetMirror({
+    snapshot: checklist.snapshot,
+    activeChecklistId: checklist.activeChecklistId,
+    loaded: checklist.loaded,
+    sinkChecked: settings.sortCheckedToBottom,
+    onAction: applyWidgetAction,
+  });
+  // Quick-add / open deep links (`checklist://add?list=<id>`) from a widget or
+  // Control Center: switch to the target list and, for `add`, focus the
+  // composer. Bridged in by the native wrapper; a no-op in a plain browser.
+  useWidgetDeepLink({ selectChecklist });
 
   // Namespace create / delete live in the storage layer (which must not
   // reach into the UI), so the toast is raised here where both the

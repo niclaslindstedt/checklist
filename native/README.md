@@ -36,6 +36,9 @@ same app as the web, running entirely offline from inside the app binary.
 | The WebView and its navigation rules | `src/App.tsx` |
 | Native ↔ web bridge (`window.__native`) | `src/nativeBridge.ts` |
 | iCloud key-value store (iOS only) | `src/icloud.ts` |
+| Widget shared-container host | `src/widgets.ts`, `modules/widget-bridge/` |
+| WidgetKit extension (iOS) | `targets/widget/` (`@bacons/apple-targets`) |
+| Glance widget (Android) | `widgets/android/`, `plugins/withWidgets.js` |
 
 ### Why a local HTTP server and not `file://`
 
@@ -102,8 +105,36 @@ This powers the **iCloud** storage backend (`Settings → Storage`) — the one
 account-less sync option, offered only here on iOS. It needs the
 `com.apple.developer.ubiquity-kvstore-identifier` entitlement, declared in
 `app.json`; Apple queries unused entitlements, so it ships only with this
-feature. The same bridge is the channel the Home Screen widgets (#263) will
-build on.
+feature.
+
+### Home Screen widgets
+
+The same bridge carries the Home Screen / Lock Screen widgets. Because a widget
+runs in a separate OS process that can't reach the WebView's `localStorage`,
+the app mirrors a compact **snapshot** of the active list, its open items, and
+what's due today into a shared container the widget reads — an **App Group**
+(`group.se.niclaslindstedt.checklist`) on iOS, a shared `SharedPreferences`
+file on Android — and reloads the widget timelines on every change. The snapshot
+is derived and read-optimised; the WebView storage stays the source of truth.
+
+- `window.__native.widgets` (`src/nativeBridge.ts`) exposes `publish` (write the
+  snapshot + reload) and `pending` (drain the interactive check-off widget's
+  queued taps), fulfilled by the local `modules/widget-bridge` Expo module
+  (`src/widgets.ts`).
+- The **iOS** WidgetKit extension is generated from `targets/widget/` by
+  `@bacons/apple-targets` during prebuild (progress ring, due-today,
+  interactive check-off with App Intents, quick-add + an iOS 18 control).
+- The **Android** Glance widget lives in `widgets/android/` and is wired into
+  the app project (sources, provider XML, manifest receiver) by
+  `plugins/withWidgets.js`, which also adds the App Group entitlement to the
+  main iOS app.
+- The interactive check-off can't write the store from its own process, so its
+  tap **queues** a toggle the app applies through its normal edit path on the
+  next foreground — never a second write path.
+
+Widgets open the app via the `checklist://add?list=<id>` / `checklist://open`
+deep links, routed into the web app by the wrapper (the `checklist` scheme is
+registered from `app.json`).
 
 ## Running it
 
@@ -138,5 +169,5 @@ targets the web app's own origin, which only exists inside the app process, so
 the round trip cannot complete — see #274 before offering those backends on
 mobile.
 
-Widgets (#263), deadline notifications (#268) and the rest of the native
-backlog are tracked in the issue tracker.
+Deadline notifications (#268) and the rest of the native backlog are tracked
+in the issue tracker.

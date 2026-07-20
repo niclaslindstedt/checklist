@@ -310,6 +310,12 @@ const achievements: AchievementsCatalog = {
       name: "Lugn och ro",
       condition: "Tysta aviseringarna.",
     },
+    widgeteer: {
+      name: "Widgetmakare",
+      condition: "Bocka av en post direkt från en widget på hemskärmen.",
+      learnMore:
+        "I den nativa appen kan du lägga en checklistewidget på hem- eller låsskärmen: en förloppsring, vad som förfaller idag, eller en interaktiv lista du bockar av med ett tryck — bockningen landar i appen nästa gång du öppnar den. Tryck på det här villkoret när du har bockat av något utan att öppna appen.",
+    },
 
     // ── Expert ────────────────────────────────────────────────────────
     paranoidMode: {

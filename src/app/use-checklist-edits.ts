@@ -118,6 +118,12 @@ export interface ChecklistEdits {
   ) => void;
   toggle: (itemId: string) => void;
   /**
+   * Toggle an item in a specific list by id — the write-back path for the
+   * interactive check-off widget, whose queued taps may target a list other
+   * than the active one. A no-op when the list or item no longer exists.
+   */
+  toggleItemInList: (listId: string, itemId: string) => void;
+  /**
    * Set or clear an item's due date and how it repeats — the clock
    * affordance on a swiped-open row. Pass a `YYYY-MM-DD` date (with an
    * optional `recurrence`) to schedule it, or `null` / `null` to clear the
@@ -375,6 +381,31 @@ export function useChecklistEdits(deps: {
     [commit, titleOf, t],
   );
 
+  // Toggle an item in a named list — not necessarily the active one. The
+  // interactive check-off widget queues `{ listId, itemId }` actions the app
+  // drains and replays here, so the write lands in whatever list the widget
+  // showed and flows through the same `commit` path (save + undo) as a normal
+  // tap rather than a second store path. A no-op when the list or item has
+  // since gone (a stale queued action).
+  const toggleItemInList = useCallback(
+    (listId: string, itemId: string) => {
+      const target = docRef.current.checklists.find((c) => c.id === listId);
+      if (!target) return;
+      const item = findItem(target.items, itemId);
+      if (!item) return;
+      const next = toggleItemOp(target, itemId, now());
+      if (next === target) return;
+      const label = t(
+        item.checked ? "toast.itemUnchecked" : "toast.itemChecked",
+        {
+          title: item.title,
+        },
+      );
+      commit(next, label);
+    },
+    [commit, docRef, t],
+  );
+
   const setDeadline = useCallback(
     (
       itemId: string,
@@ -527,6 +558,7 @@ export function useChecklistEdits(deps: {
       importItemsAfter,
       editItem,
       toggle,
+      toggleItemInList,
       setDeadline,
       checkAll,
       uncheckAll,
@@ -546,6 +578,7 @@ export function useChecklistEdits(deps: {
       importItemsAfter,
       editItem,
       toggle,
+      toggleItemInList,
       setDeadline,
       checkAll,
       uncheckAll,
