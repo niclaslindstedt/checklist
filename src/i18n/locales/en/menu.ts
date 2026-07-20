@@ -10,6 +10,8 @@ const menu = {
   source: "View source",
   donate: "Donate",
   about: "About",
+  collapseFooter: "Collapse footer",
+  expandFooter: "Expand footer",
 } as const;
 
 export type MenuCatalog = Widen<typeof menu>;

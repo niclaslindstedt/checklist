@@ -18,6 +18,7 @@ import {
   BellOffGlyph,
   BoxesGlyph,
   CheckGlyph,
+  ChevronsDownUpGlyph,
   ClockGlyph,
   CloudGlyph,
   CloudOffGlyph,
@@ -428,6 +429,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       predicate: (prev, next) =>
         prev.settings.fontFamily !== next.settings.fontFamily,
     },
+  },
+  {
+    id: "roomToBreathe",
+    tier: "intermediate",
+    glyph: ChevronsDownUpGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
   },
 
   // ──────────────────────────────────────────────────────────────

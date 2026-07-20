@@ -442,7 +442,18 @@ settings (last, under the thumb). The About row — a plain footer row with
 no chevron — toggles the project links — "what's new", the source on
 GitHub (with the app version as a subtitle), and privacy — in a
 `FloatingPanel` that flips **upward** (there is no room below at the foot
-of the drawer). The drawer's open/current/position state
+of the drawer). A thin **footer collapse rail** (`FooterCollapseRail` in
+`SideMenuRows.tsx`) sits just above that footer: a full-width chevron
+button one line tall that folds the whole footer (Donate / trophy / About
+/ Settings) away to hand the freed vertical space to the checklist list,
+and back again — the chevron points down to collapse and up to restore.
+The choice is device-local, held outside the synced `Settings` in a small
+`useSyncExternalStore` singleton (`useFooterCollapsed`,
+`src/ui/hooks/useFooterCollapsed.ts`, persisted to the
+`checklist:footer-collapsed` localStorage key) so it survives a reload and
+applies on every viewport — the phone drawer and the pinned iPad sidebar
+alike. Folding it away the first time unlocks the **Room to breathe**
+achievement. The drawer's open/current/position state
 comes from `useNav`
 (`src/ui/nav-context.ts`, which exports the `View` type
 `"checklist" | "archive"`) and the undo/redo/archive counts plus

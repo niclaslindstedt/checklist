@@ -7,6 +7,8 @@ const menu: MenuCatalog = {
   source: "Visa källkod",
   donate: "Donera",
   about: "Om",
+  collapseFooter: "Fäll ihop sidfot",
+  expandFooter: "Fäll ut sidfot",
 };
 
 export default menu;

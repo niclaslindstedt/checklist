@@ -50,12 +50,14 @@ import {
 import {
   BarButton,
   ChecklistRowStrip,
+  FooterCollapseRail,
   MenuButton,
   MenuLink,
   NavItem,
   SectionHeader,
   SwipeToRemove,
 } from "./SideMenuRows.tsx";
+import { useFooterCollapsed } from "./hooks/useFooterCollapsed.ts";
 import { FolderEditRow, FolderRow } from "./SideMenuFolderRow.tsx";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 import { TrophyButton } from "./achievements/TrophyButton.tsx";
@@ -171,6 +173,12 @@ export function SideMenu({
   // against `aboutRef` and flipped upward by `FloatingPanel`.
   const [aboutOpen, setAboutOpen] = useState(false);
   const aboutRef = useRef<HTMLButtonElement>(null);
+  // The footer (Donate / trophy / About / Settings) folds away behind the thin
+  // chevron rail above it, handing the freed space to the checklist list. The
+  // choice is device-local and remembered across reloads (see
+  // `useFooterCollapsed`).
+  const { collapsed: footerCollapsed, setCollapsed: setFooterCollapsed } =
+    useFooterCollapsed();
   const toggleFolder = (id: string) =>
     setCollapsedFolders((prev) => {
       const next = new Set(prev);
@@ -578,48 +586,61 @@ export function SideMenu({
           </div>
         </div>
       </div>
+      {/* A thin chevron rail that folds the footer away, freeing its space for
+          the checklist list. Offered on every viewport, including the phone
+          drawer; the choice persists per device. */}
+      <FooterCollapseRail
+        collapsed={footerCollapsed}
+        label={
+          footerCollapsed ? t("menu.expandFooter") : t("menu.collapseFooter")
+        }
+        onClick={() => setFooterCollapsed(!footerCollapsed)}
+      />
+
       {/* The relocated burger menu, fixed at the foot of the drawer: Donate,
           the trophy, an "About" dropdown that folds away the project links
           (source / privacy / what's new), and Settings pinned last under the
-          thumb. */}
-      <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
-        {donateUrl && (
-          <MenuLink
-            icon={<HeartIcon className="h-5 w-5 text-danger" />}
-            label={t("menu.donate")}
-            href={donateUrl}
-            external
-            onClick={close}
-          />
-        )}
-        {/* The trophy, relocated from the header. It does its own
+          thumb. Folded away via the rail above. */}
+      {!footerCollapsed && (
+        <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
+          {donateUrl && (
+            <MenuLink
+              icon={<HeartIcon className="h-5 w-5 text-danger" />}
+              label={t("menu.donate")}
+              href={donateUrl}
+              external
+              onClick={close}
+            />
+          )}
+          {/* The trophy, relocated from the header. It does its own
             quiet-vs-lit dispatch, so it just needs the drawer closed
             behind it. Hides itself when achievements are disabled. */}
-        <TrophyButton onSelect={close} />
-        {/* About: a single row that reveals the project links in an
+          <TrophyButton onSelect={close} />
+          {/* About: a single row that reveals the project links in an
             upward-flipping dropdown (there's no room below at the foot of the
             drawer). It reads as a plain footer row — no chevron — and just
             toggles the panel open and shut. */}
-        <button
-          ref={aboutRef}
-          type="button"
-          role="menuitem"
-          aria-haspopup="menu"
-          aria-expanded={aboutOpen}
-          onClick={() => setAboutOpen((v) => !v)}
-          className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
-        >
-          <span className="text-muted">
-            <HelpCircleIcon className="h-5 w-5" />
-          </span>
-          <span className="flex-1">{t("menu.about")}</span>
-        </button>
-        <MenuButton
-          icon={<CogIcon className="h-5 w-5" />}
-          label={t("menu.settings")}
-          onClick={() => pick(() => dispatch({ kind: "settings" }))}
-        />
-      </div>
+          <button
+            ref={aboutRef}
+            type="button"
+            role="menuitem"
+            aria-haspopup="menu"
+            aria-expanded={aboutOpen}
+            onClick={() => setAboutOpen((v) => !v)}
+            className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
+          >
+            <span className="text-muted">
+              <HelpCircleIcon className="h-5 w-5" />
+            </span>
+            <span className="flex-1">{t("menu.about")}</span>
+          </button>
+          <MenuButton
+            icon={<CogIcon className="h-5 w-5" />}
+            label={t("menu.settings")}
+            onClick={() => pick(() => dispatch({ kind: "settings" }))}
+          />
+        </div>
+      )}
       <FloatingPanel
         open={aboutOpen}
         onClose={() => setAboutOpen(false)}

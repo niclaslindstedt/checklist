@@ -244,6 +244,12 @@ const achievements = {
       name: "Font Fanatic",
       condition: "Change the font family.",
     },
+    roomToBreathe: {
+      name: "Room to Breathe",
+      condition: "Collapse the side-menu footer.",
+      learnMore:
+        "The thin chevron above the footer folds it away — Donate, the trophy, About, and Settings — handing the freed space to your checklist. Tap it again to bring the footer back. The choice is remembered on this device.",
+    },
 
     // ── Pro ───────────────────────────────────────────────────────────
     compartments: {
