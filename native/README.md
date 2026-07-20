@@ -72,6 +72,24 @@ discarding the user's data. `src/useStaticServer.ts` pins the port and, if it
 is taken, walks a short deterministic ladder rather than falling back to a
 random port.
 
+### Startup, splash, and recovery
+
+The native splash is held (`expo-splash-screen`) until the WebView reports its
+first paint (`onLoadEnd`) rather than until the server starts — the server
+being up says nothing about the page having rendered — so cold start shows the
+splash straight through to real content instead of a blank flash or a spinner.
+A timeout drops the splash regardless, so a hung load falls through to the
+error screen instead of stranding the user.
+
+If the embedded server fails to bind every port in the ladder, the error
+screen offers **Try again**, which re-runs the start sequence (reusing an
+already-active instance rather than starting a second one, which the library
+rejects). The same recovery runs automatically on foreground: iOS closes the
+server's listening socket after a stretch in the background, so on resume
+`src/useStaticServer.ts` restarts a dead server or resyncs the origin if it was
+rebound to a different port. The foreground decision is a pure function in
+`src/serverRecovery.ts`, unit-tested from `tests/native/`.
+
 ### What the native build drops
 
 The embedded bundle is built with `VITE_NATIVE=1`, which omits the PWA layer:

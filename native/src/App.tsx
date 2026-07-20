@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  AppState,
   BackHandler,
   Linking,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -25,8 +26,20 @@ import { useNativeTheme } from "./nativeTheme";
 // once the WebView paints, `useNativeTheme` takes over with the live theme.
 const BACKGROUND = "#1f2933";
 
+// Hold the native splash until the WebView actually paints (see the timeout
+// below). Called at module scope so the auto-hide never wins the race; the
+// promise is ignored because a rejection only means the splash was already
+// gone, which is harmless.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Ceiling on how long the splash may stay up. The happy path hides it on the
+// WebView's first paint; this only fires when a load hangs, so a broken start
+// falls through to the spinner or the error screen instead of stranding the
+// user on the splash forever.
+const SPLASH_TIMEOUT_MS = 10000;
+
 export default function App() {
-  const server = useStaticServer();
+  const { state: server, retry } = useStaticServer();
   const webViewRef = useRef<WebView>(null);
   const [origin, setOrigin] = useState<string | null>(null);
   const canGoBack = useRef(false);
@@ -55,23 +68,30 @@ export default function App() {
   const background = theme?.background ?? BACKGROUND;
   const barStyle = theme?.barStyle ?? "light";
 
+  // Hide the native splash exactly once. The server being up says nothing about
+  // the page having painted, so this is driven off the WebView's `onLoadEnd`
+  // (first paint), the failure screen, and the timeout — never off server start.
+  const splashHidden = useRef(false);
+  const hideSplash = useCallback(() => {
+    if (splashHidden.current) return;
+    splashHidden.current = true;
+    void SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(hideSplash, SPLASH_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [hideSplash]);
+
+  // If the server never comes up there is no WebView to paint, so drop the
+  // splash to reveal the error screen (with its Try again).
+  useEffect(() => {
+    if (server.status === "failed") hideSplash();
+  }, [server.status, hideSplash]);
+
   useEffect(() => {
     if (server.status === "ready") setOrigin(server.origin);
   }, [server]);
-
-  // iOS tears the server down in the background (see `useStaticServer`). If
-  // it came back on a different port the loaded page is pointing at a dead
-  // origin, so reload once the origin we hold has actually changed.
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (next) => {
-      if (next !== "active") return;
-      if (server.status !== "ready") return;
-      if (origin && server.origin !== origin) {
-        setOrigin(server.origin);
-      }
-    });
-    return () => sub.remove();
-  }, [server, origin]);
 
   // The app navigates within its own origin in a few places — the privacy
   // page linked from the side menu is a separate document, not a modal — so
@@ -111,6 +131,16 @@ export default function App() {
           <StatusBar style="light" />
           <Text style={styles.errorTitle}>Could not start checklist</Text>
           <Text style={styles.errorBody}>{server.error.message}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={retry}
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.retryButtonPressed,
+            ]}
+          >
+            <Text style={styles.retryLabel}>Try again</Text>
+          </Pressable>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -146,6 +176,9 @@ export default function App() {
             // to native after the page paints, and on every live theme switch.
             injectedJavaScript={injectedJavaScript}
             onMessage={onMessage}
+            // First paint of the embedded app: the one moment the splash can
+            // hide onto real content.
+            onLoadEnd={hideSplash}
             onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
             onNavigationStateChange={(nav) => {
               canGoBack.current = nav.canGoBack;
@@ -182,4 +215,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   errorBody: { color: "#8fa3b0", fontSize: 14, textAlign: "center" },
+  retryButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#2f3d4a",
+  },
+  retryButtonPressed: { backgroundColor: "#3b4c5c" },
+  retryLabel: { color: "#e8eef2", fontSize: 15, fontWeight: "600" },
 });
