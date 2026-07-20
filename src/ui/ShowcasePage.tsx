@@ -169,6 +169,12 @@ export function ShowcasePage() {
               your Home or Lock Screen.
             </li>
             <li>
+              <strong className="text-fg-bright">Deadline reminders</strong> —
+              on the native app, get a notification when a dated item comes due
+              — even with the app closed — the day itself, the day before, or a
+              week ahead; repeating deadlines re-arm themselves.
+            </li>
+            <li>
               <strong className="text-fg-bright">Make it yours</strong> — pick a
               theme, a font, a text size, and your language (English or
               Swedish); undo and redo your changes.

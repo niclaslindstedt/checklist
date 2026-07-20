@@ -40,6 +40,13 @@ const settings = {
     disableToasts: "Disable toasts",
     disableToastsHint:
       "Stop showing pop-up notifications. The “new build ready” upgrade hint still appears.",
+    deadlineReminders: "Deadline reminders",
+    deadlineRemindersHint:
+      "Get a notification when an item with a due date is due — even when the app is closed. Repeating deadlines re-arm themselves.",
+    reminderLeadTimes: "Remind me",
+    reminderLeadOnDay: "On the due day",
+    reminderLeadDayBefore: "The day before",
+    reminderLeadWeekBefore: "A week before",
     disableAchievements: "Disable achievements",
     disableAchievementsHint:
       "Stop tracking achievements and hide the trophy button. Achievements you’ve already earned are kept.",

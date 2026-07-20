@@ -328,6 +328,12 @@ const achievements = {
       learnMore:
         "On the native app, add a checklist widget to your Home or Lock Screen: a progress ring, what's due today, or an interactive list you can tick off with a single tap — the check lands back in the app the next time you open it. Tap this trophy's condition once you've checked something off without opening the app.",
     },
+    deadlineReminders: {
+      name: "Right on Time",
+      condition: "Turn on deadline reminders.",
+      learnMore:
+        "On the native app, give an item a due date and the OS reminds you when it comes up — even with the app closed. Repeating deadlines re-arm themselves, and you can be nudged the day itself, the day before, or a week ahead. Grant the notification permission when it asks to earn this.",
+    },
 
     // ── Expert ────────────────────────────────────────────────────────
     paranoidMode: {

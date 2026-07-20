@@ -234,4 +234,40 @@ describe("validateSettings", () => {
       validateSettings({ disableAchievements: "yes" }).disableAchievements,
     ).toBe(false);
   });
+
+  it("enables deadline reminders by default and honours an explicit boolean", () => {
+    expect(defaultSettings().deadlineReminders).toBe(true);
+    expect(validateSettings({}).deadlineReminders).toBe(true);
+    expect(
+      validateSettings({ deadlineReminders: false }).deadlineReminders,
+    ).toBe(false);
+    // A non-boolean stored value falls back to the default.
+    expect(
+      validateSettings({ deadlineReminders: "no" }).deadlineReminders,
+    ).toBe(true);
+  });
+
+  it("reminds on the due day only by default", () => {
+    expect(defaultSettings().reminderLeadDays).toEqual([0]);
+    expect(validateSettings({}).reminderLeadDays).toEqual([0]);
+  });
+
+  it("keeps allowed lead offsets, deduped and sorted, and drops the rest", () => {
+    expect(
+      validateSettings({ reminderLeadDays: [7, 0, 1, 0] }).reminderLeadDays,
+    ).toEqual([0, 1, 7]);
+    // 3 isn't an allowed offset; "1" is the wrong type — both dropped.
+    expect(
+      validateSettings({ reminderLeadDays: [1, 3, "1"] }).reminderLeadDays,
+    ).toEqual([1]);
+  });
+
+  it("allows an empty lead-days set and defaults a non-array", () => {
+    expect(validateSettings({ reminderLeadDays: [] }).reminderLeadDays).toEqual(
+      [],
+    );
+    expect(
+      validateSettings({ reminderLeadDays: "nope" }).reminderLeadDays,
+    ).toEqual([0]);
+  });
 });

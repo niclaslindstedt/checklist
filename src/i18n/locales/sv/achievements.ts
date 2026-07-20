@@ -322,6 +322,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "I den nativa appen kan du lägga en checklistewidget på hem- eller låsskärmen: en förloppsring, vad som förfaller idag, eller en interaktiv lista du bockar av med ett tryck — bockningen landar i appen nästa gång du öppnar den. Tryck på det här villkoret när du har bockat av något utan att öppna appen.",
     },
+    deadlineReminders: {
+      name: "Precis i tid",
+      condition: "Slå på påminnelser om deadlines.",
+      learnMore:
+        "I den nativa appen kan du ge en post ett förfallodatum, så påminner operativsystemet dig när det närmar sig — även med appen stängd. Återkommande deadlines återaktiverar sig själva, och du kan bli påmind samma dag, dagen innan eller en vecka i förväg. Ge aviseringsbehörighet när appen frågar för att låsa upp den här.",
+    },
 
     // ── Expert ────────────────────────────────────────────────────────
     paranoidMode: {

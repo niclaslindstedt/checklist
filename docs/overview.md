@@ -2032,6 +2032,41 @@ lives in `native/widgets/android/` and is wired into the app project by
 target's entitlements. Ticking an item from a widget unlocks the **Widgeteer**
 achievement.
 
+### Deadline reminders
+
+The native app fires **local OS notifications** for items with a due date, so
+a deadline surfaces even when the app is closed. Like the widgets, the OS
+scheduler runs outside the WebView, so the app mirrors a derived schedule out
+to the native side and the wrapper arms `expo-notifications` from it.
+
+- **The schedule** — `buildNotificationSchedule`
+  (`src/domain/notification-schedule.ts`) is a pure projection of the document:
+  every dated, unchecked, non-archived item becomes one reminder per configured
+  **lead time** (`reminderLeadDays` — day-of / day-before / week-before) that
+  still lands in the future. Reminders fire at a fixed **UTC hour** on their
+  day, matching the app's timezone-free deadline convention. A **recurring**
+  item emits its next few occurrences up front (`occurrencesAhead`) so it
+  re-arms without the app being opened. The list is sorted soonest-first and
+  capped (`MAX_NOTIFICATIONS`, under the OS's 64-pending limit).
+- **Publishing it** — `useNotificationScheduler`
+  (`src/app/use-notification-scheduler.ts`) rebuilds the schedule whenever the
+  document or the reminder settings change and pushes it (debounced) through
+  `window.__native.notifications.publish` (`src/storage/native-notifications.ts`).
+  The native host (`native/src/notifications.ts`) **cancels all** of the app's
+  armed reminders and re-schedules from the incoming list — so checking an item
+  off, deleting it, or a sync from another device all converge the OS's pending
+  reminders onto the current document with no duplicates or orphans.
+- **Permission** — requested the first time the document gains a deadline (not
+  on launch), via the same hook. A grant unlocks the **Right on Time**
+  achievement.
+- **Deep links** — tapping a reminder routes `checklist://open?list=<id>`
+  through `window.__checklistDeepLink` (the same global the widgets use), so the
+  app opens on the item's list.
+- **Opt-out** — the global `deadlineReminders` setting (native-only in the UI)
+  cancels every reminder when off; the lead-time picker sits beside it. The web
+  build has no bridge, so `isNotificationsAvailable()` is false, the scheduler
+  is inert, and the settings block is hidden.
+
 ### At-rest encryption / unlock
 
 `src/storage/encrypting/index.ts` (`withEncryption`) wraps any adapter
