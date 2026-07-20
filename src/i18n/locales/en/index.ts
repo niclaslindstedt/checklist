@@ -14,6 +14,7 @@ import language from "./language";
 import menu from "./menu";
 import namespace from "./namespace";
 import nav from "./nav";
+import notifications from "./notifications";
 import pwa from "./pwa";
 import search from "./search";
 import settings from "./settings";
@@ -29,6 +30,7 @@ export const en = {
   menu,
   namespace,
   nav,
+  notifications,
   pwa,
   search,
   settings,

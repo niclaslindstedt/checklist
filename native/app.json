@@ -26,6 +26,12 @@
       "./plugins/withWebroot",
       "./plugins/withWidgets",
       [
+        "expo-notifications",
+        {
+          "color": "#1f2933"
+        }
+      ],
+      [
         "@bacons/apple-targets",
         {
           "appleTeamId": "$(TeamIdentifierPrefix)"

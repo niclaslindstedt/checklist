@@ -35,6 +35,13 @@ const settings: SettingsCatalog = {
     disableToasts: "Inaktivera aviseringar",
     disableToastsHint:
       "Sluta visa popup-aviseringar. Tipset ”ny version klar” visas fortfarande.",
+    deadlineReminders: "Påminnelser om deadlines",
+    deadlineRemindersHint:
+      "Få en avisering när en post med ett förfallodatum ska göras — även när appen är stängd. Återkommande deadlines återaktiverar sig själva.",
+    reminderLeadTimes: "Påminn mig",
+    reminderLeadOnDay: "På förfallodagen",
+    reminderLeadDayBefore: "Dagen innan",
+    reminderLeadWeekBefore: "En vecka innan",
     disableAchievements: "Inaktivera bedrifter",
     disableAchievementsHint:
       "Sluta spåra bedrifter och dölj troféknappen. Bedrifter du redan låst upp behålls.",

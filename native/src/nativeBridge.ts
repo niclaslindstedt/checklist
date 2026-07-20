@@ -14,17 +14,20 @@
 //     forwards iCloud's cross-device change events by injecting
 //     `window.__nativeBridgeChange(changedKeys)`.
 //
-// Two capabilities ride this channel: the iCloud key-value store (iOS) and
-// the Home Screen widget host (both platforms). Each is advertised on
-// `window.__native` only when its native module actually loaded, so the web
-// app feature-detects it as absent otherwise — on Android there is no
-// `icloud`, and a build without the widget module has no `widgets`.
+// Three capabilities ride this channel: the iCloud key-value store (iOS), the
+// Home Screen widget host (both platforms), and local deadline reminders via
+// `expo-notifications`. Each is advertised on `window.__native` only when its
+// native module actually loaded, so the web app feature-detects it as absent
+// otherwise — on Android there is no `icloud`, a build without the widget
+// module has no `widgets`, and one without `expo-notifications` has no
+// `notifications`.
 
 import { useCallback, useEffect, useMemo, type RefObject } from "react";
 import { Platform } from "react-native";
 import type { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { getICloudKVS } from "./icloud";
+import { getNotificationHost } from "./notifications";
 import { getWidgetHost } from "./widgets";
 
 // A bridge request as it arrives from the page.
@@ -37,7 +40,10 @@ interface BridgeRequest {
     | "remove"
     | "getRevision"
     | "widgetPublish"
-    | "widgetPending";
+    | "widgetPending"
+    | "notificationPublish"
+    | "notificationPermission"
+    | "notificationRequest";
   key: string;
   text?: string;
 }
@@ -61,6 +67,7 @@ export function buildInjectedBridge(
   platform: string,
   hasICloud: boolean,
   hasWidgets: boolean,
+  hasNotifications: boolean,
 ): string {
   // Kept as one IIFE string: the platform string and the capability flags are
   // interpolated in; everything else runs verbatim inside the WebView.
@@ -123,7 +130,12 @@ export function buildInjectedBridge(
       };
     }
   } : undefined;
-  window.__native = { platform: ${JSON.stringify(platform)}, icloud: icloud, widgets: widgets };
+  var notifications = ${hasNotifications ? "true" : "false"} ? {
+    getPermission: function () { return call("notificationPermission", ""); },
+    requestPermission: function () { return call("notificationRequest", ""); },
+    publish: function (json) { return call("notificationPublish", "", json); }
+  } : undefined;
+  window.__native = { platform: ${JSON.stringify(platform)}, icloud: icloud, widgets: widgets, notifications: notifications };
 })();
 true;`;
 }
@@ -140,10 +152,17 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
 } {
   const kvs = useMemo(() => getICloudKVS(), []);
   const widgets = useMemo(() => getWidgetHost(), []);
+  const notifications = useMemo(() => getNotificationHost(), []);
 
   const injectedJavaScriptBeforeContentLoaded = useMemo(
-    () => buildInjectedBridge(Platform.OS, kvs !== null, widgets !== null),
-    [kvs, widgets],
+    () =>
+      buildInjectedBridge(
+        Platform.OS,
+        kvs !== null,
+        widgets !== null,
+        notifications !== null,
+      ),
+    [kvs, widgets, notifications],
   );
 
   // Forward remote iCloud edits (another device pushed a change) into the page
@@ -171,6 +190,21 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
     });
   }, [widgets, webViewRef]);
 
+  // Forward a notification tap into the page as a deep link, reusing the same
+  // `window.__checklistDeepLink` global the widgets / Control Center use — so a
+  // tapped reminder brings its list to the front. Item-level scroll waits on a
+  // per-item route (#272); switching to the list is the useful default today.
+  useEffect(() => {
+    if (!notifications) return;
+    return notifications.onResponse((listId) => {
+      webViewRef.current?.injectJavaScript(
+        `window.__checklistDeepLink && window.__checklistDeepLink("open", ${encode(
+          listId,
+        )}); true;`,
+      );
+    });
+  }, [notifications, webViewRef]);
+
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
       let msg: BridgeRequest;
@@ -180,9 +214,9 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
         return; // not our message
       }
       if (!msg || msg.__checklistBridge !== true) return;
-      void handleRequest(kvs, widgets, msg, webViewRef);
+      void handleRequest(kvs, widgets, notifications, msg, webViewRef);
     },
-    [kvs, widgets, webViewRef],
+    [kvs, widgets, notifications, webViewRef],
   );
 
   return { injectedJavaScriptBeforeContentLoaded, onMessage };
@@ -194,6 +228,7 @@ export function useNativeBridge(webViewRef: RefObject<WebView | null>): {
 async function handleRequest(
   kvs: ReturnType<typeof getICloudKVS>,
   widgets: ReturnType<typeof getWidgetHost>,
+  notifications: ReturnType<typeof getNotificationHost>,
   msg: BridgeRequest,
   webViewRef: RefObject<WebView | null>,
 ): Promise<void> {
@@ -209,6 +244,32 @@ async function handleRequest(
         message,
       )}); true;`,
     );
+
+  // Notification calls go to the notification host, not the iCloud store, so
+  // they're handled before the iCloud availability gate below.
+  if (
+    msg.method === "notificationPublish" ||
+    msg.method === "notificationPermission" ||
+    msg.method === "notificationRequest"
+  ) {
+    if (!notifications) {
+      reject("notifications are not available");
+      return;
+    }
+    try {
+      if (msg.method === "notificationPublish") {
+        await notifications.setSchedule(msg.text ?? "");
+        resolve(null);
+      } else if (msg.method === "notificationPermission") {
+        resolve(await notifications.getPermission());
+      } else {
+        resolve(await notifications.requestPermission());
+      }
+    } catch (err) {
+      reject(err instanceof Error ? err.message : String(err));
+    }
+    return;
+  }
 
   // Widget calls go to the widget host, not the iCloud store, so they're
   // handled before the iCloud availability gate below.

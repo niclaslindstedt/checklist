@@ -85,6 +85,21 @@ export type Settings = {
   // own autocapitalize behaviour. Only the first letter is touched, so an
   // intentional "iPad" later in the title is left alone. Off by default.
   capitalizeItems: boolean;
+  // Whether native deadline reminders are on. When on (the default), the
+  // native wrapper schedules a local OS notification for each item with a due
+  // date, firing even while the app is closed, and re-arms repeating deadlines
+  // itself. This is the global opt-out the notifications feature respects; it
+  // only has any effect inside the native app (the web build can't fire an OS
+  // notification and hides the setting entirely). Turning it off cancels every
+  // scheduled reminder on the next mirror.
+  deadlineReminders: boolean;
+  // Which lead times a deadline reminder fires at: the set of "days before the
+  // due day" offsets (a subset of `ALLOWED_LEAD_DAYS` — 0 = the morning it's
+  // due, 1 = the day before, 7 = a week before). Each chosen offset raises its
+  // own notification, so one dated item can prompt a short series. Native-only
+  // like {@link deadlineReminders}; ignored on the web build. Clearing every
+  // offset silences reminders even with the master toggle on.
+  reminderLeadDays: number[];
   // Whether the achievements system is switched off. When on, the watcher
   // stops recording unlocks and raising celebratory toasts, and the header
   // trophy button is hidden. Already-earned achievements are preserved (the

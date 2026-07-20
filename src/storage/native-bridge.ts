@@ -82,15 +82,55 @@ export interface NativeWidgets {
   subscribe?(listener: () => void): () => void;
 }
 
+// The current state of the OS notification permission, mirrored from the
+// native side. `undetermined` means the user has never been asked (the app may
+// prompt), `denied` means asked-and-refused (never prompt again — the OS won't
+// show it), `granted` means reminders can fire.
+export type NotificationPermission = "undetermined" | "granted" | "denied";
+
+// The native surface for local deadline reminders. Reminders are OS-scheduled
+// notifications that fire whether or not the app is open, so — like widgets —
+// the app can't reach them from the WebView directly. Instead it mirrors a
+// derived schedule of upcoming reminders (`domain/notification-schedule.ts`)
+// out to the wrapper, which (re)arms `expo-notifications` from it. iOS-only
+// today (Android reminders can layer on later); absent on the web build, where
+// there is no way to fire an OS notification at all.
+export interface NativeNotifications {
+  /**
+   * The current OS notification permission, so the app can decide whether to
+   * prompt (only when `undetermined`) rather than nagging on every launch.
+   */
+  getPermission(): Promise<NotificationPermission>;
+  /**
+   * Ask the OS for notification permission and resolve with the outcome. Safe
+   * to call when already `granted` / `denied` — the OS returns the current
+   * state without re-prompting. Called at the moment the user first sets a
+   * deadline, never on first launch.
+   */
+  requestPermission(): Promise<NotificationPermission>;
+  /**
+   * Publish the latest reminder schedule (a JSON string) to the wrapper, which
+   * cancels the app's previously-scheduled reminders and re-arms from this list
+   * — so checking an item off, deleting it, or a sync from another device all
+   * converge the OS's pending reminders onto the current document with no
+   * duplicates. Fire-and-forget from the caller's view, but async so the
+   * round-trip can be awaited in tests.
+   */
+  publish(scheduleJson: string): Promise<void>;
+}
+
 // The whole injected host object. `platform` lets a capability be gated to
 // one OS (iCloud is iOS-only); `icloud` is present only when the KVS is
 // actually reachable (the entitlement is granted and the user is signed in),
 // so its mere presence is the feature flag. `widgets` is present whenever the
 // wrapper wired the widget bridge (both platforms), absent on the web build.
+// `notifications` is present whenever the wrapper wired the reminder bridge,
+// absent on the web build.
 export interface NativeBridge {
   readonly platform: "ios" | "android";
   readonly icloud?: NativeICloud;
   readonly widgets?: NativeWidgets;
+  readonly notifications?: NativeNotifications;
 }
 
 declare global {
@@ -161,4 +201,30 @@ export function isWidgetsAvailable(): boolean {
  */
 export function getNativeWidgets(): NativeWidgets | null {
   return isWidgetsAvailable() ? (getNativeBridge()!.widgets ?? null) : null;
+}
+
+/**
+ * Whether the native deadline-reminder bridge is present — true only inside
+ * the native wrapper that wired it, false on the web build (no bridge) where
+ * there is no way to fire an OS notification. Feature-detected so the scheduler
+ * hook and the settings toggle simply stay absent off-device.
+ */
+export function isNotificationsAvailable(): boolean {
+  const bridge = getNativeBridge();
+  return (
+    bridge !== null &&
+    typeof bridge.notifications === "object" &&
+    bridge.notifications !== null
+  );
+}
+
+/**
+ * The notification surface, or null when it isn't available (the web build). A
+ * convenience over `getNativeBridge()?.notifications` that funnels through
+ * {@link isNotificationsAvailable}.
+ */
+export function getNativeNotifications(): NativeNotifications | null {
+  return isNotificationsAvailable()
+    ? (getNativeBridge()!.notifications ?? null)
+    : null;
 }

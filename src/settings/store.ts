@@ -24,6 +24,10 @@ import {
   type RadiusPreset,
   type ThemePreset,
 } from "../theme/themes.ts";
+import {
+  ALLOWED_LEAD_DAYS,
+  DEFAULT_LEAD_DAYS,
+} from "../domain/notification-schedule.ts";
 import type { AddItemPosition, MenuButtonPosition, Settings } from "./types.ts";
 
 const SETTINGS_KEY = "checklist:settings:v1";
@@ -76,6 +80,16 @@ export const DEFAULT_INCLUDE_ARCHIVED_IN_COPY = false;
 // first letter of each entry as it's typed and when it commits.
 export const DEFAULT_CAPITALIZE_ITEMS = false;
 
+// Native deadline reminders are on by default. The opt-out (shown only in the
+// native app) cancels every scheduled reminder; the web build never fires OS
+// notifications and hides the setting.
+export const DEFAULT_DEADLINE_REMINDERS = true;
+
+// By default a reminder fires only on the morning the item is due. The
+// day-before and week-before lead times are opt-in (native-only). Kept in sync
+// with `ALLOWED_LEAD_DAYS` in `domain/notification-schedule.ts`.
+export const DEFAULT_REMINDER_LEAD_DAYS: number[] = [...DEFAULT_LEAD_DAYS];
+
 // The achievements system is on by default. The opt-out stops tracking and
 // hides the trophy button without discarding already-earned progress.
 export const DEFAULT_DISABLE_ACHIEVEMENTS = false;
@@ -96,6 +110,8 @@ export function defaultSettings(): Settings {
     showItemCount: DEFAULT_SHOW_ITEM_COUNT,
     includeArchivedInCopy: DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
     capitalizeItems: DEFAULT_CAPITALIZE_ITEMS,
+    deadlineReminders: DEFAULT_DEADLINE_REMINDERS,
+    reminderLeadDays: [...DEFAULT_REMINDER_LEAD_DAYS],
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
     achievements: {},
     unseenAchievements: [],
@@ -122,6 +138,19 @@ function validUnseen(v: unknown, unlocked: Record<string, number>): string[] {
   return v.filter(
     (id): id is string => typeof id === "string" && unlocked[id] !== undefined,
   );
+}
+
+// Coerce a stored value into the reminder lead-days set: the allowed offsets
+// (0 / 1 / 7) present in the array, deduped and sorted. Anything else is
+// dropped rather than throwing, so an older or hand-edited blob still loads.
+// An empty result is a valid state (reminders silenced with the toggle on).
+function validLeadDays(v: unknown): number[] {
+  if (!Array.isArray(v)) return [...DEFAULT_REMINDER_LEAD_DAYS];
+  const kept = new Set<number>();
+  for (const n of v) {
+    if (typeof n === "number" && ALLOWED_LEAD_DAYS.includes(n)) kept.add(n);
+  }
+  return [...kept].sort((a, b) => a - b);
 }
 
 function validMenuButtonPosition(v: unknown): MenuButtonPosition {
@@ -245,6 +274,11 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.capitalizeItems === "boolean"
         ? raw.capitalizeItems
         : DEFAULT_CAPITALIZE_ITEMS,
+    deadlineReminders:
+      typeof raw.deadlineReminders === "boolean"
+        ? raw.deadlineReminders
+        : DEFAULT_DEADLINE_REMINDERS,
+    reminderLeadDays: validLeadDays(raw.reminderLeadDays),
     disableAchievements:
       typeof raw.disableAchievements === "boolean"
         ? raw.disableAchievements

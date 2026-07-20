@@ -58,6 +58,7 @@ import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
 import { useWidgetMirror } from "./use-widget-mirror.ts";
 import { useWidgetDeepLink } from "./use-widget-deep-link.ts";
+import { useNotificationScheduler } from "./use-notification-scheduler.ts";
 import type { WidgetAction } from "../domain/widget-snapshot.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
@@ -274,6 +275,18 @@ function AppShell() {
   // Control Center: switch to the target list and, for `add`, focus the
   // composer. Bridged in by the native wrapper; a no-op in a plain browser.
   useWidgetDeepLink({ selectChecklist });
+
+  // Native deadline reminders. Mirror a schedule of upcoming reminders out to
+  // the wrapper (which arms the OS notifications) whenever the document or the
+  // reminder settings change, and unlock `deadlineReminders` when the user
+  // grants permission. A no-op on the web build (no bridge).
+  useNotificationScheduler({
+    snapshot: checklist.snapshot,
+    loaded: checklist.loaded,
+    enabled: settings.deadlineReminders,
+    leadDays: settings.reminderLeadDays,
+    onPermissionGranted: useCallback(() => unlock("deadlineReminders"), []),
+  });
 
   // Namespace create / delete live in the storage layer (which must not
   // reach into the UI), so the toast is raised here where both the
