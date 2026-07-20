@@ -141,21 +141,18 @@ export function useNativeTheme(): {
   const [theme, setTheme] = useState<NativeTheme | null>(null);
   const injectedJavaScript = useMemo(() => buildInjectedThemeReporter(), []);
 
-  const onThemeMessage = useCallback(
-    (event: WebViewMessageEvent): boolean => {
-      const next = parseThemeMessage(event.nativeEvent.data);
-      if (!next) return false;
-      setTheme((prev) =>
-        prev &&
-        prev.background === next.background &&
-        prev.barStyle === next.barStyle
-          ? prev
-          : next,
-      );
-      return true;
-    },
-    [],
-  );
+  const onThemeMessage = useCallback((event: WebViewMessageEvent): boolean => {
+    const next = parseThemeMessage(event.nativeEvent.data);
+    if (!next) return false;
+    setTheme((prev) =>
+      prev &&
+      prev.background === next.background &&
+      prev.barStyle === next.barStyle
+        ? prev
+        : next,
+    );
+    return true;
+  }, []);
 
   return { injectedJavaScript, theme, onThemeMessage };
 }
