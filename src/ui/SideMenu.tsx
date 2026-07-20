@@ -697,7 +697,7 @@ export function SideMenu({
     return (
       <nav
         aria-label={t("nav.label")}
-        className={`relative flex h-full w-64 shrink-0 flex-col overflow-hidden bg-surface [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
+        className={`relative flex h-full w-64 shrink-0 flex-col overflow-hidden bg-surface [padding-bottom:calc(1.25rem_-_var(--density-row-py))] [padding-top:env(safe-area-inset-top)] ${
           onRight ? "order-last border-l border-line" : "border-r border-line"
         }`}
       >
@@ -751,7 +751,7 @@ export function SideMenu({
           <nav
             id={drawerId}
             aria-label={t("nav.label")}
-            className={`relative flex w-64 max-w-[80%] flex-col overflow-hidden bg-surface shadow-xl [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
+            className={`relative flex w-64 max-w-[80%] flex-col overflow-hidden bg-surface shadow-xl [padding-bottom:calc(1.25rem_-_var(--density-row-py))] [padding-top:env(safe-area-inset-top)] ${
               onRight
                 ? "drawer-panel-right border-l border-line"
                 : "drawer-panel-left border-r border-line"
