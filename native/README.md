@@ -35,6 +35,7 @@ same app as the web, running entirely offline from inside the app binary.
 | Start / stop the loopback server | `src/useStaticServer.ts` |
 | The WebView and its navigation rules | `src/App.tsx` |
 | Native ↔ web bridge (`window.__native`) | `src/nativeBridge.ts` |
+| Theme → native chrome (status bar, safe-area bands) | `src/nativeTheme.ts` |
 | iCloud key-value store (iOS only) | `src/icloud.ts` |
 | Widget shared-container host | `src/widgets.ts`, `modules/widget-bridge/` |
 | WidgetKit extension (iOS) | `targets/widget/` (`@bacons/apple-targets`) |
