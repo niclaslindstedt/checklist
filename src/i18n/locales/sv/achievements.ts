@@ -238,6 +238,12 @@ const achievements: AchievementsCatalog = {
       name: "Typsnittsnörd",
       condition: "Byt typsnitt.",
     },
+    roomToBreathe: {
+      name: "Andrum",
+      condition: "Fäll ihop sidmenyns sidfot.",
+      learnMore:
+        "Den tunna chevronen ovanför sidfoten fäller ihop den — Donera, pokalen, Om och Inställningar — och ger det frigjorda utrymmet till din checklista. Tryck igen för att fälla ut sidfoten. Valet sparas på den här enheten.",
+    },
 
     // ── Proffs ────────────────────────────────────────────────────────
     compartments: {

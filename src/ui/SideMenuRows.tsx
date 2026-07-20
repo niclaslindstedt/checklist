@@ -17,7 +17,13 @@ import {
 
 import { useSwipeReveal } from "./hooks/useSwipeReveal.ts";
 import { CHECKLIST_DROP_ATTR } from "./checklist-drag-context.ts";
-import { CaretRightIcon, PlusIcon, TrashIcon } from "./icons.tsx";
+import {
+  CaretRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PlusIcon,
+  TrashIcon,
+} from "./icons.tsx";
 
 // A section label with an optional trailing action pinned to its trailing
 // edge. For Checklists the action is a "+" that adds a new list; for the
@@ -341,6 +347,38 @@ export function ChecklistRowStrip({
         {children}
       </div>
     </div>
+  );
+}
+
+// The thin chevron rail seated just above the footer. A full-width button one
+// line tall: pressing it folds the footer (Donate / trophy / About / Settings)
+// away to give the checklist list more room, and again to bring it back. The
+// chevron points down to collapse (fold the footer down out of view) and up to
+// restore it, mirroring the direction the footer travels.
+export function FooterCollapseRail({
+  collapsed,
+  label,
+  onClick,
+}: {
+  collapsed: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-expanded={!collapsed}
+      title={label}
+      className="flex w-full shrink-0 cursor-pointer items-center justify-center border-t border-line py-[calc(var(--density-row-py)+0.25rem)] text-muted hover:bg-surface-2 hover:text-fg-bright"
+    >
+      {collapsed ? (
+        <ChevronUpIcon className="h-4 w-4" />
+      ) : (
+        <ChevronDownIcon className="h-4 w-4" />
+      )}
+    </button>
   );
 }
 

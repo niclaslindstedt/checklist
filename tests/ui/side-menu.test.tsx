@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 
@@ -12,6 +12,7 @@ import {
 } from "../../src/ui/checklist-context.ts";
 import { NavContext, type NavContextValue } from "../../src/ui/nav-context.ts";
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { setFooterCollapsed } from "../../src/ui/hooks/useFooterCollapsed.ts";
 import { makeChecklistValue, makeNavValue } from "./context-harness.tsx";
 
 function noop(): void {}
@@ -587,6 +588,65 @@ describe("SideMenu", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "New checklist" }));
       expect(addChecklistInFolder).toHaveBeenCalledWith("f1");
+    });
+  });
+
+  describe("footer collapse rail", () => {
+    // The collapsed flag is a module-scoped device-local singleton; reset it
+    // around each case so it never leaks into the other suites.
+    beforeEach(() => {
+      localStorage.clear();
+      setFooterCollapsed(false);
+    });
+    afterEach(() => {
+      setFooterCollapsed(false);
+      localStorage.clear();
+    });
+
+    it("shows the footer and a Collapse rail by default", () => {
+      renderMenu({ nav: { open: true } });
+      expect(screen.getByRole("menuitem", { name: "Settings" })).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Collapse footer" }),
+      ).toBeTruthy();
+    });
+
+    it("folds the footer away when the rail is pressed", () => {
+      renderMenu({ nav: { open: true } });
+      fireEvent.click(screen.getByRole("button", { name: "Collapse footer" }));
+      // The footer rows drop out of the tree, freeing the space for the list.
+      expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull();
+      expect(screen.queryByRole("menuitem", { name: "About" })).toBeNull();
+      // The rail now offers to bring the footer back.
+      expect(
+        screen.getByRole("button", { name: "Expand footer" }),
+      ).toBeTruthy();
+    });
+
+    it("restores the footer when the rail is pressed again", () => {
+      renderMenu({ nav: { open: true } });
+      fireEvent.click(screen.getByRole("button", { name: "Collapse footer" }));
+      fireEvent.click(screen.getByRole("button", { name: "Expand footer" }));
+      expect(screen.getByRole("menuitem", { name: "Settings" })).toBeTruthy();
+    });
+
+    it("keeps the choice collapsed across a remount (device-local)", () => {
+      const first = renderMenu({ nav: { open: true } });
+      fireEvent.click(screen.getByRole("button", { name: "Collapse footer" }));
+      first.unmount();
+      // A freshly mounted drawer reads the persisted flag and stays folded.
+      renderMenu({ nav: { open: true } });
+      expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Expand footer" }),
+      ).toBeTruthy();
+    });
+
+    it("collapses in the pinned sidebar layout too", () => {
+      renderMenu({ nav: { pinned: true } });
+      expect(screen.getByRole("menuitem", { name: "Settings" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Collapse footer" }));
+      expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull();
     });
   });
 

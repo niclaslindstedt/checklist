@@ -232,6 +232,16 @@ export function MoveGlyph({ className }: IconProps) {
   );
 }
 
+/** Two chevrons folding toward the centre — collapsing the footer away. */
+export function ChevronsDownUpGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="m7 20 5-5 5 5" />
+      <path d="m7 4 5 5 5-5" />
+    </Svg>
+  );
+}
+
 /** A container with an arrow filing into it — moving a list to another space. */
 export function FolderInputGlyph({ className }: IconProps) {
   return (
