@@ -1,0 +1,15 @@
+// Scoped tsconfig so the repo-root Vitest (which transforms the RN-free helper
+// modules imported by tests/native/**) can resolve compiler options without
+// walking up to ../tsconfig.json, whose `extends: "expo/tsconfig.base"` only
+// resolves once the native package's own dependencies are installed. The native
+// app's typecheck still runs against ../tsconfig.json (`tsc --noEmit` from the
+// native/ root); this file is not referenced by that build.
+{
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true
+  }
+}
