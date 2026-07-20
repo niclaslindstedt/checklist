@@ -20,7 +20,7 @@
   "author": "Niclas Lindstedt <nicl@slindstedt.se>",
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/opendyslexic": "^5.2.5",
     "@fontsource/source-serif-4": "^5.2.9",
     "react": "^19.2.0",
