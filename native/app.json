@@ -23,13 +23,23 @@
           }
         }
       ],
-      "./plugins/withWebroot"
+      "./plugins/withWebroot",
+      "./plugins/withWidgets",
+      [
+        "@bacons/apple-targets",
+        {
+          "appleTeamId": "$(TeamIdentifierPrefix)"
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "se.niclaslindstedt.checklist",
       "entitlements": {
-        "com.apple.developer.ubiquity-kvstore-identifier": "$(TeamIdentifierPrefix)se.niclaslindstedt.checklist"
+        "com.apple.developer.ubiquity-kvstore-identifier": "$(TeamIdentifierPrefix)se.niclaslindstedt.checklist",
+        "com.apple.security.application-groups": [
+          "group.se.niclaslindstedt.checklist"
+        ]
       },
       "infoPlist": {
         "NSAppTransportSecurity": {

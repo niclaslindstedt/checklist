@@ -1,0 +1,25 @@
+/* Widget-texter (svenska). Nycklarna speglar literalerna i vyerna; SwiftUI
+   `Text("…")` slår upp strängen som en nyckel. */
+
+"List progress" = "Listförlopp";
+"How far through your active checklist you are." = "Hur långt du kommit i din aktiva lista.";
+"done" = "klart";
+"No items" = "Inga poster";
+
+"Due today" = "Idag";
+"Tasks due today or overdue, across your lists." = "Uppgifter som förfaller idag eller är försenade, över alla listor.";
+"Nothing due" = "Inget idag";
+"%lld more" = "%lld till";
+
+"Check off" = "Bocka av";
+"Tick off items from a list without opening the app." = "Bocka av poster utan att öppna appen.";
+"All done 🎉" = "Allt klart 🎉";
+"No list" = "Ingen lista";
+
+"Quick add" = "Snabbtillägg";
+"Jump straight to adding an item to your active list." = "Hoppa direkt till att lägga till en post i din aktiva lista.";
+"Add item" = "Lägg till";
+"Add to checklist" = "Lägg till i lista";
+
+"Choose a checklist" = "Välj en lista";
+"Pick which checklist this widget shows." = "Välj vilken lista widgeten visar.";

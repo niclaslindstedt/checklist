@@ -53,6 +53,7 @@ import {
   TypeGlyph,
   UndoGlyph,
   WandGlyph,
+  WidgetGlyph,
   WorkflowGlyph,
 } from "./glyphs.tsx";
 import type { Achievement } from "./types.ts";
@@ -510,6 +511,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "offGrid",
     tier: "pro",
     glyph: CloudOffGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
+    id: "widgeteer",
+    tier: "pro",
+    glyph: WidgetGlyph,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

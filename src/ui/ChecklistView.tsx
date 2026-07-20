@@ -10,6 +10,7 @@ import { AddItemForm } from "./AddItemForm.tsx";
 import { ArchivedDrawer } from "./ArchivedDrawer.tsx";
 import { resolveActiveEditor } from "./activeEditor.ts";
 import { ChecklistGlyphButton } from "./ChecklistGlyphButton.tsx";
+import { FOCUS_COMPOSER_EVENT } from "./composer-events.ts";
 import { ChecklistRow } from "./ChecklistRow.tsx";
 import { DeadlineModal } from "./DeadlineModal.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
@@ -317,7 +318,16 @@ function ChecklistViewImpl() {
     onEditBody: setEditBodyOfId,
     revealItem,
   });
-  const { active } = composer;
+  const { active, startInline } = composer;
+
+  // A widget / Control Center "quick add" deep link opens the inline composer
+  // (which focuses itself on mount). The active list has already been switched
+  // by the time this fires — see `useWidgetDeepLink`.
+  useEffect(() => {
+    const open = () => startInline();
+    window.addEventListener(FOCUS_COMPOSER_EVENT, open);
+    return () => window.removeEventListener(FOCUS_COMPOSER_EVENT, open);
+  }, [startInline]);
 
   // The id of the row whose editor is open (null when none). The add button
   // hides while a row is being edited so it doesn't crowd the keyboard.

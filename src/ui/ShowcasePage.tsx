@@ -163,6 +163,12 @@ export function ShowcasePage() {
               beside its title so you can tell your lists apart at a glance.
             </li>
             <li>
+              <strong className="text-fg-bright">Home Screen widgets</strong> —
+              on the native app, glance at a list&apos;s progress or what&apos;s
+              due today, and tick items off with a single tap, straight from
+              your Home or Lock Screen.
+            </li>
+            <li>
               <strong className="text-fg-bright">Make it yours</strong> — pick a
               theme, a font, a text size, and your language (English or
               Swedish); undo and redo your changes.

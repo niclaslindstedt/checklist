@@ -49,13 +49,48 @@ export interface NativeICloud {
   subscribe(listener: (changedKeys: string[] | null) => void): () => void;
 }
 
+// The native surface the Home Screen / Lock Screen widgets are driven
+// through. Widgets run in a separate OS process that can't reach the WebView's
+// `localStorage`, so the app mirrors a compact, derived snapshot
+// (`domain/widget-snapshot.ts`) out to a shared container the widget reads —
+// an App Group on iOS, `SharedPreferences`/DataStore on Android. The one
+// write-back path is the interactive check-off widget, which can't touch the
+// store from its own process either: its tap queues an action in the shared
+// container that the app drains and applies through the normal edit path.
+export interface NativeWidgets {
+  /**
+   * Publish the latest widget snapshot (a JSON string) to the shared
+   * container and ask the OS to reload the widget timelines. Fire-and-forget
+   * from the caller's view, but async so the bridge round-trip can be awaited
+   * in tests.
+   */
+  publish(snapshotJson: string): Promise<void>;
+  /**
+   * Take and clear the actions a widget has queued since the last drain
+   * (interactive check-off taps), as a JSON array string. Returns null or
+   * "[]" when nothing is queued. The app applies each through its normal edit
+   * path so the write goes through the same save / conflict handling as any
+   * other edit — never a second store path.
+   */
+  pending(): Promise<string | null>;
+  /**
+   * Subscribe to be told when a widget queues a new action while the app is
+   * running, so it can drain immediately rather than waiting for the next
+   * foreground. Returns an unsubscribe. Optional: a platform that can't push
+   * (the app drains on foreground regardless) may omit it.
+   */
+  subscribe?(listener: () => void): () => void;
+}
+
 // The whole injected host object. `platform` lets a capability be gated to
 // one OS (iCloud is iOS-only); `icloud` is present only when the KVS is
 // actually reachable (the entitlement is granted and the user is signed in),
-// so its mere presence is the feature flag.
+// so its mere presence is the feature flag. `widgets` is present whenever the
+// wrapper wired the widget bridge (both platforms), absent on the web build.
 export interface NativeBridge {
   readonly platform: "ios" | "android";
   readonly icloud?: NativeICloud;
+  readonly widgets?: NativeWidgets;
 }
 
 declare global {
@@ -103,4 +138,27 @@ export function isICloudAvailable(): boolean {
  */
 export function getNativeICloud(): NativeICloud | null {
   return isICloudAvailable() ? (getNativeBridge()!.icloud ?? null) : null;
+}
+
+/**
+ * Whether the native widget bridge is present — true only inside the native
+ * wrapper (either platform), false on the web build where there is no bridge.
+ * Feature-detected so the mirror hook simply does nothing on the web.
+ */
+export function isWidgetsAvailable(): boolean {
+  const bridge = getNativeBridge();
+  return (
+    bridge !== null &&
+    typeof bridge.widgets === "object" &&
+    bridge.widgets !== null
+  );
+}
+
+/**
+ * The widget surface, or null when it isn't available (the web build). A
+ * convenience over `getNativeBridge()?.widgets` that funnels through
+ * {@link isWidgetsAvailable}.
+ */
+export function getNativeWidgets(): NativeWidgets | null {
+  return isWidgetsAvailable() ? (getNativeBridge()!.widgets ?? null) : null;
 }
