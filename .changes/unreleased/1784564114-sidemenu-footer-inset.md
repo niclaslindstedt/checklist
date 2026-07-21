@@ -3,4 +3,4 @@ type: Changed
 title: Side-menu footer spacing
 ---
 
-The side-menu footer and its collapse rail sit snug at the foot of the drawer, handing the reclaimed bottom safe-area space to your checklist list.
+The side-menu footer and its collapse rail sit snug at the foot of the drawer, handing the reclaimed bottom safe-area space to your checklist list while keeping a comfortable thumb-reach margin below the footer buttons.

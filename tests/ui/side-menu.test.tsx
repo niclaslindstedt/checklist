@@ -705,6 +705,19 @@ describe("SideMenu", () => {
         .closest('[class*="padding-bottom:calc(1.25rem"]');
       expect(footer).toBeTruthy();
     });
+
+    // Fullscreen PWA: with no bottom safe-area inset lifting the panel, the
+    // last footer row (Settings) would sit on the screen edge, so its
+    // breathing room carries an extra 10px to stay a comfortable thumb reach.
+    it("adds extra thumb clearance below the fullscreen footer", () => {
+      renderMenu({ nav: { open: true } });
+      const footer = screen
+        .getByRole("menuitem", { name: "Settings" })
+        .closest('[class*="padding-bottom:calc(1.25rem"]');
+      expect(footer?.className).toContain(
+        "padding-bottom:calc(1.25rem_-_var(--density-row-py)_+_10px)",
+      );
+    });
   });
 
   describe("drag drop targets", () => {
