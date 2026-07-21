@@ -401,7 +401,13 @@ export function SideMenu({
     : namespaces.filter((ns) => ns.slug === activeNamespace);
 
   const sections = (
-    <>
+    // The nav panel reserves a bottom safe-area inset as padding so its last
+    // child clears the home indicator — but this PWA renders above the safe
+    // area, so that inset is dead space below whatever sits last (the collapse
+    // rail when folded, the footer when not). Grow past the panel's content box
+    // to reclaim that inset and hand it to the scrolling list; the footer / rail
+    // then carry their own (inset-free) bottom breathing room.
+    <div className="flex shrink-0 flex-col [height:calc(100%+max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py))))]">
       {/* Namespace — a fixed (non-scrolling) header that folds the seldom-
           touched list away. The cog still opens the manage dialog; the
           heading itself toggles the fold. */}
@@ -602,7 +608,7 @@ export function SideMenu({
           (source / privacy / what's new), and Settings pinned last under the
           thumb. Folded away via the rail above. */}
       {!footerCollapsed && (
-        <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))]">
+        <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))] [padding-bottom:calc(1.25rem_-_var(--density-row-py))]">
           {donateUrl && (
             <MenuLink
               icon={<HeartIcon className="h-5 w-5 text-danger" />}
@@ -685,7 +691,7 @@ export function SideMenu({
           onClose={closeMenu}
         />
       )}
-    </>
+    </div>
   );
 
   // Pinned: a permanent docked sidebar beside the content. No floating
@@ -697,7 +703,7 @@ export function SideMenu({
     return (
       <nav
         aria-label={t("nav.label")}
-        className={`relative flex h-full w-64 shrink-0 flex-col overflow-hidden bg-surface [padding-bottom:calc(1.25rem_-_var(--density-row-py))] [padding-top:env(safe-area-inset-top)] ${
+        className={`relative flex h-full w-64 shrink-0 flex-col overflow-hidden bg-surface [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
           onRight ? "order-last border-l border-line" : "border-r border-line"
         }`}
       >
@@ -751,7 +757,7 @@ export function SideMenu({
           <nav
             id={drawerId}
             aria-label={t("nav.label")}
-            className={`relative flex w-64 max-w-[80%] flex-col overflow-hidden bg-surface shadow-xl [padding-bottom:calc(1.25rem_-_var(--density-row-py))] [padding-top:env(safe-area-inset-top)] ${
+            className={`relative flex w-64 max-w-[80%] flex-col overflow-hidden bg-surface shadow-xl [padding-bottom:max(env(safe-area-inset-bottom),calc(1.25rem_-_var(--density-row-py)))] [padding-top:env(safe-area-inset-top)] ${
               onRight
                 ? "drawer-panel-right border-l border-line"
                 : "drawer-panel-left border-r border-line"
