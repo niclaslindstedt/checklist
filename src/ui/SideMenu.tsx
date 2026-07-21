@@ -620,9 +620,13 @@ export function SideMenu({
       {/* The relocated burger menu, fixed at the foot of the drawer: Donate,
           the trophy, an "About" dropdown that folds away the project links
           (source / privacy / what's new), and Settings pinned last under the
-          thumb. Folded away via the rail above. */}
+          thumb. Folded away via the rail above. Now the PWA renders
+          fullscreen (no bottom safe-area inset lifting the panel), Settings
+          would otherwise sit right on the screen's edge, so the bottom
+          breathing room carries an extra 10px to keep the last row a
+          comfortable reach for the thumb. */}
       {!footerCollapsed && (
-        <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))] [padding-bottom:calc(1.25rem_-_var(--density-row-py))]">
+        <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))] [padding-bottom:calc(1.25rem_-_var(--density-row-py)_+_10px)]">
           {donateUrl && (
             <MenuLink
               icon={<HeartIcon className="h-5 w-5 text-danger" />}
