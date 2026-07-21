@@ -162,6 +162,38 @@ describe("SideMenu", () => {
     ).not.toContain("0");
   });
 
+  it("draws a checklist's picked glyph tinted with its accent colour", () => {
+    renderMenu({
+      nav: { open: true },
+      checklist: {
+        checklists: [
+          {
+            id: "c1",
+            name: "Groceries",
+            remaining: 0,
+            glyph: "cart",
+            color: "#98c379",
+          },
+          { id: "c2", name: "Packing", remaining: 0 },
+        ],
+        activeChecklistId: "c1",
+      },
+    });
+    // The styled list shows its own mark (the cart's wheel circles are not
+    // part of the generic checklist icon), tinted with its accent.
+    const styled = screen
+      .getByRole("menuitem", { name: /Groceries/ })
+      .querySelector("svg")!;
+    expect(styled.querySelector("circle")).not.toBeNull();
+    expect(styled.style.color).toBe("rgb(152, 195, 121)");
+    // An unstyled list keeps the untinted generic checklist mark.
+    const plain = screen
+      .getByRole("menuitem", { name: /Packing/ })
+      .querySelector("svg")!;
+    expect(plain.querySelector("circle")).toBeNull();
+    expect(plain.style.color).toBe("");
+  });
+
   it("adds a checklist from the action bar's New list button", () => {
     const addChecklist = vi.fn();
     const navigate = vi.fn();

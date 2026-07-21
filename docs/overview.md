@@ -590,7 +590,12 @@ active checklist (`src/domain/checklists.ts` `setChecklistAppearance`,
 wired in `src/app/use-checklist-lists.ts`). The chosen `glyph` / `color`
 live on the `Checklist` itself (so they sync with the document and ride
 the markdown frontmatter; see `docs/architecture.md`), not on device-local
-state. This replaced the old namespace-favicon image that used to sit in
+state. The picked appearance shows everywhere the list is identified: the
+header mark, and the list's row in the side menu — `ChecklistSummary`
+(`src/app/use-checklist-lists.ts`) carries `glyph` / `color` through to
+`renderChecklistRow` in `src/ui/SideMenu.tsx`, which tints the row's icon
+the same way the namespace rows tint theirs (an unstyled list keeps the
+generic `ChecklistIcon`). This replaced the old namespace-favicon image that used to sit in
 this slot — the namespace glyph now badges only the browser-tab favicon
 and the side menu, while the header mark belongs to the list. Giving a
 list a glyph or colour unlocks the **List Stylist** achievement.
