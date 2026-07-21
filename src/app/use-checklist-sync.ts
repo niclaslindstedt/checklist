@@ -37,6 +37,7 @@ import {
 } from "../storage/save-retry.ts";
 import { parse, serialize } from "../storage/serialize.ts";
 import { RetryScheduler } from "./retry-scheduler.ts";
+import { registerSaveGuard } from "./save-guard.ts";
 import { SaveQueue } from "./save-queue.ts";
 import { newId, now } from "./side-effects.ts";
 
@@ -605,6 +606,19 @@ export function useChecklistSync(deps: {
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
   }, [scheduler]);
+
+  // Expose this engine's unsaved-edit state to the module-level save guard
+  // so surfaces outside the checklist tree — the PWA update flow — can
+  // flush and await the debounced save before reloading the page. Without
+  // this, applying an app update inside the debounce window would drop the
+  // queued snapshot (it lives only in memory until `performSave` runs).
+  useEffect(() => {
+    return registerSaveGuard({
+      hasUnsaved: () =>
+        saveTimer.current !== null || queue.hasPending || queue.inFlight,
+      flush: () => flushSaveRef.current(),
+    });
+  }, [queue]);
 
   // Push any debounced edit to the backend immediately — the "save now"
   // action on the cloud-sync glyph when there are unsaved changes.

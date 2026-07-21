@@ -12,6 +12,7 @@ const mock = vi.hoisted(() => ({
     progress: null,
     needRefresh: false,
     incomingVersion: null,
+    applying: false,
     reload: vi.fn(),
     dismiss: vi.fn(),
   } as PwaUpdate,
@@ -30,6 +31,7 @@ afterEach(() => {
     progress: null,
     needRefresh: false,
     incomingVersion: null,
+    applying: false,
     reload: vi.fn(),
     dismiss: vi.fn(),
   };
@@ -67,5 +69,16 @@ describe("UpdateToast", () => {
     );
     expect(reload).toHaveBeenCalledTimes(1);
     expect(dismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the button and shows the saving label while the update waits for unsaved edits", () => {
+    const reload = vi.fn();
+    setState({ needRefresh: true, applying: true, reload });
+    render(<UpdateToast />);
+    const button = screen.getByRole("button", { name: "Saving…" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button);
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Update" })).toBeNull();
   });
 });

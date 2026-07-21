@@ -11,6 +11,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { addItem, createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot } from "../../src/domain/types.ts";
+import {
+  hasUnsavedChanges,
+  settleSaves,
+  SETTLE_POLL_MS,
+} from "../../src/app/save-guard.ts";
 import { useChecklist } from "../../src/app/use-checklist.ts";
 import {
   AuthError,
@@ -620,6 +625,68 @@ describe("useChecklist checkConnection (active reachability re-probe)", () => {
     });
     expect(outcome).toBe("auth-error");
     expect(result.current.status).toBe("auth-error");
+  });
+});
+
+describe("useChecklist save guard (PWA update flush)", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("exposes a debounced edit to the guard and settles it on flush — the item survives an app update", async () => {
+    vi.useFakeTimers();
+    // The lost-item bug: with a cloud backend the save debounces (1s) and
+    // the unsaved snapshot lives only in the in-memory queue. Applying a
+    // PWA update reloaded the page inside that window, so an item added
+    // just before pressing Update never reached the backend. The update
+    // flow now asks the save guard to settle first; this drives that path
+    // against a debounced adapter.
+    let serverText: string | null = null;
+    let serverRev = 0;
+    const adapter: StorageAdapter & { stored: () => string | null } = {
+      id: "gdrive",
+      label: "mem-cloud",
+      capabilities: new Set(),
+      load: async (): Promise<StoredSnapshot | null> =>
+        serverText === null
+          ? null
+          : { text: serverText, revision: String(serverRev) },
+      save: async (next: string) => {
+        serverText = next;
+        serverRev += 1;
+        return { text: serverText, revision: String(serverRev) };
+      },
+      // A long debounce, so only the guard's flush can land the save.
+      saveDebounceMs: 60_000,
+      stored: () => serverText,
+    };
+
+    const { result, unmount } = renderHook(() => useChecklist(adapter));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // Add an item; the save is parked behind the debounce.
+    act(() => result.current.addItem("survives the update"));
+    expect(adapter.stored()).toBeNull();
+    expect(hasUnsavedChanges()).toBe(true);
+
+    // The update flow settles the guard: the flush jumps the debounce and
+    // the wait resolves once the write lands.
+    let settled: boolean | undefined;
+    await act(async () => {
+      const pending = settleSaves(5_000);
+      await vi.advanceTimersByTimeAsync(SETTLE_POLL_MS * 2);
+      settled = await pending;
+    });
+    expect(settled).toBe(true);
+    expect(hasUnsavedChanges()).toBe(false);
+    expect(
+      parse(adapter.stored()).checklists[0]!.items.map((i) => i.title),
+    ).toEqual(["survives the update"]);
+    expect(result.current.dirty).toBe(false);
+
+    // Tearing the tree down unregisters the guard.
+    unmount();
+    expect(hasUnsavedChanges()).toBe(false);
   });
 });
 

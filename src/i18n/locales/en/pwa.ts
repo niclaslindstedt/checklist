@@ -4,6 +4,7 @@ const pwa = {
   updateReady: "Update ready",
   updateVersion: "v{version}",
   updateAction: "Update",
+  updateSaving: "Saving…",
   downloading: "Downloading update… {percent}%",
   dismiss: "Dismiss update notice",
   pullToRefresh: "Pull to refresh",

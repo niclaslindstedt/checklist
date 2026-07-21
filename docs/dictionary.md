@@ -188,6 +188,7 @@ names. Honour these when naming a new file, key, or string.
 | **Serialize / parse**                                | `serialize`, `parse` (`src/storage/serialize.ts`). [→](overview.md#serialize--parse) |
 | **Migrations**                                       | `migrate`, `LATEST_VERSION` (`src/storage/migrations.ts`). [→](overview.md#migrations) |
 | **Sync status** / **save state**                     | `SaveStatus`, `dirty`, `saveNow` (`src/app/use-checklist-sync.ts`). [→](overview.md#sync-status--save-state) |
+| **Save guard** / **flush unsaved edits before updating** / **item lost when updating the app** | `registerSaveGuard`, `settleSaves`, `hasUnsavedChanges` (`src/app/save-guard.ts`); registered by `src/app/use-checklist-sync.ts`; consulted by `src/pwa/usePwaUpdate.ts`. [→](overview.md#sync-status--save-state) |
 | **Reload** / **pull to refresh**                     | `useChecklist.reload`; `usePullToRefresh` (`src/ui/hooks/usePullToRefresh.ts`). [→](overview.md#reload--pull-to-refresh) |
 | **Conflict resolution** / **keep mine / keep theirs**| `ConflictResolutionModal` (`src/ui/ConflictResolutionModal.tsx`); `ConflictState`, `resolveConflict` (`src/app/use-checklist-sync.ts`). [→](overview.md#conflict-resolution) |
 
