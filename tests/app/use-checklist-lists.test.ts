@@ -113,6 +113,10 @@ describe("useChecklist multi-list verbs", () => {
     );
     expect(parse(adapter.stored()).checklists[0]!.color).toBe("#98c379");
     expect(result.current.activeList.glyph).toBe("cart");
+    // The switcher summary carries the appearance so the sidebar row can
+    // draw the list's own mark.
+    expect(result.current.checklists[0]!.glyph).toBe("cart");
+    expect(result.current.checklists[0]!.color).toBe("#98c379");
 
     act(() => result.current.setChecklistAppearance(id, { glyph: null }));
     await waitFor(() =>

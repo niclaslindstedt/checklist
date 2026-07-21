@@ -59,6 +59,7 @@ import {
 } from "./SideMenuRows.tsx";
 import { useFooterCollapsed } from "./hooks/useFooterCollapsed.ts";
 import { FolderEditRow, FolderRow } from "./SideMenuFolderRow.tsx";
+import { DEFAULT_CHECKLIST_GLYPH } from "./glyphs.ts";
 import { NamespaceGlyph } from "./NamespaceGlyph.tsx";
 import { TrophyButton } from "./achievements/TrophyButton.tsx";
 import { FloatingPanel } from "./FloatingPanel.tsx";
@@ -251,9 +252,22 @@ export function SideMenu({
   // be archived or removed (the views always need one to show), so it carries
   // no menu/strip — but it stays draggable.
   function renderChecklistRow(c: ChecklistSummary, indent = false): ReactNode {
+    // A list that has picked an icon or a colour shows its own glyph, tinted
+    // to its accent — the same treatment the namespace rows above get. One
+    // left untouched keeps the generic checklist mark.
+    const customised = Boolean(c.glyph || c.color);
+    const icon = customised ? (
+      <NamespaceGlyph
+        name={c.glyph ?? DEFAULT_CHECKLIST_GLYPH}
+        className="h-5 w-5"
+        style={c.color ? { color: c.color } : undefined}
+      />
+    ) : (
+      <ChecklistIcon className="h-5 w-5" />
+    );
     const row = (
       <NavItem
-        icon={<ChecklistIcon className="h-5 w-5" />}
+        icon={icon}
         label={c.name}
         active={c.id === activeChecklistId && current === "checklist"}
         badge={c.remaining > 0 ? c.remaining : undefined}

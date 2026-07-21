@@ -58,6 +58,10 @@ export interface ChecklistSummary {
   remaining: number;
   /** The folder this list is grouped under, or undefined when ungrouped. */
   folderId?: string;
+  /** The list's chosen glyph, so the switcher row draws its own mark. */
+  glyph?: string;
+  /** The list's chosen accent colour — tints the row's glyph. */
+  color?: string;
 }
 
 /** A lightweight summary of one folder, for the side-menu's folder groups. */
@@ -507,6 +511,8 @@ export function useChecklistLists(deps: {
       remaining: total - checked,
     };
     if (c.folderId) summary.folderId = c.folderId;
+    if (c.glyph) summary.glyph = c.glyph;
+    if (c.color) summary.color = c.color;
     return summary;
   };
 
