@@ -8,7 +8,10 @@ import { RestoreIcon } from "./icons.tsx";
 // parked in the `waiting` state; pressing the Update button applies it
 // (the `controlling` listener in `usePwaUpdate` reloads the page).
 // Surfacing this rather than auto-refreshing is deliberate — a silent
-// swap would discard an in-progress edit. It pins above the safe-area
+// swap would discard an in-progress edit. While the update waits for
+// unsaved edits to reach the backend (`applying`), the button disables
+// and reads "Saving…" so a press over a debounced cloud save is visibly
+// held rather than ignored. It pins above the safe-area
 // inset at `z-[60]`, just under the general toast stack (`z-[70]`).
 //
 // The Update button carries the whole "apply it" affordance, so the
@@ -26,7 +29,8 @@ import { RestoreIcon } from "./icons.tsx";
 // shifts.
 export function UpdateToast() {
   const t = useT();
-  const { needRefresh, incomingVersion, reload, dismiss } = usePwaUpdate();
+  const { needRefresh, incomingVersion, applying, reload, dismiss } =
+    usePwaUpdate();
 
   if (!needRefresh) return null;
 
@@ -49,9 +53,10 @@ export function UpdateToast() {
         variant="primary"
         className="inline-flex shrink-0 items-center gap-1.5"
         onClick={reload}
+        disabled={applying}
       >
         <RestoreIcon className="h-4 w-4" />
-        {t("pwa.updateAction")}
+        {applying ? t("pwa.updateSaving") : t("pwa.updateAction")}
       </Button>
       <button
         type="button"

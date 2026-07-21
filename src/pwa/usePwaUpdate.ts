@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Workbox } from "workbox-window";
+import { settleSaves } from "../app/save-guard";
 import { IS_NATIVE } from "../build-env";
 
 // Single source of truth for the PWA update lifecycle, shared by the
@@ -24,6 +25,10 @@ import { IS_NATIVE } from "../build-env";
 // event, and the user clicks Reload at a moment of their choosing. We
 // deliberately do NOT `skipWaiting()` from the SW or `clientsClaim` —
 // the page would silently swap to new JS, breaking in-progress edits.
+// Even the accepted update doesn't reload blindly: applying first flushes
+// and awaits any unsaved edit through the save guard
+// (`src/app/save-guard.ts`), because a debounced cloud save exists only
+// in memory until it lands — reloading over it loses the edit.
 //
 // Download progress: vite-plugin-pwa's generated SW precaches its assets
 // during the `install` event, but workbox exposes no progress API.
@@ -45,15 +50,25 @@ export type PwaUpdateState = {
   // Version label of the incoming build (from `version.json`), or null
   // for a deploy predating that file / while offline.
   incomingVersion: string | null;
+  // True while an accepted update is waiting for unsaved edits to finish
+  // saving before it applies. Drives the prompt's "Saving…" button state.
+  applying: boolean;
 };
 
 const HOUR_MS = 60 * 60 * 1000;
 const POLL_MS = 200;
+// How long an accepted update waits for unsaved edits to reach the backend
+// before giving up (and keeping the page — with the edits — alive). Long
+// enough to ride out the save debounce plus a slow cloud round-trip; short
+// enough that a hard-failing backend doesn't leave the prompt stuck on
+// "Saving…" forever.
+const SAVE_SETTLE_TIMEOUT_MS = 15_000;
 
 let state: PwaUpdateState = {
   progress: null,
   needRefresh: false,
   incomingVersion: null,
+  applying: false,
 };
 const listeners = new Set<() => void>();
 let wb: Workbox | null = null;
@@ -68,7 +83,8 @@ function setState(patch: Partial<PwaUpdateState>) {
   if (
     next.progress === state.progress &&
     next.needRefresh === state.needRefresh &&
-    next.incomingVersion === state.incomingVersion
+    next.incomingVersion === state.incomingVersion &&
+    next.applying === state.applying
   ) {
     return;
   }
@@ -250,7 +266,21 @@ function start() {
     instance.addEventListener(
       "controlling",
       (event: { isUpdate?: boolean }) => {
-        if (event.isUpdate) window.location.reload();
+        if (!event.isUpdate) return;
+        // The new SW has taken over and the page must reload onto the new
+        // build — but not over unsaved edits. In the normal flow
+        // `applyUpdate` already settled them, so this resolves instantly;
+        // the guard matters when ANOTHER tab applied the update while this
+        // tab still holds a debounced cloud save in memory. If the edits
+        // can't land within the timeout, skip the reload: staying on the
+        // old bundle a while longer beats losing the user's item.
+        void settleSaves(SAVE_SETTLE_TIMEOUT_MS).then((settled) => {
+          if (settled) {
+            window.location.reload();
+          } else {
+            setState({ applying: false });
+          }
+        });
       },
     );
 
@@ -294,15 +324,39 @@ const SERVER_SNAPSHOT: PwaUpdateState = {
   progress: null,
   needRefresh: false,
   incomingVersion: null,
+  applying: false,
 };
+
+// Apply the waiting build, but only once every unsaved edit has reached
+// the backend. The debounced cloud save holds the newest snapshot in
+// memory only, so posting SKIP_WAITING right away — the old behaviour —
+// reloaded the page out from under it and the just-added item was gone
+// when the new build loaded. Flush-and-settle first; if the edits can't
+// land (offline with a dead cache path, hard backend error, mid-throttle),
+// keep the prompt up and DON'T apply — the sync glyph shows what's wrong
+// and the user can retry once it clears.
+function applyUpdate() {
+  if (state.applying) return;
+  if (!wb) return;
+  setState({ applying: true });
+  void settleSaves(SAVE_SETTLE_TIMEOUT_MS).then((settled) => {
+    if (!settled) {
+      setState({ applying: false });
+      return;
+    }
+    // The `controlling` listener reloads once the new SW takes over.
+    wb?.messageSkipWaiting();
+  });
+}
 
 function getServerSnapshot(): PwaUpdateState {
   return SERVER_SNAPSHOT;
 }
 
 export type PwaUpdate = PwaUpdateState & {
-  // Apply the waiting build: posts SKIP_WAITING to it; the `controlling`
-  // listener reloads the page once it takes over.
+  // Apply the waiting build: flushes unsaved edits, waits for them to
+  // settle, then posts SKIP_WAITING; the `controlling` listener reloads
+  // the page once the new SW takes over.
   reload: () => void;
   // Hide the prompt and clear the fill until a fresher build arrives.
   dismiss: () => void;
@@ -316,7 +370,8 @@ export function usePwaUpdate(): PwaUpdate {
   );
   return {
     ...snapshot,
-    reload: () => wb?.messageSkipWaiting(),
-    dismiss: () => setState({ needRefresh: false, progress: null }),
+    reload: applyUpdate,
+    dismiss: () =>
+      setState({ needRefresh: false, progress: null, applying: false }),
   };
 }

@@ -836,10 +836,15 @@ backends.
 `src/ui/UpdateToast.tsx` — the soft "Update ready" prompt pinned above
 the safe-area inset, just under the general toast stack. A plain headline
 sits over the truncated incoming version (shown when known); a primary
-**Update** button (a `RestoreIcon` glyph, posts `SKIP_WAITING` to the
-waiting service worker) carries the apply affordance, alongside a Dismiss
-button. Mounted by `LanguageRoot`; the service-worker registration and
-update polling live in `usePwaUpdate`. Because it renders outside App's flex
+**Update** button (a `RestoreIcon` glyph) carries the apply affordance,
+alongside a Dismiss button. Pressing Update doesn't reload straight away:
+`usePwaUpdate` first flushes any unsaved edit through the save guard
+(see "Sync status / save state") and only posts `SKIP_WAITING` once the
+save has landed — while it waits, the button disables and reads
+"Saving…" (`pwa.updateSaving`). If the edits can't land within the
+timeout, the prompt stays and no reload happens. Mounted by
+`LanguageRoot`; the service-worker registration and update polling live
+in `usePwaUpdate`. Because it renders outside App's flex
 layout, on a wide screen it centres over the *content* area rather than
 the whole window — App publishes the pinned sidebar's footprint as the
 `--app-content-{left,right}` CSS variables (see `useSidebarInset`) and the
@@ -2222,6 +2227,16 @@ The `SaveStatus` union (`idle` / `saving` / `saved` / `error` /
 `dirty` tracks unsaved edits; `saveNow` flushes the debounced save
 immediately.
 
+The engine also registers itself with the module-level **save guard**
+(`registerSaveGuard`, `src/app/save-guard.ts`): a tiny singleton
+registry that lets chrome outside the checklist tree ask whether any
+edit is still debounced, queued, or in flight, and have it flushed. Its
+`settleSaves(timeoutMs)` flushes every registered producer and resolves
+`true` once nothing unsaved remains (or `false` on timeout, in which
+case the caller must not tear the page down). The PWA update flow is the
+consumer — see "Service worker / app update" — so applying an update can
+never reload the page over an edit that hasn't reached the backend.
+
 Saves are **serialized**: at most one write is in flight against the
 backend at a time. An edit that arrives while a save is in flight
 doesn't start its own write — it queues in `pendingDoc`, and because
@@ -2424,9 +2439,18 @@ fires the `polyglot` achievement. The picker's own labels come from the
 for the PWA update lifecycle, shared by `UpdateToast` and the header
 wordmark fill. Registers the service worker via `workbox-window`, tracks
 download progress by polling the precache against the manifest total
-(0..100), and exposes `needRefresh`, the `incomingVersion`, `reload`
-(posts `SKIP_WAITING`), and `dismiss`. The manifest and icons are
-configured in `vite.config.ts` (see the `tune-pwa-icons` skill).
+(0..100), and exposes `needRefresh`, the `incomingVersion`, `applying`,
+`reload`, and `dismiss`. `reload` applies the waiting build, but never
+over unsaved edits: it flushes and awaits the save guard
+(`settleSaves`, `src/app/save-guard.ts`) before posting `SKIP_WAITING`,
+because a debounced cloud save exists only in memory until it lands —
+reloading inside that window used to lose the just-added item. The
+`controlling` listener (which reloads the page once the new SW takes
+over) runs the same settle, guarding the cross-tab case where another
+tab applied the update; if the edits can't land within the timeout, the
+reload is skipped and the edits keep retrying on the old build. The
+manifest and icons are configured in `vite.config.ts` (see the
+`tune-pwa-icons` skill).
 
 ### Standalone-mobile detection
 
