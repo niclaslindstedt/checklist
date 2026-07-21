@@ -648,6 +648,31 @@ describe("SideMenu", () => {
       fireEvent.click(screen.getByRole("button", { name: "Collapse footer" }));
       expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull();
     });
+
+    // The panel reserves a bottom safe-area inset so its last child clears the
+    // home indicator, but the content grows past that padding to reclaim the
+    // inset for the scrolling list — so the footer / rail sit snug at the foot
+    // of the drawer instead of floating above dead space. The footer then
+    // carries its own inset-free bottom breathing room.
+    it("reclaims the reserved bottom inset for the list, footer sits snug", () => {
+      const { container } = renderMenu({ nav: { open: true } });
+      const nav = container.querySelector("nav");
+      expect(nav?.className).toContain(
+        "padding-bottom:max(env(safe-area-inset-bottom)",
+      );
+      // The content wrapper grows past the panel's content box by the same
+      // reserved amount, handing that space to the list rather than the foot.
+      expect(
+        nav?.querySelector(
+          '[class*="height:calc(100%+max(env(safe-area-inset-bottom)"]',
+        ),
+      ).toBeTruthy();
+      // The footer block owns its own (inset-free) bottom breathing room.
+      const footer = screen
+        .getByRole("menuitem", { name: "Settings" })
+        .closest('[class*="padding-bottom:calc(1.25rem"]');
+      expect(footer).toBeTruthy();
+    });
   });
 
   describe("drag drop targets", () => {
