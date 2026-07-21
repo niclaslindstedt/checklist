@@ -88,6 +88,28 @@ body,
   overscroll-behavior: none;
 }
 
+/* Installed iOS PWA edge-to-edge: iOS only extends the page under the home
+   indicator when the *root* element carries a fixed `100vh` height. With
+   `100svh` (or any percentage height) the document stops at the letterboxed
+   viewport and iOS paints the remainder as a dead black band below the shell —
+   the app never reaches the bottom of the screen. Forcing the root to `100vh`
+   in the standalone PWA lets the shell paint the full height; `#app` and the
+   fixed overlays then fill it because `--app-height` (the visual viewport,
+   mirrored by useViewportHeight) now spans edge to edge, and the bottom
+   controls stay clear of the home indicator because they already pad with
+   env(safe-area-inset-bottom). Scoped to iOS via the -webkit-touch-callout
+   probe (no other engine supports it) so Android/desktop keep the 100svh
+   shell, and to `display-mode: standalone` so a normal iOS Safari tab keeps
+   `100svh` and its rubber-band-free bounce (see the shell comment above). */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    html,
+    body {
+      height: 100vh;
+    }
+  }
+}
+
 /* The app shell is pinned as a fixed overlay. Vertically it tracks the
    *visual* viewport band (`--app-top` / `--app-height`, set by
    useViewportHeight): the on-screen keyboard shrinks and shifts the visual
