@@ -361,6 +361,20 @@ describe("SideMenu", () => {
     expect(screen.getByTestId("open-modal").textContent).toBe("namespaces");
   });
 
+  it("drops the top header's extra padding so it lines up with the page header", () => {
+    renderMenu({ nav: { open: true } });
+    // The topmost (Namespace) header sits flush against the safe-area inset
+    // like the checklist page's own header, so it carries the reduced top
+    // padding; the Checklists heading below keeps the full separating gap.
+    const namespaceRow = screen.getByRole("button", {
+      name: "Namespace",
+    }).parentElement;
+    expect(namespaceRow?.className).toContain("pt-1.5");
+    expect(namespaceRow?.className).not.toContain("pt-3");
+    const checklistsRow = screen.getByText("Checklists").parentElement;
+    expect(checklistsRow?.className).toContain("pt-3");
+  });
+
   it("opens settings from the footer and changelog from the About menu", () => {
     const close = vi.fn();
     renderMenu({ nav: { open: true, close } });
