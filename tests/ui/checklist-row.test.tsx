@@ -869,6 +869,28 @@ describe("ChecklistRow category styling", () => {
     // Not the ordinary item colour.
     expect(title.className).not.toContain("text-fg ");
   });
+
+  it("keeps the sliding foreground fully opaque so swipe layers can't bleed through", () => {
+    render(
+      <ul>
+        <ChecklistRow
+          item={cat}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    // Walk up from the title to the swiping foreground (the [touch-action] box).
+    const fg = screen.getByText("ICA").parentElement!.parentElement!;
+    expect(fg.className).toContain("bg-surface-2");
+    // A translucent tint (e.g. bg-surface-2/50) would let the archive / delete
+    // reveal layers show through during a swipe — the bug this guards against.
+    expect(fg.className).not.toMatch(/bg-[\w-]+\/\d/);
+  });
 });
 
 describe("ChecklistRow long-press menu (touch)", () => {
