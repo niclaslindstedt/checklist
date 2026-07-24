@@ -1368,10 +1368,11 @@ describe("category headers", () => {
     // The category survives in the active list; its children are archived.
     expect(activeItems(swept).map((it) => it.id)).toEqual(["cat", "loose"]);
     expect(findItem(swept.items, "cat")?.category).toBe(true);
-    expect(archivedItems(swept).map((it) => it.id).sort()).toEqual([
-      "bread",
-      "milk",
-    ]);
+    expect(
+      archivedItems(swept)
+        .map((it) => it.id)
+        .sort(),
+    ).toEqual(["bread", "milk"]);
   });
 
   it("deleteChecked keeps a checked category but removes its finished children", () => {

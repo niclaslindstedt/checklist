@@ -70,7 +70,8 @@ export function useLongPress(
       if (timer.current === null) return;
       const dx = e.clientX - start.current.x;
       const dy = e.clientY - start.current.y;
-      if (Math.abs(dx) > MOVE_CANCEL || Math.abs(dy) > MOVE_CANCEL) clearTimer();
+      if (Math.abs(dx) > MOVE_CANCEL || Math.abs(dy) > MOVE_CANCEL)
+        clearTimer();
     },
     [clearTimer],
   );
