@@ -16,17 +16,26 @@ import type { Checklist, ChecklistItem, Snapshot } from "./types.ts";
 /**
  * Archive every finished (checked) item still in the active list in one
  * sweep — the bulk counterpart to `setArchived`. Archived items are left
- * untouched (they're already out of the active list). A no-op (nothing
- * checked and active) returns the same checklist, so it never writes.
+ * untouched (they're already out of the active list). **Category** headers
+ * are skipped even when checked: a category stays put to be refilled while
+ * its finished children drop into the archive from underneath it. A no-op
+ * (nothing checked, active, and non-category) returns the same checklist, so
+ * it never writes.
  */
 export function archiveChecked(checklist: Checklist, now: string): Checklist {
-  if (!flattenItems(checklist.items).some((it) => it.checked && !it.archived)) {
+  if (
+    !flattenItems(checklist.items).some(
+      (it) => it.checked && !it.archived && !it.category,
+    )
+  ) {
     return checklist;
   }
   return {
     ...checklist,
     items: mapTree(checklist.items, (it) =>
-      it.checked && !it.archived ? { ...it, archived: true } : it,
+      it.checked && !it.archived && !it.category
+        ? { ...it, archived: true }
+        : it,
     ),
     updatedAt: now,
   };
@@ -35,19 +44,27 @@ export function archiveChecked(checklist: Checklist, now: string): Checklist {
 /**
  * Permanently remove every finished (checked) item from the active list in
  * one sweep — the bulk counterpart to `deleteItem`. Archived items are kept
- * (they've left the active list already). A no-op returns the same
- * checklist untouched.
+ * (they've left the active list already). A **category** header is kept even
+ * when checked — the sweep still recurses into it to clear its finished
+ * children, so the category survives (emptied of what was done) rather than
+ * vanishing with its subtree. A no-op returns the same checklist untouched.
  */
 export function deleteChecked(checklist: Checklist, now: string): Checklist {
-  if (!flattenItems(checklist.items).some((it) => it.checked && !it.archived)) {
+  if (
+    !flattenItems(checklist.items).some(
+      (it) => it.checked && !it.archived && !it.category,
+    )
+  ) {
     return checklist;
   }
   // Drop every finished node and its subtree, recursing into the survivors so
-  // a finished item nested under an unchecked parent is swept too.
+  // a finished item nested under an unchecked parent is swept too. A checked
+  // category isn't dropped — we keep it and prune its children, so the header
+  // stays behind ready to be refilled.
   const prune = (list: readonly ChecklistItem[]): ChecklistItem[] => {
     const out: ChecklistItem[] = [];
     for (const it of list) {
-      if (it.checked && !it.archived) continue;
+      if (it.checked && !it.archived && !it.category) continue;
       out.push(it.children ? withChildren(it, prune(it.children)) : it);
     }
     return out;

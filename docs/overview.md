@@ -802,15 +802,24 @@ captions, month names, and week-start column (`Intl.DateTimeFormat`).
 ### Right-click menu
 
 `src/ui/ContextMenu.tsx` (`ContextMenu`) with its state helper
-`useContextMenu` (`src/ui/hooks/useContextMenu.ts`) — the **desktop
-right-click actions menu** for list rows. It's the desktop counterpart of
-the touch swipe gestures: the same archive / delete (and restore) actions
-that hide behind a swipe on touch surface here on a device with a real
-secondary click. Whether a surface offers it is gated by
-`useDesktopPointer` (`src/ui/hooks/useMediaQuery.ts`), a thin wrapper over
+`useContextMenu` (`src/ui/hooks/useContextMenu.ts`) — the **row actions
+menu**. On desktop it's the counterpart of the touch swipe gestures: the
+same archive / delete (and restore) actions that hide behind a swipe on
+touch surface here on a device with a real secondary click. Whether a
+surface offers the *right-click* opener is gated by `useDesktopPointer`
+(`src/ui/hooks/useMediaQuery.ts`), a thin wrapper over
 `useMediaQuery("(hover: hover) and (pointer: fine)")` — true for a mouse /
 trackpad, false for a coarse touch screen (a hybrid touch laptop reports
 `hover` and so opts in while still supporting touch).
+
+On a **touch** checklist row the same menu is reachable by a **long-press**
+(`useLongPress`, `src/ui/hooks/useLongPress.ts`) layered over the swipe
+stream — a held finger opens the menu at the press point while a moving
+finger stays a swipe / scroll; the trailing tap is swallowed so it doesn't
+edit the row. The checklist row's menu carries the deadline / archive /
+delete actions plus, on an item that has sub-items, a
+[**Promote to category**](#categories) entry (reading "Remove category" once
+promoted).
 
 Unlike `FloatingPanel`, the menu anchors at the **pointer**, not a trigger
 element: a row's `onContextMenu` calls `open(items, event)`, stashing the
@@ -1118,13 +1127,48 @@ list.
 `archiveChecked` / `deleteChecked` (`src/domain/checklists.ts`) — the bulk
 counterparts to `setArchived` / `deleteItem`: each sweeps **every finished
 (checked, still-active) item** in one pass, leaving archived items
-untouched. Both no-op (return the same checklist, so they never write) when
-nothing is finished. The edit verbs `archiveFinished` / `deleteFinished`
+untouched. A [**category**](#categories) header is the one exception: both
+sweeps skip it even when it's checked (the delete still recurses into it to
+clear its finished children), so a category stays put to be refilled. Both
+no-op (return the same checklist, so they never write) when nothing sweepable
+is finished. The edit verbs `archiveFinished` / `deleteFinished`
 (`src/app/use-checklist-edits.ts`) wrap them, raise an "Archived / Deleted
 {count} finished" toast, record one undoable step, and fire the
 `springClean` / `cleanSweep` achievements. They're reached from the
 add-button's long-press action row (see [Add-item
 button](#add-item-button)).
+
+### Categories
+
+A **category** is an ordinary item the user has promoted to a grouping
+header — store names in a shopping list, say. The flag rides one boolean,
+`ChecklistItem.category` (`src/domain/types.ts`); `setCategory`
+(`src/domain/item-ops.ts`) toggles it, wrapped by the `setCategory` edit verb
+(`src/app/use-checklist-edits.ts`) which raises a promote / demote toast,
+records one undoable step, and lets the derived `categoriser` achievement
+unlock off the flag appearing.
+
+Promotion is offered from the **row's action menu** — a desktop right-click
+or a touch long-press (see [Right-click menu](#right-click-menu)) — but
+**only on an item that already has sub-items**; a category with no children
+can still be demoted. Only three things treat a category specially:
+
+- **The bulk sweeps skip it.** `archiveChecked` / `deleteChecked` leave a
+  category in the active list even when it's checked, so it survives an
+  "archive / delete finished" while its finished children are cleared out
+  from underneath it (see [Archive / delete finished](#archive--delete-finished)).
+- **It renders slimmer and lighter.** `ChecklistRow` (`src/ui/ChecklistRow.tsx`)
+  gives a category less vertical padding, a lighter surface, a smaller
+  checkbox, and a muted, upper-case title so it reads as a header rather than
+  a task.
+- **It round-trips on the file/cloud backends** via a trailing
+  `*(category)*` marker in the markdown codec (`src/storage/markdown/codec.ts`),
+  in the same spirit as `*(required)*`.
+
+Everything else about a category is unchanged: it still checks / unchecks,
+reorders, renames, archives, and deletes exactly like any other item, and
+demoting it (or the same menu entry, now reading "Remove category") clears
+the flag.
 
 ### Reorder item
 

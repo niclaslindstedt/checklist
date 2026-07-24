@@ -28,6 +28,7 @@ import {
   moveItemInto as moveItemIntoOp,
   setAllChecked as setAllCheckedOp,
   setArchived,
+  setCategory as setCategoryOp,
   setItemDeadline as setItemDeadlineOp,
   toggleItem as toggleItemOp,
   type DropMode,
@@ -59,6 +60,7 @@ function buildImportedItems(parsed: readonly ImportedItem[]): ChecklistItem[] {
     };
     if (raw.required) item.required = true;
     if (raw.notes) item.notes = raw.notes;
+    if (raw.category) item.category = true;
     if (raw.children && raw.children.length > 0) {
       item.children = raw.children.map(toItem);
     }
@@ -155,6 +157,14 @@ export interface ChecklistEdits {
    */
   removeEmpty: (itemId: string) => void;
   archive: (itemId: string) => void;
+  /**
+   * Toggle whether an item is a **category** header — promote a plain item
+   * (offered only on one that has sub-items) or demote a category back to an
+   * item. A category groups its sub-items and survives the bulk archive /
+   * delete-finished sweeps; the row's long-press / right-click menu drives
+   * this. A no-op (the id has gone) leaves the list untouched.
+   */
+  setCategory: (itemId: string) => void;
   /**
    * Archive every finished (checked) item in the active list in one sweep —
    * the bulk action behind the add-button's long-press menu.
@@ -486,6 +496,26 @@ export function useChecklistEdits(deps: {
     [commit, notify, titleOf, t],
   );
 
+  const setCategory = useCallback(
+    (itemId: string) => {
+      const found = findOwner(itemId);
+      if (!found) return;
+      const promote = !found.item.category;
+      const next = setCategoryOp(found.checklist, itemId, promote, now());
+      // A no-op (already in the requested state) returns the same list —
+      // skip the write and the undo step.
+      if (next === found.checklist) return;
+      const label = promote
+        ? t("toast.itemPromoted", { title: found.item.title })
+        : t("toast.itemDemoted", { title: found.item.title });
+      // The "Categoriser" trophy unlocks off the derived category flag (see
+      // the catalog), so no manual unlock is fired here.
+      commit(next, label);
+      notify(label);
+    },
+    [commit, findOwner, notify, t],
+  );
+
   // Count the finished (checked, still-active) items the bulk verbs act on,
   // so they can no-op silently when there's nothing to sweep and feed the
   // count into the toast otherwise. Walks the tree, so finished sub-items
@@ -565,6 +595,7 @@ export function useChecklistEdits(deps: {
       remove,
       removeEmpty,
       archive,
+      setCategory,
       archiveFinished,
       deleteFinished,
       unarchive,
@@ -585,6 +616,7 @@ export function useChecklistEdits(deps: {
       remove,
       removeEmpty,
       archive,
+      setCategory,
       archiveFinished,
       deleteFinished,
       unarchive,

@@ -70,6 +70,7 @@ export function makeChecklistValue(
     remove: noop,
     removeEmpty: noop,
     archive: noop,
+    setCategory: noop,
     archiveFinished: noop,
     deleteFinished: noop,
     unarchive: noop,

@@ -44,6 +44,12 @@ export const TEMPLATES_DIR = "templates";
 // to a human while still round-tripping the `required` flag.
 const REQUIRED_MARKER = "*(required)*";
 
+// Trailing marker that flags a category header (an item the user promoted to
+// group the sub-items under it). Rendered as an italic aside by every markdown
+// viewer, round-tripping the `category` flag in the same spirit as
+// REQUIRED_MARKER so a categorised list survives on the file/cloud backends.
+const CATEGORY_MARKER = "*(category)*";
+
 // Trailing marker that carries an item's due date and (optionally) how it
 // repeats, e.g. `*(due 2026-07-20)*` or `*(due 2026-07-20, every 2 weeks)*`.
 // Rendered as an italic aside by every markdown viewer — human-readable and
@@ -232,13 +238,18 @@ function renderChecklistItem(item: ChecklistItem, depth: number): string[] {
   const pad = indentFor(depth);
   const box = item.checked ? "x" : " ";
   const lines = [
-    `${pad}- [${box}] ${renderItemTitle(item)}${renderDueMarker(item)}`,
+    `${pad}- [${box}] ${renderItemTitle(item)}${renderCategoryMarker(item)}${renderDueMarker(item)}`,
     ...renderNotes(item.notes, pad),
   ];
   for (const child of item.children ?? []) {
     lines.push(...renderChecklistItem(child, depth + 1));
   }
   return lines;
+}
+
+/** The ` *(category)*` suffix for a category header, or "" otherwise. */
+function renderCategoryMarker(item: ChecklistItem): string {
+  return item.category ? ` ${CATEGORY_MARKER}` : "";
 }
 
 /** The ` *(due …)*` suffix for a dated item, or "" when it has no deadline. */
@@ -359,6 +370,8 @@ export interface ImportedItem {
   deadline?: string;
   /** How the deadline repeats, recovered alongside it. Only with a deadline. */
   recurrence?: Recurrence;
+  /** True when a `*(category)*` marker flagged this as a category header. */
+  category?: boolean;
   /** Nested sub-items, recovered from indented task lines. */
   children?: ImportedItem[];
 }
@@ -386,6 +399,7 @@ export function parseItemsFromMarkdown(text: string): ImportedItem[] {
     if (raw.notes) item.notes = raw.notes;
     if (raw.deadline) item.deadline = raw.deadline;
     if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
+    if (raw.category) item.category = true;
     if (raw.children && raw.children.length > 0) {
       item.children = raw.children.map(toImported);
     }
@@ -402,6 +416,7 @@ type RawItem = {
   archived?: boolean;
   deadline?: string;
   recurrence?: Recurrence;
+  category?: boolean;
   children?: RawItem[];
 };
 
@@ -429,6 +444,7 @@ function toChecklistItem(raw: RawItem, id: string): ChecklistItem {
   if (raw.archived) item.archived = true;
   if (raw.deadline) item.deadline = raw.deadline;
   if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
+  if (raw.category) item.category = true;
   if (raw.children && raw.children.length > 0) {
     // Ids are regenerated deterministically from the path so a load with no
     // edit stays idempotent (see the round-trip note at the top of the file).
@@ -553,18 +569,20 @@ function parseItemLine(line: string): { indent: number; item: RawItem } | null {
       ...(meta.deadline && meta.recurrence
         ? { recurrence: meta.recurrence }
         : {}),
+      ...(meta.category ? { category: true } : {}),
     },
   };
 }
 
-// Peel the trailing `*(required)*` / `*(due …)*` markers off an item's text,
-// returning the clean title plus whatever the markers carried. The due marker
-// may sit anywhere in the string (it's spliced out in place), and required is
-// stripped last from the tail — mirroring how they render (required first,
-// then due).
+// Peel the trailing `*(required)*` / `*(category)*` / `*(due …)*` markers off
+// an item's text, returning the clean title plus whatever the markers carried.
+// The due marker may sit anywhere in the string (it's spliced out in place);
+// the tail then reads `title *(required)* *(category)*` (the order they
+// render), so category is peeled first and required last.
 function parseItemMeta(raw: string): {
   title: string;
   required: boolean;
+  category: boolean;
   deadline?: string;
   recurrence?: Recurrence;
 } {
@@ -582,8 +600,9 @@ function parseItemMeta(raw: string): {
     }
     text = text.slice(0, due.index) + text.slice(due.index + due[0].length);
   }
-  const { title, required } = stripRequired(text);
-  return { title, required, deadline, recurrence };
+  const { title: withoutCategory, category } = stripCategory(text);
+  const { title, required } = stripRequired(withoutCategory);
+  return { title, required, category, deadline, recurrence };
 }
 
 function stripRequired(raw: string): { title: string; required: boolean } {
@@ -595,4 +614,15 @@ function stripRequired(raw: string): { title: string; required: boolean } {
     };
   }
   return { title: trimmed, required: false };
+}
+
+function stripCategory(raw: string): { title: string; category: boolean } {
+  const trimmed = raw.trim();
+  if (trimmed.endsWith(CATEGORY_MARKER)) {
+    return {
+      title: trimmed.slice(0, -CATEGORY_MARKER.length).trim(),
+      category: true,
+    };
+  }
+  return { title: trimmed, category: false };
 }

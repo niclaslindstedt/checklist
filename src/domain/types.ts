@@ -82,6 +82,20 @@ export interface ChecklistItem extends Item {
    * unchecked rather than ticking it off. Absent on a one-off dated item.
    */
   recurrence?: Recurrence;
+  /**
+   * When true, this item is a **category** — a header the user promoted from
+   * an ordinary item (via the row's long-press / right-click menu, offered
+   * only on an item that has sub-items). A category groups the items nested
+   * under it — store names in a shopping list, say — and behaves like a
+   * pinned heading: the bulk "archive finished" and "delete finished" sweeps
+   * skip it even when it is checked, so it stays put to be refilled while its
+   * finished children are cleared out from underneath it. It still renders
+   * slimmer and lighter than a real item, and stays individually
+   * renamable / removable / archivable — only the two bulk sweeps and the
+   * styling treat it specially. Absent (rather than `false`) on a normal
+   * item, so an older document needs no migration.
+   */
+  category?: boolean;
 }
 
 /**

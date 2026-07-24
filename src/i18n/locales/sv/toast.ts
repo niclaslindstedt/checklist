@@ -15,6 +15,8 @@ const toast: ToastCatalog = {
   itemDeleted: "Tog bort ”{title}”",
   emptyItemRemoved: "Tog bort tom rad",
   itemArchived: "Arkiverade ”{title}”",
+  itemPromoted: "Gjorde ”{title}” till en kategori",
+  itemDemoted: "”{title}” är en rad igen",
   itemRestored: "Återställde ”{title}”",
   itemMoved: "Flyttade ”{title}”",
   itemsImported: "Importerade {count} rader",
