@@ -434,6 +434,7 @@ export function SideMenu({
           onAdd={() => pick(() => dispatch({ kind: "namespaces" }))}
           addLabel={t("namespace.manage")}
           addIcon={<CogIcon className="h-4 w-4" />}
+          flushTop
         />
         {visibleNamespaces.map((ns) => {
           // A namespace that has picked an icon or a colour shows its own

@@ -43,6 +43,7 @@ export function SectionHeader({
   collapsible = false,
   expanded = false,
   onToggle,
+  flushTop = false,
 }: {
   label: string;
   border?: boolean;
@@ -52,6 +53,13 @@ export function SectionHeader({
   collapsible?: boolean;
   expanded?: boolean;
   onToggle?: () => void;
+  /**
+   * The topmost header in the drawer (Namespace) drops its extra top
+   * padding so its content lines up with the checklist page's header,
+   * which sits flush against the safe-area inset. Non-top headers keep
+   * the `pt-3` that separates them from the section above.
+   */
+  flushTop?: boolean;
 }) {
   const labelText = (
     <span className="text-xs font-semibold tracking-wide text-muted uppercase">
@@ -60,9 +68,9 @@ export function SectionHeader({
   );
   return (
     <div
-      className={`flex items-center justify-between gap-2 px-5 pt-3 pb-1 ${
-        border ? "border-t border-line" : ""
-      }`}
+      className={`flex items-center justify-between gap-2 px-5 pb-1 ${
+        flushTop ? "pt-1.5" : "pt-3"
+      } ${border ? "border-t border-line" : ""}`}
     >
       {collapsible ? (
         <button
