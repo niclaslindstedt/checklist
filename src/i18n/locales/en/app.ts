@@ -23,6 +23,8 @@ const app = {
   uncheckAll: "Uncheck all",
   archive: "Archive",
   delete: "Delete",
+  promoteToCategory: "Promote to category",
+  demoteFromCategory: "Remove category",
   setDeadline: "Set deadline",
   deadline: {
     title: "Deadline",

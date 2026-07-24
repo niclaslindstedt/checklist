@@ -88,6 +88,8 @@ const hasNotedItem = (snap: Snapshot) =>
   someItem(snap, (it) => typeof it.notes === "string" && it.notes !== "");
 const hasRequiredItem = (snap: Snapshot) =>
   someItem(snap, (it) => it.required === true);
+const hasCategoryItem = (snap: Snapshot) =>
+  someItem(snap, (it) => it.category === true);
 const hasArchivedItem = (snap: Snapshot) =>
   someItem(snap, (it) => it.archived === true);
 const hasMultipleChecklists = (snap: Snapshot) => snap.checklists.length > 1;
@@ -442,6 +444,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
   // Pro — "Make it sync, keep it tidy, take it everywhere."
   // ──────────────────────────────────────────────────────────────
+  {
+    id: "categoriser",
+    tier: "pro",
+    glyph: LayersGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot],
+      predicate: (prev, next) =>
+        !hasCategoryItem(prev.snapshot) && hasCategoryItem(next.snapshot),
+    },
+  },
   {
     id: "compartments",
     tier: "pro",

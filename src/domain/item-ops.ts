@@ -265,6 +265,35 @@ export function setItemDeadline(
   return { ...checklist, items, updatedAt: now };
 }
 
+/**
+ * Promote an item to a **category** header, or demote it back to an ordinary
+ * item. A category groups the items nested under it and survives the bulk
+ * "archive finished" / "delete finished" sweeps even when checked (see
+ * `archiveChecked` / `deleteChecked`); it also renders slimmer and lighter.
+ * The flag rides the one node — its subtree is untouched. A no-op (already in
+ * the requested state, or the id isn't in the tree) returns the same
+ * checklist, so it never bumps `updatedAt` or triggers a write.
+ */
+export function setCategory(
+  checklist: Checklist,
+  itemId: string,
+  category: boolean,
+  now: string,
+): Checklist {
+  const items = updateItem(checklist.items, itemId, (it) => {
+    if (category) {
+      if (it.category) return it;
+      return { ...it, category: true };
+    }
+    if (!it.category) return it;
+    const next = { ...it };
+    delete next.category;
+    return next;
+  });
+  if (items === checklist.items) return checklist;
+  return { ...checklist, items, updatedAt: now };
+}
+
 /** Permanently remove an item — and its whole subtree — from the list. */
 export function deleteItem(
   checklist: Checklist,

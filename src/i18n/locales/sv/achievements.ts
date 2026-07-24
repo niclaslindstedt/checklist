@@ -246,6 +246,12 @@ const achievements: AchievementsCatalog = {
     },
 
     // ── Proffs ────────────────────────────────────────────────────────
+    categoriser: {
+      name: "Kategorisör",
+      condition: "Gör en rad till en kategori.",
+      learnMore:
+        "Långtryck (eller högerklicka) på en rad som har underpunkter och välj Gör till kategori. Den blir en smal, dämpad rubrik som grupperar raderna under sig — butiksnamn i en inköpslista, till exempel — och blir kvar när du arkiverar eller tar bort alla avklarade rader, redo att fyllas på igen. Kategorier går fortfarande att byta namn på, ta bort eller göra om till en vanlig rad.",
+    },
     compartments: {
       name: "Fack",
       condition: "Skapa en namnrymd.",

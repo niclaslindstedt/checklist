@@ -14,6 +14,7 @@ import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
 import { DeadlineRow } from "./DeadlineRow.tsx";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
+import { useLongPress } from "./hooks/useLongPress.ts";
 import { useRowSwipe } from "./hooks/useRowSwipe.ts";
 import {
   CaretRightIcon,
@@ -149,6 +150,13 @@ type Props = {
    * favour of the menu; touch viewports leave it unset and keep swiping.
    */
   onContextMenu?: (id: string, e: React.MouseEvent) => void;
+  /**
+   * Touch only — open the same actions menu from a long-press, reported at
+   * the press point `(x, y)`. Supplied on touch viewports (where
+   * `onContextMenu` is unset), so the row keeps its swipe gesture *and* gains
+   * the held-finger menu. Left unset on desktop, which uses `onContextMenu`.
+   */
+  onLongPress?: (id: string, x: number, y: number) => void;
 };
 
 function ChecklistRowImpl({
@@ -178,18 +186,57 @@ function ChecklistRowImpl({
   dragging,
   style,
   onContextMenu,
+  onLongPress,
 }: Props) {
   const indent = depth * INDENT_PER_LEVEL;
   // A sub-item reads as a genuine child line: smaller title text and a smaller
   // checkbox square than its parent. The shrink is purely visual — the tap
   // padding and the row's min height stay put, so the touch target is unchanged.
   const nested = depth > 0;
+  // A category header reads as a slim, muted grouping line rather than a real
+  // item — see the styling below. Only the two bulk sweeps and this styling
+  // treat it specially (see `ChecklistItem.category`).
+  const category = Boolean(item.category);
   const archive = useCallback(() => onArchive(item.id), [onArchive, item.id]);
   const swipe = useRowSwipe(archive);
+  const longPress = useLongPress(
+    useCallback((x, y) => onLongPress?.(item.id, x, y), [onLongPress, item.id]),
+  );
   const t = useT();
   // Desktop swaps the swipe-to-reveal gesture for the right-click menu: no
   // sliding foreground, no archive/delete reveal layers behind it.
   const desktop = Boolean(onContextMenu);
+  // Touch keeps swipe but layers a long-press menu over the same pointer
+  // stream (a hold opens the menu; a move stays a swipe / scroll).
+  const touchMenu = !desktop && Boolean(onLongPress);
+  // The foreground shares the swipe stream with the long-press detector on
+  // touch, so a hold opens the menu without disturbing the swipe gesture.
+  const foregroundHandlers = desktop
+    ? {}
+    : touchMenu
+      ? {
+          onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
+            swipe.handlers.onPointerDown(e);
+            longPress.handlers.onPointerDown(e);
+          },
+          onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+            swipe.handlers.onPointerMove(e);
+            longPress.handlers.onPointerMove(e);
+          },
+          onPointerUp: (e: React.PointerEvent<HTMLElement>) => {
+            swipe.handlers.onPointerUp(e);
+            longPress.handlers.onPointerUp(e);
+          },
+          onPointerCancel: (e: React.PointerEvent<HTMLElement>) => {
+            swipe.handlers.onPointerCancel(e);
+            longPress.handlers.onPointerCancel(e);
+          },
+          onClickCapture: (e: React.MouseEvent) => {
+            swipe.handlers.onClickCapture(e);
+            longPress.handlers.onClickCapture(e);
+          },
+        }
+      : swipe.handlers;
 
   const [editing, setEditing] = useState(false);
   const [editFocusBody, setEditFocusBody] = useState(false);
@@ -310,7 +357,13 @@ function ChecklistRowImpl({
       ref={rowRef}
       data-reorder-id={item.id}
       style={style}
-      onContextMenu={desktop ? (e) => onContextMenu!(item.id, e) : undefined}
+      onContextMenu={
+        desktop
+          ? (e) => onContextMenu!(item.id, e)
+          : touchMenu
+            ? longPress.handlers.onContextMenu
+            : undefined
+      }
       className={`relative overflow-hidden border-b border-line ${
         dropMode === "into" ? "bg-accent/10 ring-2 ring-accent ring-inset" : ""
       }`}
@@ -382,18 +435,28 @@ function ChecklistRowImpl({
       )}
 
       {/* Foreground. On touch it slides over the action layers; on desktop it
-          sits still (the menu replaces the gesture). */}
+          sits still (the menu replaces the gesture). A category header sits
+          slimmer (less vertical padding) and on a lighter surface so it reads
+          as a grouping line rather than a real item. */}
       <div
-        {...(desktop ? {} : swipe.handlers)}
+        {...foregroundHandlers}
         style={{
           transform: desktop ? undefined : `translateX(${swipe.offset}px)`,
           paddingLeft: indent
             ? `calc(var(--density-row-px) + ${indent}px)`
             : undefined,
         }}
-        className={`relative flex flex-col px-[var(--density-row-px)] py-[var(--density-row-py)] [touch-action:pan-y] ${
-          dragging ? "bg-surface-2" : "bg-page-bg"
-        } ${!desktop && swipe.animating ? "transition-transform duration-200" : ""}`}
+        className={`relative flex flex-col px-[var(--density-row-px)] [touch-action:pan-y] ${
+          category ? "py-1" : "py-[var(--density-row-py)]"
+        } ${
+          dragging
+            ? "bg-surface-2"
+            : category
+              ? "bg-surface-2/50"
+              : "bg-page-bg"
+        } ${touchMenu ? "[-webkit-touch-callout:none] select-none" : ""} ${
+          !desktop && swipe.animating ? "transition-transform duration-200" : ""
+        }`}
       >
         {/* The slim, colour-coded date row above a dated item's title. */}
         {item.deadline && (
@@ -408,7 +471,7 @@ function ChecklistRowImpl({
             the title button directly, so this enlargement needs no role. */}
         {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
         <div
-          className="flex min-h-11 items-center gap-3"
+          className={`flex items-center gap-3 ${category ? "min-h-7" : "min-h-11"}`}
           // Keep tapping this row from blurring an editor already open on
           // another row: the blur commits that editor, which shrinks it (the
           // affordance row disappears) and slides every row below it up — so by
@@ -454,7 +517,7 @@ function ChecklistRowImpl({
             checked={item.checked}
             onChange={() => onToggle(item.id)}
             ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
-            size={nested ? "sm" : "md"}
+            size={nested || category ? "sm" : "md"}
             className="p-2.5 -m-2.5"
           />
           <button
@@ -465,10 +528,15 @@ function ChecklistRowImpl({
             // A title too long for one line wraps onto the next instead of
             // being clipped with an ellipsis; `break-words` also splits a
             // single unbroken run (a long URL or word) so it can't overflow
-            // the row and shove the trailing glyphs off-screen.
+            // the row and shove the trailing glyphs off-screen. A category
+            // reads as a slim, muted, upper-case grouping label.
             className={`min-w-0 flex-1 break-words text-left ${
-              nested ? "text-sm" : ""
-            } ${item.checked ? "text-muted line-through" : "text-fg"}`}
+              category
+                ? "text-xs font-semibold tracking-wide text-muted uppercase"
+                : `${nested ? "text-sm" : ""} ${
+                    item.checked ? "text-muted line-through" : "text-fg"
+                  }`
+            }`}
           >
             {item.title}
           </button>

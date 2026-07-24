@@ -719,3 +719,55 @@ describe("ChecklistView", () => {
     });
   });
 });
+
+describe("ChecklistView category context menu", () => {
+  // A parent with one child, plus a leaf. Only the parent (which has
+  // sub-items) is offered "Promote to category".
+  const withParent: ChecklistItem[] = [
+    {
+      id: "p",
+      title: "Store",
+      checked: false,
+      children: [{ id: "k", title: "Milk", checked: false }],
+    },
+    { id: "leaf", title: "Batteries", checked: false },
+  ];
+  const rowFor = (id: string) =>
+    document.querySelector(`[data-reorder-id="${id}"]`) as HTMLElement;
+
+  it("offers Promote to category on an item with sub-items and fires setCategory", () => {
+    const setCategory = vi.fn();
+    renderView({ items: withParent, setCategory });
+    fireEvent.contextMenu(rowFor("p"));
+    const entry = screen.getByRole("menuitem", { name: "Promote to category" });
+    fireEvent.click(entry);
+    expect(setCategory).toHaveBeenCalledWith("p");
+  });
+
+  it("does not offer the category action on a leaf item", () => {
+    renderView({ items: withParent });
+    fireEvent.contextMenu(rowFor("leaf"));
+    expect(
+      screen.queryByRole("menuitem", { name: "Promote to category" }),
+    ).toBeNull();
+    // The ordinary actions are still there.
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+  });
+
+  it("offers Remove category on an item already promoted", () => {
+    const promoted: ChecklistItem[] = [
+      {
+        id: "p",
+        title: "Store",
+        checked: false,
+        category: true,
+        children: [{ id: "k", title: "Milk", checked: false }],
+      },
+    ];
+    renderView({ items: promoted });
+    fireEvent.contextMenu(rowFor("p"));
+    expect(
+      screen.getByRole("menuitem", { name: "Remove category" }),
+    ).toBeTruthy();
+  });
+});

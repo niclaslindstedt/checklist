@@ -104,6 +104,13 @@ export function ShowcasePage() {
               folds them away, and checking it checks the whole group.
             </li>
             <li>
+              <strong className="text-fg-bright">Group with categories</strong>{" "}
+              — long-press (or right-click) an item that has sub-items and
+              promote it to a category: a slim header (store names in a shopping
+              list, say) that stays put when you archive or delete every
+              finished item, ready to be refilled.
+            </li>
+            <li>
               <strong className="text-fg-bright">Set deadlines</strong> — give
               an item a due date (and an optional repeat like &ldquo;every 2
               weeks&rdquo;); dated items gather at the bottom of the list under

@@ -25,11 +25,12 @@ import { useReportDragActivity } from "./drag-activity.ts";
 import { ghostPlacement } from "./dragGhostPlacement.ts";
 import { useComposer } from "./hooks/useComposer.ts";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
+import type { ContextMenuItem } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 import { useReorderFlip } from "./hooks/useReorderFlip.ts";
 import { useSwipeUpReveal } from "./hooks/useSwipeUpReveal.ts";
-import { ArchiveIcon, ClockIcon, TrashIcon } from "./icons.tsx";
+import { ArchiveIcon, ClockIcon, FolderIcon, TrashIcon } from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
 // column reminiscent of a plain-text editor. State-free — it reads the
@@ -65,6 +66,7 @@ function ChecklistViewImpl() {
     remove,
     removeEmpty,
     archive,
+    setCategory,
     archiveFinished,
     deleteFinished,
     unarchive,
@@ -196,39 +198,75 @@ function ChecklistViewImpl() {
   }, [pendingId, rows, clearFocus, focusContainerRef]);
 
   // Desktop swaps each row's swipe-to-reveal gesture for a right-click menu
-  // carrying the same archive / delete actions. `openMenu` is referentially
-  // stable, so handing it to the memoized rows doesn't re-render the list.
+  // carrying the same archive / delete actions; touch keeps its swipe but adds
+  // the same menu on a long-press. Both openers are referentially stable
+  // (they resolve the live item tree from a ref at open time), so handing them
+  // to the memoized rows doesn't re-render the list.
   const desktop = useDesktopPointer();
   const {
     state: menuState,
     open: openMenu,
     close: closeMenu,
   } = useContextMenu();
-  const openRowMenu = useCallback(
-    (id: string, e: React.MouseEvent) => {
-      openMenu(
-        [
-          {
-            label: t("app.setDeadline"),
-            icon: <ClockIcon className="h-4 w-4" />,
-            onSelect: () => openDeadline(id),
-          },
-          {
-            label: t("app.archive"),
-            icon: <ArchiveIcon className="h-4 w-4" />,
-            onSelect: () => archive(id),
-          },
-          {
-            label: t("app.delete"),
-            icon: <TrashIcon className="h-4 w-4" />,
-            danger: true,
-            onSelect: () => remove(id),
-          },
-        ],
-        e,
+  // Read the live tree from a ref so the menu builder stays referentially
+  // stable across edits — the menu is assembled at open time, not on render.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  // The actions the row menu offers for `id`, shared by the desktop
+  // right-click and the touch long-press openers. A category toggle heads the
+  // list — "Promote to category" on an item that has sub-items, or "Remove
+  // category" on one already promoted.
+  const rowMenuItems = useCallback(
+    (id: string): ContextMenuItem[] => {
+      const target = findItem(itemsRef.current, id);
+      const menu: ContextMenuItem[] = [];
+      if (target?.category) {
+        menu.push({
+          label: t("app.demoteFromCategory"),
+          icon: <FolderIcon className="h-4 w-4" />,
+          onSelect: () => setCategory(id),
+        });
+      } else if (target?.children?.length) {
+        menu.push({
+          label: t("app.promoteToCategory"),
+          icon: <FolderIcon className="h-4 w-4" />,
+          onSelect: () => setCategory(id),
+        });
+      }
+      menu.push(
+        {
+          label: t("app.setDeadline"),
+          icon: <ClockIcon className="h-4 w-4" />,
+          onSelect: () => openDeadline(id),
+        },
+        {
+          label: t("app.archive"),
+          icon: <ArchiveIcon className="h-4 w-4" />,
+          onSelect: () => archive(id),
+        },
+        {
+          label: t("app.delete"),
+          icon: <TrashIcon className="h-4 w-4" />,
+          danger: true,
+          onSelect: () => remove(id),
+        },
       );
+      return menu;
     },
-    [openMenu, t, archive, remove, openDeadline],
+    [t, setCategory, archive, remove, openDeadline],
+  );
+  const openRowMenu = useCallback(
+    (id: string, e: React.MouseEvent) => openMenu(rowMenuItems(id), e),
+    [openMenu, rowMenuItems],
+  );
+  const openRowMenuAt = useCallback(
+    (id: string, x: number, y: number) =>
+      openMenu(rowMenuItems(id), {
+        preventDefault: () => {},
+        clientX: x,
+        clientY: y,
+      }),
+    [openMenu, rowMenuItems],
   );
 
   // While a row is lifted, the rows of its own subtree are hidden: the subtree
@@ -506,6 +544,7 @@ function ChecklistViewImpl() {
                       : rowStyle
                   }
                   onContextMenu={desktop ? openRowMenu : undefined}
+                  onLongPress={desktop ? undefined : openRowMenuAt}
                 />
               );
               const out: React.ReactNode[] = [];

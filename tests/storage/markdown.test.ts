@@ -493,3 +493,62 @@ describe("markdown codec", () => {
     });
   });
 });
+
+describe("category headers", () => {
+  const withCategory: Checklist = {
+    version: 1,
+    id: "cl-cccccc",
+    templateId: "",
+    name: "Shopping",
+    items: [
+      {
+        id: "cat",
+        title: "ICA",
+        checked: false,
+        category: true,
+        children: [
+          { id: "milk", title: "Milk", checked: false },
+          { id: "bread", title: "Bread", checked: true },
+        ],
+      },
+    ],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-03T00:00:00.000Z",
+  };
+
+  it("renders a *(category)* marker on the header line", () => {
+    const md = checklistToMarkdown(withCategory);
+    expect(md).toContain("- [ ] ICA *(category)*");
+    // Children render as ordinary nested task lines with no marker.
+    expect(md).toContain("  - [ ] Milk");
+    expect(md).toContain("  - [x] Bread");
+  });
+
+  it("round-trips the category flag through parse", () => {
+    const parsed = parseEntry(checklistToMarkdown(withCategory));
+    expect(parsed?.kind).toBe("checklist");
+    if (parsed?.kind !== "checklist") throw new Error("expected a checklist");
+    expect(parsed.checklist.items[0]?.category).toBe(true);
+    expect(parsed.checklist.items[0]?.children?.[0]?.category).toBeUndefined();
+  });
+
+  it("recovers the category flag from a pasted list", () => {
+    const items = parseItemsFromMarkdown(
+      "- [ ] Coop *(category)*\n  - [ ] Apples\n",
+    );
+    expect(items[0]?.category).toBe(true);
+    expect(items[0]?.children?.[0]?.category).toBeUndefined();
+  });
+
+  it("keeps a category that is also required, order-independent", () => {
+    const parsed = parseItemsFromMarkdown(
+      "- [x] Store *(required)* *(category)*\n",
+    );
+    expect(parsed[0]).toMatchObject({
+      title: "Store",
+      required: true,
+      category: true,
+      checked: true,
+    });
+  });
+});

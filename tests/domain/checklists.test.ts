@@ -30,6 +30,7 @@ import {
   renameChecklist,
   setAllChecked,
   setArchived,
+  setCategory,
   setChecklistAppearance,
   setChecklistArchived,
   setItemDeadline,
@@ -1322,5 +1323,72 @@ describe("displayItems with dated items", () => {
   it("leaves an undated level's order untouched", () => {
     const items = listOf("A", "B").items;
     expect(ids(floatDatedToBottom(items))).toEqual(["i1", "i2"]);
+  });
+});
+
+describe("category headers", () => {
+  const base = createChecklist("c1", "Groceries", NOW);
+
+  // A category "ICA" grouping two items, plus a loose item, so we can watch
+  // the bulk sweeps treat the header differently from ordinary items.
+  function withCategory(): Checklist {
+    let c = addItem(base, { id: "cat", title: "ICA" }, NOW);
+    c = addItem(c, { id: "milk", title: "Milk" }, NOW, "bottom", "cat");
+    c = addItem(c, { id: "bread", title: "Bread" }, NOW, "bottom", "cat");
+    c = addItem(c, { id: "loose", title: "Batteries" }, NOW);
+    return setCategory(c, "cat", true, NOW);
+  }
+
+  describe("setCategory", () => {
+    it("promotes an item, then demotes it back", () => {
+      const promoted = setCategory(base, "x", true, NOW); // unknown id → no-op
+      expect(promoted).toBe(base);
+
+      let c = addItem(base, { id: "i1", title: "A" }, NOW);
+      c = setCategory(c, "i1", true, NOW);
+      expect(findItem(c.items, "i1")?.category).toBe(true);
+
+      const demoted = setCategory(c, "i1", false, NOW);
+      expect(findItem(demoted.items, "i1")?.category).toBeUndefined();
+    });
+
+    it("is a no-op (same reference) when already in the requested state", () => {
+      let c = addItem(base, { id: "i1", title: "A" }, NOW);
+      c = setCategory(c, "i1", true, NOW);
+      expect(setCategory(c, "i1", true, NOW)).toBe(c);
+      const plain = addItem(base, { id: "i2", title: "B" }, NOW);
+      expect(setCategory(plain, "i2", false, NOW)).toBe(plain);
+    });
+  });
+
+  it("archiveChecked keeps a checked category but archives its finished children", () => {
+    let c = withCategory();
+    c = toggleItem(c, "cat", NOW); // cascades: category + both children checked
+    const swept = archiveChecked(c, NOW);
+    // The category survives in the active list; its children are archived.
+    expect(activeItems(swept).map((it) => it.id)).toEqual(["cat", "loose"]);
+    expect(findItem(swept.items, "cat")?.category).toBe(true);
+    expect(archivedItems(swept).map((it) => it.id).sort()).toEqual([
+      "bread",
+      "milk",
+    ]);
+  });
+
+  it("deleteChecked keeps a checked category but removes its finished children", () => {
+    let c = withCategory();
+    c = toggleItem(c, "cat", NOW); // category + both children checked
+    c = toggleItem(c, "loose", NOW); // a finished ordinary item is swept
+    const swept = deleteChecked(c, NOW);
+    expect(swept.items.map((it) => it.id)).toEqual(["cat"]);
+    // The header stays, emptied of its finished children.
+    expect(findItem(swept.items, "cat")?.children ?? []).toEqual([]);
+  });
+
+  it("bulk sweeps no-op when the only checked thing is a category", () => {
+    let c = addItem(base, { id: "cat", title: "ICA" }, NOW);
+    c = setCategory(c, "cat", true, NOW);
+    c = toggleItem(c, "cat", NOW); // a lone, checked category
+    expect(archiveChecked(c, NOW)).toBe(c);
+    expect(deleteChecked(c, NOW)).toBe(c);
   });
 });

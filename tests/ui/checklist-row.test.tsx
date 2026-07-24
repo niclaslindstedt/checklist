@@ -840,3 +840,90 @@ describe("ChecklistRow sub-items", () => {
     expect(after.container.querySelector(".bottom-0")).toBeNull();
   });
 });
+
+describe("ChecklistRow category styling", () => {
+  const cat: ChecklistItem = {
+    id: "cat",
+    title: "ICA",
+    checked: false,
+    category: true,
+  };
+
+  it("renders a category as a slim, muted, upper-case header", () => {
+    render(
+      <ul>
+        <ChecklistRow
+          item={cat}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    const title = screen.getByText("ICA");
+    expect(title.className).toContain("uppercase");
+    expect(title.className).toContain("text-muted");
+    // Not the ordinary item colour.
+    expect(title.className).not.toContain("text-fg ");
+  });
+});
+
+describe("ChecklistRow long-press menu (touch)", () => {
+  it("opens the menu after a held touch, at the press point", () => {
+    vi.useFakeTimers();
+    const onLongPress = vi.fn();
+    render(
+      <ul>
+        <ChecklistRow
+          item={item}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          onLongPress={onLongPress}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    const fg = foreground();
+    stubPointerCapture(fg);
+    dispatchPointer(fg, "pointerdown", { x: 40, y: 60 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(onLongPress).toHaveBeenCalledWith("i1", 40, 60);
+    vi.useRealTimers();
+  });
+
+  it("cancels the hold when the finger moves (a swipe, not a press)", () => {
+    vi.useFakeTimers();
+    const onLongPress = vi.fn();
+    render(
+      <ul>
+        <ChecklistRow
+          item={item}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          onLongPress={onLongPress}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    const fg = foreground();
+    stubPointerCapture(fg);
+    dispatchPointer(fg, "pointerdown", { x: 40, y: 60 });
+    dispatchPointer(fg, "pointermove", { x: 80, y: 62 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(onLongPress).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});

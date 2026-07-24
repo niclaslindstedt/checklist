@@ -48,6 +48,7 @@ export {
   deleteItem,
   editItem,
   setAllChecked,
+  setCategory,
   setItemDeadline,
   toggleItem,
 } from "./item-ops.ts";

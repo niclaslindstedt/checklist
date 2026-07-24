@@ -252,6 +252,12 @@ const achievements = {
     },
 
     // ── Pro ───────────────────────────────────────────────────────────
+    categoriser: {
+      name: "Categoriser",
+      condition: "Promote an item to a category.",
+      learnMore:
+        "Long-press (or right-click) an item that has sub-items and choose Promote to category. It becomes a slim, muted header that groups the items under it — store names in a shopping list, say — and stays put when you archive or delete every finished item, ready to be refilled. Categories are still yours to rename, remove, or demote back to an ordinary item.",
+    },
     compartments: {
       name: "Compartments",
       condition: "Create a namespace.",

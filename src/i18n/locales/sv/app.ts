@@ -17,6 +17,8 @@ const app: AppCatalog = {
   uncheckAll: "Avmarkera alla",
   archive: "Arkivera",
   delete: "Ta bort",
+  promoteToCategory: "Gör till kategori",
+  demoteFromCategory: "Ta bort kategori",
   setDeadline: "Ange deadline",
   deadline: {
     title: "Deadline",

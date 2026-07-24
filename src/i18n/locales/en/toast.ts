@@ -22,6 +22,8 @@ const toast = {
   itemDeleted: "Deleted “{title}”",
   emptyItemRemoved: "Removed empty item",
   itemArchived: "Archived “{title}”",
+  itemPromoted: "Made “{title}” a category",
+  itemDemoted: "“{title}” is an item again",
   itemRestored: "Restored “{title}”",
   itemMoved: "Moved “{title}”",
   itemsImported: "Imported {count} items",
