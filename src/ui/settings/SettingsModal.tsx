@@ -435,7 +435,12 @@ function TabSidebar({
 }
 
 // Footer pinned below the tab content on every tab. Reset sits on the left;
-// Cancel + Save group on the right, mirroring the budget dialog.
+// Cancel + Save group on the right, mirroring the budget dialog. On the phone
+// the dialog is a full-screen sheet flush with the bottom edge, so the footer
+// clears the home indicator (the safe-area inset) and — like the side-menu
+// footer — carries an extra 10px so the buttons aren't a cramped reach right on
+// the edge. From `sm` up the dialog floats as a centered card, so the plain
+// 0.75rem padding is enough.
 const SettingsFooter = memo(function SettingsFooter({
   t,
   onReset,
@@ -448,7 +453,7 @@ const SettingsFooter = memo(function SettingsFooter({
   onSave: () => void;
 }) {
   return (
-    <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 py-3">
+    <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-line bg-surface-3 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom)+10px)] sm:pb-3">
       <Button variant="secondary" onClick={onReset}>
         {t("common.resetToDefaults")}
       </Button>

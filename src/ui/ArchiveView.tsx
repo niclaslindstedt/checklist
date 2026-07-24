@@ -72,7 +72,7 @@ function ArchiveViewImpl() {
   const count = itemCount + archivedChecklists.length;
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
+    <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[env(safe-area-inset-top)] sm:pt-[calc(1.5rem+env(safe-area-inset-top))]">
       <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
         <h1 className="text-lg font-semibold tracking-wide text-fg-bright">
           {t("nav.archive")}
@@ -93,7 +93,7 @@ function ArchiveViewImpl() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto [overscroll-behavior:contain]">
+      <div className="min-h-0 flex-1 overflow-y-auto [overscroll-behavior:contain] pb-[env(safe-area-inset-bottom)]">
         {count === 0 ? (
           <p className="px-2 py-8 text-center text-sm text-muted">
             {t("nav.archiveEmpty")}
