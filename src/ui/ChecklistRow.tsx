@@ -437,7 +437,9 @@ function ChecklistRowImpl({
       {/* Foreground. On touch it slides over the action layers; on desktop it
           sits still (the menu replaces the gesture). A category header sits
           slimmer (less vertical padding) and on a lighter surface so it reads
-          as a grouping line rather than a real item. */}
+          as a grouping line rather than a real item. The background must stay
+          fully opaque: it slides over the archive / delete reveal layers on a
+          swipe, so a translucent tint would let them bleed through the row. */}
       <div
         {...foregroundHandlers}
         style={{
@@ -449,11 +451,7 @@ function ChecklistRowImpl({
         className={`relative flex flex-col px-[var(--density-row-px)] [touch-action:pan-y] ${
           category ? "py-1" : "py-[var(--density-row-py)]"
         } ${
-          dragging
-            ? "bg-surface-2"
-            : category
-              ? "bg-surface-2/50"
-              : "bg-page-bg"
+          dragging || category ? "bg-surface-2" : "bg-page-bg"
         } ${touchMenu ? "[-webkit-touch-callout:none] select-none" : ""} ${
           !desktop && swipe.animating ? "transition-transform duration-200" : ""
         }`}
