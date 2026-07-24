@@ -445,8 +445,16 @@ function ChecklistViewImpl() {
     onReveal: openArchiveDrawer,
   });
 
+  // On the phone the surface hugs the safe-area boundary top and bottom, like
+  // the side menu: the header sits just under the status bar / Dynamic Island
+  // (the raw inset already clears it, so the gap below it reads the same as the
+  // margin above the island), and the column runs to the very bottom edge —
+  // the scroll region reclaims the home-indicator inset as its own bottom
+  // padding (below) so the list stretches down instead of a dead gap lifting
+  // it. From `sm` up (roomier / pinned-sidebar layout) the top regains its
+  // 1.5rem breathing room and the bottom inset is 0.
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)]">
+    <div className="mx-auto flex h-full max-w-2xl flex-col px-4 pt-[env(safe-area-inset-top)] sm:pt-[calc(1.5rem+env(safe-area-inset-top))]">
       <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
         <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
           <ChecklistGlyphButton
@@ -486,9 +494,14 @@ function ChecklistViewImpl() {
         </div>
       </header>
 
+      {/* The scroll region fills to the very bottom edge; its bottom padding
+          keeps the last item clear of the floating (+) button (6rem) and the
+          home indicator (the safe-area inset), so the list can stretch all the
+          way down rather than stopping short above a padded-off gap. On `sm`
+          the (+) is an in-flow button below the list, so no reserve is needed. */}
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 [overscroll-behavior:contain] overflow-y-auto pb-24 sm:pb-0"
+        className="min-h-0 flex-1 [overscroll-behavior:contain] overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-0"
       >
         {addItemPosition === "top" && draftRow}
         {items.length === 0 ? (
