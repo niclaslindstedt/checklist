@@ -5,10 +5,12 @@ import { clearLogs, getLogs, setDevModeEnabled } from "../../src/dev/logger.ts";
 import { encryptText } from "../../src/storage/crypto.ts";
 import { BLOB_FILE_NAME } from "../../src/storage/directory-adapter.ts";
 import {
+  DROPBOX_APP_FOLDER,
   createDropboxAdapter,
   createDropboxSettingsStore,
   deleteDropboxNamespace,
   dropboxApiArg,
+  dropboxWebUrl,
 } from "../../src/storage/dropbox/index.ts";
 import { parse, serialize } from "../../src/storage/serialize.ts";
 import type { Snapshot } from "../../src/domain/types.ts";
@@ -229,5 +231,25 @@ describe("dropbox adapter (markdown file store)", () => {
 describe("dropboxApiArg", () => {
   it("escapes characters above U+007F to \\uXXXX", () => {
     expect(dropboxApiArg({ path: "/städ" })).toBe('{"path":"/st\\u00e4d"}');
+  });
+});
+
+describe("app folder", () => {
+  // The name must match the "App folder" on the Dropbox app registration:
+  // it's the path the sync-details dialog shows and the folder the
+  // "Open in Dropbox" link opens, so a drifted value is a dead link.
+  // `VITE_DROPBOX_APP_FOLDER` is unset under test, pinning the default.
+  it("defaults to the upstream app's folder name", () => {
+    expect(DROPBOX_APP_FOLDER).toBe("free-checklist");
+  });
+
+  it("builds a web URL under Apps/<app folder>/<namespace>", () => {
+    expect(dropboxWebUrl("default")).toBe(
+      `https://www.dropbox.com/home/Apps/${DROPBOX_APP_FOLDER}/default`,
+    );
+  });
+
+  it("percent-encodes a namespace folder with spaces", () => {
+    expect(dropboxWebUrl("my lists")).toContain("/my%20lists");
   });
 });

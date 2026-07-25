@@ -55,7 +55,7 @@ const log = createLogger("dropbox");
 //
 // The matching app is registered at
 // https://www.dropbox.com/developers/apps as "Scoped access" with
-// permission type "App folder" (folder name `checklist.niclaslindstedt.se`).
+// permission type "App folder" (folder name `DROPBOX_APP_FOLDER`, below).
 // Its redirect URIs must include `https://checklist.niclaslindstedt.se`
 // (prod) and `http://localhost:5173` (dev), no trailing slash —
 // `startDropboxAuth` derives the URI from `window.location.origin` and
@@ -66,10 +66,23 @@ export function isDropboxConfigured(): boolean {
   return DROPBOX_APP_KEY.length > 0;
 }
 
-// Public folder name inside the user's Dropbox `Apps/` directory. This
-// matches the Dropbox app registration's "App folder" name and is what
-// the user sees when browsing Dropbox in their file manager.
-export const DROPBOX_APP_FOLDER = "checklist.niclaslindstedt.se";
+// Public folder name inside the user's Dropbox `Apps/` directory — the
+// "App folder" name on the Dropbox app registration, and what the user
+// sees when browsing Dropbox in their file manager.
+//
+// Display-only: an app-folder-scoped Dropbox app addresses everything
+// relative to that folder, so no API path ever carries this name. It is
+// what the sync-details dialog shows as the file location and what the
+// "Open in Dropbox" link points at, so a wrong value here is a wrong path
+// and a dead link, not a failed sync.
+//
+// Read from a build-time env var (`VITE_DROPBOX_APP_FOLDER`, a GitHub
+// Actions *repository variable* rather than a secret — the name is public
+// either way, and a variable is visible in the repo settings) so a fork
+// whose own Dropbox app uses a different folder name only has to set it.
+// Unset or blank falls back to the upstream app's folder.
+export const DROPBOX_APP_FOLDER =
+  import.meta.env.VITE_DROPBOX_APP_FOLDER || "free-checklist";
 
 /** `/<namespace>` — the folder a namespace's markdown files live under. */
 export function dropboxNamespacePath(namespace: string): string {
