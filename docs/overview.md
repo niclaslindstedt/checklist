@@ -1979,7 +1979,12 @@ under `/<namespace>/checklists/` (`deleteDropboxNamespace` removes the
 whole folder). Uses PKCE OAuth with refresh tokens and a silent
 access-token refresh on 401 (then `AuthError`); a 429 surfaces as
 `RateLimitError`. `isDropboxConfigured()` gates the connect button on the
-build-time app key.
+build-time app key. `DROPBOX_APP_FOLDER` names the scoped folder itself
+(`free-checklist`, overridable at build time with
+`VITE_DROPBOX_APP_FOLDER`): an app-folder-scoped app addresses everything
+relative to that folder, so the name never reaches an API path — it is
+display-only, feeding the `Apps/<app folder>/<namespace>` file location in
+the sync-details modal and the `dropboxWebUrl` "Open in Dropbox" link.
 
 ### Google Drive backend
 

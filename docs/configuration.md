@@ -118,6 +118,33 @@ untouched. The Default namespace can't be deleted, and your existing
 single checklist is migrated into it automatically the first time a
 cloud backend loads.
 
+### Inside a namespace folder
+
+A namespace folder isn't only lists, which is why the checklists get a
+`checklists/` subfolder of their own rather than sitting loose at the
+namespace root:
+
+```
+default/                ← one namespace
+├── checklists/         ← your checklists, one `.md` per list
+│   ├── groceries-1a2b3c.md
+│   └── Trips/          ← a list folder, mirrored as a real subdirectory
+│       └── japan-9f8e7d.md
+├── templates/          ← your templates, one `.md` per template
+│   └── packing-4d5e6f.md
+├── folders.json        ← the list-folder registry (folder ids → display names)
+└── checklist.json      ← only when encryption is on: the whole document as one envelope
+```
+
+`templates/` is the sibling that makes the split necessary — a checklist
+`.md` and a template `.md` are different kinds of document, and separating
+them keeps a load from having to open every file to find out which is
+which. `folders.json` and `checklist.json` are namespace-level metadata
+that belong *beside* the lists, not among them. Keeping the two document
+kinds in their own directories also means your list folders (which are
+mirrored as real subdirectories under `checklists/`) can be named anything
+— including "templates" — without colliding with the layout.
+
 ### App settings on a file-based backend
 
 Your app settings (the **Theme**, **General**, and **Lists** preferences)
@@ -127,7 +154,7 @@ file at the app-folder root**, *beside* the namespace folders rather than
 inside one:
 
 ```
-checklist.niclaslindstedt.se/   ← the app folder (Dropbox "Apps/" folder, Drive "checklist/", your picked folder)
+free-checklist/                 ← the app folder (Dropbox "Apps/" folder, Drive "checklist/", your picked folder)
 ├── settings.json               ← your app settings, shared by every namespace
 ├── namespaces.json             ← your list of namespaces, so it follows you across devices
 ├── default/                    ← the Default namespace's checklists
@@ -135,6 +162,9 @@ checklist.niclaslindstedt.se/   ← the app folder (Dropbox "Apps/" folder, Driv
 └── family/                     ← another namespace's checklists
     └── checklists/…
 ```
+
+(The Dropbox app folder's name comes from `VITE_DROPBOX_APP_FOLDER` — see
+[Build-time configuration](#build-time-configuration).)
 
 So one settings file is shared by every namespace and travels with the
 folder you sync or share. On first connect the file is **seeded** from this
@@ -186,6 +216,7 @@ to each provider's allowed JavaScript origins / redirect URIs.
 | `VITE_BASE`       | `vite.config.ts`    | `/`     | Public path the bundle is served from. The Pages workflow sets it per slot: `/` for the released production build, `/preview/` for `main`, `/branch/` for the optional feature-branch preview. |
 | `VITE_DONATE_URL` | `src/ui/SideMenu.tsx` | _unset_ | When set to a URL, the side menu shows a **Donate** entry linking to it. Unset or blank hides the entry. See [`.env.example`](../.env.example). |
 | `VITE_DROPBOX_APP_KEY` | `src/storage/dropbox/` | _unset_ | Dropbox app key (PKCE public client). Unset hides the Dropbox backend in the picker. |
+| `VITE_DROPBOX_APP_FOLDER` | `src/storage/dropbox/` | `free-checklist` | Name of the Dropbox **App folder** the registered app owns. Display-only — it is the file location shown in the sync-details dialog and the target of the "Open in Dropbox" link; API paths are already relative to the app folder. Set it if your fork's Dropbox app uses a different folder name. |
 | `VITE_GOOGLE_CLIENT_ID` | `src/storage/gdrive/` | _unset_ | Google OAuth client id (GIS token client). Unset hides the Google Drive backend in the picker. |
 
 For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
@@ -193,6 +224,12 @@ For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
 secrets** and threaded into every build slot (production, `/preview/`,
 and `/branch/`) by `.github/workflows/pages.yml`. A fork enables the
 cloud backends by adding the same-named secrets to its own repository.
+
+`VITE_DROPBOX_APP_FOLDER` is a GitHub Actions **repository variable**
+instead — the folder name is public either way (every Dropbox user of the
+app sees it in their `Apps/` directory), and a variable is readable in the
+repository settings, so the deployed value can be checked against the
+Dropbox app registration without guessing.
 
 ## Things that are deliberately not configurable
 

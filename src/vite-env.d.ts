@@ -23,6 +23,11 @@ interface ImportMetaEnv {
   // storage backend in the settings picker. See
   // `src/storage/dropbox/index.ts`.
   readonly VITE_DROPBOX_APP_KEY?: string;
+  // Name of the Dropbox app folder the registered app owns, shown as the
+  // file location in the sync-details dialog and used to build the
+  // "Open in Dropbox" link. Display-only. Unset or blank falls back to
+  // the upstream app's folder. See `src/storage/dropbox/index.ts`.
+  readonly VITE_DROPBOX_APP_FOLDER?: string;
   // Google OAuth client id (GIS token client). Unset disables the
   // Google Drive storage backend. See `src/storage/gdrive/index.ts`.
   readonly VITE_GOOGLE_CLIENT_ID?: string;

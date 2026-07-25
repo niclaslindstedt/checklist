@@ -58,6 +58,23 @@ describe("SyncLogPanel", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
+  it("renders the entries newest-first", () => {
+    createLogger("dropbox").info("oldest entry");
+    createLogger("dropbox").info("middle entry");
+    createLogger("dropbox").info("newest entry");
+
+    render(<SyncLogPanel t={t} />);
+
+    // Descending order on screen: the most recent round-trip sits at the
+    // top, where a reader looks first — no scrolling to the bottom of the
+    // panel to see what sync just did.
+    const rows = screen.getAllByRole("listitem").map((li) => li.textContent);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toContain("newest entry");
+    expect(rows[1]).toContain("middle entry");
+    expect(rows[2]).toContain("oldest entry");
+  });
+
   it("copies the in-scope entries chronologically to the clipboard", async () => {
     const writeText = vi.fn(async (_text: string) => {});
     Object.assign(navigator, { clipboard: { writeText } });
