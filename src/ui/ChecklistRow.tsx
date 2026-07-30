@@ -157,6 +157,14 @@ type Props = {
    * the held-finger menu. Left unset on desktop, which uses `onContextMenu`.
    */
   onLongPress?: (id: string, x: number, y: number) => void;
+  /**
+   * Render the row as part of a **template** rather than a live list: the
+   * checkbox is drawn but inert, and the swipe-to-archive gesture stands down
+   * (a blueprint has nothing to archive). Everything else — editing, nesting,
+   * reordering, notes, deadlines, delete — works exactly as it does on a list,
+   * which is the point: a template is edited with the same hands.
+   */
+  templateMode?: boolean;
 };
 
 function ChecklistRowImpl({
@@ -187,6 +195,7 @@ function ChecklistRowImpl({
   style,
   onContextMenu,
   onLongPress,
+  templateMode = false,
 }: Props) {
   const indent = depth * INDENT_PER_LEVEL;
   // A sub-item reads as a genuine child line: smaller title text and a smaller
@@ -197,7 +206,12 @@ function ChecklistRowImpl({
   // item — see the styling below. Only the two bulk sweeps and this styling
   // treat it specially (see `ChecklistItem.category`).
   const category = Boolean(item.category);
-  const archive = useCallback(() => onArchive(item.id), [onArchive, item.id]);
+  // A template row has nothing to archive, so the swipe's archive commit is
+  // wired to a no-op there — the gesture still reveals the delete side.
+  const archive = useCallback(() => {
+    if (templateMode) return;
+    onArchive(item.id);
+  }, [onArchive, item.id, templateMode]);
   const swipe = useRowSwipe(archive);
   const longPress = useLongPress(
     useCallback((x, y) => onLongPress?.(item.id, x, y), [onLongPress, item.id]),
@@ -339,6 +353,7 @@ function ChecklistRowImpl({
           focusBody={editFocusBody}
           notesDisabled={notesDisabled}
           capitalize={capitalizeItems}
+          templateMode={templateMode}
           onToggle={() => onToggle(item.id)}
           onSubmit={submitEdit}
           onAddAfter={handleAddAfter}
@@ -514,7 +529,14 @@ function ChecklistRowImpl({
           <Checkbox
             checked={item.checked}
             onChange={() => onToggle(item.id)}
-            ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
+            ariaLabel={
+              templateMode
+                ? t("app.templateItem")
+                : item.checked
+                  ? t("app.uncheck")
+                  : t("app.check")
+            }
+            disabled={templateMode}
             size={nested || category ? "sm" : "md"}
             className="p-2.5 -m-2.5"
           />

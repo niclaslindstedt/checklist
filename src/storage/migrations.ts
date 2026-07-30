@@ -26,10 +26,26 @@ export type MigrationTable = Record<number, MigrationStep>;
 // Typed as a literal so `serialize.ts` can stamp the same constant onto
 // every freshly-written document. Bump this and add a step below in the
 // same commit when the persisted shape changes.
-export const LATEST_VERSION = 1 as const;
+export const LATEST_VERSION = 2 as const;
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Bring a v1 template item up to the `ChecklistItem` shape templates now share
+ * with checklists: give it the `checked: false` every checklist item carries.
+ * v1 template items were flat `{ id, title, notes?, required? }` records with
+ * no nesting, so there are no `children` to recurse into — but we recurse
+ * defensively anyway, since a hand-edited document may carry them.
+ */
+function upgradeTemplateItem(raw: unknown): unknown {
+  if (!isObj(raw)) return raw;
+  const next: Record<string, unknown> = { ...raw, checked: false };
+  if (Array.isArray(raw.children)) {
+    next.children = raw.children.map(upgradeTemplateItem);
+  }
+  return next;
 }
 
 const migrations: MigrationTable = {
@@ -42,6 +58,23 @@ const migrations: MigrationTable = {
     version: 1,
     templates: Array.isArray(doc.templates) ? doc.templates : [],
     checklists: Array.isArray(doc.checklists) ? doc.checklists : [],
+  }),
+  // v1 → v2: templates gained the checklist item model. A v1 template held a
+  // flat `Item[]` (`{ id, title, notes?, required? }`); a v2 template holds the
+  // same `ChecklistItem[]` a checklist does, so it can capture sub-items,
+  // categories, and deadlines. Only the `checked` flag is actually missing from
+  // the old records — every richer field is optional — so the step stamps it on
+  // and leaves the rest alone. Checklists are untouched.
+  1: (doc) => ({
+    ...doc,
+    version: 2,
+    templates: Array.isArray(doc.templates)
+      ? doc.templates.map((t) =>
+          isObj(t) && Array.isArray(t.items)
+            ? { ...t, items: t.items.map(upgradeTemplateItem) }
+            : t,
+        )
+      : [],
   }),
 };
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createChecklist } from "../../src/domain/checklists.ts";
 import { emptySnapshot, type Snapshot } from "../../src/domain/types.ts";
+import { LATEST_VERSION } from "../../src/storage/migrations.ts";
 import {
   parse,
   parseFolders,
@@ -43,7 +44,7 @@ describe("serialize", () => {
 
   it("stamps the latest version onto serialized output", () => {
     const text = serialize(emptySnapshot());
-    expect(JSON.parse(text).version).toBe(1);
+    expect(JSON.parse(text).version).toBe(LATEST_VERSION);
     expect(text.endsWith("\n")).toBe(true);
   });
 

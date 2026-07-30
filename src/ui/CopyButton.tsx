@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { unlock } from "../achievements/bus.ts";
 import { activeCategories } from "../domain/checklists.ts";
-import type { Checklist } from "../domain/types.ts";
+import type { ItemList } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { checklistBodyMarkdown } from "../storage/markdown/codec.ts";
 import { FloatingPanel } from "./FloatingPanel.tsx";
@@ -55,7 +55,7 @@ export function CopyButton({
   checklist,
   includeArchived,
 }: {
-  checklist: Checklist;
+  checklist: ItemList;
   includeArchived: boolean;
 }) {
   const t = useT();

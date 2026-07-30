@@ -119,9 +119,13 @@ export function ShowcasePage() {
               next due date.
             </li>
             <li>
-              <strong className="text-fg-bright">Reuse templates</strong> — turn
-              a recurring list into a template and spin up a fresh copy whenever
-              you need it.
+              <strong className="text-fg-bright">Reuse templates</strong> —
+              right-click a list (or swipe it left) and save it as a template:
+              sub-items, categories, notes and deadlines are all captured, every
+              box unchecked. Stamp a fresh, independent copy out of it whenever
+              you need one — checking things off a copy never changes the
+              template, and editing the template never changes copies you
+              already made.
             </li>
             <li>
               <strong className="text-fg-bright">

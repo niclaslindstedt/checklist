@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type {
   Checklist,
+  ChecklistItem,
   Folder,
   Snapshot,
   Template,
@@ -22,8 +23,15 @@ const template: Template = {
   id: "tpl-aaaaaa",
   name: "Trip packing",
   items: [
-    { id: "x", title: "Passport", required: true },
-    { id: "y", title: "Charger", notes: "USB-C" },
+    { id: "x", title: "Passport", checked: false, required: true },
+    { id: "y", title: "Charger", checked: false, notes: "USB-C" },
+    {
+      id: "z",
+      title: "Documents",
+      checked: false,
+      category: true,
+      children: [{ id: "z1", title: "Insurance", checked: false }],
+    },
   ],
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
@@ -46,8 +54,13 @@ const checklist: Checklist = {
 
 // Compare ignoring item ids, which the codec regenerates deterministically.
 function normalize(snapshot: Snapshot): unknown {
-  const stripItems = (items: { id: string }[]) =>
-    items.map(({ id: _id, ...rest }) => rest);
+  // Ids are regenerated on parse (they aren't stored in the markdown), so the
+  // comparison drops them — recursively, since both checklists and templates
+  // carry nested sub-items.
+  const stripItems = (items: ChecklistItem[]): unknown[] =>
+    items.map(({ id: _id, children, ...rest }) =>
+      children ? { ...rest, children: stripItems(children) } : rest,
+    );
   return {
     templates: snapshot.templates.map((t) => ({
       ...t,
@@ -73,14 +86,59 @@ describe("markdown codec", () => {
     expect(md.endsWith("\n")).toBe(true);
   });
 
-  it("renders a template as a plain bullet list", () => {
+  it("renders a template as a nested, all-unchecked task list", () => {
     const md = templateToMarkdown(template);
     expect(md).toContain("type: template");
     expect(md).toContain("# Trip packing");
-    expect(md).toContain("- Passport *(required)*");
-    expect(md).toContain("- Charger");
+    expect(md).toContain("- [ ] Passport *(required)*");
+    expect(md).toContain("- [ ] Charger");
     expect(md).toContain("  USB-C");
-    expect(md).not.toContain("[ ]");
+    // Templates carry the checklist item model, so categories and sub-items
+    // render exactly as they do on a list.
+    expect(md).toContain("- [ ] Documents *(category)*");
+    expect(md).toContain("  - [ ] Insurance");
+    // A stored template holds no checked state and never an archive section.
+    expect(md).not.toContain("[x]");
+    expect(md).not.toContain("## Archived");
+  });
+
+  it("carries a template's icon and colour through the round trip", () => {
+    const styled: Template = { ...template, glyph: "plane", color: "#ff8800" };
+    const parsed = parseEntry(templateToMarkdown(styled));
+    expect(parsed?.kind).toBe("template");
+    if (parsed?.kind === "template") {
+      expect(parsed.template.glyph).toBe("plane");
+      expect(parsed.template.color).toBe("#ff8800");
+    }
+  });
+
+  it("still reads a pre-v2 template file (flat plain bullets)", () => {
+    // Templates used to render as a flat `- title` list with no checkboxes and
+    // no nesting. Those files must keep loading, as unchecked items.
+    const legacy = [
+      "---",
+      "type: template",
+      "id: tpl-legacy",
+      "created: 2026-01-01T00:00:00.000Z",
+      "updated: 2026-01-01T00:00:00.000Z",
+      "---",
+      "",
+      "# Old template",
+      "",
+      "- Passport *(required)*",
+      "- Charger",
+      "  USB-C",
+      "",
+    ].join("\n");
+    const parsed = parseEntry(legacy);
+    expect(parsed?.kind).toBe("template");
+    if (parsed?.kind === "template") {
+      const items = parsed.template.items;
+      expect(items.map((i) => i.title)).toEqual(["Passport", "Charger"]);
+      expect(items.every((i) => i.checked === false)).toBe(true);
+      expect(items[0]?.required).toBe(true);
+      expect(items[1]?.notes).toBe("USB-C");
+    }
   });
 
   it("round-trips a snapshot through files (modulo item ids)", () => {

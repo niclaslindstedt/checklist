@@ -51,31 +51,46 @@ function sampleTemplate(): Template {
   return {
     ...createTemplate({ id: "t1", name: "Trip", now: NOW }),
     items: [
-      { id: "i1", title: "Passport", required: true },
-      { id: "i2", title: "Sunglasses" },
+      { id: "i1", title: "Passport", checked: false, required: true },
+      { id: "i2", title: "Sunglasses", checked: false },
     ],
   };
 }
 
+// A deterministic id factory for `instantiate`, which mints a fresh id per
+// node so the stamped-out list is independent of the template it came from.
+function ids(prefix: string): () => string {
+  let n = 0;
+  return () => `${prefix}${++n}`;
+}
+
 describe("checklists", () => {
   it("instantiates an unchecked copy that points at its template", () => {
-    const c = instantiate(sampleTemplate(), "c1", NOW);
+    const c = instantiate(sampleTemplate(), "c1", NOW, ids("n"));
     expect(c.templateId).toBe("t1");
     expect(c.items.every((i) => i.checked === false)).toBe(true);
   });
 
+  it("mints fresh item ids so the copy is independent of its template", () => {
+    const tpl = sampleTemplate();
+    const c = instantiate(tpl, "c1", NOW, ids("n"));
+    expect(c.items.map((i) => i.id)).toEqual(["n1", "n2"]);
+    // Editing the copy can't reach back into the template's own nodes.
+    expect(tpl.items.map((i) => i.id)).toEqual(["i1", "i2"]);
+  });
+
   it("toggles a single item without mutating the source", () => {
-    const c = instantiate(sampleTemplate(), "c1", NOW);
-    const toggled = toggleItem(c, "i1", NOW);
+    const c = instantiate(sampleTemplate(), "c1", NOW, ids("n"));
+    const toggled = toggleItem(c, "n1", NOW);
     expect(c.items[0]?.checked).toBe(false);
     expect(toggled.items[0]?.checked).toBe(true);
     expect(progress(toggled)).toEqual({ checked: 1, total: 2 });
   });
 
   it("is complete only when all required items are checked", () => {
-    const c = instantiate(sampleTemplate(), "c1", NOW);
+    const c = instantiate(sampleTemplate(), "c1", NOW, ids("n"));
     expect(isComplete(c)).toBe(false);
-    expect(isComplete(toggleItem(c, "i1", NOW))).toBe(true);
+    expect(isComplete(toggleItem(c, "n1", NOW))).toBe(true);
   });
 });
 

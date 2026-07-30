@@ -28,8 +28,10 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   a theme picker: eleven presets (One Dark/Light, Dracula, Monokai, GitHub
   Dark/Light, Solarized Light, Quiet Light, Excel, System) plus a fully
   custom theme, four fonts, and an adjustable text size.
-- **Reusable templates.** Define a checklist once and stamp out as
-  many instances as you need. *(Data model in place; UI on the roadmap.)*
+- **Reusable templates.** Save any list as a template — sub-items,
+  categories, notes, required flags and deadlines all captured, every box
+  unchecked — then stamp out as many independent copies as you need. A
+  template and the lists made from it never write back into each other.
 - **Copy & paste lists.** Copy the whole active checklist to your
   clipboard from the header — plain `- [ ]` / `- [x]` task markdown,
   checked items still checked — and paste text straight into a list to
@@ -129,8 +131,7 @@ native module): `cd native && npm install && npm run ios`. See
 The feature below is still on the roadmap — the data model and module
 boundaries are in place, but the UI is not wired up yet:
 
-4. **Templates & URL sharing.** Stamp checklists out of reusable
-   templates, and share a checklist as a URL whose `#` fragment carries
+4. **URL sharing.** Share a checklist as a URL whose `#` fragment carries
    the gzipped JSON (never sent to a server).
 
 ## Configuration

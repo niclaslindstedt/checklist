@@ -939,16 +939,20 @@ the hooks stay testable without a `ToastProvider`.
 `Snapshot` (`src/domain/types.ts`) — the full persisted document: a
 `templates[]` array and a `checklists[]` array. `emptySnapshot()` mints
 the empty one. This is the unit every storage backend serialises (see
-Serialize / parse). The UI works against one **active** checklist at a
-time, chosen from `checklists[]` by the switcher (see Checklist switcher
-/ multiple checklists); the template surfaces are still on the roadmap.
+Serialize / parse). The UI works against one **open** entry at a time —
+an active checklist chosen from `checklists[]` by the switcher (see
+Checklist switcher / multiple checklists), or a template opened on top of
+it from `templates[]` (see Template mode).
 
 ### Checklist
 
-`Checklist` (`src/domain/types.ts`) — one checkable list instance:
-`id`, a `templateId` (empty string for an ad-hoc list not stamped from
-a template), `name`, `items[]`, and timestamps. Pure operations over it
-live in `src/domain/checklists.ts`.
+`Checklist` (`src/domain/types.ts`) — one checkable list instance. It
+extends the shared `ItemList` base (see The shared list shape) with
+`templateId` (empty for an ad-hoc list not stamped from a template),
+`archived`, and `folderId`; the base supplies `id`, `name`, `items[]`,
+the optional `glyph` / `color`, and the timestamps. Pure operations over
+it live in `src/domain/checklists.ts` — and, because a `Template` extends
+the same base, the item-level ones serve both.
 
 ### Checklist item
 
@@ -1311,21 +1315,123 @@ item is checked. Required-item gating has no UI surface yet.
 
 ## Templates
 
+### The shared list shape
+
+`ItemList` (`src/domain/types.ts`) — the base a `Checklist` and a
+`Template` both extend: `version`, `id`, `name`, `items:
+ChecklistItem[]`, an optional `glyph` / `color`, and timestamps. A
+`Checklist` adds `templateId`, `archived`, and `folderId`; a `Template`
+adds nothing at all.
+
+That shared base is the load-bearing decision behind the whole feature.
+Because a template holds the **same item model** a checklist does, every
+item operation is generic over it — `addItem`, `editItem`, `deleteItem`,
+`toggleItem`, `setCategory`, `setItemDeadline`, `moveItemInto`,
+`displayItems`, `progress`, … are all `<L extends ItemList>(list: L, …):
+L`, funnelling their one write through `withItems`
+(`src/domain/item-tree.ts`). So a template is edited by *exactly* the
+same verbs, the same hook, and the same view as a list, rather than a
+parallel set that would drift apart. `cloneItemsUnchecked` (also
+`item-tree.ts`) is the shared deep-copy both directions of the round trip
+use: it keeps title, notes, required, category, children, deadline, and
+recurrence, drops `checked` / `checkedAt` / `archived`, and mints a fresh
+id per node from an injected factory (the domain layer never generates
+ids itself).
+
 ### Template
 
-`Template` (`src/domain/types.ts`) — a reusable, named list of `Item`s
-with a stable `id` and timestamps. Pure operations live in
-`src/domain/templates.ts` (`createTemplate`, `renameTemplate`,
-`addItem`, `removeItem`). The data model and domain layer are in place;
-there is **no template UI yet** — templates appear only in the dev seed
-and in shareable/example JSON. New template surfaces go in `src/ui/`.
+`Template` (`src/domain/types.ts`) — a reusable, named list of items,
+structurally a `Checklist` minus the fields that only mean something for
+a live instance. Its items are full `ChecklistItem`s, so sub-items,
+category headers, notes, required flags, and deadlines all survive being
+captured. Every item in a stored template is unchecked; `checked` rides
+along only because the item model is shared, never as meaningful state.
+
+Template-specific operations live in `src/domain/templates.ts`
+(`createTemplate`, `extractTemplate`, `renameTemplate`, `addTemplate`,
+`removeTemplate`) — item-level editing is the shared generic set above.
+Templates are stored **alongside** checklists: `Snapshot.templates[]`
+sits next to `Snapshot.checklists[]` in the same document, and the
+file/cloud backends write each one as its own markdown file under
+`templates/` beside `checklists/` (see `snapshotToFiles`). They are not
+filed into folders — one flat group per namespace.
+
+In the sidebar they get their own **Templates** group below the scrolling
+checklist list (`renderTemplateRow` in `src/ui/SideMenu.tsx`), wearing
+`TemplateIcon` — a sheet stacked behind another with dashed rows — unless
+the template has picked its own glyph. The group is hidden entirely until
+the first template exists.
+
+### Save as template
+
+`extractTemplate` (`src/domain/templates.ts`) — captures a checklist as a
+template: its name, its glyph and colour, and its whole item tree copied
+through `cloneItemsUnchecked`, so nesting, categories, notes, required
+flags, and deadlines all come across with every box unchecked.
+**Archived items are skipped** — the user already hid them from the list
+being captured. Fresh ids throughout make the template independent of its
+source: editing either side afterwards never touches the other.
+
+Driven by `saveChecklistAsTemplate` (`src/app/use-checklist-lists.ts`),
+which suffixes a colliding name the way a new list is suffixed
+(`nextChecklistName`). Reached from the sidebar row's right-click menu on
+desktop and from the swipe-left strip on touch — a long-press there is
+already spoken for by the drag-to-file gesture (see `checklist-drag.tsx`),
+so the strip is where the touch action lives. Offered on the *last*
+remaining list too: capturing a list neither removes nor archives it, so
+the "always keep one list on screen" guard doesn't apply. Unlocks the
+**Blueprint** trophy through a derived predicate over the document gaining
+its first template.
 
 ### Instantiate a template
 
-`instantiate` (`src/domain/checklists.ts`) — stamps an independent,
-all-unchecked `Checklist` out of a template, copying its items and
-recording the source `templateId`. The "stamp out a checklist from a
-template" verb; UI on the roadmap.
+`instantiate` (`src/domain/checklist-ops.ts`) — stamps an independent,
+all-unchecked `Checklist` out of a template: the same
+`cloneItemsUnchecked` copy in the other direction, carrying the
+template's glyph and colour and recording the source `templateId` as a
+backward reference only. Fresh ids per node again, so the list and the
+template stay fully independent — checking things off never writes back,
+and later template edits never reach lists already stamped from it.
+
+Driven by `createChecklistFromTemplate`
+(`src/app/use-checklist-lists.ts`), which selects the new list (closing
+the template behind it) and unlocks the **Stamped Out** trophy. Reached
+from the banner button while a template is open, and from the template
+row's right-click menu.
+
+### Template mode
+
+The state where the checklist view is showing a template instead of a
+list. `useChecklistLists` keeps a device-local `openTemplateId` *on top
+of* the checklist selection and derives three things from it:
+`activeTemplate`, `templateMode`, and `openList` (the open template, else
+`activeList`). The underlying checklist selection is deliberately left
+alone, so the archive, the widget mirror, and the notification scheduler
+keep working against a real list, and closing the template lands back
+where the user came from. It is not persisted to the per-namespace
+cursor: opening a template is an inspect-and-edit detour, so a reload
+should return to the list the user actually works in.
+
+`useChecklistEdits` takes `openList` and a `templateMode` flag. Its
+`commit` folds the edit back into whichever collection the entry came
+from (an id only ever exists in one), and `findOwner` searches the open
+collection first while still falling back to checklists so the archive
+view keeps resolving its rows. The verbs that produce or consume checked
+state — `toggle`, `checkAll`, `uncheckAll`, `archive`,
+`archiveFinished`, `deleteFinished` — stand down in template mode as a
+backstop against writing progress into a blueprint.
+
+In the UI the difference is deliberately small, because the point is that
+a template is edited with the same hands: adding, renaming, reordering,
+nesting, categorising, notes, deadlines, and delete all behave exactly as
+they do on a list. What changes is that the checkboxes render **inert** —
+`disabled` on `Checkbox` (`src/ui/form/Checkbox.tsx`) draws a dashed
+outline and refuses to report a change — and the affordances that mean
+nothing for a blueprint stand down: the progress counter, the archive
+drawer and its swipe-up reveal, the row menu's Archive entry, and the
+add-button's bulk finish sweeps. A strip under the header explains why
+the boxes can't be ticked and carries the **"New list from this"**
+action.
 
 ## Sharing
 
@@ -2715,8 +2821,14 @@ in place; the share UI is on the roadmap.
 
 ### Use a template
 
-Stamp a checklist out of a reusable template (`instantiate`). Data model
-in place; the template UI is on the roadmap.
+Open the template from the sidebar's Templates group and press "New list
+from this" (or right-click the template row) → `instantiate`.
+
+### Save a list as a template
+
+Right-click a list in the side menu and choose "Save as template"
+(desktop), or swipe it left and tap the template button (touch) →
+`extractTemplate`.
 
 ## Conventions for editing this file
 

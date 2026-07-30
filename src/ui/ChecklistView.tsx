@@ -30,7 +30,13 @@ import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import { useListReorder } from "./hooks/useListReorder.ts";
 import { useReorderFlip } from "./hooks/useReorderFlip.ts";
 import { useSwipeUpReveal } from "./hooks/useSwipeUpReveal.ts";
-import { ArchiveIcon, ClockIcon, FolderIcon, TrashIcon } from "./icons.tsx";
+import {
+  ArchiveIcon,
+  ClockIcon,
+  FolderIcon,
+  TemplateIcon,
+  TrashIcon,
+} from "./icons.tsx";
 
 // Presentational shell for the checklist: a quiet, monospaced, single
 // column reminiscent of a plain-text editor. State-free — it reads the
@@ -73,11 +79,15 @@ function ChecklistViewImpl() {
     archivedGroups,
     reorder,
     sync,
-    checklists,
     activeChecklistId,
-    activeList,
+    openList,
+    templateMode,
+    activeTemplate,
+    createChecklistFromTemplate,
     renameChecklist,
+    renameTemplate,
     setChecklistAppearance,
+    setTemplateAppearance,
     addItemPosition,
     disableItemNotes,
     showItemCount,
@@ -86,8 +96,12 @@ function ChecklistViewImpl() {
     animateReorder,
   } = useChecklistContext();
   const t = useT();
-  const activeName =
-    checklists.find((c) => c.id === activeChecklistId)?.name ?? t("app.title");
+  // The view renders whichever entry is open — the active checklist, or a
+  // template on top of it. They share a shape (`ItemList`), so everything below
+  // reads from `openList` and only the handful of affordances that are
+  // meaningless for a blueprint branch on `templateMode`.
+  const openId = templateMode ? activeTemplate!.id : activeChecklistId;
+  const activeName = openList.name || t("app.title");
 
   // Which sub-lists are collapsed (children hidden). Local, non-persisted view
   // state — the same shape as a revealed note body: expanded by default, a tap
@@ -121,10 +135,9 @@ function ChecklistViewImpl() {
 
   // Archived titles feed the composer's typeahead: a previously archived
   // item ("Carrots") is re-added with one press instead of retyped.
-  const suggestionPool = useMemo(
-    () => archivedTitlePool(activeList),
-    [activeList],
-  );
+  // A template carries no archive, so the typeahead is empty there — its pool
+  // comes from the open entry either way.
+  const suggestionPool = useMemo(() => archivedTitlePool(openList), [openList]);
 
   // A row can't be dropped onto itself or one of its own descendants (that
   // would orphan the subtree). The reorder hook consults this before offering
@@ -212,6 +225,9 @@ function ChecklistViewImpl() {
   // stable across edits — the menu is assembled at open time, not on render.
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  // Read at menu-open time for the same reason, so the builder stays stable.
+  const templateModeRef = useRef(templateMode);
+  templateModeRef.current = templateMode;
   // The actions the row menu offers for `id`, shared by the desktop
   // right-click and the touch long-press openers. A category toggle heads the
   // list — "Promote to category" on an item that has sub-items, or "Remove
@@ -233,24 +249,25 @@ function ChecklistViewImpl() {
           onSelect: () => setCategory(id),
         });
       }
-      menu.push(
-        {
-          label: t("app.setDeadline"),
-          icon: <ClockIcon className="h-4 w-4" />,
-          onSelect: () => openDeadline(id),
-        },
-        {
+      menu.push({
+        label: t("app.setDeadline"),
+        icon: <ClockIcon className="h-4 w-4" />,
+        onSelect: () => openDeadline(id),
+      });
+      // A template has no archive to send an item to — only delete.
+      if (!templateModeRef.current) {
+        menu.push({
           label: t("app.archive"),
           icon: <ArchiveIcon className="h-4 w-4" />,
           onSelect: () => archive(id),
-        },
-        {
-          label: t("app.delete"),
-          icon: <TrashIcon className="h-4 w-4" />,
-          danger: true,
-          onSelect: () => remove(id),
-        },
-      );
+        });
+      }
+      menu.push({
+        label: t("app.delete"),
+        icon: <TrashIcon className="h-4 w-4" />,
+        danger: true,
+        onSelect: () => remove(id),
+      });
       return menu;
     },
     [t, setCategory, archive, remove, openDeadline],
@@ -420,9 +437,15 @@ function ChecklistViewImpl() {
   // The active list's archived items, revealed by swiping up at the foot of
   // the list. Derived from the whole-document archive grouping, filtered to
   // this list — the drawer stays scoped to the list in front of the user.
+  // Scoped to the open checklist. A template never contributes an archive
+  // group (extraction leaves archived items behind), so this is empty in
+  // template mode and the swipe-up reveal never arms.
   const archivedForActive = useMemo(
-    () => archivedGroups.find((g) => g.id === activeChecklistId)?.items ?? [],
-    [archivedGroups, activeChecklistId],
+    () =>
+      templateMode
+        ? []
+        : (archivedGroups.find((g) => g.id === activeChecklistId)?.items ?? []),
+    [archivedGroups, activeChecklistId, templateMode],
   );
   const [archiveDrawerOpen, setArchiveDrawerOpen] = useState(false);
   const closeArchiveDrawer = useCallback(() => setArchiveDrawerOpen(false), []);
@@ -458,19 +481,27 @@ function ChecklistViewImpl() {
       <header className="mb-2 flex items-center justify-between gap-2 border-b border-line px-1 pb-3">
         <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-wide text-fg-bright">
           <ChecklistGlyphButton
-            glyph={activeList.glyph ?? null}
-            color={activeList.color ?? null}
+            glyph={openList.glyph ?? null}
+            color={openList.color ?? null}
             onChange={(patch) =>
-              setChecklistAppearance(activeChecklistId, patch)
+              templateMode
+                ? setTemplateAppearance(openId, patch)
+                : setChecklistAppearance(openId, patch)
             }
           />
           <ChecklistTitle
             name={activeName}
-            onRename={(next) => renameChecklist(activeChecklistId, next)}
+            onRename={(next) =>
+              templateMode
+                ? renameTemplate(openId, next)
+                : renameChecklist(openId, next)
+            }
           />
         </h1>
         <div className="flex shrink-0 items-center gap-2">
-          {showItemCount && (
+          {/* A template has no progress to report — every box is inert — so
+              the checked/total counter and its check-all dropdown stand down. */}
+          {showItemCount && !templateMode && (
             <ItemCount
               checked={checkedCount}
               total={visibleCount}
@@ -479,7 +510,7 @@ function ChecklistViewImpl() {
             />
           )}
           <CopyButton
-            checklist={activeList}
+            checklist={openList}
             includeArchived={includeArchivedInCopy}
           />
           {sync && (
@@ -493,6 +524,25 @@ function ChecklistViewImpl() {
           )}
         </div>
       </header>
+
+      {/* With a template open, a strip under the header does two jobs: it says
+          why the boxes can't be ticked, and it carries the action the whole
+          screen exists for — stamping a real list out of this blueprint. */}
+      {templateMode && (
+        <div className="mb-2 flex items-center justify-between gap-3 rounded-md border border-line bg-surface-2 px-3 py-2">
+          <span className="flex min-w-0 items-center gap-2 text-xs text-muted">
+            <TemplateIcon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{t("app.templateBannerHint")}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => createChecklistFromTemplate(openId)}
+            className="shrink-0 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-page-bg"
+          >
+            {t("app.templateUse")}
+          </button>
+        </div>
+      )}
 
       {/* The scroll region fills to the very bottom edge; its bottom padding
           keeps the last item clear of the floating (+) button (6rem) and the
@@ -558,6 +608,7 @@ function ChecklistViewImpl() {
                   }
                   onContextMenu={desktop ? openRowMenu : undefined}
                   onLongPress={desktop ? undefined : openRowMenuAt}
+                  templateMode={templateMode}
                 />
               );
               const out: React.ReactNode[] = [];
@@ -593,7 +644,9 @@ function ChecklistViewImpl() {
           onActivate={composer.startInline}
           onArchiveFinished={archiveFinished}
           onDeleteFinished={deleteFinished}
-          finishedCount={checkedCount}
+          // Nothing in a template is ever "finished", so the long-press bulk
+          // sweeps report nothing to sweep and the menu stays out of the way.
+          finishedCount={templateMode ? 0 : checkedCount}
         />
       )}
 
@@ -607,7 +660,7 @@ function ChecklistViewImpl() {
       )}
 
       <ArchivedDrawer
-        open={archiveDrawerOpen}
+        open={archiveDrawerOpen && !templateMode}
         onClose={closeArchiveDrawer}
         listName={activeName}
         items={archivedForActive}

@@ -116,8 +116,11 @@ names. Honour these when naming a new file, key, or string.
 
 | Term                                | Refers to                                                                          |
 | ----------------------------------- | --------------------------------------------------------------------------------- |
-| **Template**                        | `Template` (`src/domain/types.ts`); `src/domain/templates.ts`. [→](overview.md#template) |
-| **Instantiate a template** / **stamp out** | `instantiate` (`src/domain/checklists.ts`). [→](overview.md#instantiate-a-template) |
+| **Template** / **blueprint** / **preset** / **reusable list** | `Template` / `ItemList` (`src/domain/types.ts`); `src/domain/templates.ts`; the sidebar Templates group (`renderTemplateRow` in `src/ui/SideMenu.tsx`); `TemplateIcon` (`src/ui/icons/nav.tsx`). [→](overview.md#template) |
+| **Save as template** / **extract a template** / **capture a list** / **create template** | `extractTemplate` (`src/domain/templates.ts`); `saveChecklistAsTemplate` (`src/app/use-checklist-lists.ts`); the row menu entry + swipe-strip action in `src/ui/SideMenu.tsx` / `ChecklistRowStrip` (`src/ui/SideMenuRows.tsx`). [→](overview.md#save-as-template) |
+| **Instantiate a template** / **stamp out** / **new list from this** | `instantiate` (`src/domain/checklist-ops.ts`); `createChecklistFromTemplate` (`src/app/use-checklist-lists.ts`); the banner button in `src/ui/ChecklistView.tsx`. [→](overview.md#instantiate-a-template) |
+| **Template mode** / **open a template** / **disabled checkboxes** / **inert boxes** | `templateMode` / `openList` / `activeTemplate` (`src/app/use-checklist-lists.ts`); `disabled` on `Checkbox` (`src/ui/form/Checkbox.tsx`); `templateMode` on `ChecklistRow` / `ChecklistRowEditor` / `ChecklistView`. [→](overview.md#template-mode) |
+| **The shared list shape** / **`ItemList`** | `ItemList` (`src/domain/types.ts`); `withItems` / `cloneItemsUnchecked` (`src/domain/item-tree.ts`). [→](overview.md#the-shared-list-shape) |
 
 ## Sharing
 
@@ -250,7 +253,8 @@ names. Honour these when naming a new file, key, or string.
 | **Turn on encryption**            | Settings → Storage → encryption. [→](overview.md#turn-on-encryption)              |
 | **Resolve a conflict**            | `ConflictResolutionModal`. [→](overview.md#resolve-a-conflict)                     |
 | **Share a list**                  | `encodeChecklist` (UI on roadmap). [→](overview.md#share-a-list)                   |
-| **Use a template**                | `instantiate` (UI on roadmap). [→](overview.md#use-a-template)                     |
+| **Use a template**                | sidebar Templates group → open → "New list from this" → `createChecklistFromTemplate`. [→](overview.md#use-a-template) |
+| **Save a list as a template**     | side-menu right-click → Save as template (desktop), swipe-left → template button (touch) → `saveChecklistAsTemplate`. [→](overview.md#save-a-list-as-a-template) |
 
 ## Conventions for editing this file
 

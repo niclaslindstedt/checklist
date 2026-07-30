@@ -37,6 +37,19 @@ export function makeChecklistValue(
     checkedCount: 0,
     activeList: fallbackList,
     activeChecklistId: fallbackList.id,
+    // A test that doesn't say otherwise is looking at a real checklist, not a
+    // template, so `openList` mirrors `activeList` and template mode is off.
+    openList: over.activeList ?? fallbackList,
+    activeTemplate: null,
+    templateMode: false,
+    templates: [],
+    selectTemplate: noop,
+    closeTemplate: noop,
+    saveChecklistAsTemplate: noop,
+    createChecklistFromTemplate: noop,
+    renameTemplate: noop,
+    removeTemplate: noop,
+    setTemplateAppearance: noop,
     checklists: [
       { id: fallbackList.id, name: fallbackList.name, remaining: 0 },
     ],

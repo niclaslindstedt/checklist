@@ -6,7 +6,27 @@
 // over; they take ids and return new arrays (or the same reference on a no-op),
 // so callers can detect an unchanged tree and skip the write.
 
-import type { ChecklistItem } from "./types.ts";
+import type { ChecklistItem, ItemList } from "./types.ts";
+
+/**
+ * Swap a list's items and stamp `updatedAt`, preserving everything else about
+ * it — the one write every item operation funnels through.
+ *
+ * Generic over {@link ItemList} so a single implementation serves both a
+ * `Checklist` and a `Template`: the item verbs (`addItem`, `toggleItem`,
+ * `moveItemInto`, …) are shared rather than duplicated per collection, which
+ * is what lets a template be edited by exactly the same code paths as a list.
+ * The cast is the one concession to TypeScript — spreading a generic and
+ * overriding two of its keys widens to `L & {…}`, which is structurally `L`
+ * but not provably so to the compiler.
+ */
+export function withItems<L extends ItemList>(
+  list: L,
+  items: ChecklistItem[],
+  now: string,
+): L {
+  return { ...list, items, updatedAt: now } as L;
+}
 
 /**
  * Attach `children` to an item, dropping the key entirely when the list is
@@ -111,6 +131,42 @@ export function removeItem(
     next.push(it);
   }
   return changed ? next : items;
+}
+
+/**
+ * Deep-copy a tree into fresh, unchecked items with newly minted ids — the
+ * shared half of both directions of the template round trip (`extractTemplate`
+ * pulling a template out of a list, `instantiate` stamping a list back out of
+ * one).
+ *
+ * Everything that describes *what the list is* survives the copy: the title,
+ * the note body, the required flag, category headers, sub-item nesting, and
+ * any deadline with its recurrence. Everything that describes *progress
+ * through one run of it* is dropped — `checked`, `checkedAt`, and `archived` —
+ * so the copy always starts clean. Ids are minted per node by `newId` (the
+ * domain layer never generates them itself), which is what keeps the two
+ * copies fully independent: editing one never reaches into the other.
+ */
+export function cloneItemsUnchecked(
+  items: readonly ChecklistItem[],
+  newId: () => string,
+): ChecklistItem[] {
+  return items.map((it) => {
+    const next: ChecklistItem = {
+      id: newId(),
+      title: it.title,
+      checked: false,
+    };
+    if (it.notes) next.notes = it.notes;
+    if (it.required) next.required = true;
+    if (it.category) next.category = true;
+    if (it.deadline) next.deadline = it.deadline;
+    if (it.deadline && it.recurrence) next.recurrence = it.recurrence;
+    if (it.children && it.children.length > 0) {
+      next.children = cloneItemsUnchecked(it.children, newId);
+    }
+    return next;
+  });
 }
 
 /** Replace `children` recursively with the result of `fn`, building new nodes. */

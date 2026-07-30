@@ -785,4 +785,87 @@ describe("SideMenu", () => {
       ).toBeNull();
     });
   });
+
+  describe("templates", () => {
+    it("hides the Templates group entirely until one is saved", () => {
+      renderMenu({ nav: { open: true }, checklist: { templates: [] } });
+      expect(screen.queryByText("Templates")).toBeNull();
+    });
+
+    it("lists each template with its item count", () => {
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          templates: [
+            { id: "t1", name: "Weekend trip", count: 4 },
+            { id: "t2", name: "Release", count: 0 },
+          ],
+        },
+      });
+      expect(screen.getByText("Templates")).toBeTruthy();
+      expect(screen.getByText("Weekend trip")).toBeTruthy();
+      expect(screen.getByText("4")).toBeTruthy();
+      expect(screen.getByText("Release")).toBeTruthy();
+    });
+
+    it("opens a template in the checklist view when its row is clicked", () => {
+      const selectTemplate = vi.fn();
+      const navigate = vi.fn();
+      renderMenu({
+        nav: { open: true, navigate },
+        checklist: {
+          selectTemplate,
+          templates: [{ id: "t1", name: "Weekend trip", count: 2 }],
+        },
+      });
+      fireEvent.click(screen.getByText("Weekend trip"));
+      expect(selectTemplate).toHaveBeenCalledWith("t1");
+      expect(navigate).toHaveBeenCalledWith("checklist");
+    });
+
+    it("deletes a template from its swipe-revealed trash", () => {
+      const removeTemplate = vi.fn();
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          removeTemplate,
+          templates: [{ id: "t1", name: "Weekend trip", count: 2 }],
+        },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Delete template" }));
+      expect(removeTemplate).toHaveBeenCalledWith("t1");
+    });
+
+    it("saves a checklist as a template from its swipe strip", () => {
+      const saveChecklistAsTemplate = vi.fn();
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          checklists: [{ id: "c1", name: "Groceries", remaining: 0 }],
+          activeChecklistId: "c1",
+          saveChecklistAsTemplate,
+        },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save as template" }));
+      expect(saveChecklistAsTemplate).toHaveBeenCalledWith("c1");
+    });
+
+    it("offers Save as template even for the last remaining checklist", () => {
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          checklists: [{ id: "c1", name: "Groceries", remaining: 0 }],
+          activeChecklistId: "c1",
+        },
+      });
+      // Capturing a list neither removes nor archives it, so the guard that
+      // keeps one list on screen doesn't withhold this action.
+      expect(
+        screen.getByRole("button", { name: "Save as template" }),
+      ).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Delete checklist" })).toBe(
+        null,
+      );
+    });
+  });
 });

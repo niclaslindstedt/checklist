@@ -25,7 +25,7 @@ import type {
   Checklist,
   ChecklistItem,
   Folder,
-  Item,
+  ItemList,
   Recurrence,
   RecurrenceUnit,
   Snapshot,
@@ -219,7 +219,7 @@ export interface ChecklistBodyOptions {
 }
 
 /**
- * The body of a checklist as standalone markdown — the `# Name` heading,
+ * The body of a checklist (or a template) as standalone markdown — the `# Name` heading,
  * the active `- [ ] / - [x]` items, then a `## Archived` section if any —
  * without the persistence frontmatter. This is what the in-app "copy"
  * affordance puts on the clipboard: human-readable task-list markdown a
@@ -231,7 +231,7 @@ export interface ChecklistBodyOptions {
  * the copy path is the caller that opts out.
  */
 export function checklistBodyMarkdown(
-  checklist: Checklist,
+  checklist: ItemList,
   options: ChecklistBodyOptions = {},
 ): string {
   const {
@@ -262,12 +262,20 @@ export function checklistBodyMarkdown(
   return lines.join("\n").replace(/\n*$/, "") + "\n";
 }
 
-/** The checklist reduced to one category's children (empty if unknown). */
-function scopeToCategory(checklist: Checklist, categoryId: string): Checklist {
+/** The list reduced to one category's children (empty if unknown). */
+function scopeToCategory(checklist: ItemList, categoryId: string): ItemList {
   const category = findItem(checklist.items, categoryId);
   return { ...checklist, items: category?.children ?? [] };
 }
 
+/**
+ * A template as standalone markdown. Rendered exactly like a checklist — the
+ * same nested `- [ ]` task lines with the same `*(required)*` /
+ * `*(category)*` / `*(due …)*` markers — because a template carries the same
+ * item model a checklist does. Every box is unchecked (a stored template holds
+ * no checked state), and there is no `## Archived` section: extraction drops
+ * archived items rather than capturing them.
+ */
 export function templateToMarkdown(template: Template): string {
   const front: Record<string, string> = {
     type: "template",
@@ -275,8 +283,17 @@ export function templateToMarkdown(template: Template): string {
     created: template.createdAt,
     updated: template.updatedAt,
   };
+  // The template's chosen appearance, which rides along into every list
+  // stamped out of it. Only written when set, so an unstyled template's
+  // frontmatter stays minimal and an older file round-trips with none.
+  if (template.glyph) front.glyph = template.glyph;
+  if (template.color) front.color = template.color;
   const lines: string[] = [renderFrontmatter(front), `# ${template.name}`, ""];
-  for (const item of template.items) lines.push(...renderTemplateItem(item));
+  for (const item of template.items) {
+    // Markers on: this is the persistence shape, so a template's categories
+    // must survive the round trip exactly as a checklist file's do.
+    lines.push(...renderChecklistItem(item, 0, true));
+  }
   return lines.join("\n").replace(/\n*$/, "") + "\n";
 }
 
@@ -323,13 +340,7 @@ function renderRecurrence(recurrence: Recurrence): string {
     : `every ${recurrence.interval} ${recurrence.unit}s`;
 }
 
-// Templates are flat (the `Item` model carries no children), so they render
-// at a single level — only checklists nest.
-function renderTemplateItem(item: Item): string[] {
-  return [`- ${renderItemTitle(item)}`, ...renderNotes(item.notes, "")];
-}
-
-function renderItemTitle(item: Item): string {
+function renderItemTitle(item: ChecklistItem): string {
   return item.required ? `${item.title} ${REQUIRED_MARKER}` : item.title;
 }
 
@@ -380,17 +391,22 @@ export function parseEntry(text: string): ParsedEntry | null {
   const { heading, items, archived } = parseBody(body);
 
   if (front.type === "template") {
-    return {
-      kind: "template",
-      template: {
-        version: 1,
-        id,
-        name: heading,
-        items: flattenRaw(items).map((raw, i) => toItem(raw, `${id}-${i}`)),
-        createdAt: created,
-        updatedAt: updated,
-      },
+    // A template parses through the very same item builder a checklist does,
+    // so nesting, categories, notes, required flags, and deadlines all survive
+    // the round trip. A pre-v2 file (flat `- title` bullets, no boxes) still
+    // reads cleanly — `parseItemLine` accepts a plain bullet and reports it
+    // unchecked, which is what every template item is anyway.
+    const template: Template = {
+      version: 1,
+      id,
+      name: heading,
+      items: items.map((raw, i) => toChecklistItem(raw, `${id}-${i}`)),
+      createdAt: created,
+      updatedAt: updated,
     };
+    if (front.glyph) template.glyph = front.glyph;
+    if (front.color) template.color = front.color;
+    return { kind: "template", template };
   }
   if (front.type === "checklist") {
     const all = [...items, ...archived.map((a) => ({ ...a, archived: true }))];
@@ -476,23 +492,6 @@ type RawItem = {
   category?: boolean;
   children?: RawItem[];
 };
-
-// Templates are flat, so a nested template body collapses to a single level.
-function flattenRaw(items: readonly RawItem[]): RawItem[] {
-  const out: RawItem[] = [];
-  for (const raw of items) {
-    out.push(raw);
-    if (raw.children) out.push(...flattenRaw(raw.children));
-  }
-  return out;
-}
-
-function toItem(raw: RawItem, id: string): Item {
-  const item: Item = { id, title: raw.title };
-  if (raw.notes) item.notes = raw.notes;
-  if (raw.required) item.required = true;
-  return item;
-}
 
 function toChecklistItem(raw: RawItem, id: string): ChecklistItem {
   const item: ChecklistItem = { id, title: raw.title, checked: raw.checked };
@@ -604,7 +603,7 @@ function leadingSpaces(line: string): number {
 }
 
 // A list item is `- [ ] title`, `- [x] title`, or a plain `- title`
-// (templates), at any indentation. Returns the item plus its leading-space
+// (pre-v2 template files), at any indentation. Returns the item plus its leading-space
 // indent (which the tree builder turns into nesting depth), or null for any
 // non-item line.
 function parseItemLine(line: string): { indent: number; item: RawItem } | null {

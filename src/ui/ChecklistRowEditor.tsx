@@ -66,6 +66,7 @@ export function ChecklistRowEditor({
   onSubmit,
   onCancel,
   onToggle,
+  templateMode = false,
   onAddAfter,
   onAddChild,
   onBackspaceEmpty,
@@ -78,6 +79,11 @@ export function ChecklistRowEditor({
   onCancel: () => void;
   /** Toggle the item's checked state from the editor's checkbox. */
   onToggle: () => void;
+  /**
+   * Editing an item inside a **template**: the checkbox is drawn but inert,
+   * matching the row it opened from (see `ChecklistRow`).
+   */
+  templateMode?: boolean;
   /**
    * Open a fresh add-item draft after committing — wired to Enter in the
    * title so finishing one item flows straight into the next, like tapping
@@ -272,7 +278,14 @@ export function ChecklistRowEditor({
         <Checkbox
           checked={item.checked}
           onChange={onToggle}
-          ariaLabel={item.checked ? t("app.uncheck") : t("app.check")}
+          ariaLabel={
+            templateMode
+              ? t("app.templateItem")
+              : item.checked
+                ? t("app.uncheck")
+                : t("app.check")
+          }
+          disabled={templateMode}
           // Keep the press from blurring the open title field (which would
           // commit and close the editor before the toggle lands).
           onMouseDown={(e) => e.preventDefault()}

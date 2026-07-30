@@ -20,11 +20,17 @@ import type { MutableRefObject } from "react";
 
 import { unlock } from "../achievements/bus.ts";
 import {
+  addTemplate,
   createChecklist,
   emptyArchive as emptyArchiveOp,
+  extractTemplate,
+  flattenItems,
+  instantiate,
   nextChecklistName,
   progress,
+  removeTemplate as removeTemplateOp,
   renameChecklist as renameChecklistOp,
+  renameTemplate as renameTemplateOp,
   setChecklistAppearance as setChecklistAppearanceOp,
   setChecklistArchived,
 } from "../domain/checklists.ts";
@@ -39,7 +45,9 @@ import {
 import type {
   Checklist,
   ChecklistAppearance,
+  ItemList,
   Snapshot,
+  Template,
 } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import {
@@ -72,11 +80,76 @@ export interface FolderSummary {
   count: number;
 }
 
+/** A lightweight summary of one template, for the side-menu's Templates group. */
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  /** How many items it holds, sub-items included — the row's badge. */
+  count: number;
+  /** The template's chosen glyph, so the switcher row draws its own mark. */
+  glyph?: string;
+  /** The template's chosen accent colour — tints the row's glyph. */
+  color?: string;
+}
+
 export interface ChecklistLists {
-  /** The checklist the views currently render and the edit verbs mutate. */
+  /**
+   * The checklist the archive, the widget mirror, and the notification
+   * scheduler work against — the list the user last had open. Unaffected by a
+   * template being open on top of it (see {@link openList}).
+   */
   activeList: Checklist;
   /** The id of {@link activeList}. */
   activeChecklistId: string;
+  /**
+   * What the checklist view actually renders and the edit verbs mutate: the
+   * open template when there is one, otherwise {@link activeList}. A template
+   * mirrors a checklist's shape, so the same view and the same verbs serve
+   * both — see `ItemList`.
+   */
+  openList: ItemList;
+  /**
+   * The template currently open in the checklist view, or null when a real
+   * list is showing. Opening one is a device-local overlay: the underlying
+   * checklist selection is left alone, so closing the template lands back on
+   * the list the user came from.
+   */
+  activeTemplate: Template | null;
+  /**
+   * True while a template is open — the view renders its checkboxes inert and
+   * hides the progress, archive, and bulk-finish affordances, none of which
+   * mean anything for a blueprint.
+   */
+  templateMode: boolean;
+  /** Every template in the document, in document order — the sidebar group. */
+  templates: TemplateSummary[];
+  /** Open a template in the checklist view (the sidebar's Templates group). */
+  selectTemplate: (id: string) => void;
+  /** Close the open template and land back on the active checklist. */
+  closeTemplate: () => void;
+  /**
+   * Capture a checklist as a reusable template — "Save as template" on a
+   * list's context menu, and the way templates come into being. The template
+   * takes the list's name (suffixed if one already has it), its icon and
+   * colour, and its whole item tree unchecked; archived items are left behind.
+   */
+  saveChecklistAsTemplate: (checklistId: string) => void;
+  /**
+   * Stamp a fresh checklist out of a template and switch to it — "New list
+   * from this" on a template. The list is an independent copy: nesting,
+   * categories, notes, required flags, and deadlines all come across, every
+   * item unchecked.
+   */
+  createChecklistFromTemplate: (templateId: string) => void;
+  /** Rename a template. A blank or unchanged name is a no-op. */
+  renameTemplate: (id: string, name: string) => void;
+  /**
+   * Delete a template. The checklists already stamped out of it are untouched
+   * — they're independent copies. Recoverable via undo.
+   */
+  removeTemplate: (id: string) => void;
+  /** Set (or clear) a template's icon and/or accent colour. */
+  setTemplateAppearance: (id: string, patch: ChecklistAppearance) => void;
   /** Every active (non-archived) checklist, in document order — the switcher. */
   checklists: ChecklistSummary[];
   /**
@@ -212,6 +285,23 @@ export function useChecklistLists(deps: {
     doc.checklists.find((c) => !c.archived) ??
     doc.checklists[0]!;
 
+  // Which template (if any) is open on top of the checklist selection. Kept in
+  // React state rather than the persisted per-namespace cursor: opening a
+  // template is an inspect-and-edit detour, so a reload should land back on the
+  // list the user actually works in, not on the blueprint. A template deleted
+  // from under the selection resolves to null and the view falls back to the
+  // list underneath.
+  const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
+  const activeTemplate =
+    doc.templates.find((t) => t.id === openTemplateId) ?? null;
+  const templateMode = activeTemplate !== null;
+  const openList: ItemList = activeTemplate ?? activeList;
+
+  // Switching namespace swaps the document out from under the open template.
+  useEffect(() => {
+    setOpenTemplateId(null);
+  }, [namespace]);
+
   const commit = useCallback(
     (next: Snapshot, label: string) => {
       setDoc(next);
@@ -221,8 +311,13 @@ export function useChecklistLists(deps: {
     [setDoc, scheduleSave, record],
   );
 
+  // Picking a list from the switcher always means "show me that list", so it
+  // closes any template open on top of the selection.
   const selectChecklist = useCallback(
-    (id: string) => setActiveId(id),
+    (id: string) => {
+      setOpenTemplateId(null);
+      setActiveId(id);
+    },
     [setActiveId],
   );
 
@@ -369,6 +464,106 @@ export function useChecklistLists(deps: {
     notify(label);
     unlock("archiveEmptied");
   }, [docRef, commit, notify, t]);
+
+  const selectTemplate = useCallback((id: string) => setOpenTemplateId(id), []);
+
+  const closeTemplate = useCallback(() => setOpenTemplateId(null), []);
+
+  const saveChecklistAsTemplate = useCallback(
+    (checklistId: string) => {
+      const prev = docRef.current;
+      const source = prev.checklists.find((c) => c.id === checklistId);
+      if (!source) return;
+      const created = extractTemplate(
+        // Two templates may legitimately share a source list's name over time,
+        // so suffix the way a new list is suffixed rather than colliding.
+        { ...source, name: nextChecklistName(prev.templates, source.name) },
+        newId(),
+        now(),
+        newId,
+      );
+      const label = t("toast.templateCreated", { name: created.name });
+      commit(addTemplate(prev, created), label);
+      notify(label, "success");
+      // The "Blueprint" trophy fires from a derived predicate over the document
+      // gaining its first template (see the catalog), so nothing is fired here.
+    },
+    [docRef, commit, notify, t],
+  );
+
+  const createChecklistFromTemplate = useCallback(
+    (templateId: string) => {
+      const prev = docRef.current;
+      const source = prev.templates.find((t) => t.id === templateId);
+      if (!source) return;
+      const created = instantiate(
+        { ...source, name: nextChecklistName(prev.checklists, source.name) },
+        newId(),
+        now(),
+        newId,
+      );
+      const label = t("toast.listCreatedFromTemplate", { name: created.name });
+      commit({ ...prev, checklists: [...prev.checklists, created] }, label);
+      notify(label, "success");
+      unlock("stampedOut");
+      // Land on the fresh list, the way adding one does — which also closes
+      // the template the user stamped it from.
+      setOpenTemplateId(null);
+      setActiveId(created.id);
+    },
+    [docRef, commit, notify, t, setActiveId],
+  );
+
+  const renameTemplate = useCallback(
+    (id: string, name: string) => {
+      const prev = docRef.current;
+      let changed = false;
+      const templates = prev.templates.map((tpl) => {
+        if (tpl.id !== id) return tpl;
+        const next = renameTemplateOp(tpl, name, now());
+        if (next !== tpl) changed = true;
+        return next;
+      });
+      if (!changed) return;
+      // No toast: the header title updates in place.
+      commit(
+        { ...prev, templates },
+        t("toast.templateRenamed", { name: name.trim() }),
+      );
+    },
+    [docRef, commit, t],
+  );
+
+  const removeTemplate = useCallback(
+    (id: string) => {
+      const prev = docRef.current;
+      const target = prev.templates.find((tpl) => tpl.id === id);
+      if (!target) return;
+      const label = t("toast.templateDeleted", { name: target.name });
+      commit(removeTemplateOp(prev, id), label);
+      notify(label);
+      // Deleting the open template drops the view back to the active list.
+      setOpenTemplateId((cur) => (cur === id ? null : cur));
+    },
+    [docRef, commit, notify, t],
+  );
+
+  const setTemplateAppearance = useCallback(
+    (id: string, patch: ChecklistAppearance) => {
+      const prev = docRef.current;
+      let changed = false;
+      const templates = prev.templates.map((tpl) => {
+        if (tpl.id !== id) return tpl;
+        const next = setChecklistAppearanceOp(tpl, patch, now());
+        if (next !== tpl) changed = true;
+        return next;
+      });
+      if (!changed) return;
+      // No toast: the header glyph updates in place as the user picks.
+      commit({ ...prev, templates }, t("toast.listRestyled"));
+    },
+    [docRef, commit, t],
+  );
 
   const createFolder = useCallback(
     (name: string) => {
@@ -526,6 +721,24 @@ export function useChecklistLists(deps: {
     [doc.checklists],
   );
 
+  // Templates never archive — a blueprint is either kept or deleted — so the
+  // whole array maps straight through. The count spans the tree so a template
+  // built of categories and sub-items reports what it will actually stamp out.
+  const templates = useMemo<TemplateSummary[]>(
+    () =>
+      doc.templates.map((tpl) => {
+        const summary: TemplateSummary = {
+          id: tpl.id,
+          name: tpl.name,
+          count: flattenItems(tpl.items).length,
+        };
+        if (tpl.glyph) summary.glyph = tpl.glyph;
+        if (tpl.color) summary.color = tpl.color;
+        return summary;
+      }),
+    [doc.templates],
+  );
+
   // Folder groups for the sidebar: the registry in creation order, each
   // tagged with how many active lists it holds. Empty folders are kept (they
   // live in the registry, not derived from the lists), so a freshly-made
@@ -543,6 +756,17 @@ export function useChecklistLists(deps: {
     () => ({
       activeList,
       activeChecklistId: activeList.id,
+      openList,
+      activeTemplate,
+      templateMode,
+      templates,
+      selectTemplate,
+      closeTemplate,
+      saveChecklistAsTemplate,
+      createChecklistFromTemplate,
+      renameTemplate,
+      removeTemplate,
+      setTemplateAppearance,
       checklists,
       archivedChecklists,
       selectChecklist,
@@ -564,6 +788,17 @@ export function useChecklistLists(deps: {
     }),
     [
       activeList,
+      openList,
+      activeTemplate,
+      templateMode,
+      templates,
+      selectTemplate,
+      closeTemplate,
+      saveChecklistAsTemplate,
+      createChecklistFromTemplate,
+      renameTemplate,
+      removeTemplate,
+      setTemplateAppearance,
       checklists,
       archivedChecklists,
       selectChecklist,

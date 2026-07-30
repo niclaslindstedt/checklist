@@ -354,6 +354,29 @@ export function SaveGlyph({ className }: IconProps) {
   );
 }
 
+/** A template: a sheet stacked behind another, its rows drawn as dashes. */
+export function BlueprintGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M8 3h11a2 2 0 0 1 2 2v11" />
+      <rect x="3" y="7" width="14" height="14" rx="2" />
+      <path d="M7 12h6" strokeDasharray="2 2" />
+      <path d="M7 16h6" strokeDasharray="2 2" />
+    </Svg>
+  );
+}
+
+/** Stamping a list out of a template: a press coming down onto a fresh sheet. */
+export function StampGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M12 3a3 3 0 0 0-3 3c0 1.5 1 2 1 3.5V11h4V9.5C14 8 15 7.5 15 6a3 3 0 0 0-3-3z" />
+      <path d="M6 14h12v3H6z" />
+      <path d="M4 21h16" />
+    </Svg>
+  );
+}
+
 export function MergeGlyph({ className }: IconProps) {
   return (
     <Svg className={className}>
