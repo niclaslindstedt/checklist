@@ -150,7 +150,9 @@ export function ShowcasePage() {
                 Import and export markdown
               </strong>{" "}
               — copy lists in and out as plain{" "}
-              <code className="text-meta">- [ ]</code> markdown.
+              <code className="text-meta">- [ ]</code> markdown; on a
+              categorised list the copy button lets you take the whole thing or
+              just one category.
             </li>
             <li>
               <strong className="text-fg-bright">Search everything</strong> —

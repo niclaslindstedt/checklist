@@ -33,7 +33,8 @@ Try it: **<https://checklist.niclaslindstedt.se>**
 - **Copy & paste lists.** Copy the whole active checklist to your
   clipboard from the header — plain `- [ ]` / `- [x]` task markdown,
   checked items still checked — and paste text straight into a list to
-  add items. *(Sharing a list as a URL whose `#` fragment carries the
+  add items. On a list with categories the copy button offers a scope
+  first: the whole list, or just one category's items. *(Sharing a list as a URL whose `#` fragment carries the
   payload: codec in place, UI on the roadmap.)*
 - **Local folder + markdown files.** Point the app at a folder on your
   device (**Settings → Storage → Local folder**) and every list is saved

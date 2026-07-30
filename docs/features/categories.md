@@ -19,7 +19,7 @@ and refill the same headers next week.
 
 ## What makes a category different
 
-Only three things change when an item becomes a category; everything else works
+Only four things change when an item becomes a category; everything else works
 exactly as before.
 
 - **It survives the bulk sweeps.** When you
@@ -32,6 +32,12 @@ exactly as before.
 - **It travels with your list.** On the local-folder and cloud backends the
   category is written into the markdown file, so it survives a round-trip like
   every other item.
+- **You can copy just that section.** Once a list has categories, the copy
+  button in the header opens a short menu — **All**, then every category in the
+  list. Pick one and only the items under that header go to the clipboard,
+  without the header itself: the produce aisle out of the week's shopping, ready
+  to paste into a message. **All** copies the whole list, exactly as the button
+  always has.
 
 ## Still an ordinary item underneath
 
