@@ -54,6 +54,7 @@ export {
 export type { ArchivedGroup } from "./archive-ops.ts";
 
 export {
+  activeCategories,
   addItem,
   addItemAfter,
   addItems,

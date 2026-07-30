@@ -70,6 +70,8 @@ const app = {
   copyChecklist: "Copy checklist as markdown",
   copied: "Copied",
   copyFailed: "Couldn't copy to the clipboard",
+  copyScope: "Copy the whole list or one category",
+  copyAll: "All",
   itemCount: "{checked} of {total} items checked",
   itemCountActions: "Check or uncheck all items",
 } as const;

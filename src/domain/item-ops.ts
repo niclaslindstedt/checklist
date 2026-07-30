@@ -287,6 +287,17 @@ export function setCategory<L extends ItemList>(
   return withItems(checklist, items, now);
 }
 
+/**
+ * The **category** headers a list currently shows, in document order — every
+ * active (non-archived) item flagged `category`, at any nesting depth. An empty
+ * array is how a caller tells the list isn't grouped at all: the copy button
+ * offers its per-category menu only when this returns something. Takes the
+ * shared `ItemList` shape, so it reads a template's categories too.
+ */
+export function activeCategories(checklist: ItemList): ChecklistItem[] {
+  return flattenItems(activeItems(checklist)).filter((it) => it.category);
+}
+
 /** Permanently remove an item — and its whole subtree — from the list. */
 export function deleteItem<L extends ItemList>(
   checklist: L,

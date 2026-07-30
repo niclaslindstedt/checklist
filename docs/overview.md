@@ -327,16 +327,48 @@ glyph (and leftmost of the right-hand controls when no cloud backend is
 active). Tapping it writes the active checklist to the clipboard as plain
 task-list markdown via `checklistBodyMarkdown` (the `# Name` heading and
 every `- [ ]` / `- [x]` line, checked items still checked) — **without**
-the persistence frontmatter the on-disk `.md` files carry. Whether the
-archived items come along under a `## Archived` section is governed by the
-**Include archived in copy** setting (`includeArchivedInCopy`, off by
-default — see [Include archived in copy](#include-archived-in-copy)); the
-flag is passed to `checklistBodyMarkdown` as its `includeArchived`
-argument, which still defaults to `true` so the on-disk `.md` file keeps
-the whole archive. It raises a confirmation toast and flips to a tick for
-a beat so the copy reads even with toasts disabled; a failed clipboard
-write raises an error toast. The body it produces round-trips back through
-the paste-import path (see [Add-item form](#add-item-form)).
+the persistence frontmatter the on-disk `.md` files carry, and **without**
+the `*(category)*` markers (`categoryMarkers: false` on
+`ChecklistBodyOptions`): on the clipboard the marker is noise, since a
+header with items nested under it already reads as a category to a human.
+The markers stay on the persistence path, which is what round-trips the
+flag through the file/cloud backends. Whether the archived items come
+along under a `## Archived` section is governed by the **Include archived
+in copy** setting (`includeArchivedInCopy`, off by default — see
+[Include archived in copy](#include-archived-in-copy)); the flag is passed
+as the `includeArchived` option, which still defaults to `true` so the
+on-disk `.md` file keeps the whole archive. On a categorised list the tap
+opens a scope menu first — see [Copy scope menu](#copy-scope-menu). It
+raises a confirmation toast and flips to a tick for a beat so the copy
+reads even with toasts disabled; a failed clipboard write raises an error
+toast. The body it produces round-trips back through the paste-import path
+(see [Add-item form](#add-item-form)) — bar the category flags, which a
+copied-then-pasted list comes back without.
+
+### Copy scope menu
+
+When the active list has [categories](#categories), the
+[copy button](#copy-checklist) is no longer a one-tap action: it opens a
+small `FloatingPanel` menu — **All**, a separator, then every category
+header in document order — anchored to its right edge like the
+[item-count badge](#show-item-count)'s bulk menu. **All** copies the whole
+list as before; picking a category copies **only the items nested under
+it**, with the header's own line left out, so a section lifts cleanly out
+of a long list (the produce aisle out of the week's shopping). The
+`# Name` heading stays the list's name either way — the category's name
+never appears in the copied text.
+
+The menu's entries come from `activeCategories`
+(`src/domain/item-ops.ts`) — the active, non-archived items flagged
+`category`, at any nesting depth — so a list with no categories has
+nothing to choose between and the button stays a straight copy. The scope
+rides `ChecklistBodyOptions.categoryId` into `checklistBodyMarkdown`,
+which reduces the checklist to that category's children before the usual
+active / archived split, so **Include archived in copy** still governs
+whether that section's archived items come along. An id that names nothing
+yields a body with no items rather than silently falling back to the whole
+list. Copying a single category unlocks the **Section by Section**
+achievement.
 
 ### Archive view
 
@@ -1155,7 +1187,7 @@ unlock off the flag appearing.
 Promotion is offered from the **row's action menu** — a desktop right-click
 or a touch long-press (see [Right-click menu](#right-click-menu)) — but
 **only on an item that already has sub-items**; a category with no children
-can still be demoted. Only three things treat a category specially:
+can still be demoted. Only four things treat a category specially:
 
 - **The bulk sweeps skip it.** `archiveChecked` / `deleteChecked` leave a
   category in the active list even when it's checked, so it survives an
@@ -1167,7 +1199,12 @@ can still be demoted. Only three things treat a category specially:
   a task.
 - **It round-trips on the file/cloud backends** via a trailing
   `*(category)*` marker in the markdown codec (`src/storage/markdown/codec.ts`),
-  in the same spirit as `*(required)*`.
+  in the same spirit as `*(required)*`. The marker is persistence-only — the
+  [copy button](#copy-checklist) renders without it.
+- **It becomes a copy scope.** A categorised list's copy button offers the
+  list's categories as a menu, so one section can go to the clipboard on its
+  own — see [Copy scope menu](#copy-scope-menu). The choices come from
+  `activeCategories` (`src/domain/item-ops.ts`).
 
 Everything else about a category is unchanged: it still checks / unchecks,
 reorders, renames, archives, and deletes exactly like any other item, and
@@ -1618,8 +1655,9 @@ clipboard. With it off, a copied list is just its active `- [ ]` / `- [x]`
 lines; turning it on copies the archive too. The flag rides the checklist
 context (`includeArchivedInCopy` on `ChecklistContextValue`, set by `App`
 from the settings) to `ChecklistView`, which hands it to `CopyButton` as
-its `includeArchived` prop; that prop becomes the `includeArchived`
-argument to `checklistBodyMarkdown`. The argument defaults to `true`, so
+its `includeArchived` prop; that prop becomes the `includeArchived` option
+on `checklistBodyMarkdown` (and applies to a single-category copy too —
+see [Copy scope menu](#copy-scope-menu)). The option defaults to `true`, so
 the only caller that opts out is the copy path — the on-disk `.md` file
 (`checklistToMarkdown`) always writes the full archive, since there the
 archive is the live store, not an export. Turning the setting on unlocks

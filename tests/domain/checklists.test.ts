@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeCategories,
   activeChecklists,
   activeItems,
   addItem,
@@ -1398,6 +1399,35 @@ describe("category headers", () => {
     expect(swept.items.map((it) => it.id)).toEqual(["cat"]);
     // The header stays, emptied of its finished children.
     expect(findItem(swept.items, "cat")?.children ?? []).toEqual([]);
+  });
+
+  describe("activeCategories", () => {
+    it("is empty for an ungrouped list", () => {
+      expect(activeCategories(withCategory())).toHaveLength(1);
+      expect(
+        activeCategories(addItem(base, { id: "i1", title: "A" }, NOW)),
+      ).toEqual([]);
+    });
+
+    it("lists the category headers in document order, at any depth", () => {
+      let c = withCategory();
+      // A category nested inside another one still counts.
+      c = addItem(
+        c,
+        { id: "shelf", title: "Dairy shelf" },
+        NOW,
+        "bottom",
+        "cat",
+      );
+      c = addItem(c, { id: "cheese", title: "Cheese" }, NOW, "bottom", "shelf");
+      c = setCategory(c, "shelf", true, NOW);
+      expect(activeCategories(c).map((it) => it.id)).toEqual(["cat", "shelf"]);
+    });
+
+    it("skips a category that has been archived away", () => {
+      const c = setArchived(withCategory(), "cat", true, NOW);
+      expect(activeCategories(c)).toEqual([]);
+    });
   });
 
   it("bulk sweeps no-op when the only checked thing is a category", () => {

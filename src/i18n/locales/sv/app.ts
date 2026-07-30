@@ -64,6 +64,8 @@ const app: AppCatalog = {
   copyChecklist: "Kopiera checklista som markdown",
   copied: "Kopierad",
   copyFailed: "Kunde inte kopiera till urklipp",
+  copyScope: "Kopiera hela listan eller en kategori",
+  copyAll: "Allt",
   itemCount: "{checked} av {total} poster bockade",
   itemCountActions: "Bocka av eller avmarkera alla poster",
 };

@@ -475,6 +475,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "sectionCopy",
+    tier: "pro",
+    glyph: CopyGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  {
     id: "compartments",
     tier: "pro",
     glyph: BoxesGlyph,
