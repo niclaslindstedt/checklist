@@ -251,6 +251,13 @@ const achievements = {
         "The thin chevron above the footer folds it away — Donate, the trophy, About, and Settings — handing the freed space to your checklist. Tap it again to bring the footer back. The choice is remembered on this device.",
     },
 
+    blueprint: {
+      name: "Blueprint",
+      condition: "Save a checklist as a template.",
+      learnMore:
+        "Right-click a list in the sidebar (or swipe it left on a touchscreen) and choose “Save as template” to capture it as a reusable blueprint. The template takes a full copy of the list — sub-items, categories, notes, required flags, and any deadlines — with every box unchecked and anything you had archived left behind. It is a snapshot, not a link: editing the list afterwards never changes the template, and vice versa.",
+    },
+
     // ── Pro ───────────────────────────────────────────────────────────
     categoriser: {
       name: "Categoriser",
@@ -263,6 +270,12 @@ const achievements = {
       condition: "Create a namespace.",
       learnMore:
         "Namespaces keep separate worlds of lists side by side — work and home, say — each its own document. The Namespace heading's “+” makes one.",
+    },
+    stampedOut: {
+      name: "Stamped Out",
+      condition: "Create a new list from a template.",
+      learnMore:
+        "Open a template and press “New list from this”, or right-click it in the sidebar. You get a brand-new checklist that is an independent copy of the blueprint — same items, same nesting, same categories, nothing ticked. Check things off it as much as you like; the template it came from stays pristine, ready for the next time.",
     },
     dressUp: {
       name: "Dress Up",

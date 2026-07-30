@@ -13,8 +13,9 @@ import {
   flattenItems,
   removeItem,
   withChildren,
+  withItems,
 } from "./item-tree.ts";
-import type { Checklist, ChecklistItem } from "./types.ts";
+import type { ChecklistItem, ItemList } from "./types.ts";
 
 /**
  * Move the active item `itemId` so it sits at `toIndex` among the active
@@ -23,12 +24,12 @@ import type { Checklist, ChecklistItem } from "./types.ts";
  * shuffle around them. `toIndex` is clamped; a no-op move returns the same
  * checklist untouched (no `updatedAt` bump, so it never writes).
  */
-export function moveItem(
-  checklist: Checklist,
+export function moveItem<L extends ItemList>(
+  checklist: L,
   itemId: string,
   toIndex: number,
   now: string,
-): Checklist {
+): L {
   const active = checklist.items.filter((it) => !it.archived);
   const from = active.findIndex((it) => it.id === itemId);
   if (from === -1) return checklist;
@@ -47,7 +48,7 @@ export function moveItem(
     it.archived ? it : reordered[a++]!,
   );
 
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
 /** Where a dropped item lands relative to the item it was dropped on. */
@@ -61,13 +62,13 @@ export type DropMode = "before" | "after" | "into";
  * the subtree) and returns the same checklist untouched — as does an
  * unknown id.
  */
-export function moveItemInto(
-  checklist: Checklist,
+export function moveItemInto<L extends ItemList>(
+  checklist: L,
   draggedId: string,
   targetId: string,
   mode: DropMode,
   now: string,
-): Checklist {
+): L {
   if (draggedId === targetId) return checklist;
   const dragged = findItem(checklist.items, draggedId);
   if (!dragged) return checklist;
@@ -83,7 +84,7 @@ export function moveItemInto(
   // so it never bumps `updatedAt` or records an empty undo step.
   if (structureKey(inserted) === structureKey(checklist.items))
     return checklist;
-  return { ...checklist, items: inserted, updatedAt: now };
+  return withItems(checklist, inserted, now);
 }
 
 /** A compact id + nesting signature, for detecting a positional no-op move. */
@@ -200,7 +201,7 @@ export function floatDatedToBottom(
  * opt-in.
  */
 export function displayItems(
-  checklist: Checklist,
+  checklist: ItemList,
   sinkChecked: boolean,
 ): ChecklistItem[] {
   const active = activeItems(checklist);
@@ -217,13 +218,13 @@ export function displayItems(
  * the view re-derives its sorted order from there. Keeps drag-to-reorder
  * working without ever persisting the sunk-to-bottom ordering.
  */
-export function moveDisplayedItem(
-  checklist: Checklist,
+export function moveDisplayedItem<L extends ItemList>(
+  checklist: L,
   itemId: string,
   toIndex: number,
   sinkChecked: boolean,
   now: string,
-): Checklist {
+): L {
   if (!sinkChecked) return moveItem(checklist, itemId, toIndex, now);
   const display = displayItems(checklist, true);
   if (display.length === 0) return checklist;
@@ -236,7 +237,7 @@ export function moveDisplayedItem(
 }
 
 /** True when every required item is checked (or there are no required ones). */
-export function isComplete(checklist: Checklist): boolean {
+export function isComplete(checklist: ItemList): boolean {
   return flattenItems(checklist.items)
     .filter((it) => it.required)
     .every((it) => it.checked);
@@ -246,7 +247,7 @@ export function isComplete(checklist: Checklist): boolean {
  * Checked / total counts over the active (non-archived) items, sub-items
  * included — every visible checkable line counts toward the header's tally.
  */
-export function progress(checklist: Checklist): {
+export function progress(checklist: ItemList): {
   checked: number;
   total: number;
 } {

@@ -26,6 +26,20 @@ function renderView(value: Partial<ChecklistContextValue> = {}) {
   return renderWithChecklist(<ChecklistView />, { items, ...value });
 }
 
+// The header reads its title and glyph from the *open* entry, so a test about
+// the header seeds a real list rather than only its sidebar summary.
+function namedList(name: string): Checklist {
+  return {
+    version: 1,
+    id: "list-0",
+    templateId: "",
+    name,
+    items: [],
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+}
+
 describe("ChecklistView", () => {
   it("renders items and the progress count", () => {
     renderView();
@@ -215,9 +229,9 @@ describe("ChecklistView", () => {
     expect(screen.getByLabelText("Drag to reorder")).toBeTruthy();
   });
 
-  it("shows the active checklist's name as the header title", () => {
+  it("shows the open entry's name as the header title", () => {
     renderView({
-      checklists: [{ id: "list-0", name: "Groceries", remaining: 0 }],
+      activeList: namedList("Groceries"),
       activeChecklistId: "list-0",
     });
     expect(screen.getByRole("button", { name: "Groceries" })).toBeTruthy();
@@ -226,7 +240,7 @@ describe("ChecklistView", () => {
   it("renames the active checklist from the clickable header title", () => {
     const renameChecklist = vi.fn();
     renderView({
-      checklists: [{ id: "list-0", name: "Groceries", remaining: 0 }],
+      activeList: namedList("Groceries"),
       activeChecklistId: "list-0",
       renameChecklist,
     });

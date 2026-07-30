@@ -33,6 +33,7 @@ import {
 import {
   type ChecklistLists,
   type ChecklistSummary,
+  type TemplateSummary,
   useChecklistLists,
 } from "./use-checklist-lists.ts";
 import {
@@ -51,15 +52,17 @@ export type {
   ConflictState,
   ConnectionProbeResult,
   SaveStatus,
+  TemplateSummary,
 };
 
 export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   /** The full in-memory document (used by the conflict summary). */
   snapshot: Snapshot;
   /**
-   * The active checklist's visible (non-archived) items, as a tree — each
-   * item may carry `children` (its sub-items). The view flattens this for
-   * rendering (see `flattenForDisplay`).
+   * The open entry's visible (non-archived) items, as a tree — each item may
+   * carry `children` (its sub-items). The view flattens this for rendering
+   * (see `flattenForDisplay`). This is the open template's tree while one is
+   * open, and the active checklist's otherwise.
    */
   items: ChecklistItem[];
   /**
@@ -199,7 +202,10 @@ export function useChecklist(
     t,
     namespace,
   });
-  const list = lists.activeList;
+  // What the view renders and the edit verbs mutate: the open template when
+  // there is one, otherwise the active checklist. A template mirrors a
+  // checklist's shape, so one set of verbs serves both.
+  const list = lists.openList;
 
   // The edit verbs (add / toggle / remove / archive / unarchive / reorder)
   // live in their own concern-scoped hook so a new action lands there
@@ -207,6 +213,7 @@ export function useChecklist(
   // `scheduleSave`) and the undo timeline (`record`) are threaded in.
   const edits = useChecklistEdits({
     list,
+    templateMode: lists.templateMode,
     docRef,
     setDoc,
     scheduleSave,

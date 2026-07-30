@@ -10,13 +10,26 @@
 // - `archive-ops.ts`   — archive/restore items and the archived-items queries.
 // - `item-ops.ts`      — add / edit / delete / toggle / bulk-check items.
 // - `item-display.ts`  — move / reorder and the display-order view transforms.
+// - `templates.ts`     — template CRUD and extraction from a checklist.
+//
+// The item-level modules are generic over `ItemList` (the shape a `Checklist`
+// and a `Template` share), so a template is edited by exactly the same verbs as
+// a list rather than a parallel set that would drift.
 //
 // This file re-exports each module's public surface so the ~10 importing files
 // (and the domain tests) keep a single import site. Items form a tree: each
 // `ChecklistItem` may carry `children`, built up by dropping one item onto
 // another while dragging (see `moveItemInto` in `item-display.ts`).
 
-export { findItem, flattenItems } from "./item-tree.ts";
+export { cloneItemsUnchecked, findItem, flattenItems } from "./item-tree.ts";
+
+export {
+  addTemplate,
+  createTemplate,
+  extractTemplate,
+  removeTemplate,
+  renameTemplate,
+} from "./templates.ts";
 
 export {
   activeChecklists,

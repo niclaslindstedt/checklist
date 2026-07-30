@@ -25,16 +25,50 @@ export interface Recurrence {
   interval: number;
 }
 
-/** A reusable, named list of items. Identified by a stable UUIDv7 `id`. */
-export interface Template {
+/**
+ * What a template and a checklist have in common: a named, styled tree of
+ * items with timestamps. Both sides of the template ↔ checklist round trip
+ * carry the *same* item model (`ChecklistItem`), so a template captures
+ * everything a list can express — sub-items, categories, notes, required
+ * flags, deadlines — and stamping one out reproduces the list faithfully.
+ *
+ * The item operations in `item-ops.ts`, `archive-ops.ts`, and
+ * `item-display.ts` are generic over this base (`<L extends ItemList>`), so a
+ * template is edited by exactly the same verbs as a checklist rather than a
+ * parallel, drifting set.
+ */
+export interface ItemList {
   /** Reserved for future migrations; there is only one version today. */
   version: 1;
   id: string;
   name: string;
-  items: Item[];
+  items: ChecklistItem[];
+  /**
+   * Optional icon, by name in the shared glyph set (see `src/ui/glyphs.ts`).
+   * Typed as a bare `string` so this pure module stays free of any `ui/`
+   * dependency; the UI validates it against the known glyph set on the way in.
+   * Absent (rather than `null`) when unstyled, so an older document needs no
+   * migration.
+   */
+  glyph?: string;
+  /** Optional accent colour (a CSS colour string) tinting the glyph. */
+  color?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * A reusable, named list of items. Identified by a stable UUIDv7 `id`.
+ *
+ * A template mirrors a `Checklist` exactly, minus the fields that only make
+ * sense for a live instance (`templateId`, `archived`, `folderId`): its items
+ * are full `ChecklistItem`s so nesting, categories, notes, required flags, and
+ * deadlines all survive extraction. Every item in a stored template is
+ * **unchecked** — `extractTemplate` clears the checked state on the way in and
+ * the template view renders the boxes inert — so `checked` is carried only
+ * because the item model is shared, never as meaningful state.
+ */
+export type Template = ItemList;
 
 /** A checked item within a checklist instance. */
 export interface ChecklistItem extends Item {
@@ -103,12 +137,14 @@ export interface ChecklistItem extends Item {
  * created straight from the checklist view (not from any template) carry an
  * empty `templateId`.
  */
-export interface Checklist {
-  version: 1;
-  id: string;
+export interface Checklist extends ItemList {
+  /**
+   * The template this list was stamped out of, by `Template.id` — empty for
+   * an ad-hoc list created straight from the checklist view. A backward link
+   * only: the instance is fully independent, so later edits to either side
+   * never propagate across it.
+   */
   templateId: string;
-  name: string;
-  items: ChecklistItem[];
   /**
    * An archived checklist drops out of the sidebar switcher and the
    * checklist view, surfacing instead under the archive view's "Archived
@@ -129,24 +165,6 @@ export interface Checklist {
    * projection of it.
    */
   folderId?: string;
-  /**
-   * Optional icon the user picked for this checklist — the name of a glyph in
-   * the shared glyph set (see `src/ui/glyphs.ts`). When set it stands in for
-   * the generic checklist mark shown beside the title in the header, tinted
-   * with {@link color} when one is chosen. Typed as a bare `string` so this
-   * pure module stays free of any `ui/` dependency; the UI validates it
-   * against the known glyph set on the way in. Absent (rather than `null`) on
-   * a list that hasn't been styled, so an older document needs no migration.
-   */
-  glyph?: string;
-  /**
-   * Optional accent colour (a CSS colour string) the user picked for this
-   * checklist. Tints the header glyph. Independent of {@link glyph}: a colour
-   * with no glyph still tints the default checklist mark.
-   */
-  color?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**

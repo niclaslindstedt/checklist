@@ -6,28 +6,45 @@
 // `checklists.ts`. Like the rest of the domain layer, callers supply ids and
 // timestamps so every function is deterministic and DOM-free.
 
+import { cloneItemsUnchecked } from "./item-tree.ts";
 import type {
   Checklist,
   ChecklistAppearance,
+  ItemList,
   Snapshot,
   Template,
 } from "./types.ts";
 
-/** Stamp out an independent, checkable instance from a template. */
+/**
+ * Stamp out an independent, checkable instance from a template — the second
+ * half of the round trip `extractTemplate` opens.
+ *
+ * The new list is everything the template describes: its name, its icon and
+ * accent colour, and its whole item tree with nesting, categories, notes,
+ * required flags, and deadlines intact, every item unchecked. Every node gets
+ * a fresh id from `newId`, so the list is fully independent — checking things
+ * off it never writes back into the template, and later edits to the template
+ * never reach lists already stamped from it. `templateId` records where it
+ * came from as a backward reference only.
+ */
 export function instantiate(
   template: Template,
   id: string,
   now: string,
+  newId: () => string,
 ): Checklist {
-  return {
+  const checklist: Checklist = {
     version: 1,
     id,
     templateId: template.id,
     name: template.name,
-    items: template.items.map((it) => ({ ...it, checked: false })),
+    items: cloneItemsUnchecked(template.items, newId),
     createdAt: now,
     updatedAt: now,
   };
+  if (template.glyph) checklist.glyph = template.glyph;
+  if (template.color) checklist.color = template.color;
+  return checklist;
 }
 
 /** Start an empty, free-standing checklist not tied to any template. */
@@ -63,13 +80,17 @@ export function renameChecklist(
  * minimally. A no-op (nothing actually changed) returns the same checklist
  * untouched, so it never bumps `updatedAt` or triggers a write. Mirrors
  * `setNamespaceAppearance` for the per-list case.
+ *
+ * Generic over {@link ItemList}, so a template is restyled by the same verb as
+ * a checklist — and the style it carries rides along into every list stamped
+ * out of it (see `instantiate`).
  */
-export function setChecklistAppearance(
-  checklist: Checklist,
+export function setChecklistAppearance<L extends ItemList>(
+  checklist: L,
   patch: ChecklistAppearance,
   now: string,
-): Checklist {
-  const next: Checklist = { ...checklist };
+): L {
+  const next: L = { ...checklist };
   let changed = false;
   if ("glyph" in patch) {
     if (patch.glyph) {

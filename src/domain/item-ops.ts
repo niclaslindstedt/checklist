@@ -14,8 +14,9 @@ import {
   removeItem,
   updateItem,
   withChildren,
+  withItems,
 } from "./item-tree.ts";
-import type { Checklist, ChecklistItem, Recurrence } from "./types.ts";
+import type { ChecklistItem, ItemList, Recurrence } from "./types.ts";
 
 /** True when two recurrences describe the same cadence. */
 function sameRecurrence(a?: Recurrence, b?: Recurrence): boolean {
@@ -34,13 +35,13 @@ function sameRecurrence(a?: Recurrence, b?: Recurrence): boolean {
  * A `parentId` that isn't in the tree falls back to a top-level add, so an
  * item is never silently lost.
  */
-export function addItem(
-  checklist: Checklist,
+export function addItem<L extends ItemList>(
+  checklist: L,
   item: { id: string; title: string },
   now: string,
   position: "top" | "bottom" = "bottom",
   parentId?: string,
-): Checklist {
+): L {
   const next: ChecklistItem = {
     id: item.id,
     title: item.title.trim(),
@@ -53,11 +54,11 @@ export function addItem(
       withChildren(parent, place(parent.children ?? [])),
     );
     if (items !== checklist.items) {
-      return { ...checklist, items, updatedAt: now };
+      return withItems(checklist, items, now);
     }
     // Parent gone — fall through to a top-level add rather than drop the item.
   }
-  return { ...checklist, items: place(checklist.items), updatedAt: now };
+  return withItems(checklist, place(checklist.items), now);
 }
 
 /**
@@ -70,27 +71,23 @@ export function addItem(
  * back to a top-level append. A no-op (empty `items`) returns the same
  * checklist untouched.
  */
-export function addItems(
-  checklist: Checklist,
+export function addItems<L extends ItemList>(
+  checklist: L,
   items: readonly ChecklistItem[],
   now: string,
   parentId?: string,
-): Checklist {
+): L {
   if (items.length === 0) return checklist;
   if (parentId) {
     const next = updateItem(checklist.items, parentId, (parent) =>
       withChildren(parent, [...(parent.children ?? []), ...items]),
     );
     if (next !== checklist.items) {
-      return { ...checklist, items: next, updatedAt: now };
+      return withItems(checklist, next, now);
     }
     // Parent gone — fall through to a top-level append.
   }
-  return {
-    ...checklist,
-    items: [...checklist.items, ...items],
-    updatedAt: now,
-  };
+  return withItems(checklist, [...checklist.items, ...items], now);
 }
 
 /**
@@ -132,12 +129,12 @@ function spliceAfter(
  * top-level alike. An `afterId` that isn't in the tree falls back to a
  * bottom append so the item is never silently lost.
  */
-export function addItemAfter(
-  checklist: Checklist,
+export function addItemAfter<L extends ItemList>(
+  checklist: L,
   item: { id: string; title: string },
   afterId: string,
   now: string,
-): Checklist {
+): L {
   const next: ChecklistItem = {
     id: item.id,
     title: item.title.trim(),
@@ -145,9 +142,9 @@ export function addItemAfter(
   };
   const inserted = spliceAfter(checklist.items, [next], afterId);
   if (!inserted) {
-    return { ...checklist, items: [...checklist.items, next], updatedAt: now };
+    return withItems(checklist, [...checklist.items, next], now);
   }
-  return { ...checklist, items: inserted, updatedAt: now };
+  return withItems(checklist, inserted, now);
 }
 
 /**
@@ -158,22 +155,18 @@ export function addItemAfter(
  * depth. An unknown `afterId` (or an empty `items`) falls back to a bottom
  * append; an empty list returns the same checklist untouched.
  */
-export function addItemsAfter(
-  checklist: Checklist,
+export function addItemsAfter<L extends ItemList>(
+  checklist: L,
   items: readonly ChecklistItem[],
   afterId: string,
   now: string,
-): Checklist {
+): L {
   if (items.length === 0) return checklist;
   const inserted = spliceAfter(checklist.items, items, afterId);
   if (!inserted) {
-    return {
-      ...checklist,
-      items: [...checklist.items, ...items],
-      updatedAt: now,
-    };
+    return withItems(checklist, [...checklist.items, ...items], now);
   }
-  return { ...checklist, items: inserted, updatedAt: now };
+  return withItems(checklist, inserted, now);
 }
 
 /**
@@ -186,12 +179,12 @@ export function addItemsAfter(
  * actually changed) returns the same checklist untouched, so it never bumps
  * `updatedAt` or triggers a write.
  */
-export function editItem(
-  checklist: Checklist,
+export function editItem<L extends ItemList>(
+  checklist: L,
   itemId: string,
   fields: { title?: string; notes?: string },
   now: string,
-): Checklist {
+): L {
   const items = updateItem(checklist.items, itemId, (it) => {
     const next: ChecklistItem = { ...it };
     let changed = false;
@@ -217,7 +210,7 @@ export function editItem(
     return changed ? next : it;
   });
   if (items === checklist.items) return checklist;
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
 /**
@@ -229,13 +222,13 @@ export function editItem(
  * actually changed) returns the same checklist untouched, so it never bumps
  * `updatedAt` or triggers a write.
  */
-export function setItemDeadline(
-  checklist: Checklist,
+export function setItemDeadline<L extends ItemList>(
+  checklist: L,
   itemId: string,
   deadline: string | null,
   recurrence: Recurrence | null,
   now: string,
-): Checklist {
+): L {
   const items = updateItem(checklist.items, itemId, (it) => {
     const next: ChecklistItem = { ...it };
     let changed = false;
@@ -262,7 +255,7 @@ export function setItemDeadline(
     return changed ? next : it;
   });
   if (items === checklist.items) return checklist;
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
 /**
@@ -274,12 +267,12 @@ export function setItemDeadline(
  * the requested state, or the id isn't in the tree) returns the same
  * checklist, so it never bumps `updatedAt` or triggers a write.
  */
-export function setCategory(
-  checklist: Checklist,
+export function setCategory<L extends ItemList>(
+  checklist: L,
   itemId: string,
   category: boolean,
   now: string,
-): Checklist {
+): L {
   const items = updateItem(checklist.items, itemId, (it) => {
     if (category) {
       if (it.category) return it;
@@ -291,25 +284,25 @@ export function setCategory(
     return next;
   });
   if (items === checklist.items) return checklist;
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
 /** Permanently remove an item — and its whole subtree — from the list. */
-export function deleteItem(
-  checklist: Checklist,
+export function deleteItem<L extends ItemList>(
+  checklist: L,
   itemId: string,
   now: string,
-): Checklist {
+): L {
   const items = removeItem(checklist.items, itemId);
   if (items === checklist.items) return checklist;
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
-export function toggleItem(
-  checklist: Checklist,
+export function toggleItem<L extends ItemList>(
+  checklist: L,
   itemId: string,
   now: string,
-): Checklist {
+): L {
   const target = findItem(checklist.items, itemId);
   if (!target) return checklist;
   const check = !target.checked;
@@ -322,7 +315,7 @@ export function toggleItem(
       ...it,
       deadline: nextOccurrence(it.deadline!, it.recurrence!, now),
     }));
-    return { ...checklist, items, updatedAt: now };
+    return withItems(checklist, items, now);
   }
   // Checking a parent cascades down its whole subtree, and unchecking clears
   // it — so a checked-off group reads as done top to bottom. Checking stamps
@@ -337,7 +330,7 @@ export function toggleItem(
     return next;
   };
   const items = updateItem(checklist.items, itemId, apply);
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
 /**
@@ -349,11 +342,11 @@ export function toggleItem(
  * (every active item already in the requested state) returns the same
  * checklist untouched, so it never bumps `updatedAt` or triggers a write.
  */
-export function setAllChecked(
-  checklist: Checklist,
+export function setAllChecked<L extends ItemList>(
+  checklist: L,
   checked: boolean,
   now: string,
-): Checklist {
+): L {
   if (
     !flattenItems(activeItems(checklist)).some((it) => it.checked !== checked)
   ) {
@@ -375,5 +368,5 @@ export function setAllChecked(
     }
     return next;
   };
-  return { ...checklist, items: checklist.items.map(apply), updatedAt: now };
+  return withItems(checklist, checklist.items.map(apply), now);
 }

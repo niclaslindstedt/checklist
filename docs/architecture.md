@@ -57,25 +57,51 @@ This direction is enforced by an ESLint rule and verified in CI.
 
 ## Data model
 
-Three types live in `src/domain/types.ts`:
+The types live in `src/domain/types.ts`, built on one shared base:
 
-- `Template` — a named list of `Item`s. Identifies itself by a stable
-  `id` (UUIDv7).
-- `Checklist` — a checkable list. Either an instance of a template or a
-  free-standing list (empty `templateId`). Holds a snapshot of the
-  items, each with a `checked` flag and an optional `archived` flag, plus
-  optional appearance fields (`glyph`, `color`) the user picks from the
-  header mark. Both ride the markdown frontmatter (`glyph:` / `color:`)
-  so they round-trip on the file/cloud backends, and are absent (rather
-  than `null`) on an unstyled list so an older document needs no migration.
-- `Item` — `{ id, title, notes?, required? }`; a `ChecklistItem` adds
-  `checked` and optional `archived`.
+- `ItemList` — what a template and a checklist have in common: `version`,
+  `id` (UUIDv7), `name`, `items: ChecklistItem[]`, optional appearance
+  fields (`glyph`, `color`) the user picks from the header mark, and
+  timestamps. The appearance fields ride the markdown frontmatter
+  (`glyph:` / `color:`) so they round-trip on the file/cloud backends, and
+  are absent (rather than `null`) when unstyled so an older document needs
+  no migration.
+- `Template` — a reusable blueprint. Structurally *identical* to
+  `ItemList`: it adds nothing.
+- `Checklist` — a checkable list instance. Extends `ItemList` with
+  `templateId` (empty for a free-standing list not stamped from a
+  template), an optional `archived` flag for the whole list, and an
+  optional `folderId`.
+- `Item` — `{ id, title, notes?, required? }`, the base a `ChecklistItem`
+  extends with `checked`, `checkedAt?`, `archived?`, `children?`,
+  `deadline?`, `recurrence?`, and `category?`.
+
+**Templates carry the checklist item model.** `Template.items` is
+`ChecklistItem[]`, the same array type a checklist holds, so a template
+captures everything a list can express — sub-items, categories, notes,
+required flags, deadlines. Every item in a stored template is unchecked;
+`checked` is present only because the model is shared.
+
+That sharing is what keeps the two from drifting: every item operation is
+generic over the base (`<L extends ItemList>(list: L, …): L` in
+`item-ops.ts`, `archive-ops.ts`, and `item-display.ts`), funnelling its
+one write through `withItems` in `item-tree.ts`. A template is therefore
+edited by exactly the same domain verbs, the same edit hook, and the same
+view as a checklist. The two directions of the round trip —
+`extractTemplate` (`domain/templates.ts`) and `instantiate`
+(`domain/checklist-ops.ts`) — share `cloneItemsUnchecked`
+(`item-tree.ts`), which deep-copies the tree with fresh ids, keeps
+everything descriptive, and drops the run-specific `checked` /
+`checkedAt` / `archived`. Both copies are fully independent: neither side
+of a stamped-out list ever writes back into the other.
 
 Archived items stay in the document but are filtered out of the active
 view (`activeItems`) — swiping a row right marks it archived rather
 than deleting it. The browser backend stores templates and checklists as
 one JSON document; the file-based backends store each as its own markdown
-file (see Storage below).
+file, templates under `templates/` beside `checklists/` (see Storage
+below). Templates are *not* filed into folders — one flat group per
+namespace.
 
 The persisted document carries a top-level numeric `version`. A
 forward-only migration chain (`src/storage/migrations.ts`, adapted from
@@ -84,6 +110,15 @@ the budget project's `data/migrations`) upgrades older bytes to
 version 0 (the pre-versioning shape) and is normalised on the way in.
 The migration seam lives in `src/storage/serialize.ts`, not in
 `domain/`, so the in-memory `Snapshot` stays version-free.
+
+`LATEST_VERSION` is **2**. The v1 → v2 step is what brought templates onto
+the checklist item model: a v1 template held a flat
+`{ id, title, notes?, required? }` per item, so the step stamps
+`checked: false` onto each one. Every richer field is optional, so nothing
+else needs rewriting, and checklists are untouched. On the markdown
+backends the codec reads a pre-v2 template file — flat `- title` bullets
+with no checkboxes and no nesting — without a migration at all: a plain
+bullet already parses as an unchecked item.
 
 ## Storage
 
@@ -168,8 +203,12 @@ another tool.
 
 **Markdown file store.** The three file-based backends do *not* store one
 JSON blob; each namespace is a directory of individual markdown files,
-one per checklist and template, using standard `- [ ]` / `- [x]` task
-syntax so the lists open in any editor. This is implemented once in
+one per checklist and template (templates under `templates/`, checklists
+under `checklists/`), using standard `- [ ]` / `- [x]` task syntax so the
+lists open in any editor. A template's file renders exactly like a
+checklist's — same nesting, same `*(required)*` / `*(category)*` /
+`*(due …)*` markers — with every box unchecked and no `## Archived`
+section. This is implemented once in
 `src/storage/directory-adapter.ts` (`createDirectoryAdapter`), which
 wraps a tiny `FileStore` (`src/storage/file-store.ts` —
 `list`/`read`/`write`/`remove`) into a full `StorageAdapter`: the

@@ -246,6 +246,34 @@ export function ChecklistIcon({ className }: IconProps) {
   );
 }
 
+/**
+ * A template — the blueprint a checklist is stamped out of. Deliberately reads
+ * as a *stack* of the `ChecklistIcon`'s ruled lines: one sheet offset behind
+ * another, with the front sheet's rows dashed to echo the inert checkboxes a
+ * template's rows render. It has to be legible at 20px beside a list row, so
+ * the back sheet is only a corner rather than a full second outline.
+ */
+export function TemplateIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable={false}
+      className={className}
+    >
+      <path d="M8 3h11a2 2 0 0 1 2 2v11" />
+      <rect x="3" y="7" width="14" height="14" rx="2" />
+      <path d="M7 12h6" strokeDasharray="2 2" />
+      <path d="M7 16h6" strokeDasharray="2 2" />
+    </svg>
+  );
+}
+
 export function HeartIcon({ className }: IconProps) {
   return (
     <svg

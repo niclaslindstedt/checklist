@@ -6,6 +6,7 @@ const nav: NavCatalog = {
   label: "Vyer",
   checklist: "Checklista",
   checklists: "Checklistor",
+  templates: "Mallar",
   newChecklist: "Ny checklista",
   removeChecklist: "Ta bort checklista",
   newFolder: "Ny mapp",

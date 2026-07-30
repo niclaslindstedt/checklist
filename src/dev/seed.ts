@@ -3,20 +3,50 @@
 // session never mutate this template. Loaded through the in-memory seed
 // adapter (`src/storage/dev-seed/index.ts`), never persisted.
 
-import type { Checklist, Snapshot, Template } from "../domain/types.ts";
+import type {
+  Checklist,
+  ChecklistItem,
+  Snapshot,
+  Template,
+} from "../domain/types.ts";
 
 const STAMP = "2024-01-01T00:00:00.000Z";
+
+/**
+ * A seed template item. Templates carry the checklist item model, so this
+ * mirrors what a list can hold — sub-items and category headers included —
+ * minus the run-specific state a stored template never has.
+ */
+type SeedTemplateItem = {
+  id: string;
+  title: string;
+  notes?: string;
+  required?: boolean;
+  category?: boolean;
+  children?: SeedTemplateItem[];
+};
+
+// Every item in a stored template is unchecked, so the flag is stamped here
+// rather than spelled out at each of the seed's call sites.
+function templateItem(raw: SeedTemplateItem): ChecklistItem {
+  const item: ChecklistItem = { id: raw.id, title: raw.title, checked: false };
+  if (raw.notes) item.notes = raw.notes;
+  if (raw.required) item.required = true;
+  if (raw.category) item.category = true;
+  if (raw.children) item.children = raw.children.map(templateItem);
+  return item;
+}
 
 function template(
   id: string,
   name: string,
-  items: { id: string; title: string; notes?: string; required?: boolean }[],
+  items: SeedTemplateItem[],
 ): Template {
   return {
     version: 1,
     id,
     name,
-    items,
+    items: items.map(templateItem),
     createdAt: STAMP,
     updatedAt: STAMP,
   };
@@ -51,8 +81,18 @@ function checklist(
 export function buildSeedSnapshot(): Snapshot {
   return {
     templates: [
+      // Nested under a category header, so the seed exercises the fact that a
+      // template holds the same item tree a checklist does.
       template("tpl-trip", "Weekend trip", [
-        { id: "t1", title: "Passport / ID", required: true },
+        {
+          id: "t1",
+          title: "Documents",
+          category: true,
+          children: [
+            { id: "t1a", title: "Passport / ID", required: true },
+            { id: "t1b", title: "Travel insurance" },
+          ],
+        },
         { id: "t2", title: "Charger + cables" },
         { id: "t3", title: "Toiletries" },
         { id: "t4", title: "Book the dog sitter", notes: "Call by Thursday" },

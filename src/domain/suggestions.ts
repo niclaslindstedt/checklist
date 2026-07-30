@@ -17,7 +17,7 @@
 import { activeItems, archivedItems } from "./archive-ops.ts";
 import { flattenItems } from "./item-tree.ts";
 import { matchPlainText, type MatchRange } from "./search.ts";
-import type { Checklist } from "./types.ts";
+import type { ItemList } from "./types.ts";
 
 /**
  * One candidate title for the typeahead plus how many archived copies back
@@ -54,7 +54,7 @@ export const MAX_SUGGESTIONS = 5;
  * another copy of its title lands here, so a recurring entry accrues a
  * higher count than a one-off.
  */
-export function archivedTitlePool(checklist: Checklist): TitleCount[] {
+export function archivedTitlePool(checklist: ItemList): TitleCount[] {
   const active = new Set(
     flattenItems(activeItems(checklist)).map((it) =>
       it.title.trim().toLowerCase(),

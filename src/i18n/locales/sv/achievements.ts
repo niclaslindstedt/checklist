@@ -245,6 +245,13 @@ const achievements: AchievementsCatalog = {
         "Den tunna chevronen ovanför sidfoten fäller ihop den — Donera, pokalen, Om och Inställningar — och ger det frigjorda utrymmet till din checklista. Tryck igen för att fälla ut sidfoten. Valet sparas på den här enheten.",
     },
 
+    blueprint: {
+      name: "Ritning",
+      condition: "Spara en checklista som mall.",
+      learnMore:
+        "Högerklicka på en lista i sidomenyn (eller svep den åt vänster på pekskärm) och välj ”Spara som mall” för att fånga den som en återanvändbar ritning. Mallen tar en fullständig kopia av listan — underposter, kategorier, anteckningar, obligatoriska poster och eventuella datum — med alla rutor obockade och det du arkiverat lämnat kvar. Det är en ögonblicksbild, inte en länk: ändringar i listan påverkar aldrig mallen, och tvärtom.",
+    },
+
     // ── Proffs ────────────────────────────────────────────────────────
     categoriser: {
       name: "Kategorisör",
@@ -257,6 +264,12 @@ const achievements: AchievementsCatalog = {
       condition: "Skapa en namnrymd.",
       learnMore:
         "Namnrymder håller separata världar av listor sida vid sida — jobb och hem, till exempel — var och en sitt eget dokument. “+” på Namnrymd-rubriken skapar en.",
+    },
+    stampedOut: {
+      name: "Utstansad",
+      condition: "Skapa en ny lista från en mall.",
+      learnMore:
+        "Öppna en mall och tryck på ”Ny lista från denna”, eller högerklicka på den i sidomenyn. Du får en helt ny checklista som är en fristående kopia av ritningen — samma poster, samma nivåer, samma kategorier, inget avbockat. Bocka av hur mycket du vill; mallen den kom från förblir orörd inför nästa gång.",
     },
     dressUp: {
       name: "Klä upp",

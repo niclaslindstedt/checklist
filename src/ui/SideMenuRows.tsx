@@ -22,6 +22,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   PlusIcon,
+  TemplateIcon,
   TrashIcon,
 } from "./icons.tsx";
 
@@ -317,13 +318,35 @@ const ROW_STRIP_W = 48;
 export function ChecklistRowStrip({
   removeLabel,
   onRemove,
+  templateLabel,
+  onSaveAsTemplate,
   children,
 }: {
   removeLabel: string;
-  onRemove: () => void;
+  /**
+   * Delete this row's list. Omitted for the last remaining checklist, which
+   * can't be deleted — the strip then reveals only the actions that do apply,
+   * rather than a trash button that would do nothing.
+   */
+  onRemove?: () => void;
+  /**
+   * Label for the optional "save as template" action revealed alongside the
+   * trash. Supplied together with {@link onSaveAsTemplate}.
+   */
+  templateLabel?: string;
+  /**
+   * Capture this list as a template. Touch's counterpart to the desktop
+   * right-click entry: a long-press on a sidebar row is already spoken for by
+   * the drag-to-file gesture, so the swipe strip is where the action lives on
+   * a touchscreen.
+   */
+  onSaveAsTemplate?: () => void;
   children: ReactNode;
 }) {
-  const swipe = useSwipeReveal(ROW_STRIP_W);
+  // The strip widens to fit however many actions it carries, so the row slides
+  // exactly far enough to uncover them — and doesn't slide at all with none.
+  const actionCount = (onSaveAsTemplate ? 1 : 0) + (onRemove ? 1 : 0);
+  const swipe = useSwipeReveal(ROW_STRIP_W * Math.max(actionCount, 1));
   return (
     <div className="relative overflow-hidden">
       <div
@@ -331,18 +354,34 @@ export function ChecklistRowStrip({
           swipe.offset < 0 ? "" : "invisible"
         }`}
       >
-        <button
-          type="button"
-          onClick={() => {
-            swipe.close();
-            onRemove();
-          }}
-          aria-label={removeLabel}
-          style={{ width: ROW_STRIP_W }}
-          className="flex h-full items-center justify-center bg-danger text-white"
-        >
-          <TrashIcon className="h-5 w-5" />
-        </button>
+        {onSaveAsTemplate && (
+          <button
+            type="button"
+            onClick={() => {
+              swipe.close();
+              onSaveAsTemplate();
+            }}
+            aria-label={templateLabel}
+            style={{ width: ROW_STRIP_W }}
+            className="flex h-full items-center justify-center bg-accent text-page-bg"
+          >
+            <TemplateIcon className="h-5 w-5" />
+          </button>
+        )}
+        {onRemove && (
+          <button
+            type="button"
+            onClick={() => {
+              swipe.close();
+              onRemove();
+            }}
+            aria-label={removeLabel}
+            style={{ width: ROW_STRIP_W }}
+            className="flex h-full items-center justify-center bg-danger text-white"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        )}
       </div>
       <div
         {...swipe.handlers}

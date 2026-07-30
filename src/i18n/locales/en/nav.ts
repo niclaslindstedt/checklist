@@ -11,6 +11,7 @@ const nav = {
   label: "Views",
   checklist: "Checklist",
   checklists: "Checklists",
+  templates: "Templates",
   newChecklist: "New checklist",
   removeChecklist: "Delete checklist",
   newFolder: "New folder",

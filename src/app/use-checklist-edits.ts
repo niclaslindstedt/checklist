@@ -34,8 +34,8 @@ import {
   type DropMode,
 } from "../domain/checklists.ts";
 import type {
-  Checklist,
   ChecklistItem,
+  ItemList,
   Recurrence,
   Snapshot,
 } from "../domain/types.ts";
@@ -191,8 +191,19 @@ export interface ChecklistEdits {
 }
 
 export function useChecklistEdits(deps: {
-  /** The active checklist the verbs mutate. */
-  list: Checklist;
+  /**
+   * The entry the verbs mutate: the active checklist, or the open template
+   * when there is one. A template mirrors a checklist's shape, so every verb
+   * below works on either without branching — see `ItemList`.
+   */
+  list: ItemList;
+  /**
+   * True while the open entry is a template. Templates hold no checked state
+   * (their boxes render inert), so the verbs that produce or consume it —
+   * toggling, the bulk check sweeps, and the archive — stand down rather than
+   * writing progress into a blueprint.
+   */
+  templateMode: boolean;
   /** Latest full document, read when folding an edit into the snapshot. */
   docRef: MutableRefObject<Snapshot>;
   /** Swap the visible document for an immediate re-render. */
@@ -208,7 +219,16 @@ export function useChecklistEdits(deps: {
   /** Where `addItem` inserts a new item ("top" or "bottom"). */
   addItemPosition: AddItemPosition;
 }): ChecklistEdits {
-  const { list, docRef, setDoc, scheduleSave, record, notify, t } = deps;
+  const {
+    list,
+    templateMode,
+    docRef,
+    setDoc,
+    scheduleSave,
+    record,
+    notify,
+    t,
+  } = deps;
   const { addItemPosition } = deps;
 
   // Read the live add-item position from a ref so `addItem` stays
@@ -226,18 +246,30 @@ export function useChecklistEdits(deps: {
   const listRef = useRef(list);
   listRef.current = list;
 
+  // Which of the document's two collections the open entry lives in, read from
+  // a ref for the same reason: the verbs stay referentially stable as the user
+  // steps between a list and a template.
+  const templateModeRef = useRef(templateMode);
+  templateModeRef.current = templateMode;
+
   // Fold the edited list back into the document, persist it, and record
   // the result — tagged with `label` — on the undo timeline. Recording the
   // whole document (not just the diff) is what lets a later undo resurrect
   // a deleted item from the prior entry; the label is what lets undo / redo
   // announce *which* edit they walked past.
   const commit = useCallback(
-    (nextList: Checklist, label: string) => {
+    (nextList: ItemList, label: string) => {
       const prev = docRef.current;
+      // Fold the edit back into whichever collection the entry came from. An
+      // id only ever exists in one of the two, so matching on it in both is
+      // safe and spares every verb from having to know which it is holding.
       const next: Snapshot = {
         ...prev,
         checklists: prev.checklists.map((c) =>
-          c.id === nextList.id ? nextList : c,
+          c.id === nextList.id ? { ...c, ...nextList } : c,
+        ),
+        templates: prev.templates.map((tpl) =>
+          tpl.id === nextList.id ? { ...tpl, ...nextList } : tpl,
         ),
       };
       setDoc(next);
@@ -262,9 +294,19 @@ export function useChecklistEdits(deps: {
   // search walks each list's tree so a nested sub-item is found too.
   const findOwner = useCallback(
     (itemId: string) => {
-      for (const checklist of docRef.current.checklists) {
-        const item = findItem(checklist.items, itemId);
-        if (item) return { checklist, item };
+      // With a template open, look there first — its items are the ones under
+      // the user's cursor. Checklists are still searched afterwards so the
+      // archive view, which spans every list regardless of what the checklist
+      // view is showing, keeps resolving its rows.
+      const doc = docRef.current;
+      const collections = templateModeRef.current
+        ? [doc.templates, doc.checklists]
+        : [doc.checklists, doc.templates];
+      for (const collection of collections) {
+        for (const checklist of collection) {
+          const item = findItem(checklist.items, itemId);
+          if (item) return { checklist, item };
+        }
       }
       return null;
     },
@@ -372,6 +414,9 @@ export function useChecklistEdits(deps: {
 
   const toggle = useCallback(
     (itemId: string) => {
+      // A template holds no checked state — its boxes render inert, and this
+      // is the backstop that keeps a stray path from writing progress into one.
+      if (templateModeRef.current) return;
       const title = titleOf(itemId);
       const target = findItem(listRef.current.items, itemId);
       const willCheck = !target?.checked;
@@ -444,6 +489,7 @@ export function useChecklistEdits(deps: {
   );
 
   const checkAll = useCallback(() => {
+    if (templateModeRef.current) return;
     const next = setAllCheckedOp(listRef.current, true, now());
     // Nothing to do (every item already checked) — skip the write and the
     // undo step so the gesture leaves no trace.
@@ -455,6 +501,7 @@ export function useChecklistEdits(deps: {
   }, [commit, notify, t]);
 
   const uncheckAll = useCallback(() => {
+    if (templateModeRef.current) return;
     const next = setAllCheckedOp(listRef.current, false, now());
     if (next === listRef.current) return;
     const label = t("toast.allUnchecked");
@@ -489,6 +536,9 @@ export function useChecklistEdits(deps: {
 
   const archive = useCallback(
     (itemId: string) => {
+      // Nothing in a template is ever archived — extraction leaves archived
+      // items behind, and the view offers no archive affordance on one.
+      if (templateModeRef.current) return;
       const label = t("toast.itemArchived", { title: titleOf(itemId) });
       commit(setArchived(listRef.current, itemId, true, now()), label);
       notify(label);
@@ -529,6 +579,7 @@ export function useChecklistEdits(deps: {
   );
 
   const archiveFinished = useCallback(() => {
+    if (templateModeRef.current) return;
     const count = finishedCount();
     if (count === 0) return;
     const label = t("toast.itemsArchived", { count });
@@ -538,6 +589,7 @@ export function useChecklistEdits(deps: {
   }, [commit, finishedCount, notify, t]);
 
   const deleteFinished = useCallback(() => {
+    if (templateModeRef.current) return;
     const count = finishedCount();
     if (count === 0) return;
     const label = t("toast.itemsDeleted", { count });

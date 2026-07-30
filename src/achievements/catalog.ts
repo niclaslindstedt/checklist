@@ -17,6 +17,7 @@ import {
   AsteriskGlyph,
   BellGlyph,
   BellOffGlyph,
+  BlueprintGlyph,
   BoxesGlyph,
   CheckGlyph,
   ChevronsDownUpGlyph,
@@ -51,6 +52,7 @@ import {
   SearchGlyph,
   SmartphoneGlyph,
   SparklesGlyph,
+  StampGlyph,
   TrashGlyph,
   TypeGlyph,
   UndoGlyph,
@@ -440,6 +442,22 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },
+  // Capturing a list as a template is the moment the app stops being one-shot
+  // — derived off the document gaining its first template, so it fires whether
+  // the capture came from the desktop menu or the touch swipe strip.
+  {
+    id: "blueprint",
+    tier: "intermediate",
+    glyph: BlueprintGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot.templates],
+      predicate: (prev, next) =>
+        prev.snapshot.templates.length === 0 &&
+        next.snapshot.templates.length > 0,
+    },
+  },
 
   // ──────────────────────────────────────────────────────────────
   // Pro — "Make it sync, keep it tidy, take it everywhere."
@@ -460,6 +478,16 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     id: "compartments",
     tier: "pro",
     glyph: BoxesGlyph,
+    hasLearnMore: true,
+    trigger: { kind: "manual" },
+  },
+  // Coming back and stamping a real list out of a saved template — the payoff
+  // half of the round trip, and a genuine workflow milestone rather than a
+  // one-off gesture. Fired from `createChecklistFromTemplate`.
+  {
+    id: "stampedOut",
+    tier: "pro",
+    glyph: StampGlyph,
     hasLearnMore: true,
     trigger: { kind: "manual" },
   },

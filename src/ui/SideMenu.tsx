@@ -5,6 +5,7 @@ import { BUILD_LABEL } from "../build-env.ts";
 import type {
   ChecklistSummary,
   FolderSummary,
+  TemplateSummary,
 } from "../app/use-checklist-lists.ts";
 import { useT } from "../i18n";
 import { REPO_URL } from "../seo/siteConfig.ts";
@@ -34,6 +35,7 @@ import {
   SearchIcon,
   ShieldIcon,
   SparklesIcon,
+  TemplateIcon,
   TrashIcon,
   UndoIcon,
 } from "./icons.tsx";
@@ -158,6 +160,13 @@ export function SideMenu({
     renameFolder,
     removeFolder,
     addChecklistInFolder,
+    templates,
+    templateMode,
+    activeTemplate,
+    selectTemplate,
+    saveChecklistAsTemplate,
+    createChecklistFromTemplate,
+    removeTemplate,
   } = useChecklistContext();
   // Sidebar folder UI state, all device-local: which folders are collapsed
   // (empty = all expanded, the screenshot's default), whether the inline
@@ -269,7 +278,9 @@ export function SideMenu({
       <NavItem
         icon={icon}
         label={c.name}
-        active={c.id === activeChecklistId && current === "checklist"}
+        active={
+          c.id === activeChecklistId && current === "checklist" && !templateMode
+        }
         badge={c.remaining > 0 ? c.remaining : undefined}
         indent={indent}
         onClick={() => {
@@ -279,6 +290,7 @@ export function SideMenu({
       />
     );
     const canRemove = checklists.length > 1;
+    const saveAsTemplate = () => saveChecklistAsTemplate(c.id);
     const draggable = (inner: ReactNode): ReactNode => (
       <ChecklistDragItem
         key={c.id}
@@ -293,32 +305,111 @@ export function SideMenu({
         {inner}
       </ChecklistDragItem>
     );
-    if (!canRemove) return draggable(row);
+    // "Save as template" is offered on every list, including the last one —
+    // capturing a list neither removes nor archives it, so the guard that keeps
+    // one list on screen doesn't apply. The last list therefore still gets a
+    // menu (desktop) / strip (touch), just without the destructive entries.
     if (desktop) {
       const actions: ContextMenuItem[] = [
         {
-          label: t("app.archive"),
-          icon: <ArchiveIcon className="h-4 w-4" />,
-          onSelect: () => archiveChecklist(c.id),
-        },
-        {
-          label: t("nav.removeChecklist"),
-          icon: <TrashIcon className="h-4 w-4" />,
-          danger: true,
-          onSelect: () => removeChecklist(c.id),
+          label: t("app.saveAsTemplate"),
+          icon: <TemplateIcon className="h-4 w-4" />,
+          onSelect: saveAsTemplate,
         },
       ];
+      if (canRemove) {
+        actions.push(
+          {
+            label: t("app.archive"),
+            icon: <ArchiveIcon className="h-4 w-4" />,
+            onSelect: () => archiveChecklist(c.id),
+          },
+          {
+            label: t("nav.removeChecklist"),
+            icon: <TrashIcon className="h-4 w-4" />,
+            danger: true,
+            onSelect: () => removeChecklist(c.id),
+          },
+        );
+      }
       return draggable(
         <div onContextMenu={(e) => openMenu(actions, e)}>{row}</div>,
       );
     }
+    // Touch can't use a long-press here — that gesture already picks the row up
+    // to file it (see `checklist-drag.tsx`) — so the swipe strip carries both
+    // actions instead.
     return draggable(
       <ChecklistRowStrip
         removeLabel={t("nav.removeChecklist")}
-        onRemove={() => removeChecklist(c.id)}
+        onRemove={canRemove ? () => removeChecklist(c.id) : undefined}
+        templateLabel={t("app.saveAsTemplate")}
+        onSaveAsTemplate={saveAsTemplate}
       >
         {row}
       </ChecklistRowStrip>,
+    );
+  }
+
+  // One template row in the Templates group. Clicking it opens the template in
+  // the checklist view (inert checkboxes, everything else editable); desktop
+  // right-click and the touch swipe strip both reach the two verbs that matter
+  // — stamp a list out of it, or delete it. Templates aren't draggable: they
+  // sit outside the folder/namespace filing the lists above take part in.
+  function renderTemplateRow(tpl: TemplateSummary): ReactNode {
+    const customised = Boolean(tpl.glyph || tpl.color);
+    const icon = customised ? (
+      <NamespaceGlyph
+        name={tpl.glyph ?? DEFAULT_CHECKLIST_GLYPH}
+        className="h-5 w-5"
+        style={tpl.color ? { color: tpl.color } : undefined}
+      />
+    ) : (
+      <TemplateIcon className="h-5 w-5" />
+    );
+    const row = (
+      <NavItem
+        icon={icon}
+        label={tpl.name}
+        active={activeTemplate?.id === tpl.id && current === "checklist"}
+        badge={tpl.count > 0 ? tpl.count : undefined}
+        onClick={() => {
+          selectTemplate(tpl.id);
+          navigate("checklist");
+        }}
+      />
+    );
+    if (desktop) {
+      const actions: ContextMenuItem[] = [
+        {
+          label: t("app.templateUse"),
+          icon: <ChecklistIcon className="h-4 w-4" />,
+          onSelect: () => {
+            createChecklistFromTemplate(tpl.id);
+            navigate("checklist");
+          },
+        },
+        {
+          label: t("app.deleteTemplate"),
+          icon: <TrashIcon className="h-4 w-4" />,
+          danger: true,
+          onSelect: () => removeTemplate(tpl.id),
+        },
+      ];
+      return (
+        <div key={tpl.id} onContextMenu={(e) => openMenu(actions, e)}>
+          {row}
+        </div>
+      );
+    }
+    return (
+      <ChecklistRowStrip
+        key={tpl.id}
+        removeLabel={t("app.deleteTemplate")}
+        onRemove={() => removeTemplate(tpl.id)}
+      >
+        {row}
+      </ChecklistRowStrip>
     );
   }
 
@@ -533,6 +624,19 @@ export function SideMenu({
           )}
         </div>
       </div>
+      {/* Templates sit *below* the scrolling checklist region rather than
+          inside it, for two reasons: that region is the root drop zone for
+          filing lists (a template is not a filing destination), and a template
+          is reached deliberately rather than browsed. The group hides itself
+          entirely until the first one is saved, so a user who never touches
+          templates never sees the heading. It scrolls on its own once there
+          are more than a handful. */}
+      {templates.length > 0 && (
+        <div className="max-h-48 shrink-0 overflow-y-auto">
+          <SectionHeader label={t("nav.templates")} border />
+          {templates.map(renderTemplateRow)}
+        </div>
+      )}
       {/* New list / New folder / Archive and Undo / Redo / Search share one
           bordered panel just above the footer divider, fixed so it falls under
           the thumb no matter how long the checklist list is. A top row of

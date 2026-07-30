@@ -10,8 +10,9 @@ import {
   mapTree,
   updateItem,
   withChildren,
+  withItems,
 } from "./item-tree.ts";
-import type { Checklist, ChecklistItem, Snapshot } from "./types.ts";
+import type { ChecklistItem, ItemList, Snapshot } from "./types.ts";
 
 /**
  * Archive every finished (checked) item still in the active list in one
@@ -22,7 +23,10 @@ import type { Checklist, ChecklistItem, Snapshot } from "./types.ts";
  * (nothing checked, active, and non-category) returns the same checklist, so
  * it never writes.
  */
-export function archiveChecked(checklist: Checklist, now: string): Checklist {
+export function archiveChecked<L extends ItemList>(
+  checklist: L,
+  now: string,
+): L {
   if (
     !flattenItems(checklist.items).some(
       (it) => it.checked && !it.archived && !it.category,
@@ -30,15 +34,15 @@ export function archiveChecked(checklist: Checklist, now: string): Checklist {
   ) {
     return checklist;
   }
-  return {
-    ...checklist,
-    items: mapTree(checklist.items, (it) =>
+  return withItems(
+    checklist,
+    mapTree(checklist.items, (it) =>
       it.checked && !it.archived && !it.category
         ? { ...it, archived: true }
         : it,
     ),
-    updatedAt: now,
-  };
+    now,
+  );
 }
 
 /**
@@ -49,7 +53,10 @@ export function archiveChecked(checklist: Checklist, now: string): Checklist {
  * children, so the category survives (emptied of what was done) rather than
  * vanishing with its subtree. A no-op returns the same checklist untouched.
  */
-export function deleteChecked(checklist: Checklist, now: string): Checklist {
+export function deleteChecked<L extends ItemList>(
+  checklist: L,
+  now: string,
+): L {
   if (
     !flattenItems(checklist.items).some(
       (it) => it.checked && !it.archived && !it.category,
@@ -69,7 +76,7 @@ export function deleteChecked(checklist: Checklist, now: string): Checklist {
     }
     return out;
   };
-  return { ...checklist, items: prune(checklist.items), updatedAt: now };
+  return withItems(checklist, prune(checklist.items), now);
 }
 
 /**
@@ -99,12 +106,12 @@ export function emptyArchive(snapshot: Snapshot, now: string): Snapshot {
  * flag rides one node only — its subtree travels with it, hidden along with
  * its archived parent and restored when the parent is.
  */
-export function setArchived(
-  checklist: Checklist,
+export function setArchived<L extends ItemList>(
+  checklist: L,
   itemId: string,
   archived: boolean,
   now: string,
-): Checklist {
+): L {
   const items = updateItem(checklist.items, itemId, (it) => {
     if (archived) {
       if (it.archived) return it;
@@ -116,7 +123,7 @@ export function setArchived(
     return next;
   });
   if (items === checklist.items) return checklist;
-  return { ...checklist, items, updatedAt: now };
+  return withItems(checklist, items, now);
 }
 
 /**
@@ -124,7 +131,7 @@ export function setArchived(
  * archived descendants pruned away. Children of an archived item are hidden
  * along with it; an item archived on its own drops out wherever it sits.
  */
-export function activeItems(checklist: Checklist): ChecklistItem[] {
+export function activeItems(checklist: ItemList): ChecklistItem[] {
   const prune = (list: readonly ChecklistItem[]): ChecklistItem[] => {
     const out: ChecklistItem[] = [];
     for (const it of list) {
@@ -142,7 +149,7 @@ export function activeItems(checklist: Checklist): ChecklistItem[] {
  * travel with it rather than being listed separately, so restoring or
  * deleting one entry acts on the whole group.
  */
-export function archivedItems(checklist: Checklist): ChecklistItem[] {
+export function archivedItems(checklist: ItemList): ChecklistItem[] {
   const out: ChecklistItem[] = [];
   const walk = (list: readonly ChecklistItem[]) => {
     for (const it of list) {
