@@ -258,6 +258,12 @@ const achievements = {
       learnMore:
         "Long-press (or right-click) an item that has sub-items and choose Promote to category. It becomes a slim, muted header that groups the items under it — store names in a shopping list, say — and stays put when you archive or delete every finished item, ready to be refilled. Categories are still yours to rename, remove, or demote back to an ordinary item.",
     },
+    sectionCopy: {
+      name: "Section by Section",
+      condition: "Copy a single category to the clipboard.",
+      learnMore:
+        "Once a list has categories, the copy button opens a short menu — All, then every category in the list. Pick one and only the items under that header land on the clipboard, without the header itself: the produce aisle out of the week's shopping, ready to paste into a message.",
+    },
     compartments: {
       name: "Compartments",
       condition: "Create a namespace.",

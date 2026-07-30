@@ -182,11 +182,92 @@ describe("markdown codec", () => {
     });
 
     it("drops the archived section when includeArchived is false", () => {
-      const body = checklistBodyMarkdown(checklist, false);
+      const body = checklistBodyMarkdown(checklist, { includeArchived: false });
       expect(body).not.toContain("## Archived");
       // The active items still render.
       expect(body).toContain("- [ ] Milk");
       expect(body).toContain("- [x] Bread");
+    });
+  });
+
+  describe("categories", () => {
+    // A grouped shopping list: two category headers, each with its own
+    // children, plus one ungrouped item and one archived child.
+    const grouped: Checklist = {
+      version: 1,
+      id: "cl-cat",
+      templateId: "",
+      name: "Shopping",
+      items: [
+        {
+          id: "produce",
+          title: "Produce",
+          checked: false,
+          category: true,
+          children: [
+            { id: "p1", title: "Apples", checked: false },
+            { id: "p2", title: "Carrots", checked: true },
+            { id: "p3", title: "Old kale", checked: true, archived: true },
+          ],
+        },
+        {
+          id: "dairy",
+          title: "Dairy",
+          checked: false,
+          category: true,
+          children: [{ id: "d1", title: "Milk", checked: false }],
+        },
+        { id: "loose", title: "Batteries", checked: false },
+      ],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    };
+
+    it("keeps the *(category)* marker by default (the persistence shape)", () => {
+      expect(checklistBodyMarkdown(grouped)).toContain(
+        "- [ ] Produce *(category)*",
+      );
+      expect(checklistToMarkdown(grouped)).toContain(
+        "- [ ] Dairy *(category)*",
+      );
+    });
+
+    it("drops the marker when categoryMarkers is false", () => {
+      const body = checklistBodyMarkdown(grouped, { categoryMarkers: false });
+      expect(body).not.toContain("(category)");
+      expect(body).toContain("- [ ] Produce\n");
+      expect(body).toContain("  - [ ] Apples");
+    });
+
+    it("scopes the body to one category's children, header excluded", () => {
+      const body = checklistBodyMarkdown(grouped, {
+        categoryId: "produce",
+        categoryMarkers: false,
+        includeArchived: false,
+      });
+      expect(body).toBe("# Shopping\n\n- [ ] Apples\n- [x] Carrots\n");
+    });
+
+    it("keeps a scoped category's archived children when asked", () => {
+      const body = checklistBodyMarkdown(grouped, {
+        categoryId: "produce",
+        categoryMarkers: false,
+      });
+      expect(body).toContain("## Archived");
+      expect(body).toContain("- [x] Old kale");
+      // Nothing from the sibling category leaks in.
+      expect(body).not.toContain("Milk");
+    });
+
+    it("renders a scoped category's children at the top level", () => {
+      const body = checklistBodyMarkdown(grouped, { categoryId: "dairy" });
+      expect(body).toBe("# Shopping\n\n- [ ] Milk\n");
+    });
+
+    it("yields no items for an unknown category id", () => {
+      expect(checklistBodyMarkdown(grouped, { categoryId: "nope" })).toBe(
+        "# Shopping\n",
+      );
     });
   });
 

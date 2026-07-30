@@ -294,6 +294,16 @@ export function setCategory(
   return { ...checklist, items, updatedAt: now };
 }
 
+/**
+ * The **category** headers a checklist currently shows, in document order —
+ * every active (non-archived) item flagged `category`, at any nesting depth.
+ * An empty array is how a caller tells the list isn't grouped at all: the copy
+ * button offers its per-category menu only when this returns something.
+ */
+export function activeCategories(checklist: Checklist): ChecklistItem[] {
+  return flattenItems(activeItems(checklist)).filter((it) => it.category);
+}
+
 /** Permanently remove an item — and its whole subtree — from the list. */
 export function deleteItem(
   checklist: Checklist,

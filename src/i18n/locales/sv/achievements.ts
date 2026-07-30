@@ -252,6 +252,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Långtryck (eller högerklicka) på en rad som har underpunkter och välj Gör till kategori. Den blir en smal, dämpad rubrik som grupperar raderna under sig — butiksnamn i en inköpslista, till exempel — och blir kvar när du arkiverar eller tar bort alla avklarade rader, redo att fyllas på igen. Kategorier går fortfarande att byta namn på, ta bort eller göra om till en vanlig rad.",
     },
+    sectionCopy: {
+      name: "Del för del",
+      condition: "Kopiera en enskild kategori till urklipp.",
+      learnMore:
+        "Så snart en lista har kategorier öppnar kopieringsknappen en kort meny — Allt, och sedan varje kategori i listan. Välj en så hamnar bara raderna under den rubriken i urklipp, utan rubriken själv: grönsaksavdelningen ur veckans inköp, redo att klistra in i ett meddelande.",
+    },
     compartments: {
       name: "Fack",
       condition: "Skapa en namnrymd.",

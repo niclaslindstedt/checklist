@@ -16,7 +16,11 @@
 // `<parentId>-<index>` so a load with no intervening edit is idempotent —
 // the same bytes always reconstruct the same `Snapshot`.
 
-import { activeItems, archivedItems } from "../../domain/checklists.ts";
+import {
+  activeItems,
+  archivedItems,
+  findItem,
+} from "../../domain/checklists.ts";
 import type {
   Checklist,
   ChecklistItem,
@@ -48,6 +52,8 @@ const REQUIRED_MARKER = "*(required)*";
 // group the sub-items under it). Rendered as an italic aside by every markdown
 // viewer, round-tripping the `category` flag in the same spirit as
 // REQUIRED_MARKER so a categorised list survives on the file/cloud backends.
+// Persistence-only: the copy affordance renders without it (see
+// `ChecklistBodyOptions.categoryMarkers`).
 const CATEGORY_MARKER = "*(category)*";
 
 // Trailing marker that carries an item's due date and (optionally) how it
@@ -183,6 +189,35 @@ export function checklistToMarkdown(checklist: Checklist): string {
   return renderFrontmatter(front) + "\n" + checklistBodyMarkdown(checklist);
 }
 
+/** How `checklistBodyMarkdown` renders a list. Every field is optional. */
+export interface ChecklistBodyOptions {
+  /**
+   * Emit the `## Archived` section. Defaults to `true` so the on-disk
+   * markdown file keeps every archived item (the archive is the live store,
+   * not an export). The copy affordance passes the user's "Include archived
+   * in copy" setting, which defaults to off — so a copied list is just its
+   * active items unless the user opts in.
+   */
+  includeArchived?: boolean;
+  /**
+   * Emit the trailing `*(category)*` marker on a category header. Defaults to
+   * `true`, which is what makes a categorised list survive the round-trip
+   * through the file/cloud backends. The copy affordance passes `false`: on
+   * the clipboard the marker is noise, since a header with items nested under
+   * it already reads as a category to a human.
+   */
+  categoryMarkers?: boolean;
+  /**
+   * Restrict the body to the items nested under one **category** header, by
+   * item id. The header's own line is left out — just its children come
+   * along, rendered at the top level as if they were the whole list. Omit for
+   * the whole checklist. An id that names nothing (a stale menu selection)
+   * yields a body with no items rather than silently falling back to the
+   * whole list.
+   */
+  categoryId?: string;
+}
+
 /**
  * The body of a checklist as standalone markdown — the `# Name` heading,
  * the active `- [ ] / - [x]` items, then a `## Archived` section if any —
@@ -191,29 +226,46 @@ export function checklistToMarkdown(checklist: Checklist): string {
  * user can paste anywhere (and back into the app, see
  * `parseItemsFromMarkdown`), where checked items stay checked.
  *
- * `includeArchived` controls whether the `## Archived` section is emitted.
- * It defaults to `true` so the on-disk markdown file keeps every archived
- * item (the archive is the live store, not an export). The copy affordance
- * passes the user's "Include archived in copy" setting, which defaults to
- * off — so a copied list is just its active items unless the user opts in.
+ * See {@link ChecklistBodyOptions} for the knobs. The defaults are the
+ * persistence shape (the whole list, archive and category markers included);
+ * the copy path is the caller that opts out.
  */
 export function checklistBodyMarkdown(
   checklist: Checklist,
-  includeArchived = true,
+  options: ChecklistBodyOptions = {},
 ): string {
+  const {
+    includeArchived = true,
+    categoryMarkers = true,
+    categoryId,
+  } = options;
+  // Scoping to a category is expressed as a checklist whose items *are* that
+  // category's children, so the active / archived split below is the same
+  // walk either way.
+  const scope = categoryId ? scopeToCategory(checklist, categoryId) : checklist;
   // `activeItems` / `archivedItems` walk the item tree, so nested sub-items
   // render indented under their parent and an archived subtree lands whole in
   // the Archived section.
-  const active = activeItems(checklist);
-  const archived = includeArchived ? archivedItems(checklist) : [];
+  const active = activeItems(scope);
+  const archived = includeArchived ? archivedItems(scope) : [];
 
   const lines: string[] = [`# ${checklist.name}`, ""];
-  for (const item of active) lines.push(...renderChecklistItem(item, 0));
+  for (const item of active) {
+    lines.push(...renderChecklistItem(item, 0, categoryMarkers));
+  }
   if (archived.length > 0) {
     lines.push("", "## Archived", "");
-    for (const item of archived) lines.push(...renderChecklistItem(item, 0));
+    for (const item of archived) {
+      lines.push(...renderChecklistItem(item, 0, categoryMarkers));
+    }
   }
   return lines.join("\n").replace(/\n*$/, "") + "\n";
+}
+
+/** The checklist reduced to one category's children (empty if unknown). */
+function scopeToCategory(checklist: Checklist, categoryId: string): Checklist {
+  const category = findItem(checklist.items, categoryId);
+  return { ...checklist, items: category?.children ?? [] };
 }
 
 export function templateToMarkdown(template: Template): string {
@@ -234,15 +286,20 @@ function indentFor(depth: number): string {
   return "  ".repeat(depth);
 }
 
-function renderChecklistItem(item: ChecklistItem, depth: number): string[] {
+function renderChecklistItem(
+  item: ChecklistItem,
+  depth: number,
+  categoryMarkers: boolean,
+): string[] {
   const pad = indentFor(depth);
   const box = item.checked ? "x" : " ";
+  const marker = categoryMarkers ? renderCategoryMarker(item) : "";
   const lines = [
-    `${pad}- [${box}] ${renderItemTitle(item)}${renderCategoryMarker(item)}${renderDueMarker(item)}`,
+    `${pad}- [${box}] ${renderItemTitle(item)}${marker}${renderDueMarker(item)}`,
     ...renderNotes(item.notes, pad),
   ];
   for (const child of item.children ?? []) {
-    lines.push(...renderChecklistItem(child, depth + 1));
+    lines.push(...renderChecklistItem(child, depth + 1, categoryMarkers));
   }
   return lines;
 }
