@@ -75,6 +75,40 @@ function Harness({
   );
 }
 
+// A nested list — `cat` owning `kid`, then the standalone `tail` the user
+// picks up — labelled with `data-reorder-depth` exactly as `ChecklistRow` does.
+function NestedHarness() {
+  const ctl = useListReorder(() => {});
+  const rows: [id: string, depth: number][] = [
+    ["cat", 0],
+    ["kid", 1],
+    ["tail", 0],
+  ];
+  return (
+    <div>
+      <ul ref={ctl.containerRef} style={{ position: "relative" }}>
+        {rows.map(([id, depth]) => (
+          <li
+            key={id}
+            data-reorder-id={id}
+            data-reorder-depth={depth}
+            data-testid={`row-${id}`}
+            style={ctl.rowStyle(id)}
+            {...ctl.dragHandleProps(id)}
+          >
+            {id}
+          </li>
+        ))}
+      </ul>
+      <div data-testid="drop">
+        {ctl.dropTarget
+          ? `${ctl.dropTarget.id}:${ctl.dropTarget.mode}`
+          : "none"}
+      </div>
+    </div>
+  );
+}
+
 let releaseSpy: ReturnType<typeof vi.fn<(id: number) => void>>;
 
 beforeEach(() => {
@@ -212,5 +246,24 @@ describe("useListReorder", () => {
     expect(releaseSpy).toHaveBeenCalledWith(1);
     // A cancelled drag commits nothing.
     expect(onReorder).not.toHaveBeenCalled();
+  });
+});
+
+describe("useListReorder over a nested list", () => {
+  // With `tail` lifted the list on screen is cat (root) > kid (child), so the
+  // last visible row is a child. Releasing in the open space below it used to
+  // resolve to "kid:after" — quietly filing the item inside `cat`.
+  it("drops at the root when released below the whole list", () => {
+    render(<NestedHarness />);
+    act(() => drag("tail", 100));
+    act(() => move("tail", 300)); // well past the bottom of the list
+    expect(screen.getByTestId("drop").textContent).toBe("cat:after");
+  });
+
+  it("still nests when the finger is held on the last child row", () => {
+    render(<NestedHarness />);
+    act(() => drag("tail", 100));
+    act(() => move("tail", 75)); // kid's bottom edge (40..80)
+    expect(screen.getByTestId("drop").textContent).toBe("kid:after");
   });
 });

@@ -47,6 +47,7 @@ const app: AppCatalog = {
   notePlaceholder: "Lägg till en anteckning… (markdown stöds)",
   addNote: "Lägg till en anteckning",
   addSubitem: "Lägg till underpunkt",
+  addToCategory: "Lägg till punkt i den här kategorin",
   showNote: "Visa anteckning",
   hideNote: "Dölj anteckning",
   showSubitems: "Visa underpunkter",

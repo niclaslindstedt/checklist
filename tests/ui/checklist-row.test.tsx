@@ -891,6 +891,89 @@ describe("ChecklistRow category styling", () => {
     // reveal layers show through during a swipe — the bug this guards against.
     expect(fg.className).not.toMatch(/bg-[\w-]+\/\d/);
   });
+
+  it("carries an add (+) button that opens a child composer under it", () => {
+    const onAddChild = vi.fn();
+    render(
+      <ul>
+        <ChecklistRow
+          item={cat}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          onAddChild={onAddChild}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    fireEvent.click(screen.getByLabelText("Add item to this category"));
+    expect(onAddChild).toHaveBeenCalledWith("cat");
+  });
+
+  it("sits the add button just before the drag grip", () => {
+    const { container } = render(
+      <ul>
+        <ChecklistRow
+          item={cat}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          onAddChild={noop}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    const buttons = Array.from(
+      container.querySelectorAll<HTMLElement>("button"),
+    );
+    const add = screen.getByLabelText("Add item to this category");
+    const grip = screen.getByLabelText("Drag to reorder");
+    expect(buttons.indexOf(add)).toBe(buttons.indexOf(grip) - 1);
+  });
+
+  it("leaves an ordinary item without an add button", () => {
+    render(
+      <ul>
+        <ChecklistRow
+          item={item}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          onAddChild={noop}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    expect(screen.queryByLabelText("Add item to this category")).toBeNull();
+  });
+});
+
+describe("ChecklistRow drag metadata", () => {
+  it("labels the row with its nesting depth for the drop-target math", () => {
+    const { container } = render(
+      <ul>
+        <ChecklistRow
+          item={item}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          depth={2}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    const li = container.querySelector("li")!;
+    expect(li.dataset.reorderId).toBe("i1");
+    expect(li.dataset.reorderDepth).toBe("2");
+  });
 });
 
 describe("ChecklistRow long-press menu (touch)", () => {

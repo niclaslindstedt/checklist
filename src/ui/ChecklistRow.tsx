@@ -21,6 +21,7 @@ import {
   ClockIcon,
   GripIcon,
   NoteIcon,
+  PlusIcon,
   TrashIcon,
 } from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
@@ -92,8 +93,9 @@ type Props = {
   onAddAfter?: (afterId: string) => void;
   /**
    * Open a sub-item composer nested under the given item — fired by the
-   * editor's "Add sub-item" button (`onAddChild(item.id)`). Omitted when
-   * nesting isn't offered.
+   * editor's "Add sub-item" button and, on a category header, by the (+)
+   * button on the row itself (`onAddChild(item.id)`). Omitted when nesting
+   * isn't offered.
    */
   onAddChild?: (parentId: string) => void;
   /**
@@ -345,6 +347,7 @@ function ChecklistRowImpl({
       <li
         ref={rowRef}
         data-reorder-id={item.id}
+        data-reorder-depth={depth}
         style={{ ...style, paddingLeft: indent || undefined }}
         className="relative border-b border-line bg-surface-2"
       >
@@ -371,6 +374,7 @@ function ChecklistRowImpl({
     <li
       ref={rowRef}
       data-reorder-id={item.id}
+      data-reorder-depth={depth}
       style={style}
       onContextMenu={
         desktop
@@ -571,6 +575,24 @@ function ChecklistRowImpl({
               }`}
             >
               <NoteIcon className="h-4 w-4" />
+            </button>
+          )}
+          {/* A category header carries its own (+) — the fastest way to file a
+              new item under it, without opening the header's editor to reach
+              "Add sub-item". It sits just left of the grip so the drag handle
+              stays on the trailing edge where every other row keeps it. Focus
+              is held on mousedown so the tap can't first blur an editor open
+              elsewhere, which would reflow the list out from under the finger
+              (same trick as the swipe action buttons above). */}
+          {category && onAddChild && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onAddChild(item.id)}
+              aria-label={t("app.addToCategory")}
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-muted hover:text-fg"
+            >
+              <PlusIcon className="h-4 w-4" />
             </button>
           )}
           <button

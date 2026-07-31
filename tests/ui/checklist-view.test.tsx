@@ -785,3 +785,29 @@ describe("ChecklistView category context menu", () => {
     ).toBeTruthy();
   });
 });
+
+describe("ChecklistView category add button", () => {
+  const promoted: ChecklistItem[] = [
+    {
+      id: "p",
+      title: "Store",
+      checked: false,
+      category: true,
+      children: [{ id: "k", title: "Milk", checked: false }],
+    },
+  ];
+
+  it("opens a composer that files new items under the category", () => {
+    const addItem = vi.fn().mockReturnValue("k2");
+    renderView({ items: promoted, addItem });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add item to this category" }),
+    );
+    const input = screen.getByLabelText("Add item");
+    fireEvent.change(input, { target: { value: "Bread" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(addItem).toHaveBeenCalledWith("Bread", "p");
+  });
+});

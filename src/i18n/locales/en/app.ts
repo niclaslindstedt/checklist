@@ -53,6 +53,7 @@ const app = {
   notePlaceholder: "Add a note… (markdown supported)",
   addNote: "Add a note",
   addSubitem: "Add sub-item",
+  addToCategory: "Add item to this category",
   showNote: "Show note",
   hideNote: "Hide note",
   showSubitems: "Show sub-items",
