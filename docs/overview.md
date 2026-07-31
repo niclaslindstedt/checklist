@@ -1187,7 +1187,7 @@ unlock off the flag appearing.
 Promotion is offered from the **row's action menu** — a desktop right-click
 or a touch long-press (see [Right-click menu](#right-click-menu)) — but
 **only on an item that already has sub-items**; a category with no children
-can still be demoted. Only four things treat a category specially:
+can still be demoted. Only five things treat a category specially:
 
 - **The bulk sweeps skip it.** `archiveChecked` / `deleteChecked` leave a
   category in the active list even when it's checked, so it survives an
@@ -1205,6 +1205,16 @@ can still be demoted. Only four things treat a category specially:
   list's categories as a menu, so one section can go to the clipboard on its
   own — see [Copy scope menu](#copy-scope-menu). The choices come from
   `activeCategories` (`src/domain/item-ops.ts`).
+- **It carries its own add (+) button.** A category header shows a plus
+  glyph immediately **left of the grip**, so the drag handle stays on the
+  trailing edge where every row keeps it. Pressing it opens the same nested
+  composer the editor's "Add sub-item" opens (`onAddChild` →
+  `composer.startChild`, which also expands a collapsed category so the draft
+  isn't hidden) — filing an item under a category takes one press instead of
+  opening the header's editor first. See
+  [Sub-items](#sub-items--nested-items). Plain items don't get one: their
+  route in is the editor button, which is where a leaf's nesting decision
+  belongs.
 
 Everything else about a category is unchanged: it still checks / unchecks,
 reorders, renames, archives, and deletes exactly like any other item, and
@@ -1232,6 +1242,22 @@ it, and the **wider middle band drops it _into_ that row as a sub-item**
 (`DropMode` = `"before" | "after" | "into"`; the middle band is deliberately
 the larger half so dragging squarely *onto* a row reliably nests it, which
 matters most under a thumb on a phone).
+
+The **empty space below the whole list is its own drop zone**: releasing
+there lands the item at the **end of the top level**, however deeply nested
+the last visible row happens to be. `resolveDropTarget` implements it by
+resolving a finger past the last row's bottom to the last **root** row
+(`depth === 0`) with mode `"after"` — which, because `"after"` inserts past
+the target's entire subtree, is exactly the bottom of the root list. Each
+row publishes its depth to the measurement pass as `data-reorder-depth`
+(alongside `data-reorder-id`), so `Rect` carries a `depth` and the hook
+needs no view state to decide this. Nesting under the last child is still
+available — hold the finger squarely *on* that row — but it is no longer
+what open space does. Before this, dropping below a category's last child
+quietly filed the item inside that category, and the only way to reach the
+bottom of the root list was the lower edge of the last root row, which is
+buried mid-list as soon as that row is expanded. A gap *between* rows (as
+opposed to below them all) keeps the old clamp to the nearest row.
 
 While dragging, the picked-up row is **lifted clean out of the list flow**
 and floated under the finger as a **smaller, translucent copy** (`rowStyle`
@@ -1287,10 +1313,11 @@ indented line itself parses as an item); templates stay flat.
 
 Dragging isn't the only way to build the tree. The in-row editor
 (`ChecklistRowEditor`) carries an **"Add sub-item"** button beside "Add a
-note": it commits the edit and asks the view to open a composer **nested
-under** that item (`onAddChild` → `startChildDraft` in `ChecklistView`,
-which also expands the parent so the draft isn't hidden behind a collapsed
-caret). The composer is the same `AddItemForm`, indented by a `depth` prop
+note" (which commits the open edit first), and a **category header carries
+a (+) button on the row itself** (see [Categories](#categories)); both open
+a composer **nested under** that item (`onAddChild` → `composer.startChild`
+in `ChecklistView`, which also expands the parent so the draft isn't hidden
+behind a collapsed caret). The composer is the same `AddItemForm`, indented by a `depth` prop
 and bound to `addItem(title, parentId)` (the edit verb and `addItem` /
 `addItems` domain ops take an optional `parentId` that appends into the
 parent's `children`, falling back to a top-level add if the id is gone). It

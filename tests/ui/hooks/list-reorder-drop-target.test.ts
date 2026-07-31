@@ -15,9 +15,14 @@ import {
 const H = 40;
 const EDGE = H * 0.25; // matches EDGE_ZONE = 0.25
 
-// A contiguous stack of rows, each H tall, starting at top 0.
+// A contiguous stack of root-level rows, each H tall, starting at top 0.
 function stack(...ids: string[]): Rect[] {
-  return ids.map((id, i) => ({ id, top: i * H, height: H }));
+  return ids.map((id, i) => ({ id, top: i * H, height: H, depth: 0 }));
+}
+
+// A contiguous stack of `[id, depth]` rows, for the nested fixtures below.
+function tree(...rows: [id: string, depth: number][]): Rect[] {
+  return rows.map(([id, depth], i) => ({ id, top: i * H, height: H, depth }));
 }
 
 const allow = () => true;
@@ -83,5 +88,49 @@ describe("resolveDropTarget", () => {
 
   it("returns null when no row is droppable", () => {
     expect(resolveDropTarget(stack("a"), "a", 20, allow)).toBeNull();
+  });
+});
+
+// The list the user actually has on screen: a category with a child, then a
+// second category below it. Everything past the last row is open space — the
+// root landing zone.
+describe("resolveDropTarget past the bottom of a nested list", () => {
+  // cat1 > kid, then cat2 — with the dragged item ("x") already lifted out.
+  const nested = tree(["cat1", 0], ["kid", 1], ["cat2", 0]);
+
+  it("lands at the root, after the last root row, below the whole list", () => {
+    expect(resolveDropTarget(nested, "x", 9999, allow)).toEqual({
+      id: "cat2",
+      mode: "after",
+    });
+  });
+
+  it("skips a trailing child row to reach the last root row", () => {
+    // cat1 > kid is the tail here, so the deepest last row is nested; the drop
+    // must still resolve to the root row that owns it, not to `kid`.
+    const trailingChild = tree(["cat2", 0], ["cat1", 0], ["kid", 1]);
+    expect(resolveDropTarget(trailingChild, "x", 9999, allow)).toEqual({
+      id: "cat1",
+      mode: "after",
+    });
+  });
+
+  it("still nests when the finger is held on the last child row", () => {
+    // Bottom edge of `kid` (the last row of the trailing-child fixture) keeps
+    // the sibling-of-a-child drop — the one deliberate way to file it there.
+    const trailingChild = tree(["cat2", 0], ["cat1", 0], ["kid", 1]);
+    const kidBottom = 2 * H + (H - EDGE / 2);
+    expect(resolveDropTarget(trailingChild, "x", kidBottom, allow)).toEqual({
+      id: "kid",
+      mode: "after",
+    });
+  });
+
+  it("falls back to the last droppable row when no root row will take it", () => {
+    const canDrop = (_dragged: string, target: string) => target === "kid";
+    expect(resolveDropTarget(nested, "x", 9999, canDrop)).toEqual({
+      id: "kid",
+      mode: "after",
+    });
   });
 });

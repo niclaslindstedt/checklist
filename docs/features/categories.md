@@ -19,7 +19,7 @@ and refill the same headers next week.
 
 ## What makes a category different
 
-Only four things change when an item becomes a category; everything else works
+Only five things change when an item becomes a category; everything else works
 exactly as before.
 
 - **It survives the bulk sweeps.** When you
@@ -29,6 +29,10 @@ exactly as before.
   time you fill the list.
 - **It looks like a header.** The row sits slimmer and lighter, in an
   upper-case, muted style, so a glance down the list shows the groups at once.
+- **It has its own + button.** A plus sits on the header row, just left of the
+  drag handle. Press it and a new line opens straight underneath the header,
+  already filed in that group — no editing the header first, and no dragging the
+  item into place afterwards. If the group was folded shut, it opens for you.
 - **It travels with your list.** On the local-folder and cloud backends the
   category is written into the markdown file, so it survives a round-trip like
   every other item.

@@ -7,7 +7,9 @@
 // three zones: the top edge drops it *before* that row, the bottom edge
 // *after* it, and the middle *into* it as a sub-item (the ghost indents a
 // level). So reordering and nesting are the same gesture; on release the
-// caller commits through `onReorder(draggedId, targetId, mode)`.
+// caller commits through `onReorder(draggedId, targetId, mode)`. The empty
+// space *below* the whole list is its own zone: it drops the item at the end
+// of the top level, no matter how deeply nested the last visible row is.
 //
 // Row positions are snapshotted once per drag and the drop target is computed
 // from that static geometry plus the finger position, so the math stays stable
@@ -57,6 +59,11 @@ export interface Rect {
   id: string;
   top: number;
   height: number;
+  /**
+   * The row's nesting depth (0 for a root item), read off `data-reorder-depth`.
+   * Only the past-the-bottom drop consults it — see `resolveDropTarget`.
+   */
+  depth: number;
 }
 
 export type { DropMode };
@@ -74,6 +81,13 @@ export interface DropTarget {
 // implicit pointer capture to fall back on, so the lifted row would freeze.
 export interface DragHandleProps {
   onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
+}
+
+// A row's nesting depth off its data attribute; an unlabelled row reads as
+// root, which is what the flat (un-nested) case wants anyway.
+function rowDepth(el: HTMLElement): number {
+  const raw = Number(el.dataset.reorderDepth);
+  return Number.isFinite(raw) ? raw : 0;
 }
 
 export interface ListReorder {
@@ -137,10 +151,11 @@ export function useListReorder(
     if (!el) return [];
     const out: Rect[] = [];
     for (const child of Array.from(el.children)) {
-      const id = (child as HTMLElement).dataset.reorderId;
+      const el = child as HTMLElement;
+      const id = el.dataset.reorderId;
       if (!id) continue;
-      const r = child.getBoundingClientRect();
-      out.push({ id, top: r.top, height: r.height });
+      const r = el.getBoundingClientRect();
+      out.push({ id, top: r.top, height: r.height, depth: rowDepth(el) });
     }
     return out;
   }, []);
@@ -154,11 +169,12 @@ export function useListReorder(
     if (!el) return [];
     const out: Rect[] = [];
     for (const child of Array.from(el.children)) {
-      const id = (child as HTMLElement).dataset.reorderId;
+      const el = child as HTMLElement;
+      const id = el.dataset.reorderId;
       if (!id || id === draggedIdRef.current) continue;
-      const r = child.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
       if (r.height === 0) continue;
-      out.push({ id, top: r.top, height: r.height });
+      out.push({ id, top: r.top, height: r.height, depth: rowDepth(el) });
     }
     return out;
   }, []);
@@ -411,19 +427,31 @@ export function resolveDropTarget(
     // droppable neighbour, before/after by which half the finger is in.
     return nearestNeighbour(list, draggedId, r, y);
   }
-  // Past the ends of the list: clamp to the first / last droppable row.
-  const first = list.find(
-    (r) => r.id !== draggedId && canDrop(draggedId, r.id),
-  );
-  const last = [...list]
-    .reverse()
-    .find((r) => r.id !== draggedId && canDrop(draggedId, r.id));
-  if (list.length > 0 && first && last) {
-    return y < list[0]!.top
-      ? { id: first.id, mode: "before" }
-      : { id: last.id, mode: "after" };
+  // Past the ends of the list. Above the top clamps before the first droppable
+  // row. Below the bottom is the *root* landing zone: the empty space under the
+  // list drops the item at the end of the top level, however deeply nested the
+  // last visible row happens to be. Without that, releasing in open space below
+  // a category's last child silently filed the item inside that category —
+  // and the only way to reach the bottom of the root list was the lower edge of
+  // the last root row, which is buried mid-list once that row is expanded.
+  // Nesting under the last child stays available: hold the finger *on* it.
+  if (list.length === 0) return null;
+  const droppable = (r: Rect) => r.id !== draggedId && canDrop(draggedId, r.id);
+  if (y < list[0]!.top) {
+    const first = list.find(droppable);
+    return first ? { id: first.id, mode: "before" } : null;
   }
-  return null;
+  const bottom = list[list.length - 1]!;
+  const belowList = y >= bottom.top + bottom.height;
+  const reversed = [...list].reverse();
+  // Dropping "after" the last root row lands the item past that row's whole
+  // subtree, at the top level — the bottom of the list. A gap *between* rows
+  // (rather than below them all) keeps the old nearest-row clamp.
+  const target =
+    (belowList
+      ? reversed.find((r) => r.depth === 0 && droppable(r))
+      : undefined) ?? reversed.find(droppable);
+  return target ? { id: target.id, mode: "after" } : null;
 }
 
 // The nearest droppable row to the dragged one, picked when the finger sits
