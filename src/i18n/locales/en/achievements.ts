@@ -169,6 +169,12 @@ const achievements = {
       learnMore:
         "Once a list has archived items, the composer remembers them: type a few letters and matching archived titles appear beneath the field, with the match highlighted. Press one to put it straight back on the list — on a groceries list, last week's staples are one tap away.",
     },
+    followTheLink: {
+      name: "Follow the Link",
+      condition: "Open a link from an item's note.",
+      learnMore:
+        "A web address in an item's note is a real link: paste one in — with or without markdown [label](url) syntax — and it renders underlined once the note is open. Press it and the page opens in a new tab instead of the note dropping into edit mode, so a recipe, a ticket, or a shop page rides along with the item that needs it.",
+    },
     reshuffle: {
       name: "Reshuffle",
       condition: "Drag an item to reorder it.",

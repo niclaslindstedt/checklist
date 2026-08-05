@@ -163,6 +163,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "När en lista har arkiverade rader minns skrivfältet dem: skriv några bokstäver så visas matchande arkiverade titlar under fältet, med träffen markerad. Tryck på ett förslag så hamnar raden direkt på listan igen — på en inköpslista är förra veckans basvaror ett tryck bort.",
     },
+    followTheLink: {
+      name: "Följ länken",
+      condition: "Öppna en länk från en posts anteckning.",
+      learnMore:
+        "En webbadress i en posts anteckning är en riktig länk: klistra in en — med eller utan markdown-syntaxen [text](adress) — så visas den understruken när anteckningen är öppen. Tryck på den så öppnas sidan i en ny flik i stället för att anteckningen går över i redigeringsläge, så att ett recept, ett ärende eller en butikssida följer med posten som behöver den.",
+    },
     reshuffle: {
       name: "Omflyttning",
       condition: "Dra en post för att flytta om den.",

@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { unlock } from "../achievements/bus.ts";
 import type { DropMode } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -607,16 +608,25 @@ function ChecklistRowImpl({
 
         {hasBody && expanded && (
           // Tapping the rendered body edits it (the second tap of the
-          // reveal-then-edit flow); a tap on a link inside it still follows
-          // the link rather than opening the editor.
+          // reveal-then-edit flow); a tap on a link inside it follows the
+          // link instead — both the `[label](url)` kind and a bare address
+          // the renderer autolinked, which is how a pasted URL in a note
+          // becomes reachable at all. The keyboard path guards on the event
+          // target for the same reason: Enter on a focused link inside the
+          // body must follow it, not open the editor over it.
           <div
             role="button"
             tabIndex={0}
             aria-label={t("app.editNote")}
             onClick={(e) => {
-              if (!(e.target as HTMLElement).closest("a")) enterEdit(true);
+              if ((e.target as HTMLElement).closest("a")) {
+                unlock("followTheLink");
+                return;
+              }
+              enterEdit(true);
             }}
             onKeyDown={(e) => {
+              if (e.target !== e.currentTarget) return;
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 enterEdit(true);

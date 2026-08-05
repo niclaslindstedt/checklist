@@ -111,6 +111,14 @@ export function ShowcasePage() {
               finished item, ready to be refilled.
             </li>
             <li>
+              <strong className="text-fg-bright">Attach a note</strong> — give
+              an item a longer note under its title, written in markdown and
+              shown formatted once you open it. A web address in a note is a
+              real link — pasted plainly or written as{" "}
+              <code className="text-meta">[label](url)</code> — so pressing it
+              opens the page in a new tab instead of the note.
+            </li>
+            <li>
               <strong className="text-fg-bright">Set deadlines</strong> — give
               an item a due date (and an optional repeat like &ldquo;every 2
               weeks&rdquo;); dated items gather at the bottom of the list under
