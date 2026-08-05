@@ -634,6 +634,71 @@ which suppresses the native navigation without disturbing the drawer's own
 open gesture. App gates it on `isStandaloneMobile`, so a normal browser tab
 — which has real chrome and history — keeps its back-swipe untouched.
 
+### Browser back / forward
+
+`useNavHistory` (`src/app/use-nav-history.ts`) makes the browser's Back and
+Forward buttons walk the places the user has been inside the app: open one
+list after another and Back returns to the previous one, Forward comes out
+again. There is no router — which list is open is device-local state in
+`use-checklist-lists.ts` — so the hook mirrors that state onto the History
+API instead, as a `NavDestination` (`{ namespace, view, listId, templateId
+}`) tucked into `history.state`. **The URL never changes**: share payloads
+own the fragment, the deploy slots own the path, and GitHub Pages has no
+SPA rewrite for invented paths, so every entry is the same URL carrying
+different state. Foreign keys already in `history.state` are preserved
+(`use-widget-deep-link.ts` keeps ours when it strips its cold-start
+params).
+
+The hook distinguishes two ways a destination changes. A **gesture** —
+picking a list or template in the side menu or a search result, closing a
+template, adding a list, stamping one out of a template, restoring one from
+the archive, switching view or namespace — calls `markNavigation()` first
+(App wraps those verbs in `navVerbs` before publishing them on
+`ChecklistContext`), and the destination it lands on is `pushState`d as a
+new entry. Everything else is **drift** — the selection settling after a
+document load, the fallback when the open list is archived or deleted, a
+namespace restoring its own cursor — and `replaceState`s the current entry
+instead, so the trail holds only places the user chose to go and never a
+list that no longer exists. The first destination seeds the entry the app
+opened on rather than pushing a new one, and nothing is recorded until the
+document has loaded.
+
+A `popstate` reads the entry's destination and hands it to
+`applyDestination` in `use-app-navigation.ts`, which sets the view and
+re-selects the list (re-opening a template on top of it). An entry in
+another namespace can't be applied in one step — switching swaps the whole
+document out, and the list only exists once it has loaded — so it is held
+as `pending` and finished by an effect the moment the named list shows up
+in the snapshot; any deliberate navigation drops a pending destination, so
+one that can't resolve never hijacks a later selection. Applying marks the
+destination as already-current, so replaying it records nothing; an entry
+without our state (another feature's `pushState`, a restored session) is
+left alone. Going back for the first time unlocks **Retraced Steps**.
+
+### Bookmarking a list
+
+The same destination is written into the address bar as a fragment, so the
+list on screen is always a link: `#list=<id>`, plus `ns=<slug>` (left out
+for the default namespace), `template=<id>`, and `view=archive` where they
+apply. `src/app/nav-url.ts` owns that format (`destinationFragment` /
+`parseDestinationFragment` / `resolveUrlDestination`), and
+`docs/architecture.md` → "The URL" covers why it is the fragment and not
+the path or query: the deploy slots own the path, Pages has no SPA rewrite
+for invented ones, and a fragment never reaches a server.
+
+On cold start the URL wins over the restored cursor, so a bookmark opens
+its own list rather than the last one used — that first apply is what
+unlocks **Deep Linked**. A link naming a list that no longer exists falls
+back to a real one and the address bar is rewritten to match, so the URL
+never claims to be somewhere the app isn't. Because a share payload is a
+bare blob with none of our keys, the two never collide; a fragment that
+isn't ours is left in the address bar until the user's first navigation.
+
+The ids are the document's own, so a link opens the same list on any
+device carrying the same document, and means nothing in someone else's
+app — it is a bookmark, not a way to send a list to another person (that
+is what the share payload is for).
+
 ### Header menu
 
 `src/ui/HeaderMenu.tsx` — the top-right burger menu. Opens a

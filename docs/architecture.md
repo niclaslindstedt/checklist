@@ -353,13 +353,30 @@ colours. Dark (One Dark) is the default; there is no theme-picker UI
 yet, but the preference is read from `localStorage` and the engine is
 wired for one.
 
-## Sharing
+## The URL
 
-`src/share/` encodes a checklist as a gzipped, base64-URL-safe blob
-and places it in the URL fragment (`#…`). Fragments are not sent to
-servers, so a shared link never leaks the contents anywhere but the
-recipient's browser. On import, the recipient receives a brand-new
-local copy with a fresh id.
+The app has no router: the path belongs to the deploy slots (`/`,
+`/preview/`, `/branch/`, plus the `/privacy` and `/home` aliases), and
+GitHub Pages serves no rewrite for anything else, so an invented path
+like `/list/<id>` would 404 on reload. Everything the app puts in the URL
+therefore lives in the **fragment**, which is never sent to a server.
+
+Two things share it, told apart by shape:
+
+- **A destination** — `#list=<id>`, plus `ns=<slug>` (omitted for the
+  default namespace), `template=<id>`, and `view=archive` where they
+  apply. Written by `src/app/nav-url.ts` on every navigation so the open
+  list can be bookmarked, and read back on cold start so a bookmark opens
+  its list. The ids are the document's own, so a link resolves on any
+  device carrying the same document — and nowhere else.
+- **A share payload** — a gzipped, base64-URL-safe checklist blob from
+  `src/share/`, a bare string carrying none of those keys. On import, the
+  recipient gets a brand-new local copy with a fresh id.
+
+`parseDestinationFragment` returns null for anything without a
+destination key, so a payload is never mistaken for a destination — and
+the first pass leaves a fragment that isn't ours in the address bar
+untouched.
 
 ## PWA
 

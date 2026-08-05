@@ -492,6 +492,25 @@ export function LinkGlyph({ className }: IconProps) {
   );
 }
 
+/** Lucide `arrow-left` — the browser's Back button, retracing a step. */
+export function ArrowLeftGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </Svg>
+  );
+}
+
+/** Lucide `bookmark` — a link kept, and opened straight back into a list. */
+export function BookmarkGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </Svg>
+  );
+}
+
 // Re-exports of the chrome icons reused as achievement glyphs, normalised to
 // the `Glyph` signature so the catalog imports every glyph from one module.
 export const PlusGlyph: Glyph = PlusIcon;

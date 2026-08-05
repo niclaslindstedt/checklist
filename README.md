@@ -128,10 +128,16 @@ native module): `cd native && npm install && npm run ios`. See
    lists then travel with you. See
    [Configuration](docs/configuration.md).
 
+4. **Bookmarkable lists.** The address bar names the list you have open
+   (`#list=<id>`, plus `ns=` / `template=` / `view=` where they apply), so
+   a bookmark reopens that list on any device carrying the same document.
+   Browser Back and Forward walk the lists, templates, archive visits, and
+   namespaces you opened.
+
 The feature below is still on the roadmap — the data model and module
 boundaries are in place, but the UI is not wired up yet:
 
-4. **URL sharing.** Share a checklist as a URL whose `#` fragment carries
+5. **URL sharing.** Share a checklist as a URL whose `#` fragment carries
    the gzipped JSON (never sent to a server).
 
 ## Configuration

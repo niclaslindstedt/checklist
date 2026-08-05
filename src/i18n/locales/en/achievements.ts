@@ -175,6 +175,18 @@ const achievements = {
       learnMore:
         "A web address in an item's note is a real link: paste one in — with or without markdown [label](url) syntax — and it renders underlined once the note is open. Press it and the page opens in a new tab instead of the note dropping into edit mode, so a recipe, a ticket, or a shop page rides along with the item that needs it.",
     },
+    retracedSteps: {
+      name: "Retraced Steps",
+      condition: "Use the browser's Back button to return to a list.",
+      learnMore:
+        "Every list, template, archive visit, and namespace you open is a step the browser remembers. Press Back and you land on the one you were looking at before, Forward brings you out again — the same way it works on any website, and the same way the back gesture works in the installed app. Only places you chose to go are remembered: a list that closes because it was archived or deleted never becomes a step you can walk back into.",
+    },
+    deepLinked: {
+      name: "Deep Linked",
+      condition: "Open the app from a link or bookmark to a specific list.",
+      learnMore:
+        "The address bar always names the list you have open, so bookmarking it (or copying the link into a note, a calendar entry, or another list) gives you a way straight back in. The link lives in the part of the URL that never reaches a server, and it points at your own list — it opens that list on any device where you use the same storage, and means nothing in someone else's app.",
+    },
     reshuffle: {
       name: "Reshuffle",
       condition: "Drag an item to reorder it.",

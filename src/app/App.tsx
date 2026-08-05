@@ -56,6 +56,7 @@ import { SearchModalHost } from "./modals/SearchModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
 import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
+import { useAppNavigation } from "./use-app-navigation.ts";
 import { useWidgetMirror } from "./use-widget-mirror.ts";
 import { useWidgetDeepLink } from "./use-widget-deep-link.ts";
 import { useNotificationScheduler } from "./use-notification-scheduler.ts";
@@ -167,10 +168,6 @@ function AppShell() {
   // (mounted by `LanguageRoot`, outside this flex layout) can centre over
   // the content area instead of the whole window.
   useSidebarInset(pinned, settings.menuButtonPosition.side);
-  const navigate = useCallback((next: View) => {
-    setView(next);
-    setMenuOpen(false);
-  }, []);
 
   // Stable so `memo(ChecklistView)` can skip the whole list when only the
   // appearance settings (which share this component) change.
@@ -197,6 +194,23 @@ function AppShell() {
     settings.sortCheckedToBottom,
     storage.activeNamespace,
   );
+
+  // Browser back / forward, and the bookmarkable URL. Where the app *is* —
+  // the namespace, the view, and the list or template open inside it — is
+  // mirrored onto the History API and into the address-bar fragment, so
+  // opening one list after another leaves a trail Back walks and the list on
+  // screen is a link the user can keep. `useAppNavigation` wraps the verbs
+  // that move the user (`nav.verbs`, published on the checklist context) so
+  // each records an entry, and applies a destination the user comes back to.
+  const nav = useAppNavigation({
+    checklist,
+    storage,
+    view,
+    setView,
+    closeMenu,
+  });
+  const navVerbs = nav.verbs;
+  const { navigate } = nav;
 
   // Achievements. The watcher records derived unlocks (first item, theme
   // change, …) off every document / settings transition and drains the
@@ -254,7 +268,7 @@ function AppShell() {
   // Native widgets. Mirror a compact snapshot out to the shared container on
   // every change, and replay the interactive check-off widget's queued taps
   // through the normal edit path. A no-op on the web build (no bridge).
-  const { toggleItemInList, selectChecklist } = checklist;
+  const { toggleItemInList } = checklist;
   const applyWidgetAction = useCallback(
     (action: WidgetAction) => {
       if (action.type === "toggle") {
@@ -274,7 +288,7 @@ function AppShell() {
   // Quick-add / open deep links (`checklist://add?list=<id>`) from a widget or
   // Control Center: switch to the target list and, for `add`, focus the
   // composer. Bridged in by the native wrapper; a no-op in a plain browser.
-  useWidgetDeepLink({ selectChecklist });
+  useWidgetDeepLink({ selectChecklist: navVerbs.selectChecklist });
 
   // Native deadline reminders. Mirror a schedule of upcoming reminders out to
   // the wrapper (which arms the OS notifications) whenever the document or the
@@ -574,6 +588,7 @@ function AppShell() {
   const checklistValue = useMemo<ChecklistContextValue>(
     () => ({
       ...checklist,
+      ...navVerbs,
       sync,
       disableItemNotes: settings.disableItemNotes,
       showItemCount: settings.showItemCount,
@@ -584,6 +599,7 @@ function AppShell() {
     }),
     [
       checklist,
+      navVerbs,
       sync,
       settings.disableItemNotes,
       settings.showItemCount,
@@ -662,7 +678,7 @@ function AppShell() {
                   <SideMenu
                     namespaces={storage.namespaces}
                     activeNamespace={storage.activeNamespace}
-                    onSwitchNamespace={storage.switchNamespace}
+                    onSwitchNamespace={nav.switchNamespace}
                     onRemoveNamespace={removeNamespace}
                   />
                   <main className="relative h-full min-w-0 flex-1">
