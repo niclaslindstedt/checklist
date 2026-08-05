@@ -1045,6 +1045,41 @@ describe("ChecklistRow long-press menu (touch)", () => {
     vi.useRealTimers();
   });
 
+  it("drops a page selection as the menu opens", () => {
+    // A hold must not surface the menu on top of a highlight (and the
+    // platform's selection handles / paste bar) left over from earlier.
+    vi.useFakeTimers();
+    render(
+      <ul>
+        <ChecklistRow
+          item={item}
+          onToggle={noop}
+          onArchive={noop}
+          onDelete={noop}
+          onEdit={noop}
+          onLongPress={noop}
+          dragHandleProps={dragHandleProps}
+          dragging={false}
+        />
+      </ul>,
+    );
+    const fg = foreground();
+    stubPointerCapture(fg);
+    const range = document.createRange();
+    range.selectNodeContents(fg);
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    dispatchPointer(fg, "pointerdown", { x: 40, y: 60 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(document.getSelection()!.rangeCount).toBe(0);
+    vi.useRealTimers();
+  });
+
   it("cancels the hold when the finger moves (a swipe, not a press)", () => {
     vi.useFakeTimers();
     const onLongPress = vi.fn();

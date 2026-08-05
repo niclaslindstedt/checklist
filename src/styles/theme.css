@@ -149,6 +149,28 @@ body {
   user-select: none;
 }
 
+/* Hold-to-select, killed at the root on touch. Suppressing selection on
+   `#app` alone isn't enough: the shell's overlays — the long-press / row
+   context menu, dropdowns, modals, toasts — portal to `document.body`,
+   which sits *outside* `#app` and stays selectable. A press-and-hold that
+   lands on an unselectable row then anchors the platform's selection in
+   that still-selectable document instead, and the browser answers by
+   highlighting the whole page behind the menu it just opened. Denying
+   selection from the root leaves it nothing to grab, in the portals too.
+   Scoped to coarse pointers (the inverse of `useDesktopPointer`'s
+   `(hover: hover) and (pointer: fine)`) so a mouse keeps ordinary
+   click-drag selection wherever the shell allows it; a touch device has no
+   keyboard to act on a selection anyway, so nothing is lost there.
+   `input` / `textarea` opt back in below — editing an item's title or body
+   still selects, which is the only place selection does any work. */
+@media (hover: none) and (pointer: coarse) {
+  html {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 input,
 textarea {
   -webkit-user-select: text;

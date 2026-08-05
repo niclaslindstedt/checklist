@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useT } from "../i18n";
+import { clearNativeSelection } from "./clear-selection.ts";
 import { DismissBackdrop } from "./DismissBackdrop.tsx";
 import { useEscapeKey } from "./hooks/useEscapeKey.ts";
 import { ArchiveIcon, TrashIcon } from "./icons.tsx";
@@ -101,6 +102,9 @@ export function AddItemButton({
   // `onActionPointerUp`).
   const expandMenu = useCallback(() => {
     longPressed.current = true;
+    // Same clean slate the row's long-press menu opens on: no leftover
+    // highlight (and no selection handles) under the fanned-out row.
+    clearNativeSelection();
     const el = plusRef.current;
     // Measure before the re-render scales the (+) to zero — capture its full
     // box so the bulk row centres on where the button actually sits.

@@ -902,6 +902,36 @@ the sidebar's checklist rows (Archive / Delete) — see
 [swipe to remove](#swipe-to-remove-sidebar), and
 [Archive a checklist](#archive-a-checklist).
 
+### Hold to select
+
+The platform's own **press-and-hold text selection** is off on touch. It
+has nothing to offer here — a phone has no keyboard to act on a selection,
+and every hold in the app already means something else (open the row menu,
+fan out the bulk actions) — while it actively fights those gestures: iOS
+raises its Copy / Look Up / Translate callout over the hold, and Chrome,
+finding nothing selectable under the finger, used to highlight the **whole
+page** behind the menu the hold had just opened.
+
+Two rules in `src/styles/theme.css` deny it. The shell (`#app`) sets
+`-webkit-touch-callout: none` and `user-select: none` on every device; a
+second rule repeats them on the **root** element under
+`@media (hover: none) and (pointer: coarse)`. The root copy is what stops
+the whole-page highlight: the row menu, dropdowns, modals and toasts
+[portal](#right-click-menu) to `document.body`, *outside* `#app`, so a hold
+that landed on an unselectable row could still anchor the platform's
+selection in that surrounding document. Denying it from the root leaves
+nothing to grab, overlays included. The scoping is the inverse of
+`useDesktopPointer` — a mouse keeps ordinary click-drag selection — and
+`input` / `textarea` opt back in below the rule, so selecting text while
+[editing](#checklist-row) an item's title or body still works everywhere.
+
+`clearNativeSelection` (`src/ui/clear-selection.ts`) closes the gap CSS
+can't: a highlight made *before* the hold survives into the gesture, and
+the browser paints its selection handles and paste bar over the menu. Both
+long-press openers — `useLongPress` and the add button's own timer — call
+it as they fire, so the menu comes up on a clean page. A focused
+`input` / `textarea` is left alone: that selection is the user's caret.
+
 ### Pull-to-refresh indicator
 
 `src/ui/PullToRefreshIndicator.tsx` — the slide-down pill pinned to the
