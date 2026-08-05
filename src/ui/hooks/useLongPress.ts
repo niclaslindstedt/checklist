@@ -13,8 +13,14 @@
 // hold — `onContextMenu` opens our menu from it (and suppresses the native one)
 // while guarding against a double-open when the timer already fired; iOS,
 // which doesn't fire `contextmenu` on a hold, relies on the timer alone.
+//
+// Either opener also drops any selection the page was already carrying (see
+// `clearNativeSelection`), so the menu never opens over a highlight with the
+// platform's selection handles on top of it.
 
 import { useCallback, useRef, type PointerEvent } from "react";
+
+import { clearNativeSelection } from "../clear-selection.ts";
 
 // How long the finger must rest before the menu opens — matches the add
 // button's long-press threshold so holds feel uniform across the app.
@@ -59,6 +65,7 @@ export function useLongPress(
       clearTimer();
       timer.current = setTimeout(() => {
         fired.current = true;
+        clearNativeSelection();
         onLongPress(clientX, clientY);
       }, LONG_PRESS_MS);
     },
@@ -92,6 +99,7 @@ export function useLongPress(
       if (fired.current) return;
       clearTimer();
       fired.current = true;
+      clearNativeSelection();
       onLongPress(e.clientX, e.clientY);
     },
     [clearTimer, onLongPress],

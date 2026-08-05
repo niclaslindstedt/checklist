@@ -53,6 +53,23 @@ describe("AddItemButton", () => {
     expect((archive() as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it("drops a page selection as the bulk row fans out", () => {
+    // The hold must not leave a highlight (and the platform's selection
+    // handles) sitting under the fanned-out row.
+    vi.useFakeTimers();
+    renderButton();
+    const range = document.createRange();
+    range.selectNodeContents(document.body);
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    fireEvent.pointerDown(plus(), { pointerId: 1 });
+    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+
+    expect(document.getSelection()!.rangeCount).toBe(0);
+  });
+
   // The bug: after the menu fans out under the finger, the *same* finger
   // lifting must not archive/delete. That pointerup ends the opening
   // long-press — it isn't a deliberate tap — so it (and the click trailing
