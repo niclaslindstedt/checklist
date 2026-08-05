@@ -210,7 +210,42 @@ scheme-checked (`http(s)`, `mailto`, relative; `javascript:` / `data:`
 fall back to inert text) before becoming an `href`. Supported: headings
 (demoted two levels, capped at h6), unordered / ordered lists,
 blockquotes, fenced code blocks, and inline bold, italic, `code`,
-strikethrough, and links. It backs the expanded body in a checklist row.
+strikethrough, links, and bare addresses (see
+[Link in a note](#link-in-a-note)). It backs the expanded body in a
+checklist row.
+
+### Link in a note
+
+A web address inside an item's note is a **real link**, and pressing it
+opens the page rather than the note's editor.
+
+Two halves make that work. The renderer autolinks bare addresses
+(`AUTOLINK` in `src/ui/markdown/renderMarkdown.tsx`) — a note is far more
+often pasted than authored, so `https://…`, `www.…`, and a plain email
+address all become anchors without the user typing `[label](url)`. The
+match stops short of trailing sentence punctuation, so `see
+https://example.com.` links the address and leaves the full stop, while a
+URL that genuinely ends on a bracket (`…/wiki/Foo_(bar)`) keeps it.
+Autolinking stands down inside a code span (the code rule matches first)
+and inside an explicit link's own label (the `insideLink` parse flag), so
+no anchor ever nests in another. Both kinds of link go through the same
+`safeHref` scheme check and open in a new tab with
+`rel="noopener noreferrer nofollow"`, so following one never loses the
+list behind it.
+
+The other half is the row. The rendered body is itself a press target —
+that's the second tap of the reveal-then-edit flow (see
+[Checklist row](#checklist-row)) — so the body's click handler stands
+aside when the press landed on an `<a>` (`closest("a")`) and lets the
+link navigate; the keyboard path does the same by ignoring a key that
+didn't originate on the wrapper itself, so Enter on a focused link
+follows it instead of opening the editor over it. Following a link
+unlocks the **Follow the Link** achievement.
+
+Note that a link only becomes reachable once the note is revealed: the
+first press on a row with a note expands it, and the link is live from
+then on. The editor still shows the note as raw text, so the address is
+editable exactly as typed.
 
 ### Add-item button
 

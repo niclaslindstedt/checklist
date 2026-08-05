@@ -42,6 +42,54 @@ describe("renderMarkdown", () => {
     expect(unsafe).toContain("[x](javascript:alert(1))");
   });
 
+  it("autolinks a bare URL so a pasted address is clickable", () => {
+    const out = html("see https://example.com/path?q=1 for details");
+    expect(out).toContain('href="https://example.com/path?q=1"');
+    expect(out).toContain(">https://example.com/path?q=1</a>");
+    expect(out).toContain('target="_blank"');
+  });
+
+  it("gives a bare www. address a scheme and a bare email a mailto:", () => {
+    expect(html("www.example.com")).toContain('href="https://www.example.com"');
+    // The visible text stays what the user typed, scheme and all.
+    expect(html("www.example.com")).toContain(">www.example.com</a>");
+    expect(html("ping me@example.co.uk")).toContain(
+      'href="mailto:me@example.co.uk"',
+    );
+  });
+
+  it("leaves trailing sentence punctuation out of an autolink", () => {
+    expect(html("see https://example.com.")).toContain(
+      'href="https://example.com"',
+    );
+    expect(html("(https://example.com)")).toContain(
+      'href="https://example.com"',
+    );
+    // …but a bracket the URL really ends on is kept.
+    expect(html("https://en.wikipedia.org/wiki/Foo_(bar)")).toContain(
+      'href="https://en.wikipedia.org/wiki/Foo_(bar)"',
+    );
+  });
+
+  it("does not autolink inside a code span or nest one in a markdown link", () => {
+    const code = html("`https://example.com`");
+    expect(code).not.toContain("<a");
+    expect(code).toContain("https://example.com</code>");
+
+    // The label of an explicit link is re-parsed; a URL there must not
+    // become a second, nested anchor.
+    const labelled = html("[https://example.com](https://other.example)");
+    expect(labelled).toContain('href="https://other.example"');
+    expect((labelled.match(/<a /g) ?? []).length).toBe(1);
+  });
+
+  it("does not autolink a scheme it would refuse as a markdown href", () => {
+    // `javascript:` never reaches the autolinker (it isn't a bare web
+    // address), and neither branch of the grammar can produce one.
+    const out = html("javascript:alert(1)");
+    expect(out).not.toContain("<a");
+  });
+
   it("never emits raw HTML the user typed", () => {
     const out = html("<img src=x onerror=alert(1)>");
     expect(out).not.toContain("<img");

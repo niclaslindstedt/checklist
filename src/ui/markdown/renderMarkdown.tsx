@@ -12,13 +12,37 @@ import { createElement, type ReactNode } from "react";
 //
 // Supported: headings (`#`…`######`), unordered (`-` / `*` / `+`) and
 // ordered (`1.`) lists, blockquotes (`>`), fenced code blocks (```), and
-// inline **bold**, *italic*, `code`, ~~strikethrough~~, and [links](url).
-// Anything outside that grammar renders as plain text — which is exactly
-// what the edit mode shows, so the raw and rendered forms stay legible.
+// inline **bold**, *italic*, `code`, ~~strikethrough~~, [links](url), and
+// bare URLs / email addresses (autolinked). Anything outside that grammar
+// renders as plain text — which is exactly what the edit mode shows, so the
+// raw and rendered forms stay legible.
 
 // Link targets we are willing to turn into a real anchor. Anything else
 // (notably `javascript:` / `data:`) renders as inert literal text.
 const URL_SAFE = /^(https?:\/\/|mailto:|\/|#|\.\/|\.\.\/)/i;
+
+// Bare links the user typed (or, far more often, pasted) without markdown
+// link syntax — a note usually carries a URL, not a `[label](url)`. Two
+// alternatives: a `http(s)://` / `www.` web address, and a plain email
+// address.
+//
+// The address body takes either a non-bracket character or a whole
+// balanced `(…)` group, and must *end* on one of the two — so a trailing
+// full stop or closing bracket falls outside the link (`see
+// https://example.com.`, `(https://example.com)`) while a URL that really
+// ends in a bracket keeps it (`…/wiki/Foo_(bar)`). The two branches of the
+// body can't both match the same character, so the walk stays linear.
+const AUTOLINK =
+  /(?:https?:\/\/|www\.)(?:[^\s<>()]|\([^\s<>()]*\))*(?:[^\s<>.,;:!?'"()[\]{}]|\([^\s<>()]*\))|[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/i;
+
+// The href a bare match navigates to: a `www.` address needs a scheme
+// before it can be an `href` (without one the browser reads it as a
+// relative path), and an address without a scheme at all is an email.
+function autolinkHref(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return raw;
+  return lower.startsWith("www.") ? `https://${raw}` : `mailto:${raw}`;
+}
 
 // A `[label](feature:<slug>)` link doesn't navigate — the changelog modal
 // intercepts it to open the bundled feature doc inline. See
@@ -37,14 +61,45 @@ export type MarkdownOptions = {
   onOpenFeature?: (slug: string) => void;
 };
 
+// The options the parser threads through itself, `MarkdownOptions` plus the
+// internal state a nested parse needs.
+type ParseOptions = MarkdownOptions & {
+  /**
+   * Set while re-parsing a link's own label. A bare URL inside an anchor
+   * would nest `<a>` in `<a>` — invalid markup that browsers unpick in
+   * surprising ways — so autolinking stands down there and the address
+   * stays literal text.
+   */
+  insideLink?: boolean;
+};
+
 type InlineRule = {
   re: RegExp;
-  make: (m: RegExpExecArray, key: string, opts: MarkdownOptions) => ReactNode;
+  make: (m: RegExpExecArray, key: string, opts: ParseOptions) => ReactNode;
 };
+
+// Every anchor the renderer emits, markdown-syntax and autolinked alike:
+// opened in a new tab so following one never loses the list behind it, and
+// `noopener` so the opened page can't reach back through `window.opener`.
+function anchor(key: string, href: string, children: ReactNode): ReactNode {
+  return (
+    <a
+      key={key}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      className="text-accent underline"
+    >
+      {children}
+    </a>
+  );
+}
 
 // Ordered by precedence for ties at the same start index: code first (its
 // content is literal), then links, then bold before italic so `**x**`
-// never decomposes into nested emphasis.
+// never decomposes into nested emphasis. Autolinking sits behind the
+// `[label](url)` rule, which always starts earlier than the address it
+// wraps, so an explicit link is never re-linked from the inside.
 const INLINE_RULES: InlineRule[] = [
   {
     re: /`([^`]+)`/,
@@ -74,23 +129,26 @@ const INLINE_RULES: InlineRule[] = [
             onClick={() => onOpenFeature(slug)}
             className="cursor-pointer text-accent underline"
           >
-            {parseInline(m[1]!, key, opts)}
+            {parseInline(m[1]!, key, { ...opts, insideLink: true })}
           </button>
         );
       }
       const href = safeHref(rawHref);
       if (!href) return m[0];
-      return (
-        <a
-          key={key}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          className="text-accent underline"
-        >
-          {parseInline(m[1]!, key, opts)}
-        </a>
+      return anchor(
+        key,
+        href,
+        parseInline(m[1]!, key, { ...opts, insideLink: true }),
       );
+    },
+  },
+  {
+    re: AUTOLINK,
+    make: (m, key, opts) => {
+      const raw = m[0];
+      if (opts.insideLink) return raw;
+      const href = safeHref(autolinkHref(raw));
+      return href ? anchor(key, href, raw) : raw;
     },
   },
   {
@@ -121,7 +179,7 @@ const INLINE_RULES: InlineRule[] = [
 function parseInline(
   text: string,
   keyBase: string,
-  opts: MarkdownOptions = {},
+  opts: ParseOptions = {},
 ): ReactNode[] {
   const out: ReactNode[] = [];
   let rest = text;
@@ -152,10 +210,10 @@ function parseInline(
 
 /**
  * Render a single line of markdown as inline React nodes — **bold**,
- * *italic*, `code`, ~~strikethrough~~, and [links](url) — without wrapping
- * it in a block element. For one-liners that already sit inside a block the
- * caller owns (a changelog `<li>`, a label), where {@link renderMarkdown}'s
- * `<p>` wrappers would be unwanted. Pass `onOpenFeature` to wire the
+ * *italic*, `code`, ~~strikethrough~~, [links](url), and bare URLs /
+ * email addresses — without wrapping it in a block element. For one-liners
+ * that already sit inside a block the caller owns (a changelog `<li>`, a
+ * label), where {@link renderMarkdown}'s `<p>` wrappers would be unwanted. Pass `onOpenFeature` to wire the
  * `feature:<slug>` link scheme (the changelog "Learn more" drill-down).
  */
 export function renderInlineMarkdown(

@@ -571,6 +571,47 @@ describe("ChecklistRow editing", () => {
     expect(screen.getByText("bold").tagName).toBe("STRONG");
   });
 
+  it("renders a bare URL in the body as a link and opens it instead of editing", () => {
+    const onEdit = vi.fn();
+    renderRow({
+      item: { ...item, notes: "recipe at https://example.com/cake" },
+      onEdit,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Show note" }));
+    const link = screen.getByRole("link", { name: "https://example.com/cake" });
+    expect(link.getAttribute("href")).toBe("https://example.com/cake");
+    expect(link.getAttribute("target")).toBe("_blank");
+
+    // Pressing the link follows it: the row must not swap into the editor,
+    // which would replace the link with the raw text of the note.
+    fireEvent.click(link);
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
+    expect(onEdit).not.toHaveBeenCalled();
+
+    // A press on the body *beside* the link still edits it, as before.
+    fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
+  });
+
+  it("does not enter edit mode when Enter fires on a link inside the body", () => {
+    renderRow({ item: { ...item, notes: "[docs](https://example.com)" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show note" }));
+
+    // The keydown bubbles from the anchor to the body wrapper; the wrapper
+    // must leave it to the link rather than opening the editor over it.
+    fireEvent.keyDown(screen.getByRole("link", { name: "docs" }), {
+      key: "Enter",
+    });
+    expect(screen.queryByLabelText(/markdown supported/i)).toBeNull();
+
+    // The wrapper's own Enter still opens the editor.
+    fireEvent.keyDown(screen.getByRole("button", { name: "Edit note" }), {
+      key: "Enter",
+    });
+    expect(screen.getByLabelText(/markdown supported/i)).toBeTruthy();
+  });
+
   it("paints the note glyph muted when collapsed and accent when revealed", () => {
     renderRow({ item: { ...item, notes: "a note" } });
 
