@@ -175,6 +175,12 @@ const achievements = {
       learnMore:
         "A web address in an item's note is a real link: paste one in — with or without markdown [label](url) syntax — and it renders underlined once the note is open. Press it and the page opens in a new tab instead of the note dropping into edit mode, so a recipe, a ticket, or a shop page rides along with the item that needs it.",
     },
+    retracedSteps: {
+      name: "Retraced Steps",
+      condition: "Use the browser's Back button to return to a list.",
+      learnMore:
+        "Every list, template, archive visit, and namespace you open is a step the browser remembers. Press Back and you land on the one you were looking at before, Forward brings you out again — the same way it works on any website, and the same way the back gesture works in the installed app. Only places you chose to go are remembered: a list that closes because it was archived or deleted never becomes a step you can walk back into.",
+    },
     reshuffle: {
       name: "Reshuffle",
       condition: "Drag an item to reorder it.",

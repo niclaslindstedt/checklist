@@ -634,6 +634,44 @@ which suppresses the native navigation without disturbing the drawer's own
 open gesture. App gates it on `isStandaloneMobile`, so a normal browser tab
 — which has real chrome and history — keeps its back-swipe untouched.
 
+### Browser back / forward
+
+`useNavHistory` (`src/app/use-nav-history.ts`) makes the browser's Back and
+Forward buttons walk the places the user has been inside the app: open one
+list after another and Back returns to the previous one, Forward comes out
+again. There is no router — which list is open is device-local state in
+`use-checklist-lists.ts` — so the hook mirrors that state onto the History
+API instead, as a `NavDestination` (`{ namespace, view, listId, templateId
+}`) tucked into `history.state`. **The URL never changes**: share payloads
+own the fragment, the deploy slots own the path, and GitHub Pages has no
+SPA rewrite for invented paths, so every entry is the same URL carrying
+different state. Foreign keys already in `history.state` are preserved
+(`use-widget-deep-link.ts` keeps ours when it strips its cold-start
+params).
+
+The hook distinguishes two ways a destination changes. A **gesture** —
+picking a list or template in the side menu or a search result, closing a
+template, adding a list, stamping one out of a template, restoring one from
+the archive, switching view or namespace — calls `markNavigation()` first
+(App wraps those verbs in `navVerbs` before publishing them on
+`ChecklistContext`), and the destination it lands on is `pushState`d as a
+new entry. Everything else is **drift** — the selection settling after a
+document load, the fallback when the open list is archived or deleted, a
+namespace restoring its own cursor — and `replaceState`s the current entry
+instead, so the trail holds only places the user chose to go and never a
+list that no longer exists. The first destination seeds the entry the app
+opened on rather than pushing a new one, and nothing is recorded until the
+document has loaded.
+
+A `popstate` reads the entry's destination and hands it to App's
+`applyDestination`, which sets the view and re-selects the list (re-opening
+a template on top of it). An entry from another namespace switches
+namespace and lets that namespace's own cursor pick the list, since the
+recorded ids belong to the document being left. Applying marks the
+destination as already-current, so replaying it records nothing; an entry
+without our state (another feature's `pushState`, a restored session) is
+left alone. Going back for the first time unlocks **Retraced Steps**.
+
 ### Header menu
 
 `src/ui/HeaderMenu.tsx` — the top-right burger menu. Opens a

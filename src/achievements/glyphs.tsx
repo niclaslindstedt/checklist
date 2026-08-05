@@ -492,6 +492,16 @@ export function LinkGlyph({ className }: IconProps) {
   );
 }
 
+/** Lucide `arrow-left` — the browser's Back button, retracing a step. */
+export function ArrowLeftGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </Svg>
+  );
+}
+
 // Re-exports of the chrome icons reused as achievement glyphs, normalised to
 // the `Glyph` signature so the catalog imports every glyph from one module.
 export const PlusGlyph: Glyph = PlusIcon;

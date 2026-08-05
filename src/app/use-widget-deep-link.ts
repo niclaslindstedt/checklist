@@ -60,8 +60,10 @@ export function useWidgetDeepLink(deps: {
       params.delete("add");
       params.delete("open");
       const query = params.toString();
+      // Keep whatever state the entry already carries (the nav destination
+      // `useNavHistory` records) — only the query string is being rewritten.
       window.history.replaceState(
-        null,
+        window.history.state,
         "",
         window.location.pathname +
           (query ? `?${query}` : "") +

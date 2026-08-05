@@ -169,6 +169,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "En webbadress i en posts anteckning är en riktig länk: klistra in en — med eller utan markdown-syntaxen [text](adress) — så visas den understruken när anteckningen är öppen. Tryck på den så öppnas sidan i en ny flik i stället för att anteckningen går över i redigeringsläge, så att ett recept, ett ärende eller en butikssida följer med posten som behöver den.",
     },
+    retracedSteps: {
+      name: "I egna fotspår",
+      condition: "Använd webbläsarens bakåtknapp för att komma till en lista.",
+      learnMore:
+        "Varje lista, mall, arkivbesök och namnrymd du öppnar är ett steg som webbläsaren minns. Tryck bakåt så landar du på den du tittade på innan, framåt tar dig ut igen — precis som på vilken webbplats som helst, och precis som bakåtgesten fungerar i den installerade appen. Bara platser du själv valt att gå till minns: en lista som stängs för att den arkiverats eller raderats blir aldrig ett steg du kan gå tillbaka in i.",
+    },
     reshuffle: {
       name: "Omflyttning",
       condition: "Dra en post för att flytta om den.",

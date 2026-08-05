@@ -196,6 +196,12 @@ export function ShowcasePage() {
               week ahead; repeating deadlines re-arm themselves.
             </li>
             <li>
+              <strong className="text-fg-bright">Move between lists</strong> —
+              opening one list after another leaves a trail the browser&apos;s
+              Back and Forward buttons walk, the same way they do on any
+              website; in the installed app, the back gesture does the same.
+            </li>
+            <li>
               <strong className="text-fg-bright">Make it yours</strong> — pick a
               theme, a font, a text size, and your language (English or
               Swedish); undo and redo your changes.
