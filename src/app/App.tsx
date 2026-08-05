@@ -56,7 +56,7 @@ import { SearchModalHost } from "./modals/SearchModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
 import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
 import { useChecklist } from "./use-checklist.ts";
-import { useNavHistory, type NavDestination } from "./use-nav-history.ts";
+import { useAppNavigation } from "./use-app-navigation.ts";
 import { useWidgetMirror } from "./use-widget-mirror.ts";
 import { useWidgetDeepLink } from "./use-widget-deep-link.ts";
 import { useNotificationScheduler } from "./use-notification-scheduler.ts";
@@ -195,110 +195,22 @@ function AppShell() {
     storage.activeNamespace,
   );
 
-  // Browser back / forward. Where the app *is* — the namespace, the view, and
-  // the list or template open inside it — is mirrored onto the History API by
-  // `useNavHistory`, so opening one list after another leaves a trail the
-  // browser's Back button walks. Gestures below announce themselves with
-  // `markNavigation()`; everything else (a selection settling after a load, a
-  // fallback when the open list is archived) updates the current entry in
-  // place instead of leaving junk behind.
-  const { activeChecklistId, activeTemplate } = checklist;
-  const destination = useMemo<NavDestination>(
-    () => ({
-      namespace: storage.activeNamespace,
-      view,
-      listId: activeChecklistId,
-      templateId: activeTemplate?.id ?? null,
-    }),
-    [storage.activeNamespace, view, activeChecklistId, activeTemplate],
-  );
-  const { switchNamespace } = storage;
-  const {
-    selectChecklist: selectChecklistNow,
-    selectTemplate: selectTemplateNow,
-  } = checklist;
-  const applyDestination = useCallback(
-    (dest: NavDestination) => {
-      // Only a Back / Forward gesture reaches here — the trail itself is
-      // recorded without going through `apply`.
-      unlock("retracedSteps");
-      setView(dest.view);
-      setMenuOpen(false);
-      // A destination in another namespace swaps the whole document out; that
-      // namespace's own cursor decides which of *its* lists opens, so the ids
-      // recorded here (which belong to the namespace we're leaving) are not
-      // replayed.
-      if (dest.namespace !== storage.activeNamespace) {
-        switchNamespace(dest.namespace);
-        return;
-      }
-      // Selecting the list first clears any open template, so a destination
-      // that had one re-opens it on top of the right list.
-      selectChecklistNow(dest.listId);
-      if (dest.templateId) selectTemplateNow(dest.templateId);
-    },
-    [
-      storage.activeNamespace,
-      switchNamespace,
-      selectChecklistNow,
-      selectTemplateNow,
-    ],
-  );
-  const { markNavigation } = useNavHistory({
-    destination,
-    ready: checklist.loaded,
-    apply: applyDestination,
+  // Browser back / forward, and the bookmarkable URL. Where the app *is* —
+  // the namespace, the view, and the list or template open inside it — is
+  // mirrored onto the History API and into the address-bar fragment, so
+  // opening one list after another leaves a trail Back walks and the list on
+  // screen is a link the user can keep. `useAppNavigation` wraps the verbs
+  // that move the user (`nav.verbs`, published on the checklist context) so
+  // each records an entry, and applies a destination the user comes back to.
+  const nav = useAppNavigation({
+    checklist,
+    storage,
+    view,
+    setView,
+    closeMenu,
   });
-
-  // The checklist verbs that move the user somewhere, each wrapped to record
-  // a history entry. Memoised as one object so the published context keeps a
-  // stable identity across renders that don't touch the checklist state.
-  const navVerbs = useMemo(
-    () => ({
-      selectChecklist: (id: string) => {
-        if (id !== checklist.activeChecklistId) markNavigation();
-        checklist.selectChecklist(id);
-      },
-      selectTemplate: (id: string) => {
-        if (id !== checklist.activeTemplate?.id) markNavigation();
-        checklist.selectTemplate(id);
-      },
-      closeTemplate: () => {
-        if (checklist.activeTemplate) markNavigation();
-        checklist.closeTemplate();
-      },
-      addChecklist: () => {
-        markNavigation();
-        checklist.addChecklist();
-      },
-      createChecklistFromTemplate: (id: string) => {
-        markNavigation();
-        checklist.createChecklistFromTemplate(id);
-      },
-      unarchiveChecklist: (id: string) => {
-        markNavigation();
-        checklist.unarchiveChecklist(id);
-      },
-    }),
-    [checklist, markNavigation],
-  );
-
-  const navigate = useCallback(
-    (next: View) => {
-      if (next !== view) markNavigation();
-      setView(next);
-      setMenuOpen(false);
-    },
-    [view, markNavigation],
-  );
-
-  const switchNamespaceNav = useCallback(
-    (slug: string) => {
-      if (slug !== storage.activeNamespace) markNavigation();
-      switchNamespace(slug);
-    },
-    [storage.activeNamespace, switchNamespace, markNavigation],
-  );
+  const navVerbs = nav.verbs;
+  const { navigate } = nav;
 
   // Achievements. The watcher records derived unlocks (first item, theme
   // change, …) off every document / settings transition and drains the
@@ -766,7 +678,7 @@ function AppShell() {
                   <SideMenu
                     namespaces={storage.namespaces}
                     activeNamespace={storage.activeNamespace}
-                    onSwitchNamespace={switchNamespaceNav}
+                    onSwitchNamespace={nav.switchNamespace}
                     onRemoveNamespace={removeNamespace}
                   />
                   <main className="relative h-full min-w-0 flex-1">

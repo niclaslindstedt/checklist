@@ -1,6 +1,6 @@
 ---
 type: Added
-title: Browser back and forward
+title: Browser navigation
 ---
 
-Opening one list after another now leaves a trail the browser's Back and Forward buttons walk, so you can return to the list you were just on.
+Opening one list after another now leaves a trail the browser's Back and Forward buttons walk, and the address bar names the list you have open so you can bookmark it and come straight back.

@@ -198,8 +198,12 @@ export function ShowcasePage() {
             <li>
               <strong className="text-fg-bright">Move between lists</strong> —
               opening one list after another leaves a trail the browser&apos;s
-              Back and Forward buttons walk, the same way they do on any
-              website; in the installed app, the back gesture does the same.
+              Back and Forward buttons walk, and the address bar always names
+              the list you have open — bookmark it and the link takes you
+              straight back to that list, on any device where you use the same
+              storage. The link lives after the{" "}
+              <code className="text-meta">#</code>, which browsers never send to
+              a server.
             </li>
             <li>
               <strong className="text-fg-bright">Make it yours</strong> — pick a

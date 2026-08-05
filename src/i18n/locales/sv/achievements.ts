@@ -175,6 +175,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Varje lista, mall, arkivbesök och namnrymd du öppnar är ett steg som webbläsaren minns. Tryck bakåt så landar du på den du tittade på innan, framåt tar dig ut igen — precis som på vilken webbplats som helst, och precis som bakåtgesten fungerar i den installerade appen. Bara platser du själv valt att gå till minns: en lista som stängs för att den arkiverats eller raderats blir aldrig ett steg du kan gå tillbaka in i.",
     },
+    deepLinked: {
+      name: "Direktlänkad",
+      condition: "Öppna appen från en länk eller ett bokmärke till en lista.",
+      learnMore:
+        "Adressfältet visar alltid vilken lista du har öppen, så ett bokmärke på den — eller länken kopierad till en anteckning, en kalenderpost eller en annan lista — tar dig raka vägen tillbaka. Länken ligger i den del av adressen som aldrig når någon server, och den pekar på din egen lista: den öppnar listan på varje enhet där du använder samma lagring, och betyder ingenting i någon annans app.",
+    },
     reshuffle: {
       name: "Omflyttning",
       condition: "Dra en post för att flytta om den.",

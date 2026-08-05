@@ -663,14 +663,41 @@ list that no longer exists. The first destination seeds the entry the app
 opened on rather than pushing a new one, and nothing is recorded until the
 document has loaded.
 
-A `popstate` reads the entry's destination and hands it to App's
-`applyDestination`, which sets the view and re-selects the list (re-opening
-a template on top of it). An entry from another namespace switches
-namespace and lets that namespace's own cursor pick the list, since the
-recorded ids belong to the document being left. Applying marks the
+A `popstate` reads the entry's destination and hands it to
+`applyDestination` in `use-app-navigation.ts`, which sets the view and
+re-selects the list (re-opening a template on top of it). An entry in
+another namespace can't be applied in one step — switching swaps the whole
+document out, and the list only exists once it has loaded — so it is held
+as `pending` and finished by an effect the moment the named list shows up
+in the snapshot; any deliberate navigation drops a pending destination, so
+one that can't resolve never hijacks a later selection. Applying marks the
 destination as already-current, so replaying it records nothing; an entry
 without our state (another feature's `pushState`, a restored session) is
 left alone. Going back for the first time unlocks **Retraced Steps**.
+
+### Bookmarking a list
+
+The same destination is written into the address bar as a fragment, so the
+list on screen is always a link: `#list=<id>`, plus `ns=<slug>` (left out
+for the default namespace), `template=<id>`, and `view=archive` where they
+apply. `src/app/nav-url.ts` owns that format (`destinationFragment` /
+`parseDestinationFragment` / `resolveUrlDestination`), and
+`docs/architecture.md` → "The URL" covers why it is the fragment and not
+the path or query: the deploy slots own the path, Pages has no SPA rewrite
+for invented ones, and a fragment never reaches a server.
+
+On cold start the URL wins over the restored cursor, so a bookmark opens
+its own list rather than the last one used — that first apply is what
+unlocks **Deep Linked**. A link naming a list that no longer exists falls
+back to a real one and the address bar is rewritten to match, so the URL
+never claims to be somewhere the app isn't. Because a share payload is a
+bare blob with none of our keys, the two never collide; a fragment that
+isn't ours is left in the address bar until the user's first navigation.
+
+The ids are the document's own, so a link opens the same list on any
+device carrying the same document, and means nothing in someone else's
+app — it is a bookmark, not a way to send a list to another person (that
+is what the share payload is for).
 
 ### Header menu
 

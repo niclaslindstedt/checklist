@@ -502,6 +502,15 @@ export function ArrowLeftGlyph({ className }: IconProps) {
   );
 }
 
+/** Lucide `bookmark` — a link kept, and opened straight back into a list. */
+export function BookmarkGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </Svg>
+  );
+}
+
 // Re-exports of the chrome icons reused as achievement glyphs, normalised to
 // the `Glyph` signature so the catalog imports every glyph from one module.
 export const PlusGlyph: Glyph = PlusIcon;

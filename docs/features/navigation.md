@@ -40,6 +40,22 @@ opening the app never leaves an empty step behind before your first move.
 Going back across a namespace switch returns you to that namespace on the
 list you left it on.
 
+## Linking to a list
+
+The address bar always names the list you have open, so **bookmark it and
+you have a way straight back in** — and the same link works in a note, a
+calendar entry, or another checklist. Opening one goes to that list
+directly instead of wherever you were last, including into another
+namespace.
+
+The link lives in the part of the address after `#`, which browsers never
+send to a server, so nothing about which list you opened leaves your
+device. It points at a list of *yours*: it opens on any device where you
+use the same storage, and means nothing in someone else's app — a link you
+keep, not a way to send a list to another person. If the list it names has
+since been deleted, the app opens a real one instead and quietly corrects
+the address.
+
 ## The pinned sidebar
 
 On wider screens — anything at least as wide as the smallest iPad — there

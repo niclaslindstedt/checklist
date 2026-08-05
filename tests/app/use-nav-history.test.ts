@@ -45,6 +45,11 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
+/** The destination `apply` was last handed, ignoring the source argument. */
+function lastApplied(apply: ReturnType<typeof vi.fn>): unknown {
+  return apply.mock.calls.at(-1)?.[0];
+}
+
 describe("readNavDestination", () => {
   it("reads a destination back out of a history state", () => {
     mount(AT({ listId: "seed" }));
@@ -119,6 +124,49 @@ describe("useNavHistory", () => {
     expect((window.history.state as { other: string }).other).toBe("keep");
   });
 
+  it("names the open list in the address bar, for bookmarking", () => {
+    const { result, rerender } = mount(AT());
+    expect(window.location.hash).toBe("#list=a");
+
+    act(() => result.current.markNavigation());
+    rerender({ destination: AT({ listId: "b", namespace: "work" }) });
+    expect(window.location.hash).toBe("#list=b&ns=work");
+  });
+
+  it("opens on the list its URL names, not the one the cursor restored", () => {
+    window.history.replaceState(null, "", "/#list=bookmarked&view=archive");
+    const { apply } = mount(AT({ listId: "cursor" }));
+
+    expect(apply).toHaveBeenCalledWith(
+      AT({ listId: "bookmarked", view: "archive" }),
+      "url",
+    );
+  });
+
+  it("corrects the address bar when the URL's list is gone", () => {
+    window.history.replaceState(null, "", "/#list=deleted");
+    // The app applies it, falls back to a real list, and re-renders at the
+    // destination it started on — unchanged, so only the extra pass catches it.
+    const { apply } = mount(AT({ listId: "real" }));
+
+    expect(apply).toHaveBeenCalledWith(AT({ listId: "deleted" }), "url");
+    expect(window.location.hash).toBe("#list=real");
+    expect(readNavDestination(window.history.state)).toEqual(
+      AT({ listId: "real" }),
+    );
+  });
+
+  it("leaves a share payload in the address bar alone", () => {
+    const payload = "#H4sIAAAAAAAAA6tWKk5NLsosyUxWsjI0MjZRqgUAy7-i";
+    window.history.replaceState(null, "", `/${payload}`);
+    const { apply } = mount(AT());
+
+    expect(apply).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe(payload);
+    // Ours from the user's first navigation onward.
+    expect(readNavDestination(window.history.state)).toEqual(AT());
+  });
+
   it("walks back and forward through the lists the user opened", async () => {
     const { result, rerender, apply } = mount(AT({ listId: "a" }));
 
@@ -128,15 +176,15 @@ describe("useNavHistory", () => {
     rerender({ destination: AT({ listId: "c" }) });
 
     await travel("back");
-    expect(apply).toHaveBeenLastCalledWith(AT({ listId: "b" }));
+    expect(lastApplied(apply)).toEqual(AT({ listId: "b" }));
     rerender({ destination: AT({ listId: "b" }) });
 
     await travel("back");
-    expect(apply).toHaveBeenLastCalledWith(AT({ listId: "a" }));
+    expect(lastApplied(apply)).toEqual(AT({ listId: "a" }));
     rerender({ destination: AT({ listId: "a" }) });
 
     await travel("forward");
-    expect(apply).toHaveBeenLastCalledWith(AT({ listId: "b" }));
+    expect(lastApplied(apply)).toEqual(AT({ listId: "b" }));
     expect(apply).toHaveBeenCalledTimes(3);
   });
 
@@ -149,7 +197,8 @@ describe("useNavHistory", () => {
     rerender({ destination: AT({ view: "archive", templateId: "t1" }) });
 
     await travel("back");
-    expect(apply).toHaveBeenLastCalledWith(AT({ view: "archive" }));
+    expect(lastApplied(apply)).toEqual(AT({ view: "archive" }));
+    expect(apply.mock.calls.at(-1)?.[1]).toBe("popstate");
   });
 
   it("does not re-record the destination it was sent back to", async () => {

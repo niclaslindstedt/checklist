@@ -3,10 +3,10 @@
 // (`use-checklist-lists.ts`), so opening one list after another used to be
 // invisible to the browser and Back walked straight out of the app.
 //
-// This hook mirrors that state onto the History API. It never touches the
-// URL — share payloads own the fragment, the deploy slots own the path, and
-// GitHub Pages has no SPA rewrite for invented paths — so every entry is the
-// same URL carrying a `NavDestination` in `history.state`.
+// This hook mirrors that state onto the History API: every entry carries a
+// `NavDestination` in `history.state`, and the address bar carries the same
+// destination as a fragment (`#list=<id>`, see `nav-url.ts`) so the list on
+// screen can be bookmarked, and a bookmark opens straight back into it.
 //
 // Two kinds of change reach the same destination, and only one of them is a
 // navigation:
@@ -23,10 +23,21 @@
 // as already-current, so replaying it doesn't record anything new. Entries
 // without our state (another feature's `pushState`, a restored session) are
 // left alone.
+//
+// On the first pass the URL is read rather than written: a fragment naming a
+// destination is applied (`source: "url"`), which is what makes a bookmark
+// land on its list instead of on whichever list was open last. A fragment
+// that isn't ours — a share payload — is left in the address bar untouched
+// until the user's first navigation.
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { View } from "../ui/nav-context.ts";
+import {
+  destinationUrl,
+  parseDestinationFragment,
+  resolveUrlDestination,
+} from "./nav-url.ts";
 
 /** Where the app is: the namespace, the view, and what's open inside it. */
 export interface NavDestination {
@@ -88,6 +99,9 @@ export interface NavHistory {
   markNavigation: () => void;
 }
 
+/** Why `apply` is being called — a Back / Forward press, or the opening URL. */
+export type NavSource = "popstate" | "url";
+
 export function useNavHistory(deps: {
   /** Where the app is right now. */
   destination: NavDestination;
@@ -96,8 +110,8 @@ export function useNavHistory(deps: {
    * settling and nothing is worth recording.
    */
   ready: boolean;
-  /** Put the app back at a destination the user navigated back (or forward) to. */
-  apply: (dest: NavDestination) => void;
+  /** Put the app at a destination it was sent to, by Back / Forward or by the URL. */
+  apply: (dest: NavDestination, source: NavSource) => void;
 }): NavHistory {
   const { destination, ready, apply } = deps;
 
@@ -109,6 +123,12 @@ export function useNavHistory(deps: {
   // Latest `apply` without re-subscribing the popstate listener every render.
   const applyRef = useRef(apply);
   applyRef.current = apply;
+  // Bumped after the opening URL is applied, to force one more pass. The app
+  // may land somewhere other than where the URL pointed (a link to a list
+  // that has since been deleted falls back to a real one) without the
+  // destination changing at all, and that pass is what rewrites the address
+  // bar to where the user actually is.
+  const [urlPass, setUrlPass] = useState(0);
 
   const markNavigation = useCallback(() => {
     navigatingRef.current = true;
@@ -119,18 +139,47 @@ export function useNavHistory(deps: {
     if (!ready) return;
     const next: NavDestination = { namespace, view, listId, templateId };
     const entry = entryRef.current;
+
+    // First pass: the URL the app was opened with wins over the list the
+    // cursor restored, so a bookmark lands where it points. Recording waits
+    // for the app to settle there — this render is still showing the list it
+    // started on.
+    if (!entry) {
+      const fromUrl = parseDestinationFragment(window.location.hash);
+      if (fromUrl) {
+        const target = resolveUrlDestination(fromUrl, next);
+        entryRef.current = target;
+        window.history.replaceState(
+          withDestination(window.history.state, target),
+          "",
+        );
+        applyRef.current(target, "url");
+        setUrlPass(1);
+        return;
+      }
+    }
+
     if (entry && sameDestination(entry, next)) return;
     const state = withDestination(window.history.state, next);
+    // Leave a fragment that isn't ours (a share payload) in the address bar
+    // until the user's first navigation — the app opened on it and nothing
+    // has read it yet.
+    const url =
+      !entry &&
+      window.location.hash &&
+      !parseDestinationFragment(window.location.hash)
+        ? null
+        : destinationUrl(window.location, next);
     // The very first destination seeds the entry the app opened on — pushing
     // there would leave an empty entry behind the user's back.
     if (entry && navigatingRef.current) {
-      window.history.pushState(state, "");
+      window.history.pushState(state, "", url ?? undefined);
     } else {
-      window.history.replaceState(state, "");
+      window.history.replaceState(state, "", url ?? undefined);
     }
     navigatingRef.current = false;
     entryRef.current = next;
-  }, [ready, namespace, view, listId, templateId]);
+  }, [ready, urlPass, namespace, view, listId, templateId]);
 
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
@@ -140,7 +189,7 @@ export function useNavHistory(deps: {
       // the state changes `apply` triggers must not record anything.
       entryRef.current = dest;
       navigatingRef.current = false;
-      applyRef.current(dest);
+      applyRef.current(dest, "popstate");
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
