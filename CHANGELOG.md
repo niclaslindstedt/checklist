@@ -12,6 +12,44 @@ changelog").
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-07
+
+### Added
+
+- **Empty the archive** — The archive view's header now has a button that permanently clears the whole archive — every archived item and archived list at once — behind a confirm, with undo to bring it all back.
+- **Archive typeahead** — Typing a new item now suggests matching titles from the list's archived items — fuzzy-matched, highlighted, and ranked so titles that start with what you typed lead, then by how often you've used them — press one to re-add it instantly.
+- **Archived drawer** — Swipe up at the foot of a list to reveal a drawer of just that list's archived items, and restore or delete them without leaving the list.
+- **Deadlines** — Give an item a due date (and an optional repeat like every 2 weeks) from the tap-friendly calendar on the clock revealed by a left swipe — tap its heading to jump straight to any month or year — and dated items gather at the bottom of the list under a colour-coded date row that warms from yellow to orange to red as the day nears, and checking off a recurring one rolls it to its next occurrence. [Learn more](feature:deadlines)
+- **iCloud sync** — In the iOS app you can now sync your lists across your Apple devices through iCloud — no account, no sign-in, and no server of ours in the middle — chosen under Settings → Storage. [Learn more](feature:icloud-sync)
+- **Home Screen widgets** — On the native app, add checklist widgets to your Home or Lock Screen — a progress ring, what's due today across your lists, a quick-add shortcut, and an interactive list you can tick items off from with a single tap without opening the app. [Learn more](feature:widgets)
+- **Collapsible menu footer** — A thin chevron rail above the side-menu footer folds Donate, the trophy, About, and Settings away — handing the freed space to your checklist — and tap it again to bring them back; the choice is remembered per device.
+- **Deadline reminders** — On the native app, an item with a due date now fires a local notification when it comes due — even with the app closed — with optional day-before and week-before nudges, and repeating deadlines that re-arm themselves. [Learn more](feature:deadline-reminders)
+- **Categories** — Promote an item that has sub-items to a category — a slim header with its own (+) button that groups the items under it and stays put when you archive or delete every finished item. [Learn more](feature:categories)
+- **Templates** — Save any checklist as a reusable template — sub-items, categories, notes, required flags and deadlines all captured, every box unchecked — then stamp a fresh, independent list out of it whenever you need one. [Learn more](feature:templates)
+- **Copy one category** — On a list with categories the copy button now asks what to copy — the whole list, or just one category's items.
+- **Clickable links in notes** — A web address in an item's note — pasted plainly or written as a markdown link — is now a real link that opens the page instead of the note's editor.
+- **Browser navigation** — Opening one list after another now leaves a trail the browser's Back and Forward buttons walk, and the address bar names the list you have open so you can bookmark it and come straight back.
+
+### Changed
+
+- **Native app** — The iOS and Android app now embeds the full web app and runs it offline, so it has every feature the web version does instead of a subset.
+- **Footer button spacing** — The side-menu footer and its collapse rail sit snug at the foot of the drawer — handing the reclaimed bottom safe-area space to your checklist list — while the side-menu and full-screen settings dialog both keep a comfortable thumb-reach margin below their footer buttons.
+
+### Fixed
+
+- **Delete while adding** — Deleting a swiped item while the add-item composer is open now removes the item and keeps the composer open, instead of silently dropping the delete and closing the composer.
+- **Add button after delete** — The green add-item button no longer disappears when you delete the very item you just added while the add-item composer is still open.
+- **Checks stick on open** — Checking items right after opening a list no longer risks them silently un-checking when a slow cloud read finishes — an edit made while the backend load is still in flight is now kept instead of overwritten.
+- Applying an app update now saves your unsaved changes first, so an item added just before updating is no longer lost.
+- **List icons in the sidebar** — The navigation drawer now shows each checklist's own icon and accent colour on its row, instead of the same generic list mark for every list.
+- **Full-height on iOS home screen** — The installed iOS app now paints all the way to the bottom of the screen instead of leaving a dead black band above the home indicator — your list and the side-menu drawer get the full screen height, the checklist and archive surfaces run edge-to-edge with the header sitting snug under the Dynamic Island and the list stretching down to the bottom.
+- **Sidebar header alignment** — The navigation drawer's top heading now lines up with the checklist page's own header instead of sitting a few pixels lower.
+- The sync details dialog now shows the real Dropbox app folder name, so the
+  file location and the "Open in Dropbox" link point at the folder your lists
+  actually live in.
+- Dropping a dragged item in the empty space below the list now lands it at the bottom of the list rather than tucking it under whichever category owns the last row.
+- Holding a checklist item on a phone or tablet no longer highlights the whole page behind the menu it opens — text selection now stays where it is useful, in the item title and note editors.
+
 ## [1.3.0] - 2026-07-01
 
 ### Added
