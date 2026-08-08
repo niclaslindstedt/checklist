@@ -51,6 +51,49 @@ differences are load-bearing here:
   is why `renderStaticRoute` fails the build over it rather than trusting
   a test to notice.
 
+### Code splitting
+
+The bundle the browser has to fetch and parse before first paint carries only
+what the app actually paints. Everything that opens on demand lives in its own
+chunk, declared with `defer()` from `src/ui/deferred.tsx`:
+
+```tsx
+const SettingsModal = defer(() =>
+  import("../../ui/settings/SettingsModal.tsx").then((m) => m.SettingsModal),
+);
+…
+<SettingsModal active={open} open={open} onClose={close} />
+```
+
+`defer()` returns a stand-in with the real component's props plus `active`. It
+renders `null` until its chunk lands, then renders the real component and keeps
+rendering it — so a modal behaves exactly as it did when statically imported:
+always mounted, hidden by its own `open` prop. **`active` controls fetching,
+not rendering.** A surface the user never opens is never fetched or parsed.
+
+Split today: every modal (settings, changelog, search, sync details,
+namespaces, both achievements dialogs), the deadline sheet (which is the only
+thing that pulls in `DatePicker`), and the standalone `/home` + `/privacy`
+pages. The Swedish catalogue and `workbox-window` were already split.
+
+**Never defer anything on the first-paint path** — a deferred surface is
+absent for a moment, which is fine for a closed modal and wrong for the app
+shell.
+
+**Deferring is not `lazy()` + `Suspense`, deliberately.** `Modal` focuses its
+`initialFocusRef` in a layout effect so the focus lands inside the tap that
+opened it — the only context in which iOS raises the soft keyboard for a
+programmatic `focus()` — and `SideMenu` leans on that directly, dispatching the
+search command inside `flushSync`. A loader that can only resolve through a
+promise pushes the real render past that gesture, so the field would focus with
+no keyboard. So a resident chunk is readable on the very next render, and
+surfaces declared `defer(…, { warm: true })` are prefetched during idle time
+after first paint by `warmDeferred()` (called from `main.tsx`). The search
+modal is the one surface that needs it; don't drop its `warm`.
+
+What the split buys is a smaller *parse before first paint*, not a smaller
+total download: the service worker precaches every emitted chunk regardless.
+
 ### Prerendering
 
 `/home` and `/privacy` are rendered to HTML at build time;

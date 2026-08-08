@@ -6,13 +6,13 @@ import { archivedTitlePool } from "../domain/suggestions.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
+import { defer } from "./deferred.tsx";
 import { AddItemForm } from "./AddItemForm.tsx";
 import { ArchivedDrawer } from "./ArchivedDrawer.tsx";
 import { resolveActiveEditor } from "./activeEditor.ts";
 import { ChecklistGlyphButton } from "./ChecklistGlyphButton.tsx";
 import { FOCUS_COMPOSER_EVENT } from "./composer-events.ts";
 import { ChecklistRow } from "./ChecklistRow.tsx";
-import { DeadlineModal } from "./DeadlineModal.tsx";
 import { ChecklistTitle } from "./ChecklistTitle.tsx";
 import { CopyButton } from "./CopyButton.tsx";
 import { DragGhostRow } from "./DragGhostRow.tsx";
@@ -55,6 +55,12 @@ import {
 // those renders (see `useChecklist`'s memoized return and App's memoized
 // provider value), so `memo` skips the whole list instead of reconciling N
 // rows. Theme is applied as CSS vars on `:root`, not through context.
+// Deferred: the deadline sheet is the only thing that pulls in `DatePicker`,
+// and it opens from a row's context menu rather than on first paint.
+const DeadlineModal = defer(() =>
+  import("./DeadlineModal.tsx").then((m) => m.DeadlineModal),
+);
+
 function ChecklistViewImpl() {
   const {
     items,
