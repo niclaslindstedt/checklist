@@ -98,7 +98,7 @@ guessing — then record the answer so the next agent doesn't have to.
 
 | Change type | Goes in |
 |---|---|
-| New UI surface       | `src/ui/...` |
+| New UI surface       | `src/ui/...` — if it opens on demand (a modal, a picker), declare it with `defer()` so it ships in its own chunk; see "Code splitting" in `docs/architecture.md` |
 | New domain rule      | `src/domain/...` |
 | New storage backend  | `src/storage/<provider>/...` |
 | New achievement      | `src/achievements/catalog.ts` (+ glyph in `glyphs.tsx`) **and** `src/i18n/locales/{en,sv}/achievements.ts` (see "Achievements") |

@@ -2878,6 +2878,26 @@ Google reviewer reads the page itself rather than a fallback summary — see
 with the app** whenever a feature or a data-access path changes — see "The
 `/home` showcase page" in `AGENTS.md`.
 
+### Deferred surfaces
+
+Everything that opens on demand loads from its own chunk rather than riding in
+the bundle the browser parses before first paint: every modal, the deadline
+sheet (the only thing that pulls in `DatePicker`), and the standalone `/home` +
+`/privacy` pages. `src/ui/deferred.tsx` owns the mechanism — `defer()` wraps a
+dynamic `import()` in a stand-in component with the real one's props plus
+`active`, which controls *fetching*, not rendering. A surface nobody opens is
+never fetched or parsed; once its chunk is resident the stand-in renders the
+real component and keeps it mounted, so a modal behaves exactly as it did when
+statically imported (hidden by its own `open` prop).
+
+The one subtlety is the search modal. `Modal` focuses its input in a layout
+effect so the focus lands inside the tap — the only context in which iOS raises
+the soft keyboard — and `SideMenu` dispatches the search command inside
+`flushSync` for exactly that reason. So search is declared
+`defer(…, { warm: true })` and `warmDeferred()` prefetches it during idle after
+first paint, which is what keeps the open synchronous. See "Code splitting" in
+`docs/architecture.md`.
+
 ### Prerendered routes
 
 The two standalone pages above — `/home` and `/privacy` — ship as real HTML

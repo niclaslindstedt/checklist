@@ -7,7 +7,7 @@
 // for offline first paint; per the local-first invariant, no font is
 // fetched from a CDN at runtime.
 
-import { StrictMode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 
 import { LanguageRoot } from "../i18n/LanguageRoot.tsx";
@@ -19,8 +19,8 @@ import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/latin-ext-400.css";
 import "@fontsource/jetbrains-mono/latin-700.css";
 import "@fontsource/jetbrains-mono/latin-ext-700.css";
+import { warmDeferred } from "../ui/deferred.tsx";
 import { App } from "./App.tsx";
-import { StaticRouteView } from "./StaticRouteView.tsx";
 import { staticRouteFor } from "./static-routes.ts";
 
 const root = document.getElementById("app");
@@ -33,27 +33,39 @@ if (!root) throw new Error("missing #app mount point");
 // (it also handles the deploy slots, which nest the page one segment deeper).
 const staticRoute = staticRouteFor(window.location.pathname);
 
-// The standalone pages mount bare — no `LanguageRoot`. They are English-only
-// and consume nothing it provides, and keeping them free of its browser-only
-// work is what lets the build render them to HTML ahead of time. See
-// `StaticRouteView`.
-const tree = staticRoute ? (
-  <StaticRouteView route={staticRoute} />
-) : (
-  <StrictMode>
-    <LanguageRoot>
-      <App />
-    </LanguageRoot>
-  </StrictMode>
-);
+// Mount whatever this URL resolves to, then adopt a prerendered document
+// rather than throwing it away and rebuilding. `data-prerendered` has to name
+// *this* route for hydration to be safe: a service worker holding a shell from
+// another route, or the dev server (which prerenders nothing), leaves it
+// absent or mismatched, and a clean client render is the correct answer there.
+function mount(tree: ReactNode): void {
+  if (staticRoute && root!.dataset.prerendered === staticRoute) {
+    hydrateRoot(root!, tree);
+  } else {
+    createRoot(root!).render(tree);
+  }
+}
 
-// A prerendered document already holds this route's markup, so adopt it rather
-// than throw it away and rebuild. `data-prerendered` has to name *this* route
-// for that to be safe: a service worker holding a shell from another route, or
-// the dev server (which prerenders nothing), leaves it absent or mismatched,
-// and a clean client render is the correct answer there.
-if (staticRoute && root.dataset.prerendered === staticRoute) {
-  hydrateRoot(root, tree);
+if (staticRoute) {
+  // The standalone pages live in their own chunk — the app route never loads
+  // them, and on their own routes the prerendered markup is already on screen
+  // and readable while this resolves. They also mount bare, with no
+  // `LanguageRoot`: they are English-only, consume nothing it provides, and
+  // keeping them free of its browser-only work is what lets the build render
+  // them ahead of time. See `StaticRouteView`.
+  void import("./StaticRouteView.tsx").then(({ StaticRouteView }) => {
+    mount(<StaticRouteView route={staticRoute} />);
+  });
 } else {
-  createRoot(root).render(tree);
+  mount(
+    <StrictMode>
+      <LanguageRoot>
+        <App />
+      </LanguageRoot>
+    </StrictMode>,
+  );
+  // Pull the on-demand chunks (modals, pickers) in during idle time, so the
+  // split never costs a stall on the tap that needs one. Only on the app
+  // route — the standalone pages open none of them.
+  warmDeferred();
 }
