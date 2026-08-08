@@ -34,8 +34,8 @@ export interface LongPress {
     onPointerMove: (e: PointerEvent<HTMLElement>) => void;
     onPointerUp: (e: PointerEvent<HTMLElement>) => void;
     onPointerCancel: (e: PointerEvent<HTMLElement>) => void;
-    onClickCapture: (e: React.MouseEvent) => void;
-    onContextMenu: (e: React.MouseEvent) => void;
+    onClickCapture: (e: React.MouseEvent<HTMLElement>) => void;
+    onContextMenu: (e: React.MouseEvent<HTMLElement>) => void;
   };
 }
 
@@ -83,7 +83,7 @@ export function useLongPress(
     [clearTimer],
   );
 
-  const onClickCapture = useCallback((e: React.MouseEvent) => {
+  const onClickCapture = useCallback((e: React.MouseEvent<HTMLElement>) => {
     if (!fired.current) return;
     // The hold already opened the menu — don't let the lift edit the row.
     e.preventDefault();
@@ -92,7 +92,7 @@ export function useLongPress(
   }, []);
 
   const onContextMenu = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLElement>) => {
       // Suppress the platform's own long-press menu; open ours in its place
       // unless the timer beat it to the punch.
       e.preventDefault();

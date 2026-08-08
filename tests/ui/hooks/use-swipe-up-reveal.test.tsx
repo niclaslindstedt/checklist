@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 import { useSwipeUpReveal } from "../../../src/ui/hooks/useSwipeUpReveal.ts";
 
 // Dispatch a synthetic touch on `el`. jsdom has no real TouchEvent, so we
@@ -26,9 +26,15 @@ function makeContainer() {
 // Swipe the finger up from `start` to `end` (raw px) and release. Travel is
 // damped by 0.5, so crossing the 64px trigger needs ~128px of finger travel.
 function swipeUp(el: Element, start: number, end: number) {
-  act(() => dispatchTouch(el, "touchstart", start));
-  act(() => dispatchTouch(el, "touchmove", end));
-  act(() => dispatchTouch(el, "touchend", null));
+  act(() => {
+    dispatchTouch(el, "touchstart", start);
+  });
+  act(() => {
+    dispatchTouch(el, "touchmove", end);
+  });
+  act(() => {
+    dispatchTouch(el, "touchend", null);
+  });
 }
 
 afterEach(() => {
@@ -54,8 +60,12 @@ describe("useSwipeUpReveal", () => {
       useSwipeUpReveal({ current: el }, { enabled: true, onReveal: vi.fn() }),
     );
 
-    act(() => dispatchTouch(el, "touchstart", 200));
-    act(() => dispatchTouch(el, "touchmove", 0));
+    act(() => {
+      dispatchTouch(el, "touchstart", 200);
+    });
+    act(() => {
+      dispatchTouch(el, "touchmove", 0);
+    });
 
     expect(result.current.state).toBe("release");
     expect(result.current.pullDistance).toBeGreaterThanOrEqual(64);
@@ -81,9 +91,15 @@ describe("useSwipeUpReveal", () => {
       useSwipeUpReveal({ current: el }, { enabled: true, onReveal }),
     );
 
-    act(() => dispatchTouch(el, "touchstart", 100));
-    act(() => dispatchTouch(el, "touchmove", 260));
-    act(() => dispatchTouch(el, "touchend", null));
+    act(() => {
+      dispatchTouch(el, "touchstart", 100);
+    });
+    act(() => {
+      dispatchTouch(el, "touchmove", 260);
+    });
+    act(() => {
+      dispatchTouch(el, "touchend", null);
+    });
 
     expect(onReveal).not.toHaveBeenCalled();
   });
@@ -126,9 +142,15 @@ describe("useSwipeUpReveal", () => {
 
     // The touch originates on the input (bubbling up to the container's
     // listener with the input as target), so the gesture stands down.
-    act(() => dispatchTouch(input, "touchstart", 200));
-    act(() => dispatchTouch(el, "touchmove", 0));
-    act(() => dispatchTouch(el, "touchend", null));
+    act(() => {
+      dispatchTouch(input, "touchstart", 200);
+    });
+    act(() => {
+      dispatchTouch(el, "touchmove", 0);
+    });
+    act(() => {
+      dispatchTouch(el, "touchend", null);
+    });
 
     expect(onReveal).not.toHaveBeenCalled();
   });

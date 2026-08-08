@@ -60,26 +60,26 @@ function installTrailingSwallow(): () => void {
 //
 // The backdrop alone catches the dismissing `pointerdown`, but the
 // `onDismiss` callback (which closes the dropdown and unmounts THIS
-// component) triggers a synchronous React render that tears the
+// component) triggers a synchronous re-render that tears the
 // backdrop down before the rest of the tap sequence (`pointerup` /
 // `mousedown` / `click`) arrives. Those trailing events then land on
 // whatever element was underneath the tap — which on iOS is enough to
 // focus the next control and pop the keyboard.
 //
 // `installTrailingSwallow` installs capture-phase listeners on
-// `document` that survive the unmount: they run before React's root
-// delegate sees the events, preventDefault the focus-shifting mouse
-// events, and `stopImmediatePropagation` so React's onClick on the
-// underlying button never fires. The listeners tear themselves down
+// `document` that survive the unmount: capture runs before the bubble-
+// phase listener Preact bound to the element underneath, so they get to
+// preventDefault the focus-shifting mouse events and
+// `stopImmediatePropagation` before that element's `onClick` fires. The listeners tear themselves down
 // via a window-level `setTimeout` 300 ms later, so component unmount
 // doesn't interrupt them.
 export function DismissBackdrop({ onDismiss }: { onDismiss: () => void }) {
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault();
-    // React portals bubble events through the *React* tree, not the DOM
+    // Portals bubble events through the *component* tree, not the DOM
     // tree — even though this backdrop sits in `document.body`, its
-    // parent in React is whatever rendered it. Stop propagation so the
-    // dismissing pointerdown doesn't also reach handlers up the React
+    // parent in the vdom is whatever rendered it. Stop propagation so the
+    // dismissing pointerdown doesn't also reach handlers further up that
     // tree.
     e.stopPropagation();
     installTrailingSwallow();

@@ -29,7 +29,7 @@ export function NamespaceGlyph({ name, className, style }: Props) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
       style={style}
       dangerouslySetInnerHTML={{ __html: inner }}

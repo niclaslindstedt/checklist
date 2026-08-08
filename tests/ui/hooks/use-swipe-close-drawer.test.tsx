@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import { useSwipeCloseDrawer } from "../../../src/ui/hooks/useSwipeCloseDrawer.ts";
 
@@ -30,8 +30,12 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "left", enabled: true, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }));
-    act(() => dispatchTouch("touchmove", { x: 130, y: 305 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 130, y: 305 });
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -40,8 +44,12 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "right", enabled: true, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }));
-    act(() => dispatchTouch("touchmove", { x: 270, y: 305 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 270, y: 305 });
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -50,8 +58,12 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "left", enabled: true, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }));
-    act(() => dispatchTouch("touchmove", { x: 280, y: 305 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 280, y: 305 });
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -60,8 +72,12 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "left", enabled: true, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 100 }));
-    act(() => dispatchTouch("touchmove", { x: 160, y: 400 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 100 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 160, y: 400 });
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -70,8 +86,12 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "left", enabled: true, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }));
-    act(() => dispatchTouch("touchmove", { x: 180, y: 300 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 180, y: 300 });
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -83,8 +103,12 @@ describe("useSwipeCloseDrawer", () => {
     const row = document.createElement("div");
     row.setAttribute("data-swipe-row", "");
     document.body.appendChild(row);
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }, row));
-    act(() => dispatchTouch("touchmove", { x: 130, y: 305 }, row));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 }, row);
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 130, y: 305 }, row);
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -93,8 +117,12 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "left", enabled: false, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }));
-    act(() => dispatchTouch("touchmove", { x: 130, y: 305 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 130, y: 305 });
+    });
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -103,9 +131,15 @@ describe("useSwipeCloseDrawer", () => {
     renderHook(() =>
       useSwipeCloseDrawer({ side: "left", enabled: true, onClose }),
     );
-    act(() => dispatchTouch("touchstart", { x: 200, y: 300 }));
-    act(() => dispatchTouch("touchmove", { x: 130, y: 305 }));
-    act(() => dispatchTouch("touchmove", { x: 90, y: 305 }));
+    act(() => {
+      dispatchTouch("touchstart", { x: 200, y: 300 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 130, y: 305 });
+    });
+    act(() => {
+      dispatchTouch("touchmove", { x: 90, y: 305 });
+    });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/preact";
 
 import { ChangelogModal } from "../../../src/ui/changelog/ChangelogModal.tsx";
 import { FEATURE_DOCS } from "../../../src/ui/changelog/feature-docs.ts";

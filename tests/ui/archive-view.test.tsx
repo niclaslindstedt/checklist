@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/preact";
 
 import { ArchiveView } from "../../src/ui/ArchiveView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";

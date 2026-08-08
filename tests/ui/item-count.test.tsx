@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/preact";
 
 import { ItemCount } from "../../src/ui/ItemCount.tsx";
 

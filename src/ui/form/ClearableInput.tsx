@@ -42,7 +42,7 @@ export const ClearableInput = forwardRef<HTMLInputElement, Props>(
           ref={ref}
           type={type}
           value={value}
-          onChange={(e) => onValueChange(e.target.value)}
+          onChange={(e) => onValueChange(e.currentTarget.value)}
           className={`w-full min-w-0 border-0 bg-transparent ${textClassName} outline-none placeholder:text-muted ${canClear ? "pr-7" : ""} ${className ?? ""}`.trim()}
           {...rest}
         />

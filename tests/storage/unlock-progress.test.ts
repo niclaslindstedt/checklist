@@ -3,7 +3,7 @@
 // through, so the unlock gate can flash a status line while the passphrase is
 // checked and the document decrypts. Drives the hook on the browser backend:
 // encrypt the store, then unlock it and record the phases reported.
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createChecklist } from "../../src/domain/checklists.ts";

@@ -8,7 +8,7 @@
 // id here; the watcher mounted in App subscribes, drains the queue on each
 // notification, and records the unlock through `useSettings`. The queue
 // survives across-component-tree dispatches but does NOT persist across page
-// reloads — a manual unlock must be fired by a still-mounted React surface
+// reloads — a manual unlock must be fired by a still-mounted UI surface
 // that observes the user's action.
 //
 // Why an in-memory bus instead of a context? Callers like `CopyButton`,

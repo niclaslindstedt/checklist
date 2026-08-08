@@ -2,7 +2,7 @@
 // Direct coverage for `useNamespaceRegistry`, peeled out of `useStorageBackend`
 // so the read→setState→push CRUD dance and the boot reconcile are testable
 // against a mocked `NamespaceRegistryStore` instead of a live cloud backend.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NamespaceRegistryStore } from "../../src/storage/namespace-store.ts";
@@ -89,7 +89,9 @@ describe("useNamespaceRegistry", () => {
     act(() => {
       slug = result.current.add("Old").slug;
     });
-    act(() => result.current.rename(slug, "New"));
+    act(() => {
+      result.current.rename(slug, "New");
+    });
 
     expect(result.current.namespaces.find((n) => n.slug === slug)?.name).toBe(
       "New",
@@ -104,7 +106,9 @@ describe("useNamespaceRegistry", () => {
     act(() => {
       slug = result.current.add("Plain").slug;
     });
-    act(() => result.current.setAppearance(slug, { glyph: "star" }));
+    act(() => {
+      result.current.setAppearance(slug, { glyph: "star" });
+    });
 
     expect(result.current.namespaces.find((n) => n.slug === slug)?.glyph).toBe(
       "star",
@@ -121,7 +125,9 @@ describe("useNamespaceRegistry", () => {
     });
     expect(result.current.namespaces).toHaveLength(2);
 
-    act(() => result.current.remove(slug));
+    act(() => {
+      result.current.remove(slug);
+    });
     expect(result.current.namespaces).toHaveLength(1);
     expect(lastSaved(saves).some((n) => n.slug === slug)).toBe(false);
   });
@@ -151,7 +157,9 @@ describe("useNamespaceRegistry", () => {
   it("does not persist on the browser backend (no store)", () => {
     const { result } = renderHook(() => useNamespaceRegistry(null));
     // No throw and state still updates even with a null store.
-    act(() => result.current.add("Local-only"));
+    act(() => {
+      result.current.add("Local-only");
+    });
     expect(result.current.namespaces.map((n) => n.name)).toContain(
       "Local-only",
     );

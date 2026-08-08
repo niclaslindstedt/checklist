@@ -320,13 +320,6 @@ function getSnapshot(): PwaUpdateState {
   return state;
 }
 
-const SERVER_SNAPSHOT: PwaUpdateState = {
-  progress: null,
-  needRefresh: false,
-  incomingVersion: null,
-  applying: false,
-};
-
 // Apply the waiting build, but only once every unsaved edit has reached
 // the backend. The debounced cloud save holds the newest snapshot in
 // memory only, so posting SKIP_WAITING right away — the old behaviour —
@@ -349,10 +342,6 @@ function applyUpdate() {
   });
 }
 
-function getServerSnapshot(): PwaUpdateState {
-  return SERVER_SNAPSHOT;
-}
-
 export type PwaUpdate = PwaUpdateState & {
   // Apply the waiting build: flushes unsaved edits, waits for them to
   // settle, then posts SKIP_WAITING; the `controlling` listener reloads
@@ -363,11 +352,10 @@ export type PwaUpdate = PwaUpdateState & {
 };
 
 export function usePwaUpdate(): PwaUpdate {
-  const snapshot = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
+  // Two arguments only: Preact's `useSyncExternalStore` has no
+  // server-snapshot parameter, and this app never server-renders — it ships
+  // as a static SPA that mounts client-side.
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   return {
     ...snapshot,
     reload: applyUpdate,

@@ -1,4 +1,4 @@
-// React state for the appearance `Settings`. Every `update` (one key) and
+// Component state for the appearance `Settings`. Every `update` (one key) and
 // `replace` (a whole document) writes through to storage and re-renders, so
 // the theme engine that reads these settings reflects the change at once.
 // The settings dialog edits a local draft and previews it through a separate

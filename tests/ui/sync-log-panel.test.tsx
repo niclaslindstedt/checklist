@@ -8,7 +8,7 @@ import {
   renderHook,
   screen,
   waitFor,
-} from "@testing-library/react";
+} from "@testing-library/preact";
 
 import { SyncLogPanel } from "../../src/ui/SyncLogPanel.tsx";
 import { clearLogs, createLogger } from "../../src/dev/logger.ts";
@@ -24,7 +24,9 @@ const t = ((key: string) => key) as TFunction;
 // activates the logger's gate.
 function setDevMode(on: boolean) {
   const { result, unmount } = renderHook(() => useDevMode());
-  act(() => result.current.setDevMode(on));
+  act(() => {
+    result.current.setDevMode(on);
+  });
   unmount();
 }
 

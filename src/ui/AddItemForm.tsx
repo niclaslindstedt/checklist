@@ -203,12 +203,7 @@ export function AddItemForm({
       // Enter with a highlighted suggestion picks it instead of committing
       // the raw draft. Shift+Enter keeps its add-with-body meaning, and a
       // composing Enter defers as usual — both take the plain path below.
-      if (
-        e.key === "Enter" &&
-        selected >= 0 &&
-        !e.shiftKey &&
-        !e.nativeEvent.isComposing
-      ) {
+      if (e.key === "Enter" && selected >= 0 && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
         pickSuggestion(suggestions[selected]!.title);
         return;
@@ -222,7 +217,7 @@ export function AddItemForm({
     // corrected text; defer the add to `compositionend`, which fires once the
     // suggestion is applied. Letting the composition commit means *not*
     // preventing the keystroke here.
-    if (e.nativeEvent.isComposing) {
+    if (e.isComposing) {
       pendingSubmit.current = { withBody };
       return;
     }
@@ -238,7 +233,7 @@ export function AddItemForm({
     pendingSubmit.current = null;
     // Read the committed text straight off the field — the autocorrect has
     // just been applied, so this holds the corrected value even though the
-    // React state hasn't caught up to the trailing `input` event yet.
+    // component state hasn't caught up to the trailing `input` event yet.
     commit(e.currentTarget.value, pending.withBody);
   };
 
@@ -282,7 +277,10 @@ export function AddItemForm({
           onKeyDown={onKeyDown}
           onCompositionEnd={onCompositionEnd}
           onPaste={(e) => {
-            const text = e.clipboardData.getData("text");
+            // `clipboardData` is nullable on the native ClipboardEvent, so a
+            // paste with no clipboard payload just falls through to the
+            // browser's default handling.
+            const text = e.clipboardData?.getData("text") ?? "";
             // Hand the paste to the importer; a non-zero count means it was a
             // checklist and the items are already in, so swallow the default
             // paste and reset the field for the next entry.

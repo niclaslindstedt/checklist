@@ -3,7 +3,7 @@
 // user can't immediately see raises a toast through the injected `notify`
 // sink, and undo / redo announce the action they stepped past. Drives the
 // public `useChecklist` composer with an in-memory adapter and a spy sink.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 
 import { useChecklist } from "../../src/app/use-checklist.ts";
@@ -40,18 +40,24 @@ describe("useChecklist action toasts", () => {
     );
     await act(async () => {});
 
-    act(() => result.current.addItem("milk"));
+    act(() => {
+      result.current.addItem("milk");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     // Adding is immediately visible — no toast for it.
     expect(notify).not.toHaveBeenCalled();
 
     const id = result.current.items[0]!.id;
-    act(() => result.current.remove(id));
+    act(() => {
+      result.current.remove(id);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(0));
     expect(notify).toHaveBeenCalledWith("Deleted “milk”");
 
     notify.mockClear();
-    act(() => result.current.undo());
+    act(() => {
+      result.current.undo();
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(notify).toHaveBeenCalledWith("Undone: Deleted “milk”");
   });
@@ -64,17 +70,23 @@ describe("useChecklist action toasts", () => {
     );
     await act(async () => {});
 
-    act(() => result.current.addItem("scratch"));
+    act(() => {
+      result.current.addItem("scratch");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     const id = result.current.items[0]!.id;
 
     // No toast: the emptied row vanishes where the user is already looking.
-    act(() => result.current.removeEmpty(id));
+    act(() => {
+      result.current.removeEmpty(id);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(0));
     expect(notify).not.toHaveBeenCalled();
 
     // Still undoable — a mis-erase resurrects the item, announced by label.
-    act(() => result.current.undo());
+    act(() => {
+      result.current.undo();
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(notify).toHaveBeenCalledWith("Undone: Removed empty item");
   });
@@ -87,18 +99,24 @@ describe("useChecklist action toasts", () => {
     );
     await act(async () => {});
 
-    act(() => result.current.addItem("eggs"));
+    act(() => {
+      result.current.addItem("eggs");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     const id = result.current.items[0]!.id;
 
-    act(() => result.current.archive(id));
+    act(() => {
+      result.current.archive(id);
+    });
     await waitFor(() =>
       expect(result.current.archivedGroups[0]?.items).toHaveLength(1),
     );
     expect(notify).toHaveBeenCalledWith("Archived “eggs”");
 
     notify.mockClear();
-    act(() => result.current.unarchive(id));
+    act(() => {
+      result.current.unarchive(id);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(notify).toHaveBeenCalledWith("Restored “eggs”", "success");
   });
@@ -111,13 +129,17 @@ describe("useChecklist action toasts", () => {
     );
     await act(async () => {});
 
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
     // Creating a list jumps to it — visible, so no toast.
     expect(notify).not.toHaveBeenCalled();
 
-    act(() => result.current.removeChecklist(second));
+    act(() => {
+      result.current.removeChecklist(second);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(1));
     expect(notify).toHaveBeenCalledWith("Deleted list “Checklist 2”");
   });

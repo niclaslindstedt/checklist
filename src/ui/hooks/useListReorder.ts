@@ -91,7 +91,7 @@ function rowDepth(el: HTMLElement): number {
 }
 
 export interface ListReorder {
-  containerRef: RefObject<HTMLUListElement | null>;
+  containerRef: RefObject<HTMLUListElement>;
   draggingId: string | null;
   /** The current drop target + mode, for the row to draw its indicator. */
   dropTarget: DropTarget | null;
@@ -115,7 +115,7 @@ export function useListReorder(
    */
   canDrop: (draggedId: string, targetId: string) => boolean = () => true,
 ): ListReorder {
-  const containerRef = useRef<HTMLUListElement | null>(null);
+  const containerRef = useRef<HTMLUListElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [delta, setDelta] = useState(0);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);

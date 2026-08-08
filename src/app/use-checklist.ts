@@ -1,7 +1,7 @@
 // Top-level app state, as a hook. The one place that wires the pure
 // domain operations to a concrete StorageAdapter and supplies the
 // side-effects (id generation, clock) the domain functions deliberately
-// avoid — the React counterpart of the budget project's storage hooks.
+// avoid — the web counterpart of the budget project's storage hooks.
 //
 // The view works against a single active checklist (the simple list the
 // user sees). This hook is a thin composer of three concern-scoped pieces:

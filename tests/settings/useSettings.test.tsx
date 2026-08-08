@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 
 import { useSettings } from "../../src/settings/useSettings.ts";
 import type { SettingsStore } from "../../src/storage/settings-store.ts";
@@ -47,7 +47,9 @@ describe("useSettings", () => {
     const store = memStore(JSON.stringify({}));
     const { result } = renderHook(() => useSettings(store));
     await waitFor(() => expect(store.text).not.toBeNull());
-    act(() => result.current.update("theme", "monokai"));
+    act(() => {
+      result.current.update("theme", "monokai");
+    });
     expect(result.current.settings.theme).toBe("monokai");
     await waitFor(() => expect(JSON.parse(store.text!).theme).toBe("monokai"));
     expect(
@@ -57,7 +59,9 @@ describe("useSettings", () => {
 
   it("falls back to the localStorage cache when no backend store is given", () => {
     const { result } = renderHook(() => useSettings(null));
-    act(() => result.current.update("fontScale", 1.25));
+    act(() => {
+      result.current.update("fontScale", 1.25);
+    });
     expect(result.current.settings.fontScale).toBe(1.25);
     expect(
       JSON.parse(localStorage.getItem("checklist:settings:v1")!).fontScale,
@@ -71,13 +75,13 @@ describe("useSettings", () => {
     });
     // The settings dialog flushes its draft via `replace`; the producer can
     // keep the fields it doesn't own (here: the achievements map).
-    act(() =>
+    act(() => {
       result.current.replace((prev) => ({
         ...prev,
         theme: "monokai",
         fontScale: 1.25,
-      })),
-    );
+      }));
+    });
     expect(result.current.settings.theme).toBe("monokai");
     expect(result.current.settings.fontScale).toBe(1.25);
     expect(result.current.settings.achievements.firstSteps).toBeDefined();
@@ -119,7 +123,9 @@ describe("useSettings", () => {
     act(() => {
       result.current.unlockAchievements(["firstSteps"]);
     });
-    act(() => result.current.clearUnseenAchievements());
+    act(() => {
+      result.current.clearUnseenAchievements();
+    });
     expect(result.current.settings.unseenAchievements).toEqual([]);
     expect(result.current.settings.achievements.firstSteps).toBeDefined();
   });

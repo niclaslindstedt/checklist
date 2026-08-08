@@ -15,7 +15,7 @@ export function CogIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <circle cx="12" cy="12" r="3" />
@@ -35,7 +35,7 @@ export function ExternalLinkIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M15 3h6v6" />
@@ -57,7 +57,7 @@ export function AlertTriangleIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -79,7 +79,7 @@ export function HelpCircleIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <circle cx="12" cy="12" r="10" />
@@ -99,7 +99,7 @@ export function MenuIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M4 6h16M4 12h16M4 18h16" />
@@ -117,7 +117,7 @@ export function SparklesIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" />
@@ -136,7 +136,7 @@ export function ShieldIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -156,7 +156,7 @@ export function LockIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <rect x="4" y="11" width="16" height="10" rx="2" />
@@ -175,7 +175,7 @@ export function CodeIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />
@@ -193,7 +193,7 @@ export function ArrowLeftIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -212,7 +212,7 @@ export function ArchiveIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <rect x="3" y="4" width="18" height="4" rx="1" />
@@ -233,7 +233,7 @@ export function ChecklistIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m3 6 1.5 1.5L7 5" />
@@ -263,7 +263,7 @@ export function TemplateIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M8 3h11a2 2 0 0 1 2 2v11" />
@@ -280,7 +280,7 @@ export function HeartIcon({ className }: IconProps) {
       viewBox="0 0 24 24"
       fill="currentColor"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.5 4.04 3 5.5l7 7Z" />
@@ -298,7 +298,7 @@ export function FolderIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M4 5h5l2 2.5h9a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
@@ -317,7 +317,7 @@ export function FolderOpenIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M4 5h5l2 2.5h7a1 1 0 0 1 1 1V10" />
@@ -337,7 +337,7 @@ export function SlidersIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
@@ -357,7 +357,7 @@ export function PaletteIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.5 1.5-1.5H17a5 5 0 0 0 5-5c0-4.4-4.5-8-10-8z" />
@@ -379,7 +379,7 @@ export function DatabaseIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -400,7 +400,7 @@ export function ScrollTextIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M5 3h11a2 2 0 0 1 2 2v13a3 3 0 0 0 3 3H8a3 3 0 0 1-3-3V3z" />

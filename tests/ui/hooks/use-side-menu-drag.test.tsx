@@ -8,7 +8,7 @@
 // and the drag contexts the hook reads. The full touch-drag highlight wiring
 // through the real `SideMenu` lives in `side-menu-drag-highlight.test.tsx`.
 import { createElement, type ReactNode } from "react";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -90,7 +90,7 @@ function fakeDragEvent() {
       effectAllowed: "",
       dropEffect: "",
     },
-  } as unknown as React.DragEvent;
+  } as unknown as React.DragEvent<HTMLElement>;
 }
 
 function renderDragHook(opts?: {
@@ -125,48 +125,62 @@ describe("useSideMenuDrag", () => {
   it("lifts a checklist on drag start and stamps the id onto the transfer", () => {
     const { result } = renderDragHook();
     const e = fakeDragEvent();
-    act(() => result.current.startChecklistDrag(e, "c1"));
+    act(() => {
+      result.current.startChecklistDrag(e, "c1");
+    });
 
     expect(result.current.draggingChecklist).toBe("c1");
-    expect(e.dataTransfer.getData(CHECKLIST_DND_TYPE)).toBe("c1");
-    expect(e.dataTransfer.effectAllowed).toBe("move");
+    expect(e.dataTransfer!.getData(CHECKLIST_DND_TYPE)).toBe("c1");
+    expect(e.dataTransfer!.effectAllowed).toBe("move");
   });
 
   it("highlights an accepted zone on dragover and clears it on leave", () => {
     const { result } = renderDragHook();
-    act(() => result.current.startChecklistDrag(fakeDragEvent(), "c1"));
+    act(() => {
+      result.current.startChecklistDrag(fakeDragEvent(), "c1");
+    });
 
     const over = fakeDragEvent();
-    act(() => result.current.allowDropOn(over, "f1"));
+    act(() => {
+      result.current.allowDropOn(over, "f1");
+    });
     expect(over.preventDefault).toHaveBeenCalled();
     expect(over.stopPropagation).toHaveBeenCalled();
     expect(result.current.isDropTarget("f1")).toBe(true);
 
-    act(() => result.current.clearDropTarget());
+    act(() => {
+      result.current.clearDropTarget();
+    });
     expect(result.current.isDropTarget("f1")).toBe(false);
   });
 
   it("ignores a dragover when nothing is lifted", () => {
     const { result } = renderDragHook();
     const over = fakeDragEvent();
-    act(() => result.current.allowDropOn(over, "f1"));
+    act(() => {
+      result.current.allowDropOn(over, "f1");
+    });
     expect(over.preventDefault).not.toHaveBeenCalled();
     expect(result.current.isDropTarget("f1")).toBe(false);
   });
 
   it("refuses to highlight a folder drag over a non-namespace zone", () => {
     const { result } = renderDragHook();
-    act(() =>
-      result.current.startChecklistDrag(fakeDragEvent(), folderDragId("f1")),
-    );
+    act(() => {
+      result.current.startChecklistDrag(fakeDragEvent(), folderDragId("f1"));
+    });
 
     const over = fakeDragEvent();
-    act(() => result.current.allowDropOn(over, CHECKLIST_DROP_ROOT));
+    act(() => {
+      result.current.allowDropOn(over, CHECKLIST_DROP_ROOT);
+    });
     expect(over.preventDefault).not.toHaveBeenCalled();
     expect(result.current.isDropTarget(CHECKLIST_DROP_ROOT)).toBe(false);
 
     const overNs = fakeDragEvent();
-    act(() => result.current.allowDropOn(overNs, NS_KEY));
+    act(() => {
+      result.current.allowDropOn(overNs, NS_KEY);
+    });
     expect(overNs.preventDefault).toHaveBeenCalled();
     expect(result.current.isDropTarget(NS_KEY)).toBe(true);
   });
@@ -174,11 +188,15 @@ describe("useSideMenuDrag", () => {
   it("resolves the dragged id through onDrop and ends the drag on commit", () => {
     const onDrop = vi.fn();
     const { result } = renderDragHook({ onDrop });
-    act(() => result.current.startChecklistDrag(fakeDragEvent(), "c1"));
+    act(() => {
+      result.current.startChecklistDrag(fakeDragEvent(), "c1");
+    });
 
     const drop = fakeDragEvent();
-    drop.dataTransfer.setData(CHECKLIST_DND_TYPE, "c1");
-    act(() => result.current.commitDrop(drop, "f1"));
+    drop.dataTransfer!.setData(CHECKLIST_DND_TYPE, "c1");
+    act(() => {
+      result.current.commitDrop(drop, "f1");
+    });
 
     expect(onDrop).toHaveBeenCalledWith("c1", "f1");
     expect(drop.preventDefault).toHaveBeenCalled();
@@ -202,11 +220,15 @@ describe("useSideMenuDrag", () => {
     const { result, rerender } = renderHook(() => useSideMenuDrag(), {
       wrapper,
     });
-    act(() => result.current.startChecklistDrag(fakeDragEvent(), "c1"));
+    act(() => {
+      result.current.startChecklistDrag(fakeDragEvent(), "c1");
+    });
     expect(result.current.draggingChecklist).toBe("c1");
 
     holder.abort = 1;
-    act(() => rerender());
+    act(() => {
+      rerender();
+    });
     expect(result.current.draggingChecklist).toBeNull();
   });
 

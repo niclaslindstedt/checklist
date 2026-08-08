@@ -1,8 +1,8 @@
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig, type Plugin } from "vitest/config";
 import {
@@ -345,7 +345,13 @@ function emitPrecacheManifest(): Plugin {
 export default defineConfig({
   base,
   plugins: [
-    react(),
+    // The app renders with Preact, not React. `@preact/preset-vite` compiles
+    // JSX against `preact/jsx-runtime` and installs the compat aliases that
+    // point every `react` / `react-dom` specifier at `preact/compat`, so the
+    // ~40 kB gzipped React runtime never enters the bundle. Source keeps
+    // importing from `"react"` — see the `paths` block in `tsconfig.json`,
+    // which mirrors these aliases for `tsc`. Both must move together.
+    preact(),
     tailwindcss(),
     // The PWA layer is web-only — see `isNative` above. `.filter(Boolean)`
     // at the end of the array drops this slot when it yields `false`.

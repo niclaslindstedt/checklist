@@ -3,6 +3,11 @@ import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+// The app renders with Preact, not React (see `docs/architecture.md`), but
+// these two plugins are about JSX module shape rather than React internals:
+// the rules-of-hooks checks key off the `use*` naming Preact shares, and
+// `only-export-components` guards the same Fast Refresh boundary that
+// prefresh needs. They stay under their upstream names.
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";

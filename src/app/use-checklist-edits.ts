@@ -1,6 +1,6 @@
 // The checklist's edit verbs: the user-facing mutations (add / toggle /
 // remove / archive / unarchive / reorder) that each apply the matching
-// pure domain function, swap React state for an immediate re-render,
+// pure domain function, swap component state for an immediate re-render,
 // schedule a persist, and record the result on the undo timeline.
 //
 // Split out of `use-checklist.ts` so a new action lands in this
@@ -11,7 +11,9 @@
 // file owns only the edit verbs.
 
 import { useCallback, useMemo, useRef } from "react";
-import type { MutableRefObject } from "react";
+// `preact/compat` has no `MutableRefObject`; `MutableRef` is Preact's name for
+// the same always-populated `{ current: T }` shape `useRef<T>(init)` returns.
+import type { MutableRef } from "preact/hooks";
 
 import { unlock } from "../achievements/bus.ts";
 import {
@@ -205,7 +207,7 @@ export function useChecklistEdits(deps: {
    */
   templateMode: boolean;
   /** Latest full document, read when folding an edit into the snapshot. */
-  docRef: MutableRefObject<Snapshot>;
+  docRef: MutableRef<Snapshot>;
   /** Swap the visible document for an immediate re-render. */
   setDoc: (next: Snapshot) => void;
   /** Persist the edited document (debounced by the active backend). */

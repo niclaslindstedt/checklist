@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 import type { ReactElement } from "react";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
@@ -91,14 +91,14 @@ describe("ChecklistView drag + conflict", () => {
 
     // Pick up the middle row — the lift style applies on pointer-down.
     const handle = screen.getAllByLabelText("Drag to reorder")[1]!;
-    act(() =>
+    act(() => {
       fireEvent.pointerDown(handle, {
         pointerId: 1,
         clientY: 30,
         button: 0,
         pointerType: "touch",
-      }),
-    );
+      });
+    });
     expect(liftedRowCount()).toBe(1);
 
     // A background save collides: the status flips to "conflict".

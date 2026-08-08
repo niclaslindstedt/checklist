@@ -8,7 +8,7 @@ import {
   renderHook,
   screen,
   waitFor,
-} from "@testing-library/react";
+} from "@testing-library/preact";
 
 import type { SaveStatus } from "../../src/app/use-checklist.ts";
 import { SyncDetailsModal } from "../../src/ui/SyncDetailsModal.tsx";
@@ -20,7 +20,9 @@ import { useDevMode } from "../../src/dev/useDevMode.ts";
 // which also activates the logger's gate.
 function setDevMode(on: boolean) {
   const { result, unmount } = renderHook(() => useDevMode());
-  act(() => result.current.setDevMode(on));
+  act(() => {
+    result.current.setDevMode(on);
+  });
   unmount();
 }
 

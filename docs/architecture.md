@@ -7,13 +7,45 @@ user's own Google Drive or Dropbox account.
 
 ## Module layout
 
-The UI is built with **React 19** and styled with **Tailwind v4**. The
+The UI is built with **Preact 10** and styled with **Tailwind v4**. The
 build is Vite; there is no router yet (a single view).
+
+Preact is used through its **compat layer**, so the source is written in
+ordinary React idiom — components import `useState`, `createPortal`,
+`forwardRef` and the rest from `"react"`, and the tooling rewrites those
+specifiers to `preact/compat`. Two lists have to agree for that to work:
+
+- `@preact/preset-vite` (in `vite.config.ts`) installs the runtime
+  aliases and compiles JSX against `preact/jsx-runtime`.
+- `compilerOptions.paths` (in `tsconfig.json`) mirrors them so `tsc`
+  checks against the same runtime that ships.
+
+Change one and you must change the other; otherwise the app type-checks
+against one framework and executes another. React itself is not a
+dependency — it appears nowhere in `package.json` or the bundle. Tests
+render through `@testing-library/preact`.
+
+Preact's compat layer is faithful but not identical, and a handful of
+differences are load-bearing here:
+
+- **Events are native, not synthetic.** There is no `e.nativeEvent`
+  (the event *is* the native one), `e.target` is `EventTarget | null`
+  (prefer `e.currentTarget`), and `dataTransfer` / `clipboardData` are
+  nullable. Compat still maps `onChange` to `input` and `onBlur` /
+  `onFocus` to the bubbling `focusout` / `focusin`, matching React.
+- **Listeners are bound to the element**, not delegated from a root, so
+  a *synthetic* click dispatched at a `disabled` button still reaches
+  its handler. Controls that must be inert when disabled guard inside
+  the handler — see `Button`, `BarButton`, and `Checkbox`.
+- **`useSyncExternalStore` takes no server-snapshot argument.** The app
+  never server-renders, so there is nothing to pass.
+- **JSX attributes follow the DOM**, not React's casing: `spellcheck`,
+  and SVG's `focusable="false"` rather than `{false}`.
 
 ```
 src/
   app/        # <App> root, top-level state hook (use-checklist), entry
-  ui/         # React components + custom form primitives and hooks
+  ui/         # Preact components + custom form primitives and hooks
     form/       # Button, Checkbox, ClearableInput (no native chrome)
     hooks/      # UI hooks (e.g. useRowSwipe)
     toast/      # toast provider + viewport (useToast)

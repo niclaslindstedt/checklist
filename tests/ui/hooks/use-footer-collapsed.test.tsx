@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/preact";
 
 import {
   FOOTER_COLLAPSED_KEY,
@@ -17,11 +17,15 @@ describe("useFooterCollapsed", () => {
   beforeEach(() => {
     // Reset the module-scoped singleton and its persisted value between tests.
     localStorage.clear();
-    act(() => setFooterCollapsed(false));
+    act(() => {
+      setFooterCollapsed(false);
+    });
   });
 
   afterEach(() => {
-    act(() => setFooterCollapsed(false));
+    act(() => {
+      setFooterCollapsed(false);
+    });
     localStorage.clear();
   });
 
@@ -32,15 +36,21 @@ describe("useFooterCollapsed", () => {
 
   it("persists the collapsed flag to localStorage and back", () => {
     render(<Probe />);
-    act(() => setFooterCollapsed(true));
+    act(() => {
+      setFooterCollapsed(true);
+    });
     expect(screen.getByTestId("state").textContent).toBe("collapsed");
     expect(localStorage.getItem(FOOTER_COLLAPSED_KEY)).toBe("true");
   });
 
   it("clears the key when set back to expanded", () => {
-    act(() => setFooterCollapsed(true));
+    act(() => {
+      setFooterCollapsed(true);
+    });
     expect(localStorage.getItem(FOOTER_COLLAPSED_KEY)).toBe("true");
-    act(() => setFooterCollapsed(false));
+    act(() => {
+      setFooterCollapsed(false);
+    });
     expect(localStorage.getItem(FOOTER_COLLAPSED_KEY)).toBeNull();
   });
 
@@ -51,7 +61,9 @@ describe("useFooterCollapsed", () => {
         <Probe />
       </>,
     );
-    act(() => setFooterCollapsed(true));
+    act(() => {
+      setFooterCollapsed(true);
+    });
     for (const el of screen.getAllByTestId("state")) {
       expect(el.textContent).toBe("collapsed");
     }

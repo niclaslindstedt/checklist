@@ -152,7 +152,7 @@ type Props = {
    * this row. When supplied the row drops its swipe-to-reveal gesture in
    * favour of the menu; touch viewports leave it unset and keep swiping.
    */
-  onContextMenu?: (id: string, e: React.MouseEvent) => void;
+  onContextMenu?: (id: string, e: React.MouseEvent<HTMLElement>) => void;
   /**
    * Touch only — open the same actions menu from a long-press, reported at
    * the press point `(x, y)`. Supplied on touch viewports (where
@@ -248,7 +248,7 @@ function ChecklistRowImpl({
             swipe.handlers.onPointerCancel(e);
             longPress.handlers.onPointerCancel(e);
           },
-          onClickCapture: (e: React.MouseEvent) => {
+          onClickCapture: (e: React.MouseEvent<HTMLElement>) => {
             swipe.handlers.onClickCapture(e);
             longPress.handlers.onClickCapture(e);
           },

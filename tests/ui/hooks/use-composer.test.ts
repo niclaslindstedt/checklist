@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import {
   useComposer,
@@ -69,7 +69,9 @@ describe("useComposer", () => {
 
   it("opens the inline composer past the last row at the bottom", () => {
     const { result } = setup({ addItemPosition: "bottom" });
-    act(() => result.current.startInline());
+    act(() => {
+      result.current.startInline();
+    });
     expect(result.current.active).toMatchObject({
       kind: "inline",
       spliceIndex: ROWS.length,
@@ -79,14 +81,18 @@ describe("useComposer", () => {
 
   it("anchors the inline composer above the list at the top", () => {
     const { result } = setup({ addItemPosition: "top" });
-    act(() => result.current.startInline());
+    act(() => {
+      result.current.startInline();
+    });
     expect(result.current.active).toMatchObject({ spliceIndex: 0 });
   });
 
   it("reveals the parent and splices a child composer past the subtree", () => {
     const revealItem = vi.fn();
     const { result } = setup({ revealItem, addItemPosition: "bottom" });
-    act(() => result.current.startChild("p"));
+    act(() => {
+      result.current.startChild("p");
+    });
     expect(revealItem).toHaveBeenCalledWith("p");
     // Bottom add-position lands the child past p's whole subtree (index 3),
     // at the parent's depth + 1.
@@ -99,7 +105,9 @@ describe("useComposer", () => {
 
   it("splices a child composer right under the parent at the top position", () => {
     const { result } = setup({ addItemPosition: "top" });
-    act(() => result.current.startChild("p"));
+    act(() => {
+      result.current.startChild("p");
+    });
     // Top add-position sits the composer immediately after the parent (index 1),
     // before its existing children.
     expect(result.current.active).toMatchObject({ spliceIndex: 1, depth: 1 });
@@ -107,7 +115,9 @@ describe("useComposer", () => {
 
   it("splices an after-an-item composer past the anchor's subtree at its own depth", () => {
     const { result } = setup();
-    act(() => result.current.startAfter("p"));
+    act(() => {
+      result.current.startAfter("p");
+    });
     // After p's subtree (c1, c2) → index 3, at p's own depth (0).
     expect(result.current.active).toMatchObject({
       kind: "after",
@@ -118,14 +128,22 @@ describe("useComposer", () => {
 
   it("treats the three composers as mutually exclusive", () => {
     const { result } = setup();
-    act(() => result.current.startChild("p"));
+    act(() => {
+      result.current.startChild("p");
+    });
     expect(result.current.kind).toBe("child");
     // Opening another replaces the first — only one is ever live.
-    act(() => result.current.startAfter("s"));
+    act(() => {
+      result.current.startAfter("s");
+    });
     expect(result.current.kind).toBe("after");
-    act(() => result.current.startInline());
+    act(() => {
+      result.current.startInline();
+    });
     expect(result.current.kind).toBe("inline");
-    act(() => result.current.close());
+    act(() => {
+      result.current.close();
+    });
     expect(result.current.kind).toBe("none");
     expect(result.current.active).toBeNull();
   });
@@ -143,12 +161,18 @@ describe("useComposer", () => {
       },
     ];
     const { result } = setup({ addItemAfter, rows });
-    act(() => result.current.startAfter("p"));
-    act(() => result.current.active!.onAdd("Sub"));
+    act(() => {
+      result.current.startAfter("p");
+    });
+    act(() => {
+      result.current.active!.onAdd("Sub");
+    });
     expect(addItemAfter).toHaveBeenCalledWith("Sub", "p");
     // The new item becomes the anchor so the next add chains below it.
     expect(result.current.active).toMatchObject({ kind: "after" });
-    act(() => result.current.active!.onAdd("Sub2"));
+    act(() => {
+      result.current.active!.onAdd("Sub2");
+    });
     expect(addItemAfter).toHaveBeenLastCalledWith("Sub2", "added");
   });
 
@@ -166,14 +190,18 @@ describe("useComposer", () => {
       },
     ];
     const { result } = setup({ importItemsAfter, addItemAfter, rows });
-    act(() => result.current.startAfter("p"));
+    act(() => {
+      result.current.startAfter("p");
+    });
     let count = 0;
     act(() => {
       count = result.current.active!.onImport("- [ ] a\n- [ ] b\n- [ ] c");
     });
     expect(count).toBe(3);
     // A typed follow-up now chains below the pasted block's tail, not above it.
-    act(() => result.current.active!.onAdd("After paste"));
+    act(() => {
+      result.current.active!.onAdd("After paste");
+    });
     expect(addItemAfter).toHaveBeenCalledWith("After paste", "tail");
   });
 
@@ -181,8 +209,12 @@ describe("useComposer", () => {
     const onEditBody = vi.fn();
     const addItem = vi.fn(() => "child-id");
     const { result } = setup({ onEditBody, addItem });
-    act(() => result.current.startChild("p"));
-    act(() => result.current.active!.onAddWithBody("Note me"));
+    act(() => {
+      result.current.startChild("p");
+    });
+    act(() => {
+      result.current.active!.onAddWithBody("Note me");
+    });
     expect(addItem).toHaveBeenCalledWith("Note me", "p");
     expect(onEditBody).toHaveBeenCalledWith("child-id");
     // The composer closes — focus moves to the new row's body field.
@@ -193,8 +225,12 @@ describe("useComposer", () => {
     const onEditBody = vi.fn();
     const addItem = vi.fn(() => null);
     const { result } = setup({ onEditBody, addItem });
-    act(() => result.current.startInline());
-    act(() => result.current.active!.onAddWithBody(""));
+    act(() => {
+      result.current.startInline();
+    });
+    act(() => {
+      result.current.active!.onAddWithBody("");
+    });
     expect(onEditBody).not.toHaveBeenCalled();
     // It still closes the composer regardless.
     expect(result.current.kind).toBe("none");
@@ -206,7 +242,9 @@ describe("useComposer", () => {
     // against. The composer must close (not linger with a dead anchor), else
     // the add button stays hidden with no field left to dismiss.
     const { result, rerender } = setup();
-    act(() => result.current.startAfter("s"));
+    act(() => {
+      result.current.startAfter("s");
+    });
     expect(result.current.kind).toBe("after");
     // The anchor row "s" is deleted — the rows no longer contain it.
     rerender(makeOpts({ rows: ROWS.filter((r) => r.item.id !== "s") }));
@@ -216,7 +254,9 @@ describe("useComposer", () => {
 
   it("closes the child-composer when its parent is deleted from the rows", () => {
     const { result, rerender } = setup();
-    act(() => result.current.startChild("p"));
+    act(() => {
+      result.current.startChild("p");
+    });
     expect(result.current.kind).toBe("child");
     // The parent row "p" (and its subtree) is deleted from the rows.
     rerender(
@@ -230,7 +270,9 @@ describe("useComposer", () => {
 
   it("closes a composer opened against a parent that is not in the rows", () => {
     const { result } = setup();
-    act(() => result.current.startChild("gone"));
+    act(() => {
+      result.current.startChild("gone");
+    });
     // A missing anchor can't be spliced anywhere, so the composer stands down
     // rather than lingering invisibly.
     expect(result.current.kind).toBe("none");

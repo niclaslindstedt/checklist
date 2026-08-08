@@ -3,7 +3,7 @@
 // resulting `Snapshot` together with a short human label describing the
 // action that produced it; undo / redo walk a cursor back and forth over
 // the recorded states, hand the target snapshot to `setData` so the
-// outer hook's React state stays in agreement with the cursor, and return
+// outer hook's component state stays in agreement with the cursor, and return
 // the label of the action they reverted / re-applied so the caller can
 // announce it ("Undone: Deleted item “milk”").
 //

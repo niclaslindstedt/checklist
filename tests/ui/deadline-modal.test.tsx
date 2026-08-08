@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { fireDomEvent } from "./fire-dom-event.ts";
 import { DeadlineModal } from "../../src/ui/DeadlineModal.tsx";
 
 const noop = (): void => {};
@@ -124,7 +125,7 @@ describe("DeadlineModal", () => {
     // Clearing it leaves an empty field mid-edit, which blur repairs to 1.
     fireEvent.change(field, { target: { value: "" } });
     expect(field.value).toBe("");
-    fireEvent.blur(field);
+    fireDomEvent(field, "focusout");
     expect(field.value).toBe("1");
     fireEvent.click(screen.getByText("Save"));
     expect(onSubmit).toHaveBeenCalledWith("2026-08-01", {

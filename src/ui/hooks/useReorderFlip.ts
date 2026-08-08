@@ -6,11 +6,12 @@
 // than a jump.
 //
 // The technique is FLIP (First, Last, Invert, Play): a `useLayoutEffect` runs
-// after React has reordered the DOM but *before* the browser paints, so it can
+// after the reconciler has reordered the DOM but *before* the browser paints,
+// so it can
 // read every row's new position, diff it against the snapshot from the previous
 // commit, and play each moved row from its old offset (`translateY(delta)`) to
 // rest (`translateY(0)`). The animation runs through the Web Animations API, so
-// it never touches React-managed inline styles and reverts itself cleanly.
+// it never touches vdom-managed inline styles and reverts itself cleanly.
 //
 // It stays out of the way of the pointer drag-to-reorder gesture, which owns
 // the row transforms while a drag is live (see `useListReorder`): the hook is

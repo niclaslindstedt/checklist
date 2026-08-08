@@ -1,4 +1,7 @@
-import { renderToStaticMarkup } from "react-dom/server";
+// Imported straight from `preact-render-to-string` rather than through a
+// `react-dom/server` alias: `preact/compat/server` ships no type declarations,
+// so the aliased specifier would resolve at runtime but not under `tsc`.
+import { renderToStaticMarkup } from "preact-render-to-string";
 import { describe, expect, it } from "vitest";
 
 import {

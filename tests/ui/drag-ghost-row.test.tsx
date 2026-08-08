@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach } from "vitest";
 import { describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/preact";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
 import { DragGhostRow } from "../../src/ui/DragGhostRow.tsx";

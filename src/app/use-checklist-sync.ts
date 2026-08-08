@@ -14,7 +14,9 @@
 // at the real `reset` once the timeline exists.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MutableRefObject } from "react";
+// `preact/compat` has no `MutableRefObject`; `MutableRef` is Preact's name for
+// the same always-populated `{ current: T }` shape `useRef<T>(init)` returns.
+import type { MutableRef } from "preact/hooks";
 
 import { unlock } from "../achievements/bus.ts";
 import { createLogger } from "../dev/logger.ts";
@@ -100,7 +102,7 @@ export interface ChecklistSync {
    */
   loaded: boolean;
   /** Latest document, readable from async callbacks without re-subscribing. */
-  docRef: MutableRefObject<Snapshot>;
+  docRef: MutableRef<Snapshot>;
   /** Swap the visible document for an immediate re-render. */
   setDoc: (next: Snapshot) => void;
   /** Persist the edited document (debounced by the active backend). */
@@ -147,7 +149,7 @@ export function useChecklistSync(deps: {
    * edit path (load, reload, conflict-adopt). Held by ref because the
    * timeline hook is built after this one — see the module header.
    */
-  resetHistory: MutableRefObject<(seed: Snapshot) => void>;
+  resetHistory: MutableRef<(seed: Snapshot) => void>;
 }): ChecklistSync {
   const { active, resetHistory } = deps;
 

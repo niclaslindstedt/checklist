@@ -9,8 +9,10 @@
 // coverage through `SideMenu`, which renders touch-only under jsdom (no
 // `matchMedia`). FolderEditRow's commit / cancel / latch rules are pinned
 // here too.
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { fireDomEvent } from "./fire-dom-event.ts";
 
 import { FolderEditRow, FolderRow } from "../../src/ui/SideMenuFolderRow.tsx";
 import type { ContextMenuItem } from "../../src/ui/hooks/useContextMenu.ts";
@@ -171,14 +173,14 @@ describe("FolderEditRow", () => {
   it("commits on blur with a non-empty name", () => {
     const { input, onCommit } = renderEdit();
     fireEvent.change(input, { target: { value: "Recipes" } });
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
     expect(onCommit).toHaveBeenCalledExactlyOnceWith("Recipes");
   });
 
   it("cancels on blur when the name is empty or whitespace", () => {
     const { input, onCommit, onCancel } = renderEdit();
     fireEvent.change(input, { target: { value: "   " } });
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
     expect(onCommit).not.toHaveBeenCalled();
     expect(onCancel).toHaveBeenCalledOnce();
   });
@@ -190,7 +192,7 @@ describe("FolderEditRow", () => {
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onCommit).not.toHaveBeenCalled();
     // The committed latch also swallows the blur that follows the Escape.
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
     expect(onCommit).not.toHaveBeenCalled();
   });
 
@@ -198,7 +200,7 @@ describe("FolderEditRow", () => {
     const { input, onCommit } = renderEdit();
     fireEvent.change(input, { target: { value: "Recipes" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
     expect(onCommit).toHaveBeenCalledExactlyOnceWith("Recipes");
   });
 });

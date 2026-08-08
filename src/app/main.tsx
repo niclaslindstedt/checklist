@@ -1,4 +1,4 @@
-// Application entry point. Mounts the React tree inside `LanguageRoot`,
+// Application entry point. Mounts the component tree inside `LanguageRoot`,
 // which provides the active language, the shared toast viewport, and the
 // PWA update prompt (the prompt's `usePwaUpdate` store registers the
 // service worker on first subscribe). The default webfont (JetBrains

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/preact";
 
 import { ContextMenu } from "../../src/ui/ContextMenu.tsx";
 import { ArchiveView } from "../../src/ui/ArchiveView.tsx";

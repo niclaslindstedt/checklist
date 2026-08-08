@@ -6,7 +6,7 @@
 // timeline (broken with the `resetHistory` ref) is the part most worth
 // guarding. Driven through the public `useChecklist` composer against an
 // in-memory adapter.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { addItem, createChecklist } from "../../src/domain/checklists.ts";
@@ -56,20 +56,26 @@ describe("useChecklist save / undo / reload cycle", () => {
     // editing, so it can't race-wipe the edits below.
     await act(async () => {});
 
-    act(() => result.current.addItem("first"));
+    act(() => {
+      result.current.addItem("first");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(adapter.stored()).not.toBeNull();
     expect(parse(adapter.stored()).checklists[0]!.items[0]!.title).toBe(
       "first",
     );
 
-    act(() => result.current.addItem("second"));
+    act(() => {
+      result.current.addItem("second");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(2));
 
     // Undo must revert in-memory AND persist — the applyHistorySnapshot path
     // that threads the sync engine's setDoc + scheduleSave through the
     // timeline's setData callback.
-    act(() => result.current.undo());
+    act(() => {
+      result.current.undo();
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(parse(adapter.stored()).checklists[0]!.items).toHaveLength(1);
     expect(result.current.canRedo).toBe(true);
@@ -124,7 +130,9 @@ describe("useChecklist save / undo / reload cycle", () => {
     expect(result.current.items[0]!.checked).toBe(false);
 
     // The user checks the box while load() is still unresolved.
-    act(() => result.current.toggle("i1"));
+    act(() => {
+      result.current.toggle("i1");
+    });
     expect(result.current.items[0]!.checked).toBe(true);
 
     // The slow backend read finally resolves — with the pre-edit document.
@@ -190,22 +198,32 @@ describe("useChecklist save / undo / reload cycle", () => {
     await act(async () => {}); // settle mount load — client bases on rev "1"
 
     // First edit kicks off a save that stays in flight (unreleased).
-    act(() => result.current.addItem("a"));
+    act(() => {
+      result.current.addItem("a");
+    });
     expect(adapter.inFlight()).toBe(1);
 
     // Two more edits arrive mid-flight. They must NOT start their own saves —
     // they queue, and the later one supersedes the earlier.
-    act(() => result.current.addItem("b"));
-    act(() => result.current.addItem("c"));
+    act(() => {
+      result.current.addItem("b");
+    });
+    act(() => {
+      result.current.addItem("c");
+    });
     expect(adapter.inFlight()).toBe(1);
 
     // Release the first save. Its completion drains the queue in exactly one
     // follow-up save (not two), based on the revision it just learned.
-    await act(async () => adapter.flushOne());
+    await act(async () => {
+      adapter.flushOne();
+    });
     expect(adapter.inFlight()).toBe(1);
 
     // Release the drain save. No self-conflict ever surfaced.
-    await act(async () => adapter.flushOne());
+    await act(async () => {
+      adapter.flushOne();
+    });
     expect(adapter.inFlight()).toBe(0);
     expect(adapter.conflicts()).toBe(0);
     expect(result.current.conflict).toBeNull();
@@ -265,11 +283,15 @@ describe("useChecklist save / undo / reload cycle", () => {
     serverText = remoteText;
     serverRev = "r2";
 
-    act(() => result.current.addItem("local item"));
+    act(() => {
+      result.current.addItem("local item");
+    });
     await waitFor(() => expect(result.current.conflict).not.toBeNull());
     expect(result.current.status).toBe("conflict");
 
-    act(() => result.current.resolveConflict("remote"));
+    act(() => {
+      result.current.resolveConflict("remote");
+    });
     await waitFor(() => expect(result.current.conflict).toBeNull());
     expect(result.current.items.map((i) => i.title)).toEqual(["remote item"]);
     // Adopting the remote makes it the new baseline — history is reset.
@@ -332,7 +354,9 @@ describe("useChecklist offline / reconnect", () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
-    act(() => result.current.addItem("a"));
+    act(() => {
+      result.current.addItem("a");
+    });
     // A network-level save failure flips us offline and keeps the edit queued.
     // It must NOT surface a hard `error` (the local cache holds it) nor spin a
     // fast retry storm — even after a long wait it sits offline, dirty, and
@@ -397,7 +421,9 @@ describe("useChecklist throttle / transient-retry recovery", () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
-    act(() => result.current.addItem("a"));
+    act(() => {
+      result.current.addItem("a");
+    });
     // First save was rejected with a rate limit — the glyph goes orange,
     // not red, and the edit stays dirty pending the resume. Advance by 0 to
     // flush the rejection's microtasks without firing the cooldown timer.
@@ -445,7 +471,9 @@ describe("useChecklist throttle / transient-retry recovery", () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
-    act(() => result.current.addItem("a"));
+    act(() => {
+      result.current.addItem("a");
+    });
     // Drain the full backoff curve (each step ≤ a couple seconds early on).
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
@@ -488,7 +516,9 @@ describe("useChecklist throttle / transient-retry recovery", () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
-    act(() => result.current.addItem("a"));
+    act(() => {
+      result.current.addItem("a");
+    });
     // Drain the full backoff curve — the save ends up hard-errored.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
@@ -665,7 +695,9 @@ describe("useChecklist save guard (PWA update flush)", () => {
     });
 
     // Add an item; the save is parked behind the debounce.
-    act(() => result.current.addItem("survives the update"));
+    act(() => {
+      result.current.addItem("survives the update");
+    });
     expect(adapter.stored()).toBeNull();
     expect(hasUnsavedChanges()).toBe(true);
 
@@ -728,7 +760,9 @@ describe("useChecklist offline saves resume gently instead of storming", () => {
     });
 
     const base = saveCalls;
-    act(() => result.current.addItem("a"));
+    act(() => {
+      result.current.addItem("a");
+    });
     // Let the first (failing) save settle.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);

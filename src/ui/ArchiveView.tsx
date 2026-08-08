@@ -245,7 +245,7 @@ function ArchiveRow({
   onRestore: () => void;
   onDelete: () => void;
   desktop: boolean;
-  onOpenMenu: (e: React.MouseEvent) => void;
+  onOpenMenu: (e: React.MouseEvent<HTMLElement>) => void;
 }) {
   const t = useT();
   return (

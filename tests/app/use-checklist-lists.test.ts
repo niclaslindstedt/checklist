@@ -3,7 +3,7 @@
 // wired through the public `useChecklist` composer: adding a default-named
 // list, switching the active selection, and renaming. Uses an in-memory
 // adapter so the persisted bytes can be read back.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { useChecklist } from "../../src/app/use-checklist.ts";
@@ -50,7 +50,9 @@ describe("useChecklist multi-list verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
 
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
 
     const names = result.current.checklists.map((c) => c.name);
@@ -69,16 +71,22 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const first = result.current.activeChecklistId;
-    act(() => result.current.addItem("milk"));
+    act(() => {
+      result.current.addItem("milk");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
 
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     // The fresh list starts empty.
     expect(result.current.items).toHaveLength(0);
 
     // Switch back; the first list's item is still there.
-    act(() => result.current.selectChecklist(first));
+    act(() => {
+      result.current.selectChecklist(first);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(result.current.items[0]!.title).toBe("milk");
   });
@@ -89,7 +97,9 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const id = result.current.activeChecklistId;
-    act(() => result.current.renameChecklist(id, "Groceries"));
+    act(() => {
+      result.current.renameChecklist(id, "Groceries");
+    });
     await waitFor(() =>
       expect(result.current.checklists[0]!.name).toBe("Groceries"),
     );
@@ -102,12 +112,12 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const id = result.current.activeChecklistId;
-    act(() =>
+    act(() => {
       result.current.setChecklistAppearance(id, {
         glyph: "cart",
         color: "#98c379",
-      }),
-    );
+      });
+    });
     await waitFor(() =>
       expect(parse(adapter.stored()).checklists[0]!.glyph).toBe("cart"),
     );
@@ -118,7 +128,9 @@ describe("useChecklist multi-list verbs", () => {
     expect(result.current.checklists[0]!.glyph).toBe("cart");
     expect(result.current.checklists[0]!.color).toBe("#98c379");
 
-    act(() => result.current.setChecklistAppearance(id, { glyph: null }));
+    act(() => {
+      result.current.setChecklistAppearance(id, { glyph: null });
+    });
     await waitFor(() =>
       expect("glyph" in parse(adapter.stored()).checklists[0]!).toBe(false),
     );
@@ -132,13 +144,17 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const first = result.current.activeChecklistId;
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
     expect(second).not.toBe(first);
 
     // Remove the active (second) list; the selection falls back to the first.
-    act(() => result.current.removeChecklist(second));
+    act(() => {
+      result.current.removeChecklist(second);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(1));
     expect(result.current.activeChecklistId).toBe(first);
     expect(parse(adapter.stored()).checklists).toHaveLength(1);
@@ -150,7 +166,9 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const only = result.current.activeChecklistId;
-    act(() => result.current.removeChecklist(only));
+    act(() => {
+      result.current.removeChecklist(only);
+    });
     expect(result.current.checklists).toHaveLength(1);
     expect(result.current.activeChecklistId).toBe(only);
   });
@@ -160,14 +178,20 @@ describe("useChecklist multi-list verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
 
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
 
-    act(() => result.current.removeChecklist(second));
+    act(() => {
+      result.current.removeChecklist(second);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(1));
 
-    act(() => result.current.undo());
+    act(() => {
+      result.current.undo();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
   });
 
@@ -178,19 +202,29 @@ describe("useChecklist multi-list verbs", () => {
 
     // Archive an item in the first list.
     const first = result.current.activeChecklistId;
-    act(() => result.current.addItem("milk"));
+    act(() => {
+      result.current.addItem("milk");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     const milkId = result.current.items[0]!.id;
-    act(() => result.current.archive(milkId));
+    act(() => {
+      result.current.archive(milkId);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(0));
 
     // Switch to a second list and archive an item there too.
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
-    act(() => result.current.addItem("eggs"));
+    act(() => {
+      result.current.addItem("eggs");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     const eggsId = result.current.items[0]!.id;
-    act(() => result.current.archive(eggsId));
+    act(() => {
+      result.current.archive(eggsId);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(0));
 
     // The archive spans both lists, grouped by source.
@@ -200,10 +234,14 @@ describe("useChecklist multi-list verbs", () => {
 
     // Restoring the first list's item reaches into it even though the second
     // list is active, leaving the active list's view untouched.
-    act(() => result.current.unarchive(milkId));
+    act(() => {
+      result.current.unarchive(milkId);
+    });
     await waitFor(() => expect(result.current.archivedGroups).toHaveLength(1));
     expect(result.current.items).toHaveLength(0); // second list still empty
-    act(() => result.current.selectChecklist(first));
+    act(() => {
+      result.current.selectChecklist(first);
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(1));
     expect(result.current.items[0]!.title).toBe("milk");
   });
@@ -216,14 +254,20 @@ describe("useChecklist multi-list verbs", () => {
     // A fresh list has nothing outstanding.
     expect(result.current.checklists[0]!.remaining).toBe(0);
 
-    act(() => result.current.addItem("milk"));
-    act(() => result.current.addItem("eggs"));
+    act(() => {
+      result.current.addItem("milk");
+    });
+    act(() => {
+      result.current.addItem("eggs");
+    });
     await waitFor(() => expect(result.current.items).toHaveLength(2));
     expect(result.current.checklists[0]!.remaining).toBe(2);
 
     // Checking an item drops it from the count.
     const milkId = result.current.items.find((it) => it.title === "milk")!.id;
-    act(() => result.current.toggle(milkId));
+    act(() => {
+      result.current.toggle(milkId);
+    });
     await waitFor(() =>
       expect(result.current.checklists[0]!.remaining).toBe(1),
     );
@@ -231,7 +275,9 @@ describe("useChecklist multi-list verbs", () => {
     // Archiving the other (still-unchecked) item drops it too — archived
     // items are not part of the active count.
     const eggsId = result.current.items.find((it) => it.title === "eggs")!.id;
-    act(() => result.current.archive(eggsId));
+    act(() => {
+      result.current.archive(eggsId);
+    });
     await waitFor(() =>
       expect(result.current.checklists[0]!.remaining).toBe(0),
     );
@@ -243,13 +289,17 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const first = result.current.activeChecklistId;
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
 
     // Archive the active (second) list — it leaves the switcher, lands in the
     // archived set, and the selection re-points at the surviving active list.
-    act(() => result.current.archiveChecklist(second));
+    act(() => {
+      result.current.archiveChecklist(second);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(1));
     expect(result.current.archivedChecklists.map((l) => l.id)).toEqual([
       second,
@@ -267,15 +317,21 @@ describe("useChecklist multi-list verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
 
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
-    act(() => result.current.archiveChecklist(second));
+    act(() => {
+      result.current.archiveChecklist(second);
+    });
     await waitFor(() =>
       expect(result.current.archivedChecklists).toHaveLength(1),
     );
 
-    act(() => result.current.unarchiveChecklist(second));
+    act(() => {
+      result.current.unarchiveChecklist(second);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     expect(result.current.archivedChecklists).toHaveLength(0);
     expect(result.current.activeChecklistId).toBe(second);
@@ -287,7 +343,9 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const only = result.current.activeChecklistId;
-    act(() => result.current.archiveChecklist(only));
+    act(() => {
+      result.current.archiveChecklist(only);
+    });
     expect(result.current.checklists).toHaveLength(1);
     expect(result.current.archivedChecklists).toHaveLength(0);
   });
@@ -297,16 +355,22 @@ describe("useChecklist multi-list verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
 
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
-    act(() => result.current.archiveChecklist(second));
+    act(() => {
+      result.current.archiveChecklist(second);
+    });
     await waitFor(() =>
       expect(result.current.archivedChecklists).toHaveLength(1),
     );
 
     // Deleting the archived list is allowed — an active list still remains.
-    act(() => result.current.removeChecklist(second));
+    act(() => {
+      result.current.removeChecklist(second);
+    });
     await waitFor(() =>
       expect(result.current.archivedChecklists).toHaveLength(0),
     );
@@ -318,7 +382,9 @@ describe("useChecklist multi-list verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
     const id = result.current.activeChecklistId;
-    act(() => result.current.renameChecklist(id, "   "));
+    act(() => {
+      result.current.renameChecklist(id, "   ");
+    });
     expect(result.current.checklists[0]!.name).toBe("Checklist");
   });
 
@@ -328,19 +394,25 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const first = result.current.activeChecklistId;
-    act(() => result.current.addChecklist());
+    act(() => {
+      result.current.addChecklist();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const second = result.current.activeChecklistId;
 
     // Detach the active (second) list — it left for another namespace, so it
     // drops out of this document and the selection re-points at the survivor.
-    act(() => result.current.detachChecklistToNamespace(second, "Work"));
+    act(() => {
+      result.current.detachChecklistToNamespace(second, "Work");
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(1));
     expect(result.current.activeChecklistId).toBe(first);
     expect(parse(adapter.stored()).checklists).toHaveLength(1);
 
     // Recoverable via undo (the target-namespace copy is left in place).
-    act(() => result.current.undo());
+    act(() => {
+      result.current.undo();
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
   });
 
@@ -350,7 +422,9 @@ describe("useChecklist multi-list verbs", () => {
     await act(async () => {});
 
     const only = result.current.activeChecklistId;
-    act(() => result.current.detachChecklistToNamespace(only, "Work"));
+    act(() => {
+      result.current.detachChecklistToNamespace(only, "Work");
+    });
     expect(result.current.checklists).toHaveLength(1);
     expect(result.current.activeChecklistId).toBe(only);
   });
@@ -369,12 +443,16 @@ describe("active-list cursor persistence", () => {
     // Add a second list (it becomes active), then switch back to the first so
     // the active selection is no longer the document's first list.
     const firstId = first.result.current.activeChecklistId;
-    act(() => first.result.current.addChecklist());
+    act(() => {
+      first.result.current.addChecklist();
+    });
     await waitFor(() =>
       expect(first.result.current.checklists).toHaveLength(2),
     );
     const secondId = first.result.current.activeChecklistId;
-    act(() => first.result.current.selectChecklist(secondId));
+    act(() => {
+      first.result.current.selectChecklist(secondId);
+    });
     await waitFor(() =>
       expect(first.result.current.activeChecklistId).toBe(secondId),
     );
@@ -394,7 +472,9 @@ describe("active-list cursor persistence", () => {
       useChecklist(adapter, "bottom", undefined, false, "default"),
     );
     await act(async () => {});
-    act(() => first.result.current.addChecklist());
+    act(() => {
+      first.result.current.addChecklist();
+    });
     await waitFor(() =>
       expect(first.result.current.checklists).toHaveLength(2),
     );
@@ -418,14 +498,18 @@ describe("active-list cursor persistence", () => {
     const first = renderHook(() => useChecklist(adapter));
     await act(async () => {});
     const firstId = first.result.current.activeChecklistId;
-    act(() => first.result.current.addChecklist());
+    act(() => {
+      first.result.current.addChecklist();
+    });
     await waitFor(() =>
       expect(first.result.current.checklists).toHaveLength(2),
     );
     const secondId = first.result.current.activeChecklistId;
     // Remove the selected list, then remount: the stale cursor resolves to the
     // surviving first list.
-    act(() => first.result.current.removeChecklist(secondId));
+    act(() => {
+      first.result.current.removeChecklist(secondId);
+    });
     await waitFor(() =>
       expect(first.result.current.checklists).toHaveLength(1),
     );
@@ -443,13 +527,17 @@ describe("useChecklist folder verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
 
-    act(() => result.current.createFolder("Work"));
+    act(() => {
+      result.current.createFolder("Work");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     const folderId = result.current.folders[0]!.id;
     expect(result.current.folders[0]!.name).toBe("Work");
     expect(parse(adapter.stored()).folders).toHaveLength(1);
 
-    act(() => result.current.renameFolder(folderId, "Office"));
+    act(() => {
+      result.current.renameFolder(folderId, "Office");
+    });
     await waitFor(() => expect(result.current.folders[0]!.name).toBe("Office"));
   });
 
@@ -459,17 +547,23 @@ describe("useChecklist folder verbs", () => {
     await act(async () => {});
     const listId = result.current.activeChecklistId;
 
-    act(() => result.current.createFolder("Work"));
+    act(() => {
+      result.current.createFolder("Work");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     const folderId = result.current.folders[0]!.id;
 
-    act(() => result.current.moveChecklistToFolder(listId, folderId));
+    act(() => {
+      result.current.moveChecklistToFolder(listId, folderId);
+    });
     await waitFor(() => expect(result.current.folders[0]!.count).toBe(1));
     expect(result.current.checklists[0]!.folderId).toBe(folderId);
     expect(parse(adapter.stored()).checklists[0]!.folderId).toBe(folderId);
 
     // Moving it back out drops the count and clears the link.
-    act(() => result.current.moveChecklistToFolder(listId, null));
+    act(() => {
+      result.current.moveChecklistToFolder(listId, null);
+    });
     await waitFor(() => expect(result.current.folders[0]!.count).toBe(0));
     expect(result.current.checklists[0]!.folderId).toBeUndefined();
   });
@@ -479,11 +573,15 @@ describe("useChecklist folder verbs", () => {
     const { result } = renderHook(() => useChecklist(adapter));
     await act(async () => {});
 
-    act(() => result.current.createFolder("Work"));
+    act(() => {
+      result.current.createFolder("Work");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     const folderId = result.current.folders[0]!.id;
 
-    act(() => result.current.addChecklistInFolder(folderId));
+    act(() => {
+      result.current.addChecklistInFolder(folderId);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const created = result.current.checklists.find(
       (c) => c.folderId === folderId,
@@ -498,13 +596,19 @@ describe("useChecklist folder verbs", () => {
     await act(async () => {});
     const listId = result.current.activeChecklistId;
 
-    act(() => result.current.createFolder("Work"));
+    act(() => {
+      result.current.createFolder("Work");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     const folderId = result.current.folders[0]!.id;
-    act(() => result.current.moveChecklistToFolder(listId, folderId));
+    act(() => {
+      result.current.moveChecklistToFolder(listId, folderId);
+    });
     await waitFor(() => expect(result.current.folders[0]!.count).toBe(1));
 
-    act(() => result.current.removeFolder(folderId));
+    act(() => {
+      result.current.removeFolder(folderId);
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(0));
     // The list survives, now ungrouped.
     expect(result.current.checklists).toHaveLength(1);
@@ -518,10 +622,14 @@ describe("useChecklist folder verbs", () => {
 
     // A list that stays behind, so the namespace keeps an active list.
     const keeper = result.current.activeChecklistId;
-    act(() => result.current.createFolder("Trips"));
+    act(() => {
+      result.current.createFolder("Trips");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     const folderId = result.current.folders[0]!.id;
-    act(() => result.current.addChecklistInFolder(folderId));
+    act(() => {
+      result.current.addChecklistInFolder(folderId);
+    });
     await waitFor(() => expect(result.current.checklists).toHaveLength(2));
     const filed = result.current.checklists.find(
       (c) => c.folderId === folderId,
@@ -529,14 +637,18 @@ describe("useChecklist folder verbs", () => {
 
     // The folder moved to another namespace: it and its list drop out here,
     // the selection re-points at the keeper, and the folder leaves the registry.
-    act(() => result.current.detachFolderToNamespace(folderId, "Work"));
+    act(() => {
+      result.current.detachFolderToNamespace(folderId, "Work");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(0));
     expect(result.current.checklists.map((c) => c.id)).toEqual([keeper]);
     expect(result.current.checklists.some((c) => c.id === filed)).toBe(false);
     expect(parse(adapter.stored()).folders).toBeUndefined();
 
     // Recoverable via undo (the target-namespace copy is left in place).
-    act(() => result.current.undo());
+    act(() => {
+      result.current.undo();
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     expect(result.current.checklists).toHaveLength(2);
   });
@@ -547,15 +659,21 @@ describe("useChecklist folder verbs", () => {
     await act(async () => {});
     const only = result.current.activeChecklistId;
 
-    act(() => result.current.createFolder("Trips"));
+    act(() => {
+      result.current.createFolder("Trips");
+    });
     await waitFor(() => expect(result.current.folders).toHaveLength(1));
     const folderId = result.current.folders[0]!.id;
-    act(() => result.current.moveChecklistToFolder(only, folderId));
+    act(() => {
+      result.current.moveChecklistToFolder(only, folderId);
+    });
     await waitFor(() => expect(result.current.folders[0]!.count).toBe(1));
 
     // The only active list lives in the folder — moving it would empty the
     // namespace, so the detach is refused and nothing changes.
-    act(() => result.current.detachFolderToNamespace(folderId, "Work"));
+    act(() => {
+      result.current.detachFolderToNamespace(folderId, "Work");
+    });
     expect(result.current.folders).toHaveLength(1);
     expect(result.current.checklists).toHaveLength(1);
   });

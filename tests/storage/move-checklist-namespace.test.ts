@@ -4,7 +4,7 @@
 // document (the source removal is the caller's job, in App). Drives the hook
 // on the browser backend so the target document can be read back from
 // localStorage.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createChecklist } from "../../src/domain/checklists.ts";
@@ -32,12 +32,16 @@ describe("useStorageBackend.moveChecklistToNamespace", () => {
     await act(async () => {});
 
     // Make a second namespace, then switch back so it's the move *target*.
-    act(() => result.current.createNamespace("Work"));
+    act(() => {
+      result.current.createNamespace("Work");
+    });
     await waitFor(() => expect(result.current.namespaces).toHaveLength(2));
     const work = result.current.namespaces.find(
       (n) => n.slug !== DEFAULT_NAMESPACE_SLUG,
     )!.slug;
-    act(() => result.current.switchNamespace(DEFAULT_NAMESPACE_SLUG));
+    act(() => {
+      result.current.switchNamespace(DEFAULT_NAMESPACE_SLUG);
+    });
     await waitFor(() =>
       expect(result.current.activeNamespace).toBe(DEFAULT_NAMESPACE_SLUG),
     );
@@ -57,12 +61,16 @@ describe("useStorageBackend.moveChecklistToNamespace", () => {
   it("drops the source folder link on the way over", async () => {
     const { result } = renderHook(() => useStorageBackend());
     await act(async () => {});
-    act(() => result.current.createNamespace("Work"));
+    act(() => {
+      result.current.createNamespace("Work");
+    });
     await waitFor(() => expect(result.current.namespaces).toHaveLength(2));
     const work = result.current.namespaces.find(
       (n) => n.slug !== DEFAULT_NAMESPACE_SLUG,
     )!.slug;
-    act(() => result.current.switchNamespace(DEFAULT_NAMESPACE_SLUG));
+    act(() => {
+      result.current.switchNamespace(DEFAULT_NAMESPACE_SLUG);
+    });
     await waitFor(() =>
       expect(result.current.activeNamespace).toBe(DEFAULT_NAMESPACE_SLUG),
     );
@@ -110,12 +118,16 @@ describe("useStorageBackend.moveFolderToNamespace", () => {
   async function withWorkNamespace() {
     const hook = renderHook(() => useStorageBackend());
     await act(async () => {});
-    act(() => hook.result.current.createNamespace("Work"));
+    act(() => {
+      hook.result.current.createNamespace("Work");
+    });
     await waitFor(() => expect(hook.result.current.namespaces).toHaveLength(2));
     const work = hook.result.current.namespaces.find(
       (n) => n.slug !== DEFAULT_NAMESPACE_SLUG,
     )!.slug;
-    act(() => hook.result.current.switchNamespace(DEFAULT_NAMESPACE_SLUG));
+    act(() => {
+      hook.result.current.switchNamespace(DEFAULT_NAMESPACE_SLUG);
+    });
     await waitFor(() =>
       expect(hook.result.current.activeNamespace).toBe(DEFAULT_NAMESPACE_SLUG),
     );

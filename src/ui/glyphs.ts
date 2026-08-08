@@ -7,7 +7,7 @@
 // the handful it needs rather than add a dependency (the same call the
 // `icons.tsx` set makes). Each glyph is stored as the *inner* SVG markup of
 // a 24×24 lucide-style outline — no wrapper `<svg>`, no stroke/fill on the
-// paths themselves — so one source feeds both the React component
+// paths themselves — so one source feeds both the component
 // (`NamespaceGlyph`, which wraps it in a styled `<svg>`) and the favicon
 // builder (`namespaceGlyphDataUri`, which serialises it to a data URI). The
 // wrapper supplies `fill="none" stroke="currentColor"`, so a path opts into

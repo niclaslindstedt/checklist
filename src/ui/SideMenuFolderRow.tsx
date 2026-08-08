@@ -26,7 +26,7 @@ import {
   TrashIcon,
 } from "./icons.tsx";
 
-// The minimal shape `useContextMenu().open` accepts — a React pointer event
+// The minimal shape `useContextMenu().open` accepts — a JSX pointer event
 // satisfies it, so a row hands its event straight through. Declared here so
 // the folder row can take `openMenu` as a prop without importing the hook's
 // internal event type.
@@ -53,9 +53,9 @@ type FolderRowProps = {
   onRename: () => void;
   onDelete: () => void;
   onAdd: () => void;
-  onDragOver: (e: ReactDragEvent) => void;
-  onDragLeave: (e: ReactDragEvent) => void;
-  onDrop: (e: ReactDragEvent) => void;
+  onDragOver: (e: ReactDragEvent<HTMLElement>) => void;
+  onDragLeave: (e: ReactDragEvent<HTMLElement>) => void;
+  onDrop: (e: ReactDragEvent<HTMLElement>) => void;
   openMenu: OpenMenu;
 };
 
@@ -316,7 +316,7 @@ export function FolderEditRow({
         value={value}
         placeholder={placeholder}
         aria-label={placeholder}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => setValue(e.currentTarget.value)}
         onBlur={finish}
         onKeyDown={(e) => {
           if (e.key === "Enter") {

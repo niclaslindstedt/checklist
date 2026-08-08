@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import { resetBus } from "../../src/achievements/bus.ts";
 import { unlock } from "../../src/achievements/index.ts";
@@ -74,7 +74,9 @@ describe("useAchievementWatcher", () => {
       initialProps: { ...base, snapshot: snapWith() },
     });
     // First loaded render is the baseline; the user then adds an item.
-    act(() => rerender({ ...base, snapshot: snapWith("milk") }));
+    act(() => {
+      rerender({ ...base, snapshot: snapWith("milk") });
+    });
     expect(unlocked).toContain("firstSteps");
     expect(settings.achievements.firstSteps).toBeDefined();
   });
@@ -91,7 +93,9 @@ describe("useAchievementWatcher", () => {
       onUnlocked: (ids: string[]) => unlocked.push(...ids),
     };
     renderHook((p) => useAchievementWatcher(p), { initialProps: props });
-    act(() => unlock("copyThat"));
+    act(() => {
+      unlock("copyThat");
+    });
     expect(unlocked).toContain("copyThat");
     expect(settings.achievements.copyThat).toBeDefined();
   });
@@ -110,9 +114,13 @@ describe("useAchievementWatcher", () => {
       initialProps: { ...base, snapshot: snapWith() },
     });
     // A derived-trigger edit (adding the first item) must not unlock while off.
-    act(() => rerender({ ...base, snapshot: snapWith("milk") }));
+    act(() => {
+      rerender({ ...base, snapshot: snapWith("milk") });
+    });
     // A manual unlock fired while off must be discarded, not queued for later.
-    act(() => unlock("copyThat"));
+    act(() => {
+      unlock("copyThat");
+    });
     expect(unlocked).toEqual([]);
     expect(settings.achievements).toEqual({});
   });
@@ -130,17 +138,21 @@ describe("useAchievementWatcher", () => {
       initialProps: { ...base, enabled: false, snapshot: snapWith() },
     });
     // While disabled the user adds an item — no unlock.
-    act(() =>
-      rerender({ ...base, enabled: false, snapshot: snapWith("milk") }),
-    );
+    act(() => {
+      rerender({ ...base, enabled: false, snapshot: snapWith("milk") });
+    });
     expect(unlocked).toEqual([]);
     // Re-enabling only re-baselines: the existing item is "what they had", so
     // firstSteps must NOT backfill from the gap.
-    act(() => rerender({ ...base, enabled: true, snapshot: snapWith("milk") }));
+    act(() => {
+      rerender({ ...base, enabled: true, snapshot: snapWith("milk") });
+    });
     expect(unlocked).toEqual([]);
     expect(settings.achievements).toEqual({});
     // A gesture made after re-enabling counts as usual.
-    act(() => unlock("copyThat"));
+    act(() => {
+      unlock("copyThat");
+    });
     expect(unlocked).toContain("copyThat");
     expect(settings.achievements.copyThat).toBeDefined();
   });

@@ -1,4 +1,4 @@
-// The device's namespace registry as a React hook: owns the `namespaces`
+// The device's namespace registry as a hook: owns the `namespaces`
 // state, the best-effort mirror of every mutation into the active backend's
 // `namespaces.json`, and the boot-time reconcile that merges this device's
 // list with the backend's. Peeled out of `useStorageBackend` so the
@@ -71,7 +71,7 @@ export function useNamespaceRegistry(
     [namespaceStore],
   );
 
-  // Re-read the registry into React state and mirror it up after a mutation.
+  // Re-read the registry into component state and mirror it up after a mutation.
   const commit = useCallback(() => {
     const list = getNamespaces();
     setNamespacesState(list);

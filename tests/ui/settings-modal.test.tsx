@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import { defaultSettings } from "../../src/settings/store.ts";
 import type { UseStorageBackend } from "../../src/storage/useStorageBackend.ts";

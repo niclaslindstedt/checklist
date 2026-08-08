@@ -11,7 +11,7 @@ import { createContext, useContext } from "react";
 // which matches the UX — each opens over the full screen. The conflict
 // and unlock dialogs are driven by their own state, not the bus.
 //
-// The `ModalBusProvider` component lives in its own file so React Fast
+// The `ModalBusProvider` component lives in its own file so Fast
 // Refresh keeps a stable boundary (mirrors `toast/useToast.ts`).
 
 /** A request to open one of the app's modals. */

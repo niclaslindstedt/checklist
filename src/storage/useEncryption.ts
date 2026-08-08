@@ -1,4 +1,4 @@
-// At-rest encryption lifecycle as a React hook: owns the encryption-mode
+// At-rest encryption lifecycle as a hook: owns the encryption-mode
 // and session-passphrase state, derives the `locked` gate, and carries the
 // enable / disable / unlock verbs that re-wrap (or decrypt) whatever the
 // active backend currently holds. Peeled out of `useStorageBackend` so the

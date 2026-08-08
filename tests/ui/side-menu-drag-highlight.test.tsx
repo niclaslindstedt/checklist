@@ -7,7 +7,7 @@
 // stubbed to the hovered drop target, asserting the highlight classes appear on
 // the element the user actually sees (the opaque foreground layer, not a div
 // hidden behind it).
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SideMenu } from "../../src/ui/SideMenu.tsx";
@@ -72,10 +72,12 @@ const touch = { pointerId: 1, pointerType: "touch", clientX: 10, clientY: 10 };
 function pickUpAndHoverOver(row: Element, target: Element) {
   vi.spyOn(document, "elementFromPoint").mockReturnValue(target as Element);
   fireEvent.pointerDown(row, touch);
-  act(() => void vi.advanceTimersByTime(400));
-  act(() =>
-    fireEvent.pointerMove(row, { ...touch, clientX: 50, clientY: 200 }),
-  );
+  act(() => {
+    void vi.advanceTimersByTime(400);
+  });
+  act(() => {
+    fireEvent.pointerMove(row, { ...touch, clientX: 50, clientY: 200 });
+  });
 }
 
 describe("SideMenu touch-drag highlight", () => {

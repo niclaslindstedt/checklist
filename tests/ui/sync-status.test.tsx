@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import type { SaveStatus } from "../../src/app/use-checklist.ts";
 import { SyncStatus } from "../../src/ui/SyncStatus.tsx";

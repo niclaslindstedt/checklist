@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import { Modal } from "../../src/ui/Modal.tsx";
 
@@ -75,7 +75,7 @@ describe("Modal", () => {
           <input
             aria-label="field"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => setValue(e.currentTarget.value)}
           />
         </Modal>
       );

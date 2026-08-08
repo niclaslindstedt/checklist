@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 import { usePullToRefresh } from "../../../src/ui/hooks/usePullToRefresh.ts";
 
 // Dispatch a synthetic touch at the document level. jsdom has no real
@@ -19,9 +19,15 @@ function dispatchTouch(type: string, y: number | null, target?: Element) {
 // release. The hook damps raw travel by 0.5, so reaching the 70px
 // trigger needs ~140px of finger travel.
 function pull(start: number, end: number) {
-  act(() => dispatchTouch("touchstart", start));
-  act(() => dispatchTouch("touchmove", end));
-  act(() => dispatchTouch("touchend", null));
+  act(() => {
+    dispatchTouch("touchstart", start);
+  });
+  act(() => {
+    dispatchTouch("touchmove", end);
+  });
+  act(() => {
+    dispatchTouch("touchend", null);
+  });
 }
 
 afterEach(() => {
@@ -48,8 +54,12 @@ describe("usePullToRefresh", () => {
     const onRefresh = vi.fn(() => Promise.resolve());
     const { result } = renderHook(() => usePullToRefresh(onRefresh));
 
-    act(() => dispatchTouch("touchstart", 0));
-    act(() => dispatchTouch("touchmove", 200));
+    act(() => {
+      dispatchTouch("touchstart", 0);
+    });
+    act(() => {
+      dispatchTouch("touchmove", 200);
+    });
 
     expect(result.current.state).toBe("release");
     expect(result.current.pullDistance).toBeGreaterThanOrEqual(70);
@@ -69,9 +79,15 @@ describe("usePullToRefresh", () => {
     const onRefresh = vi.fn(() => Promise.resolve());
     renderHook(() => usePullToRefresh(onRefresh));
 
-    act(() => dispatchTouch("touchstart", 100));
-    act(() => dispatchTouch("touchmove", 20));
-    act(() => dispatchTouch("touchend", null));
+    act(() => {
+      dispatchTouch("touchstart", 100);
+    });
+    act(() => {
+      dispatchTouch("touchmove", 20);
+    });
+    act(() => {
+      dispatchTouch("touchend", null);
+    });
 
     expect(onRefresh).not.toHaveBeenCalled();
   });
@@ -92,18 +108,26 @@ describe("usePullToRefresh", () => {
       { initialProps: { enabled: true } },
     );
 
-    act(() => dispatchTouch("touchstart", 0));
-    act(() => dispatchTouch("touchmove", 200));
+    act(() => {
+      dispatchTouch("touchstart", 0);
+    });
+    act(() => {
+      dispatchTouch("touchmove", 200);
+    });
     expect(result.current.state).toBe("release");
 
     // Disabling mid-pull (e.g. the menu button drag claims the pointer)
     // resets the indicator — no touchend will fire to clear it.
-    act(() => rerender({ enabled: false }));
+    act(() => {
+      rerender({ enabled: false });
+    });
     expect(result.current.state).toBe("idle");
     expect(result.current.pullDistance).toBe(0);
 
     // The torn-down listeners no longer fire a refresh on release.
-    act(() => dispatchTouch("touchend", null));
+    act(() => {
+      dispatchTouch("touchend", null);
+    });
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
