@@ -38,6 +38,9 @@ import { PlusIcon } from "./icons.tsx";
 //     never lost to a stray tap elsewhere — but an editor left empty (no
 //     title, no body) deletes its item instead, so a wiped-out line never
 //     lingers (the parent's `onSubmit` makes that call).
+//   • Checking the item — from the checkbox here, or from a parent row whose
+//     check cascades into it — commits and closes: a done item isn't editable,
+//     so the editor never lingers on a checked row.
 //   • Backspace at the start of an emptied title hands off to `onBackspaceEmpty`
 //     so the item is removed and editing backs up into the line above — keep
 //     the key held and you walk up the list erasing lines as you go.
@@ -208,6 +211,45 @@ export function ChecklistRowEditor({
     done.current = true;
     onCancel();
   };
+
+  // A checked item is done, and done items aren't editable — so the moment
+  // this one becomes checked, commit what's been typed and close. That covers
+  // both ways a check can land on an open editor: its own checkbox below, and
+  // a check on an ancestor row cascading down into this item. Committing (not
+  // cancelling) means the keystrokes that preceded the check still land.
+  // Held in a ref because `submit` is re-made every render — the effect must
+  // run on the checked flag flipping, nothing else.
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  useEffect(() => {
+    if (item.checked) submitRef.current();
+  }, [item.checked]);
+
+  // Backstop for a focus loss that never announces itself. Everything else
+  // here closes the editor on `focusout`, so an editor that loses focus
+  // *silently* is stranded open forever — no blur left to commit it, and it
+  // goes on reading as the active row however many other rows are pressed
+  // afterwards. WebKit and Chrome drop focus without firing blur when the
+  // focused node is moved in the DOM, which is exactly what re-sorting a row
+  // does (checking an item with "sort checked to the bottom" on lifts its
+  // whole row to another spot in the list). So: a press outside the row while
+  // we no longer hold focus commits and closes.
+  //
+  // The focus check is what makes this safe. While the editor still holds
+  // focus the ordinary blur path is in charge and this must stand aside —
+  // closing on `pointerdown` would shrink the row and reflow the list before
+  // the trailing click lands, the very miss the row-line `mousedown`
+  // preventDefault exists to avoid.
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const node = rootRef.current;
+      if (!node || node.contains(e.target as Node)) return;
+      if (node.contains(document.activeElement)) return;
+      submitRef.current();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   const revealBody = () => {
     setBodyShown(true);

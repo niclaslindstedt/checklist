@@ -46,6 +46,14 @@ export const INDENT_PER_LEVEL = 32;
 //     edits the **body**; tapping anywhere outside the row collapses it.
 //   • An item with no body goes straight into the editor on a title tap,
 //     where "Add note" / Shift+Enter adds one.
+//   • A **checked** item is done, and done items aren't editable: no title tap
+//     (nor an auto-edit handed over by the composer or a backspace walking up
+//     the list) opens the editor while `item.checked` is set. Its title tap
+//     only reveals or hides an existing note, and a note-less done row has
+//     nothing to press at all. Uncheck it to edit it again. The editor itself
+//     stands down the moment its item becomes checked, so a checked row can
+//     never be sitting in the editor — unstruck, offering "Add a note" and
+//     "Add sub-item" as though it were still open work.
 // The editor (`ChecklistRowEditor`) shows the title and body as raw plain
 // text; the row renders the body back as markdown once the edit commits.
 //
@@ -263,10 +271,17 @@ function ChecklistRowImpl({
   // body so the note glyph, reveal, and rendered markdown never show.
   const hasBody = Boolean(item.notes) && !notesDisabled;
 
-  const enterEdit = useCallback((focusBody: boolean) => {
-    setEditFocusBody(focusBody);
-    setEditing(true);
-  }, []);
+  // The single door into the editor — the title tap and both auto-edit
+  // handovers come through here, so the checked guard sits here rather than
+  // being repeated at each caller.
+  const enterEdit = useCallback(
+    (focusBody: boolean) => {
+      if (item.checked) return;
+      setEditFocusBody(focusBody);
+      setEditing(true);
+    },
+    [item.checked],
+  );
 
   // Enter after committing a title edit opens the next draft right below this
   // row — a sibling at this row's own depth — so adding items walks straight
@@ -305,11 +320,16 @@ function ChecklistRowImpl({
 
   // Tapping the title: expand a collapsed body first (reveal), edit on the
   // next tap. A note-less item has nothing to reveal, so it edits straight
-  // away.
+  // away. A checked item can't be edited, so its tap only flips the note
+  // between revealed and hidden.
   const onTitleTap = useCallback(() => {
+    if (item.checked) {
+      if (hasBody) setExpanded((shown) => !shown);
+      return;
+    }
     if (hasBody && !expanded) setExpanded(true);
     else enterEdit(false);
-  }, [hasBody, expanded, enterEdit]);
+  }, [item.checked, hasBody, expanded, enterEdit]);
 
   const submitEdit = useCallback(
     (fields: { title?: string; notes?: string }) => {
@@ -342,6 +362,25 @@ function ChecklistRowImpl({
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [expanded, editing]);
+
+  // A checked row can't be edited, so its title press must not announce
+  // "Edit item": with a note it still reveals or hides that note (the title
+  // text is the button's own name and `aria-expanded` says which way it
+  // goes), and with no note there is nothing to press at all — so the title
+  // renders as plain text rather than a button that does nothing. Not a
+  // *disabled* button: browsers disagree on whether a disabled control passes
+  // the pointer stream through, and the swipe-to-archive and long-press
+  // gestures both read that stream off an ancestor. Archiving a finished item
+  // is the very thing you swipe a checked row for.
+  const titleLabel = item.checked ? undefined : t("app.editItem");
+  const titleInert = item.checked && !hasBody;
+  const titleClass = `min-w-0 flex-1 break-words text-left ${
+    category
+      ? "text-xs font-semibold tracking-wide text-muted uppercase"
+      : `${nested ? "text-sm" : ""} ${
+          item.checked ? "text-muted line-through" : "text-fg"
+        }`
+  }`;
 
   if (editing) {
     return (
@@ -545,26 +584,24 @@ function ChecklistRowImpl({
             size={nested || category ? "sm" : "md"}
             className="p-2.5 -m-2.5"
           />
-          <button
-            type="button"
-            onClick={onTitleTap}
-            aria-label={t("app.editItem")}
-            aria-expanded={hasBody ? expanded : undefined}
-            // A title too long for one line wraps onto the next instead of
-            // being clipped with an ellipsis; `break-words` also splits a
-            // single unbroken run (a long URL or word) so it can't overflow
-            // the row and shove the trailing glyphs off-screen. A category
-            // reads as a slim, muted, upper-case grouping label.
-            className={`min-w-0 flex-1 break-words text-left ${
-              category
-                ? "text-xs font-semibold tracking-wide text-muted uppercase"
-                : `${nested ? "text-sm" : ""} ${
-                    item.checked ? "text-muted line-through" : "text-fg"
-                  }`
-            }`}
-          >
-            {item.title}
-          </button>
+          {/* A title too long for one line wraps onto the next instead of
+              being clipped with an ellipsis; `break-words` (in `titleClass`)
+              also splits a single unbroken run (a long URL or word) so it
+              can't overflow the row and shove the trailing glyphs off-screen.
+              A category reads as a slim, muted, upper-case grouping label. */}
+          {titleInert ? (
+            <span className={titleClass}>{item.title}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={onTitleTap}
+              aria-label={titleLabel}
+              aria-expanded={hasBody ? expanded : undefined}
+              className={titleClass}
+            >
+              {item.title}
+            </button>
+          )}
           {hasBody && (
             <button
               type="button"
