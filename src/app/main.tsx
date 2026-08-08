@@ -8,7 +8,7 @@
 // fetched from a CDN at runtime.
 
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 
 import { LanguageRoot } from "../i18n/LanguageRoot.tsx";
 import "../styles.css";
@@ -19,9 +19,9 @@ import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/latin-ext-400.css";
 import "@fontsource/jetbrains-mono/latin-700.css";
 import "@fontsource/jetbrains-mono/latin-ext-700.css";
-import { PrivacyPage } from "../ui/PrivacyPage.tsx";
-import { ShowcasePage } from "../ui/ShowcasePage.tsx";
 import { App } from "./App.tsx";
+import { StaticRouteView } from "./StaticRouteView.tsx";
+import { staticRouteFor } from "./static-routes.ts";
 
 const root = document.getElementById("app");
 if (!root) throw new Error("missing #app mount point");
@@ -29,17 +29,31 @@ if (!root) throw new Error("missing #app mount point");
 // Trivial path-based switch. The build emits `dist/privacy/index.html` and
 // `dist/home/index.html` (see the `emit-privacy-alias` / `emit-showcase-alias`
 // plugins in `vite.config.ts`) so GitHub Pages serves the same SPA at
-// `/privacy/` and `/home/`, and these checks decide which view to mount.
-// Deploy slots nest the page one segment deeper (`/preview/privacy/`,
-// `/preview/home/`); the suffix checks match both.
-const path = window.location.pathname.replace(/\/$/, "");
-const isPrivacy = path.endsWith("/privacy");
-const isHome = path.endsWith("/home");
+// `/privacy/` and `/home/`, and `staticRouteFor` decides which view to mount
+// (it also handles the deploy slots, which nest the page one segment deeper).
+const staticRoute = staticRouteFor(window.location.pathname);
 
-createRoot(root).render(
+// The standalone pages mount bare — no `LanguageRoot`. They are English-only
+// and consume nothing it provides, and keeping them free of its browser-only
+// work is what lets the build render them to HTML ahead of time. See
+// `StaticRouteView`.
+const tree = staticRoute ? (
+  <StaticRouteView route={staticRoute} />
+) : (
   <StrictMode>
     <LanguageRoot>
-      {isHome ? <ShowcasePage /> : isPrivacy ? <PrivacyPage /> : <App />}
+      <App />
     </LanguageRoot>
-  </StrictMode>,
+  </StrictMode>
 );
+
+// A prerendered document already holds this route's markup, so adopt it rather
+// than throw it away and rebuild. `data-prerendered` has to name *this* route
+// for that to be safe: a service worker holding a shell from another route, or
+// the dev server (which prerenders nothing), leaves it absent or mismatched,
+// and a clean client render is the correct answer there.
+if (staticRoute && root.dataset.prerendered === staticRoute) {
+  hydrateRoot(root, tree);
+} else {
+  createRoot(root).render(tree);
+}

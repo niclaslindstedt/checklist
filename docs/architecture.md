@@ -40,7 +40,36 @@ differences are load-bearing here:
 - **`useSyncExternalStore` takes no server-snapshot argument.** The app
   never server-renders, so there is nothing to pass.
 - **JSX attributes follow the DOM**, not React's casing: `spellcheck`,
-  and SVG's `focusable="false"` rather than `{false}`.
+  and SVG's `focusable="false"` rather than `{false}`. The rewriting of
+  React-style names (`strokeWidth` → `stroke-width`) is installed by
+  importing `preact/compat` — free in the browser, but something the
+  build-time prerenderer has to do explicitly (see below).
+- **Hydration does not re-apply attributes.** Preact rewrites mismatched
+  text and creates missing elements on a hydrated tree, but leaves the
+  attributes of a node it adopts exactly as it found them. A prerendered
+  page with a wrong attribute stays wrong for the life of the page, which
+  is why `renderStaticRoute` fails the build over it rather than trusting
+  a test to notice.
+
+### Prerendering
+
+`/home` and `/privacy` are rendered to HTML at build time;
+`src/app/prerender.tsx` produces the markup and the alias plugins in
+`vite.config.ts` splice it into `<div id="app">`. Both routes are
+self-contained, English-only pages with no app state, which is what makes
+them renderable in Node — they mount without `LanguageRoot` for the same
+reason. `main.tsx` hydrates the result when the container's
+`data-prerendered` names the route it is mounting, and renders from
+scratch otherwise (the dev server, or a stale cached shell).
+
+The app route (`/`) is **not** prerendered: its content is the user's own
+lists, so there is nothing to index and an empty prerendered shell would
+only flash before the real data arrived. It keeps the `<noscript>`
+fallback in `src/seo/routes.ts`.
+
+`src/app/static-routes.ts` (which URL is which page) and
+`StaticRouteView.tsx` (what each page renders) are shared by the client
+entry and the prerenderer, so the two cannot disagree about either.
 
 ```
 src/
