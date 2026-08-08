@@ -1,5 +1,5 @@
 // The serialized-save state machine the checklist's sync engine runs on
-// top of any `StorageBackend`. Framework-free and pure (no React, no I/O)
+// top of any `StorageBackend`. Framework-free and pure (no vdom, no I/O)
 // so the coalescing and stale-generation rules — the correctness-critical
 // part of the save path — are directly unit-testable instead of only
 // reachable through the full `useChecklistSync` hook.

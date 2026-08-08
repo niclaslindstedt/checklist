@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import type { ReactElement } from "react";
 
 import { SideMenu } from "../../src/ui/SideMenu.tsx";

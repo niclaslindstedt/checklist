@@ -16,7 +16,9 @@
 // removed elsewhere) silently falls back to the first active list.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MutableRefObject } from "react";
+// `preact/compat` has no `MutableRefObject`; `MutableRef` is Preact's name for
+// the same always-populated `{ current: T }` shape `useRef<T>(init)` returns.
+import type { MutableRef } from "preact/hooks";
 
 import { unlock } from "../achievements/bus.ts";
 import {
@@ -230,7 +232,7 @@ export function useChecklistLists(deps: {
   /** The full in-memory document. */
   doc: Snapshot;
   /** Latest document, read when folding a list edit into the snapshot. */
-  docRef: MutableRefObject<Snapshot>;
+  docRef: MutableRef<Snapshot>;
   /** Swap the visible document for an immediate re-render. */
   setDoc: (next: Snapshot) => void;
   /** Persist the edited document (debounced by the active backend). */
@@ -286,7 +288,7 @@ export function useChecklistLists(deps: {
     doc.checklists[0]!;
 
   // Which template (if any) is open on top of the checklist selection. Kept in
-  // React state rather than the persisted per-namespace cursor: opening a
+  // component state rather than the persisted per-namespace cursor: opening a
   // template is an inspect-and-edit detour, so a reload should land back on the
   // list the user actually works in, not on the blueprint. A template deleted
   // from under the selection resolves to null and the view falls back to the

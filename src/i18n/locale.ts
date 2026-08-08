@@ -1,5 +1,5 @@
 // Helpers around the app's two-letter language code. Kept tiny and
-// standalone (no React, no catalog modules) so non-component callers can
+// standalone (no vdom, no catalog modules) so non-component callers can
 // import it freely. Mirrors budget's `locale.ts`, trimmed to what the
 // checklist app needs.
 

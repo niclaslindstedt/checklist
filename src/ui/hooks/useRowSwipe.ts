@@ -1,4 +1,4 @@
-// Swipe-to-reveal gesture for checklist rows, the React counterpart of
+// Swipe-to-reveal gesture for checklist rows, the web counterpart of
 // the budget project's `useRowSwipe`. Same model — arm on a dominant
 // horizontal axis past a small threshold — but it drives a live
 // transform and two outcomes instead of a single reveal toggle:
@@ -36,7 +36,7 @@ export interface RowSwipe {
     onPointerMove: (e: PointerEvent<HTMLElement>) => void;
     onPointerUp: (e: PointerEvent<HTMLElement>) => void;
     onPointerCancel: (e: PointerEvent<HTMLElement>) => void;
-    onClickCapture: (e: React.MouseEvent) => void;
+    onClickCapture: (e: React.MouseEvent<HTMLElement>) => void;
   };
 }
 
@@ -126,7 +126,7 @@ export function useRowSwipe(onArchive: () => void): RowSwipe {
   // Swallow the click that trails a drag (so a swipe never toggles the
   // checkbox), and turn a tap on an already-open row into a close.
   const onClickCapture = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLElement>) => {
       if (dragged.current) {
         e.preventDefault();
         e.stopPropagation();

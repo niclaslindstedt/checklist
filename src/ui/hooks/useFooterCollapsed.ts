@@ -87,10 +87,8 @@ export function useFooterCollapsed(): {
   collapsed: boolean;
   setCollapsed: (next: boolean) => void;
 } {
-  const collapsed = useSyncExternalStore(
-    subscribe,
-    () => state,
-    () => false,
-  );
+  // No server-snapshot argument: Preact's `useSyncExternalStore` takes only
+  // the subscribe / getSnapshot pair (this app never server-renders).
+  const collapsed = useSyncExternalStore(subscribe, () => state);
   return { collapsed, setCollapsed: setFooterCollapsed };
 }

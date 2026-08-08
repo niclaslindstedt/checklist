@@ -6,7 +6,7 @@ import {
   render,
   screen,
   waitFor,
-} from "@testing-library/react";
+} from "@testing-library/preact";
 
 import { OfflineUnavailableError } from "../../src/storage/cache/index.ts";
 import type { EncryptionProgress } from "../../src/storage/useStorageBackend.ts";

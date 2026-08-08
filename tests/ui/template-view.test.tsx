@@ -6,7 +6,7 @@
 // progress / archive / bulk-finish affordances stand down, and the banner
 // carries the action the screen exists for.
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/preact";
 
 import { ChecklistView } from "../../src/ui/ChecklistView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";

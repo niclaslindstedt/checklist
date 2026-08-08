@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/preact";
 
 import { ShowcasePage } from "../../src/ui/ShowcasePage.tsx";
 

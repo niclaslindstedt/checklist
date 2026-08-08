@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -75,7 +75,9 @@ const touch = { pointerId: 1, pointerType: "touch", clientX: 10, clientY: 10 };
 function dragOnto(wrapper: HTMLElement, target: HTMLElement) {
   vi.spyOn(document, "elementFromPoint").mockReturnValue(target);
   fireEvent.pointerDown(wrapper, touch);
-  act(() => void vi.advanceTimersByTime(400));
+  act(() => {
+    void vi.advanceTimersByTime(400);
+  });
   fireEvent.pointerMove(wrapper, { ...touch, clientX: 50, clientY: 200 });
   fireEvent.pointerUp(wrapper, { pointerId: 1 });
 }
@@ -119,7 +121,9 @@ describe("checklist long-press drag", () => {
 
     fireEvent.pointerDown(wrapper, touch);
     // Latch the long-press; the chip mounts here, before any pointermove.
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
 
     const chip = container.querySelector<HTMLElement>("[aria-hidden]")!;
     // It must be placed at the fingertip immediately — not left at the
@@ -139,7 +143,9 @@ describe("checklist long-press drag", () => {
     fireEvent.pointerDown(wrapper, touch);
     // Travel past the slop before the timer fires → it's a scroll/swipe.
     fireEvent.pointerMove(wrapper, { ...touch, clientX: 10, clientY: 60 });
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
     fireEvent.pointerUp(wrapper, { pointerId: 1 });
 
     expect(onDrop).not.toHaveBeenCalled();
@@ -153,7 +159,9 @@ describe("checklist long-press drag", () => {
     );
 
     fireEvent.pointerDown(wrapper, { ...touch, pointerType: "mouse" });
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
     fireEvent.pointerUp(wrapper, { pointerId: 1 });
 
     expect(onDrop).not.toHaveBeenCalled();
@@ -173,7 +181,9 @@ describe("checklist long-press drag", () => {
     );
 
     fireEvent.pointerDown(wrapper, touch);
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
     fireEvent.pointerMove(window, { ...touch, clientX: 50, clientY: 200 });
     fireEvent.pointerUp(document.body, { pointerId: 1 });
 
@@ -190,7 +200,9 @@ describe("checklist long-press drag", () => {
     );
 
     fireEvent.pointerDown(wrapper, touch);
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
     fireEvent.pointerMove(window, { ...touch, clientX: 50, clientY: 200 });
     fireEvent.pointerCancel(window, { pointerId: 1 });
 
@@ -224,12 +236,16 @@ describe("checklist long-press drag", () => {
     );
 
     fireEvent.pointerDown(wrapper, touch);
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
     // The list is picked up — the floating chip is mounted.
     expect(container.querySelector("[aria-hidden]")).not.toBeNull();
 
     // A sync conflict surfaces: the app raises `aborted`.
-    act(() => rerender(<Tree aborted={true} />));
+    act(() => {
+      rerender(<Tree aborted={true} />);
+    });
 
     // The chip is gone, and a trailing release commits no move.
     expect(container.querySelector("[aria-hidden]")).toBeNull();
@@ -261,10 +277,14 @@ describe("checklist long-press drag", () => {
     vi.spyOn(document, "elementFromPoint").mockReturnValue(getByTestId("root"));
 
     fireEvent.pointerDown(wrapper, touch);
-    act(() => void vi.advanceTimersByTime(400));
+    act(() => {
+      void vi.advanceTimersByTime(400);
+    });
     expect(report).toHaveBeenLastCalledWith(true);
 
-    act(() => fireEvent.pointerUp(wrapper, { pointerId: 1 }));
+    act(() => {
+      fireEvent.pointerUp(wrapper, { pointerId: 1 });
+    });
     expect(report).toHaveBeenLastCalledWith(false);
   });
 });

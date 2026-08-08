@@ -354,7 +354,7 @@ export function renderLlmsTxt(routes: readonly RouteSeo[]): string {
   }
   lines.push(``, `## Source`, ``);
   lines.push(
-    `- [Source on GitHub](${AUTHOR.github}/checklist): MIT-licensed TypeScript PWA built with React, Vite, and Tailwind.`,
+    `- [Source on GitHub](${AUTHOR.github}/checklist): MIT-licensed TypeScript PWA built with Preact, Vite, and Tailwind.`,
     ``,
   );
   return lines.join("\n");

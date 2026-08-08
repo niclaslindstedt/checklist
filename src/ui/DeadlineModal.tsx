@@ -111,9 +111,11 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
                   value={intervalText}
                   aria-label={t("app.deadline.interval")}
                   disabled={!date}
-                  onFocus={(e) => e.target.select()}
+                  onFocus={(e) => e.currentTarget.select()}
                   onChange={(e) =>
-                    setIntervalText(e.target.value.replace(/[^0-9]/g, ""))
+                    setIntervalText(
+                      e.currentTarget.value.replace(/[^0-9]/g, ""),
+                    )
                   }
                   onBlur={() => setIntervalText(String(parsedInterval))}
                   className="w-16 rounded border border-line bg-surface-2 px-2 py-1.5 text-center text-sm text-fg-bright focus:border-accent focus:outline-none disabled:opacity-50"

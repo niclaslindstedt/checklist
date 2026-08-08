@@ -25,7 +25,7 @@ const CAPTURE_LOGS_KEY = "checklist:dev:captureLogs";
 const LOGS_KEY = "checklist:dev:logs";
 // The canonical home for this key is `useDevMode`, which imports it from
 // here — the logger needs it to decide, at first import, whether logging
-// is active before any React has rendered. Defined here (the lower-level
+// is active before anything has rendered. Defined here (the lower-level
 // module) to keep a single source of truth without a circular import.
 export const DEV_MODE_KEY = "checklist:dev:mode";
 const MAX_LOG_ENTRIES = 500;

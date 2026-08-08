@@ -26,7 +26,7 @@ export interface SwipeReveal {
     onPointerMove: (e: PointerEvent<HTMLElement>) => void;
     onPointerUp: (e: PointerEvent<HTMLElement>) => void;
     onPointerCancel: (e: PointerEvent<HTMLElement>) => void;
-    onClickCapture: (e: React.MouseEvent) => void;
+    onClickCapture: (e: React.MouseEvent<HTMLElement>) => void;
   };
 }
 
@@ -119,7 +119,7 @@ export function useSwipeReveal(actionWidth: number): SwipeReveal {
   // Swallow the click that trails a drag (so a swipe never activates the
   // row), and turn a tap on an already-open row into a close.
   const onClickCapture = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLElement>) => {
       if (dragged.current) {
         e.preventDefault();
         e.stopPropagation();

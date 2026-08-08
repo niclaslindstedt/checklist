@@ -7,7 +7,7 @@
 // (file-system writes) are mocked at the module boundary; the active document
 // the verbs read at click time arrives through the `runtime` latest-ref the
 // hook takes, built per test.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -181,7 +181,9 @@ describe("useFolderHandle", () => {
     });
     expect(result.current.folderHandle).not.toBeNull();
 
-    act(() => result.current.markFolderPermissionLost());
+    act(() => {
+      result.current.markFolderPermissionLost();
+    });
 
     expect(result.current.folderHandle).toBeNull();
     expect(result.current.folderReconnectNeeded).toBe(true);

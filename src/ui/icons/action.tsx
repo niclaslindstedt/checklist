@@ -14,7 +14,7 @@ export function CheckIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M13 4.5 6.5 11.5 3 8" />
@@ -28,7 +28,7 @@ export function GripIcon({ className }: IconProps) {
       viewBox="0 0 16 16"
       fill="currentColor"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <circle cx="6" cy="4" r="1.3" />
@@ -51,7 +51,7 @@ export function ArrowDownIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" />
@@ -73,7 +73,7 @@ export function ChevronDownIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m4 6 4 4 4-4" />
@@ -93,7 +93,7 @@ export function ChevronUpIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m4 10 4-4 4 4" />
@@ -114,7 +114,7 @@ export function ChevronRightIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m6 4 4 4-4 4" />
@@ -134,7 +134,7 @@ export function ChevronLeftIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m10 4-4 4 4 4" />
@@ -153,7 +153,7 @@ export function CaretRightIcon({ className }: IconProps) {
       fill="currentColor"
       stroke="none"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M6 4l5 4-5 4z" />
@@ -174,7 +174,7 @@ export function NoteIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M3 4h10M3 8h10M3 12h6" />
@@ -192,7 +192,7 @@ export function CloseIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M4 4l8 8M12 4l-8 8" />
@@ -211,7 +211,7 @@ export function RestoreIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -230,7 +230,7 @@ export function UndoIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M9 14 4 9l5-5" />
@@ -249,7 +249,7 @@ export function RedoIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m15 14 5-5-5-5" />
@@ -269,7 +269,7 @@ export function SearchIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <circle cx="11" cy="11" r="7" />
@@ -288,7 +288,7 @@ export function PlusIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M12 5v14M5 12h14" />
@@ -307,7 +307,7 @@ export function CopyIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <rect x="8" y="8" width="13" height="13" rx="2" ry="2" />
@@ -326,7 +326,7 @@ export function PencilIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M12 20h9" />
@@ -346,7 +346,7 @@ export function ClockIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <circle cx="12" cy="12" r="9" />
@@ -366,7 +366,7 @@ export function RepeatIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="m17 2 4 4-4 4" />
@@ -387,7 +387,7 @@ export function TrashIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />

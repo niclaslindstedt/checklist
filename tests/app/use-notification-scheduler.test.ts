@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Snapshot } from "../../src/domain/types.ts";
@@ -117,12 +117,15 @@ describe("useNotificationScheduler", () => {
     await act(async () => {});
     expect(requestPermission).not.toHaveBeenCalled();
 
-    // A deadline appears → prompt fires once, and the grant unlocks.
+    // A deadline appears → prompt fires once, and the grant unlocks. The
+    // effect awaits the permission read *and* the prompt before calling back,
+    // and `act` returns after the render rather than after that promise chain
+    // settles — so wait for the outcome instead of asserting on the next tick.
     await act(async () => {
       rerender({ snapshot: docWithDeadline("2999-01-01") });
     });
+    await waitFor(() => expect(onPermissionGranted).toHaveBeenCalledTimes(1));
     expect(requestPermission).toHaveBeenCalledTimes(1);
-    expect(onPermissionGranted).toHaveBeenCalledTimes(1);
   });
 
   it("does not prompt again once already granted", async () => {

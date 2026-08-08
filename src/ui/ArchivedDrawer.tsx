@@ -72,14 +72,14 @@ export function ArchivedDrawer({
 
   useEscapeKey(open && !closing, requestClose);
 
-  const onHeaderTouchStart = (e: React.TouchEvent) => {
+  const onHeaderTouchStart = (e: React.TouchEvent<HTMLElement>) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     if (!touch) return;
     dragStartY.current = touch.clientY;
     setDragY(0);
   };
-  const onHeaderTouchMove = (e: React.TouchEvent) => {
+  const onHeaderTouchMove = (e: React.TouchEvent<HTMLElement>) => {
     if (dragStartY.current === null) return;
     const touch = e.touches[0];
     if (!touch) return;

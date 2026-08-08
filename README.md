@@ -1,6 +1,6 @@
 # checklist
 
-A local-first PWA checklist app built with React, TypeScript, and
+A local-first PWA checklist app built with Preact, TypeScript, and
 Tailwind. Keep a quiet, monospaced checklist — add items, check them
 off, swipe to archive or delete — copy a list to share it, and — if
 you want — sync them to **your own** Google Drive or Dropbox. Hosted on

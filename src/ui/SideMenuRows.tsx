@@ -132,9 +132,9 @@ export function NavItem({
   // make a namespace row accept a dragged checklist.
   dropId?: string;
   isDropTarget?: boolean;
-  onDragOver?: (e: ReactDragEvent) => void;
-  onDragLeave?: (e: ReactDragEvent) => void;
-  onDrop?: (e: ReactDragEvent) => void;
+  onDragOver?: (e: ReactDragEvent<HTMLElement>) => void;
+  onDragLeave?: (e: ReactDragEvent<HTMLElement>) => void;
+  onDrop?: (e: ReactDragEvent<HTMLElement>) => void;
 }) {
   return (
     <button
@@ -458,9 +458,9 @@ export function BarButton({
   // Drop-target wiring so the Archive button accepts a dragged checklist.
   dropId?: string;
   isDropTarget?: boolean;
-  onDragOver?: (e: ReactDragEvent) => void;
-  onDragLeave?: (e: ReactDragEvent) => void;
-  onDrop?: (e: ReactDragEvent) => void;
+  onDragOver?: (e: ReactDragEvent<HTMLElement>) => void;
+  onDragLeave?: (e: ReactDragEvent<HTMLElement>) => void;
+  onDrop?: (e: ReactDragEvent<HTMLElement>) => void;
 }) {
   return (
     <button
@@ -470,7 +470,13 @@ export function BarButton({
       aria-label={label}
       title={label}
       disabled={disabled}
-      onClick={onClick}
+      // Guarded as well as `disabled` — a synthetic click (a test, an
+      // assistive tool) still reaches the handler even though a browser
+      // never dispatches one on a disabled button. Mirrors `Checkbox`.
+      onClick={() => {
+        if (disabled) return;
+        onClick();
+      }}
       {...(dropId !== undefined ? { [CHECKLIST_DROP_ATTR]: dropId } : {})}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

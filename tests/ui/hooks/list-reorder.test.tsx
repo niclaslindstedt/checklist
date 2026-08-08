@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 
 import { useListReorder } from "../../../src/ui/hooks/useListReorder.ts";
 
@@ -172,7 +172,9 @@ const cancelOffGrip = () =>
 describe("useListReorder", () => {
   it("marks the picked-up row as dragging", () => {
     render(<Harness />);
-    act(() => drag("c", 90)); // within c's slot (80..120)
+    act(() => {
+      drag("c", 90);
+    }); // within c's slot (80..120)
     expect(screen.getByTestId("dragging").textContent).toBe("c");
   });
 
@@ -180,9 +182,13 @@ describe("useListReorder", () => {
     render(<Harness />);
     // Pick up c near the bottom of its slot (80..120); once lifted, d slides up
     // to fill 80..120. Pressing low leaves room to clear the 6px arm threshold.
-    act(() => drag("c", 110));
+    act(() => {
+      drag("c", 110);
+    });
     // Aim at the top edge of where the list now shows d — the original slot.
-    act(() => move("c", 85));
+    act(() => {
+      move("c", 85);
+    });
     // Pre-fix this fell into the lifted row's stale rect and resolved to
     // "b:before", skipping the origin. Re-measuring the collapsed layout makes
     // it "d:before" — the row lands back where it started.
@@ -191,8 +197,12 @@ describe("useListReorder", () => {
 
   it("resolves the bottom edge of the row above the origin to an after-drop", () => {
     render(<Harness />);
-    act(() => drag("c", 90));
-    act(() => move("c", 75)); // b's bottom edge (40..80)
+    act(() => {
+      drag("c", 90);
+    });
+    act(() => {
+      move("c", 75);
+    }); // b's bottom edge (40..80)
     expect(screen.getByTestId("drop").textContent).toBe("b:after");
   });
 
@@ -204,11 +214,17 @@ describe("useListReorder", () => {
     // `window` catches it wherever the cursor ends up.
     const onReorder = vi.fn();
     render(<Harness onReorder={onReorder} />);
-    act(() => mouseDown("c", 90));
-    act(() => move("c", 150)); // drag down over the lower rows
+    act(() => {
+      mouseDown("c", 90);
+    });
+    act(() => {
+      move("c", 150);
+    }); // drag down over the lower rows
     expect(screen.getByTestId("dragging").textContent).toBe("c");
 
-    act(() => upOffGrip(150)); // release with the cursor off the grip
+    act(() => {
+      upOffGrip(150);
+    }); // release with the cursor off the grip
 
     expect(screen.getByTestId("dragging").textContent).toBe("none");
     expect(screen.getByTestId("drop").textContent).toBe("none");
@@ -221,11 +237,17 @@ describe("useListReorder", () => {
     // tear the drag down, not commit the half-finished move a release would.
     const onReorder = vi.fn();
     render(<Harness onReorder={onReorder} />);
-    act(() => mouseDown("c", 90));
-    act(() => move("c", 150));
+    act(() => {
+      mouseDown("c", 90);
+    });
+    act(() => {
+      move("c", 150);
+    });
     expect(screen.getByTestId("dragging").textContent).toBe("c");
 
-    act(() => cancelOffGrip());
+    act(() => {
+      cancelOffGrip();
+    });
 
     expect(screen.getByTestId("dragging").textContent).toBe("none");
     expect(onReorder).not.toHaveBeenCalled();
@@ -234,12 +256,18 @@ describe("useListReorder", () => {
   it("cancel() abandons the drag and releases the pointer capture", () => {
     const onReorder = vi.fn();
     render(<Harness onReorder={onReorder} />);
-    act(() => drag("c", 110));
-    act(() => move("c", 85));
+    act(() => {
+      drag("c", 110);
+    });
+    act(() => {
+      move("c", 85);
+    });
     expect(screen.getByTestId("dragging").textContent).toBe("c");
     expect(screen.getByTestId("drop").textContent).toBe("d:before");
 
-    act(() => fireEvent.click(screen.getByText("cancel")));
+    act(() => {
+      fireEvent.click(screen.getByText("cancel"));
+    });
 
     expect(screen.getByTestId("dragging").textContent).toBe("none");
     expect(screen.getByTestId("drop").textContent).toBe("none");
@@ -255,15 +283,23 @@ describe("useListReorder over a nested list", () => {
   // resolve to "kid:after" — quietly filing the item inside `cat`.
   it("drops at the root when released below the whole list", () => {
     render(<NestedHarness />);
-    act(() => drag("tail", 100));
-    act(() => move("tail", 300)); // well past the bottom of the list
+    act(() => {
+      drag("tail", 100);
+    });
+    act(() => {
+      move("tail", 300);
+    }); // well past the bottom of the list
     expect(screen.getByTestId("drop").textContent).toBe("cat:after");
   });
 
   it("still nests when the finger is held on the last child row", () => {
     render(<NestedHarness />);
-    act(() => drag("tail", 100));
-    act(() => move("tail", 75)); // kid's bottom edge (40..80)
+    act(() => {
+      drag("tail", 100);
+    });
+    act(() => {
+      move("tail", 75);
+    }); // kid's bottom edge (40..80)
     expect(screen.getByTestId("drop").textContent).toBe("kid:after");
   });
 });

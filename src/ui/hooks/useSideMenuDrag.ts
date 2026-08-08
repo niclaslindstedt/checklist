@@ -55,13 +55,13 @@ export type SideMenuDrag = {
   /** The id currently lifted by the desktop HTML5 drag (null when idle). */
   draggingChecklist: string | null;
   /** Begin a desktop drag of `id`, stamping it onto the dataTransfer. */
-  startChecklistDrag: (e: ReactDragEvent, id: string) => void;
+  startChecklistDrag: (e: ReactDragEvent<HTMLElement>, id: string) => void;
   /** Clear the desktop drag lift and any hover highlight. */
   endChecklistDrag: () => void;
   /** `onDragOver` for a drop zone: gate, highlight, and accept the move. */
-  allowDropOn: (e: ReactDragEvent, key: string) => void;
+  allowDropOn: (e: ReactDragEvent<HTMLElement>, key: string) => void;
   /** `onDrop` for a zone: resolve which list was dragged and move it there. */
-  commitDrop: (e: ReactDragEvent, key: string) => void;
+  commitDrop: (e: ReactDragEvent<HTMLElement>, key: string) => void;
   /** `onDragLeave` for a zone: drop the hover highlight as the drag exits. */
   clearDropTarget: () => void;
   /** Whether zone `key` should render its hover highlight right now. */
@@ -96,9 +96,12 @@ export function useSideMenuDrag(): SideMenuDrag {
     setDropTarget(null);
   }, [dragAbort]);
 
-  function startChecklistDrag(e: ReactDragEvent, id: string) {
-    e.dataTransfer.setData(CHECKLIST_DND_TYPE, id);
-    e.dataTransfer.effectAllowed = "move";
+  // `dataTransfer` is nullable on the native DragEvent, so each handler
+  // guards it. In practice a real drag always carries one; the optional
+  // chaining only keeps a synthetic event without a payload from throwing.
+  function startChecklistDrag(e: ReactDragEvent<HTMLElement>, id: string) {
+    e.dataTransfer?.setData(CHECKLIST_DND_TYPE, id);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     setDraggingChecklist(id);
   }
   function endChecklistDrag() {
@@ -108,7 +111,7 @@ export function useSideMenuDrag(): SideMenuDrag {
   function clearDropTarget() {
     setDropTarget(null);
   }
-  function allowDropOn(e: ReactDragEvent, key: string) {
+  function allowDropOn(e: ReactDragEvent<HTMLElement>, key: string) {
     if (!draggingChecklist) return;
     // A dragged folder only drops onto a namespace; leaving folder / root /
     // archive un-prevented makes the browser refuse the drop there entirely.
@@ -117,15 +120,15 @@ export function useSideMenuDrag(): SideMenuDrag {
     // Folders nest inside the ungrouped root drop zone, so stop the hover from
     // bubbling up and lighting the root highlight at the same time.
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     if (dropTarget !== key) setDropTarget(key);
   }
-  function commitDrop(e: ReactDragEvent, key: string) {
+  function commitDrop(e: ReactDragEvent<HTMLElement>, key: string) {
     e.preventDefault();
     // A drop on a folder/namespace must not also bubble to the root zone
     // (which would immediately move the list back out to the top level).
     e.stopPropagation();
-    const id = e.dataTransfer.getData(CHECKLIST_DND_TYPE) || draggingChecklist;
+    const id = e.dataTransfer?.getData(CHECKLIST_DND_TYPE) || draggingChecklist;
     endChecklistDrag();
     if (id) onDrop(id, key);
   }

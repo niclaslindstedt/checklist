@@ -1,4 +1,4 @@
-// Cloud-credential lifecycle as a React hook: owns the Dropbox access /
+// Cloud-credential lifecycle as a hook: owns the Dropbox access /
 // refresh tokens and the Google Drive access token, completes the Dropbox
 // OAuth redirect on boot, and carries the connect / disconnect verbs for both
 // cloud backends. Peeled out of `useStorageBackend` so the credential flow is

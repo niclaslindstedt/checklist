@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 import type { ReactElement } from "react";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
@@ -69,17 +69,19 @@ describe("ChecklistView reorder drag activity", () => {
 
     // Pick up the middle row — the drag arms on pointer-down.
     const handle = screen.getAllByLabelText("Drag to reorder")[1]!;
-    act(() =>
+    act(() => {
       fireEvent.pointerDown(handle, {
         pointerId: 1,
         clientY: 30,
         button: 0,
         pointerType: "touch",
-      }),
-    );
+      });
+    });
     expect(report).toHaveBeenLastCalledWith(true);
 
-    act(() => fireEvent.pointerUp(handle, { pointerId: 1, clientY: 30 }));
+    act(() => {
+      fireEvent.pointerUp(handle, { pointerId: 1, clientY: 30 });
+    });
     expect(report).toHaveBeenLastCalledWith(false);
   });
 });

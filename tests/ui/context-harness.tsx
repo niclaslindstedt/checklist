@@ -1,7 +1,7 @@
 // Shared builders for the checklist / nav contexts the views and SideMenu
 // now read from instead of props. Tests supply only the fields they assert
 // on; the rest fall back to inert defaults.
-import { render } from "@testing-library/react";
+import { render } from "@testing-library/preact";
 import type { ReactElement } from "react";
 
 import { createChecklist, flattenItems } from "../../src/domain/checklists.ts";

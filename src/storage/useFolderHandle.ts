@@ -1,4 +1,4 @@
-// Local-folder (File System Access API) storage lifecycle as a React hook:
+// Local-folder (File System Access API) storage lifecycle as a hook:
 // owns the picked directory handle plus its boot-probe / reconnect / revoked-
 // grant state, persists the grant across reloads via IndexedDB, and carries the
 // connect / reconnect / disconnect verbs. Peeled out of `useStorageBackend` so

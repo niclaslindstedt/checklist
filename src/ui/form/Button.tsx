@@ -24,12 +24,34 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
-  { variant = "secondary", children, className = "", type = "button", ...rest },
+  {
+    variant = "secondary",
+    children,
+    className = "",
+    type = "button",
+    disabled,
+    onClick,
+    ...rest
+  },
   ref,
 ) {
   const merged = `${BASE_CLASS} ${VARIANT_CLASS[variant]} ${className}`.trim();
   return (
-    <button ref={ref} type={type} className={merged} {...rest}>
+    <button
+      ref={ref}
+      type={type}
+      className={merged}
+      disabled={disabled}
+      // Guarded as well as `disabled`: a browser never produces a click on a
+      // disabled button, but a synthetic dispatch (a test, an assistive tool)
+      // does, and handlers reach the element directly rather than through a
+      // delegating root that could filter it out. Mirrors `Checkbox`.
+      onClick={(e) => {
+        if (disabled) return;
+        onClick?.(e);
+      }}
+      {...rest}
+    >
       {children}
     </button>
   );

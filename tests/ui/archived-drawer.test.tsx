@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/preact";
 
 import { ArchivedDrawer } from "../../src/ui/ArchivedDrawer.tsx";
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { fireDomEvent } from "./fire-dom-event.ts";
 import { ToastProvider } from "../../src/ui/toast/Toast.tsx";
 
 const items: ChecklistItem[] = [
@@ -73,7 +74,7 @@ describe("ArchivedDrawer", () => {
     const closeButtons = screen.getAllByRole("button", { name: "Close" });
     fireEvent.click(closeButtons[closeButtons.length - 1]!);
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.transitionEnd(screen.getByRole("dialog"), {
+    fireDomEvent(screen.getByRole("dialog"), "transitionend", {
       propertyName: "transform",
     });
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -87,7 +88,7 @@ describe("ArchivedDrawer", () => {
     fireEvent.touchStart(header, { touches: [{ clientY: 100 }] });
     fireEvent.touchMove(header, { touches: [{ clientY: 200 }] });
     fireEvent.touchEnd(header);
-    fireEvent.transitionEnd(dialog, { propertyName: "transform" });
+    fireDomEvent(dialog, "transitionend", { propertyName: "transform" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

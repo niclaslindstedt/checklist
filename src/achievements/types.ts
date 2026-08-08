@@ -69,7 +69,7 @@ export type Trigger =
 
 export type Achievement = {
   // Stable string id — once shipped, never renamed. Used as the key inside
-  // `Settings.achievements` and the bus's pending queue, as the React key in
+  // `Settings.achievements` and the bus's pending queue, as the list key in
   // catalog renders, and as the path segment in the i18n catalog
   // (`achievements.catalog.<id>.{name,condition,learnMore}`).
   id: string;

@@ -17,7 +17,7 @@ export function SpinnerIcon({ className }: IconProps) {
       strokeWidth={2}
       strokeLinecap="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M8 1.5a6.5 6.5 0 1 1-6.5 6.5" />
@@ -43,7 +43,7 @@ function CloudBase({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       {children}
@@ -114,7 +114,7 @@ export function RefreshIcon({ className }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />

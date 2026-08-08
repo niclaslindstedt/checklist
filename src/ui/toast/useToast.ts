@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-// Toast context + consumer hook. Lives in its own file so React Fast
+// Toast context + consumer hook. Lives in its own file so Fast
 // Refresh has a stable boundary — `Toast.tsx` mixes the provider
 // component with the viewport renderer, and exporting a hook from the
 // same file would trip `react-refresh/only-export-components`. Ported

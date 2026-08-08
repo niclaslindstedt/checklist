@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import { useSuppressEdgeSwipeBack } from "../../../src/ui/hooks/useSuppressEdgeSwipeBack.ts";
 
@@ -24,7 +24,9 @@ afterEach(() => {
 describe("useSuppressEdgeSwipeBack", () => {
   it("cancels a horizontal swipe that starts at the left edge", () => {
     renderHook(() => useSuppressEdgeSwipeBack(true));
-    act(() => void dispatchTouch("touchstart", { x: 5, y: 300 }));
+    act(() => {
+      void dispatchTouch("touchstart", { x: 5, y: 300 });
+    });
     let move!: Event;
     act(() => {
       move = dispatchTouch("touchmove", { x: 90, y: 305 });
@@ -47,7 +49,9 @@ describe("useSuppressEdgeSwipeBack", () => {
 
   it("ignores a swipe that doesn't start at either edge", () => {
     renderHook(() => useSuppressEdgeSwipeBack(true));
-    act(() => void dispatchTouch("touchstart", { x: 400, y: 300 }));
+    act(() => {
+      void dispatchTouch("touchstart", { x: 400, y: 300 });
+    });
     let move!: Event;
     act(() => {
       move = dispatchTouch("touchmove", { x: 480, y: 305 });
@@ -57,7 +61,9 @@ describe("useSuppressEdgeSwipeBack", () => {
 
   it("leaves a mostly-vertical drag from the edge alone (it's a scroll)", () => {
     renderHook(() => useSuppressEdgeSwipeBack(true));
-    act(() => void dispatchTouch("touchstart", { x: 5, y: 100 }));
+    act(() => {
+      void dispatchTouch("touchstart", { x: 5, y: 100 });
+    });
     let move!: Event;
     act(() => {
       move = dispatchTouch("touchmove", { x: 20, y: 400 });
@@ -67,7 +73,9 @@ describe("useSuppressEdgeSwipeBack", () => {
 
   it("no-ops while disabled (a normal browser tab keeps its back-swipe)", () => {
     renderHook(() => useSuppressEdgeSwipeBack(false));
-    act(() => void dispatchTouch("touchstart", { x: 5, y: 300 }));
+    act(() => {
+      void dispatchTouch("touchstart", { x: 5, y: 300 });
+    });
     let move!: Event;
     act(() => {
       move = dispatchTouch("touchmove", { x: 90, y: 305 });

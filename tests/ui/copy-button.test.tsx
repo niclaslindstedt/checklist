@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/preact";
 
 import type { Checklist, ChecklistItem } from "../../src/domain/types.ts";
 import { CopyButton } from "../../src/ui/CopyButton.tsx";

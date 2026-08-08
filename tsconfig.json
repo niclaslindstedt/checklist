@@ -9,6 +9,19 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    // The app runs on Preact. Source still imports from `"react"` — these
+    // paths resolve those specifiers to `preact/compat` for `tsc`, mirroring
+    // the aliases `@preact/preset-vite` installs for the bundler. Keep the two
+    // lists in sync; a specifier mapped here but not there (or vice versa)
+    // type-checks against one runtime and ships another.
+    "paths": {
+      "react": ["./node_modules/preact/compat/"],
+      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
+      "react-dom": ["./node_modules/preact/compat/"],
+      "react-dom/client": ["./node_modules/preact/compat/client"],
+      "react-dom/test-utils": ["./node_modules/preact/test-utils"]
+    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "moduleDetection": "force",

@@ -5,7 +5,7 @@
 // mode) instead of the full storage hook. The mode is persisted in
 // localStorage by `backend-preference`, so each test clears it and can seed the
 // "encrypted on boot" state by persisting the mode before render.
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {

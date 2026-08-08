@@ -1,7 +1,7 @@
 // Pure geometry for the draggable floating navigation button. Translates
 // between the persisted `MenuButtonPosition` (an edge + a 0..1 vertical
 // fraction) and concrete top-left pixel coordinates against a viewport,
-// and back again when a drag ends. Kept free of React and the DOM so the
+// and back again when a drag ends. Kept free of the vdom and the DOM so the
 // snap / clamp maths can be unit-tested in isolation; `SideMenu` and its
 // drag hook own the event wiring.
 //

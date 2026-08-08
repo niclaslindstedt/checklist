@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import { useMediaQuery } from "../../../src/ui/hooks/useMediaQuery.ts";
 
@@ -42,9 +42,13 @@ describe("useMediaQuery", () => {
     const ctl = stubMatchMedia(false);
     const { result } = renderHook(() => useMediaQuery("(min-width: 768px)"));
     expect(result.current).toBe(false);
-    act(() => ctl.set(true));
+    act(() => {
+      ctl.set(true);
+    });
     expect(result.current).toBe(true);
-    act(() => ctl.set(false));
+    act(() => {
+      ctl.set(false);
+    });
     expect(result.current).toBe(false);
   });
 

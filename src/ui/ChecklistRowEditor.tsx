@@ -295,7 +295,7 @@ export function ChecklistRowEditor({
           type="text"
           value={title}
           // Capitalise live as the user types so the field matches what commits.
-          onChange={(e) => setTitle(titleCase(e.target.value))}
+          onChange={(e) => setTitle(titleCase(e.currentTarget.value))}
           onKeyDown={onTitleKey}
           placeholder={t("app.editTitlePlaceholder")}
           aria-label={t("app.editItem")}
@@ -319,7 +319,7 @@ export function ChecklistRowEditor({
           <textarea
             ref={bodyRef}
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => setNotes(e.currentTarget.value)}
             onKeyDown={onBodyKey}
             placeholder={t("app.notePlaceholder")}
             aria-label={t("app.notePlaceholder")}

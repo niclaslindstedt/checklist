@@ -6,7 +6,7 @@ import {
   fireEvent,
   render,
   screen,
-} from "@testing-library/react";
+} from "@testing-library/preact";
 
 import { AddItemButton } from "../../src/ui/AddItemButton.tsx";
 
@@ -48,7 +48,9 @@ describe("AddItemButton", () => {
     vi.useFakeTimers();
     renderButton();
     fireEvent.pointerDown(plus(), { pointerId: 1 });
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+    });
     expect(plus().getAttribute("aria-expanded")).toBe("true");
     expect((archive() as HTMLButtonElement).disabled).toBe(false);
   });
@@ -65,7 +67,9 @@ describe("AddItemButton", () => {
     selection.addRange(range);
 
     fireEvent.pointerDown(plus(), { pointerId: 1 });
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+    });
 
     expect(document.getSelection()!.rangeCount).toBe(0);
   });
@@ -78,7 +82,9 @@ describe("AddItemButton", () => {
     vi.useFakeTimers();
     const { onArchiveFinished } = renderButton();
     fireEvent.pointerDown(plus(), { pointerId: 7 });
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+    });
 
     // The finger comes up over the archive half-circle (capture was released,
     // so the pointerup lands there), then iOS fires the synthetic click.
@@ -93,7 +99,9 @@ describe("AddItemButton", () => {
     vi.useFakeTimers();
     const { onArchiveFinished } = renderButton();
     fireEvent.pointerDown(plus(), { pointerId: 7 });
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+    });
     // Opening finger lifts — ignored.
     fireEvent.pointerUp(archive(), { pointerId: 7 });
     fireEvent.click(archive());
@@ -106,7 +114,9 @@ describe("AddItemButton", () => {
     vi.useFakeTimers();
     const { onDeleteFinished } = renderButton();
     fireEvent.pointerDown(plus(), { pointerId: 3 });
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+    });
     fireEvent.pointerUp(del(), { pointerId: 3 });
     fireEvent.click(del());
     expect(onDeleteFinished).not.toHaveBeenCalled();
@@ -116,7 +126,9 @@ describe("AddItemButton", () => {
     vi.useFakeTimers();
     const { onActivate } = renderButton();
     fireEvent.pointerDown(plus(), { pointerId: 1 });
-    act(() => vi.advanceTimersByTime(LONG_PRESS_MS - 50));
+    act(() => {
+      vi.advanceTimersByTime(LONG_PRESS_MS - 50);
+    });
     fireEvent.pointerUp(plus(), { pointerId: 1 });
     fireEvent.click(plus());
     expect(plus().getAttribute("aria-expanded")).toBe("false");

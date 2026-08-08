@@ -1,4 +1,4 @@
-// Tiny custom i18n runtime, ported from budget. One React context
+// Tiny custom i18n runtime, ported from budget. One context
 // carries the active language; one typed `t()` reads from per-language
 // catalog modules. No third-party dependency, no namespaces — just a
 // typed lookup with `{name}`-style interpolation.
@@ -149,7 +149,7 @@ export function useT(): TFunction {
   );
 }
 
-// Standalone lookup for non-React contexts. Pass the language explicitly
+// Standalone lookup for non-component contexts. Pass the language explicitly
 // so this stays pure.
 export function tFor(
   lang: Lang,

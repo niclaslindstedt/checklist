@@ -5,7 +5,7 @@ import { createElement, type ReactNode } from "react";
 // The app stays dependency-light (it inlines its icons rather than pull in
 // lucide-react), so it renders the small markdown subset an item note needs
 // itself instead of adding a `marked` / `react-markdown` dependency. It
-// returns React nodes — never a raw HTML string fed to
+// returns VNodes — never a raw HTML string fed to
 // `dangerouslySetInnerHTML` — so it is XSS-safe by construction: any markup
 // a user types lands as literal text, and link targets are scheme-checked
 // before they become an `href`.
@@ -209,7 +209,7 @@ function parseInline(
 }
 
 /**
- * Render a single line of markdown as inline React nodes — **bold**,
+ * Render a single line of markdown as inline VNodes — **bold**,
  * *italic*, `code`, ~~strikethrough~~, [links](url), and bare URLs /
  * email addresses — without wrapping it in a block element. For one-liners
  * that already sit inside a block the caller owns (a changelog `<li>`, a
@@ -242,7 +242,7 @@ function isSpecial(line: string): boolean {
 }
 
 /**
- * Render a markdown string as React nodes. Returns an array of block
+ * Render a markdown string as VNodes. Returns an array of block
  * elements (headings, lists, paragraphs, …) the caller drops into a
  * container. Every branch consumes at least one line, so the walk always
  * terminates. Pass `onOpenFeature` to wire the `feature:<slug>` link

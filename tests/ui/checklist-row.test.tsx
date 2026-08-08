@@ -7,9 +7,10 @@ import {
   fireEvent,
   render,
   screen,
-} from "@testing-library/react";
+} from "@testing-library/preact";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { fireDomEvent } from "./fire-dom-event.ts";
 import { ChecklistRow } from "../../src/ui/ChecklistRow.tsx";
 import type { DragHandleProps } from "../../src/ui/hooks/useListReorder.ts";
 
@@ -344,7 +345,10 @@ describe("ChecklistRow editing", () => {
       return {
         scroller,
         root,
-        runScroll: () => act(() => rafCb?.(0)),
+        runScroll: () =>
+          act(() => {
+            rafCb?.(0);
+          }),
         scrollIntoView,
         restore: () => {
           rafSpy.mockRestore();
@@ -456,7 +460,7 @@ describe("ChecklistRow editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const input = screen.getByLabelText("Edit item") as HTMLElement;
     setText(input, "Buy oat milk");
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
 
     expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
     expect(onAddAfter).not.toHaveBeenCalled();
@@ -678,7 +682,7 @@ describe("ChecklistRow editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const input = screen.getByLabelText("Edit item") as HTMLElement;
     setText(input, "");
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
 
     expect(onRemoveEmpty).toHaveBeenCalledWith("i1");
     expect(onEdit).not.toHaveBeenCalled();
@@ -695,7 +699,7 @@ describe("ChecklistRow editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     const input = screen.getByLabelText("Edit item") as HTMLElement;
     setText(input, "");
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
 
     expect(onRemoveEmpty).not.toHaveBeenCalled();
   });

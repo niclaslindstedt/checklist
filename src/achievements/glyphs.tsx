@@ -48,7 +48,7 @@ function Svg({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      focusable={false}
+      focusable="false"
       className={className}
     >
       {children}

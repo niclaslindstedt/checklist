@@ -200,10 +200,10 @@ cursor already is — but still records an undo step labelled
 ### Markdown renderer
 
 `src/ui/markdown/renderMarkdown.tsx` — a tiny, dependency-free renderer
-that turns a markdown string into React nodes. The app inlines its icons
+that turns a markdown string into VNodes. The app inlines its icons
 rather than pull in lucide, and likewise renders the small markdown
 subset an item body needs itself instead of adding `marked` /
-`react-markdown`. It returns React elements — never a raw HTML string fed
+`react-markdown`. It returns elements — never a raw HTML string fed
 to `dangerouslySetInnerHTML` — so it is **XSS-safe by construction**: any
 markup a user types lands as literal text, and link targets are
 scheme-checked (`http(s)`, `mailto`, relative; `javascript:` / `data:`
@@ -1180,7 +1180,7 @@ and the memoized `UseChecklist` surface the views consume:
 
 - **Edit verbs** (`use-checklist-edits.ts`, `useChecklistEdits`). Each
   mutation (`addItem`, `toggle`, `remove`, `archive`, `unarchive`,
-  `reorder`) applies the matching domain function, updates React state
+  `reorder`) applies the matching domain function, updates component state
   for an immediate re-render, records the post-edit document on the undo
   timeline (`commit` → `record`), and schedules a debounced save.
 - **Persistence engine** (`use-checklist-sync.ts`, `useChecklistSync`).
@@ -2763,7 +2763,7 @@ filter and copy / clear actions.
 as default + fallback, other languages code-split and load on demand
 (`ensureCatalog`), and lookups stay synchronous by falling back to
 English. `useT()` returns the typed translation function (with `{name}`
-interpolation over `MessageKey`); `tFor()` is the non-React lookup.
+interpolation over `MessageKey`); `tFor()` is the non-component lookup.
 `src/i18n/locale.ts` defines the supported langs (`Lang` = `en | sv`)
 and initial-language detection; `src/i18n/language-preference.ts`
 mirrors the choice to localStorage (and broadcasts `LANGUAGE_EVENT`) so

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import { useUndoRedo } from "../../src/app/use-undo-redo.ts";
 import type { Snapshot } from "../../src/domain/types.ts";
@@ -45,9 +45,13 @@ describe("useUndoRedo", () => {
 
   it("undoes a recorded edit back to the prior snapshot", () => {
     const { view, applied } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b"), "edit b"));
+    act(() => {
+      view.result.current.record(snap("b"), "edit b");
+    });
     expect(view.result.current.canUndo).toBe(true);
-    act(() => view.result.current.undo());
+    act(() => {
+      view.result.current.undo();
+    });
     expect(applied.map(tagOf)).toEqual(["a"]);
     expect(view.result.current.canUndo).toBe(false);
     expect(view.result.current.canRedo).toBe(true);
@@ -55,7 +59,9 @@ describe("useUndoRedo", () => {
 
   it("returns the label of the action it reverted / re-applied", () => {
     const { view } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b"), "Deleted “milk”"));
+    act(() => {
+      view.result.current.record(snap("b"), "Deleted “milk”");
+    });
     let undone: string | null = null;
     act(() => {
       undone = view.result.current.undo();
@@ -84,9 +90,15 @@ describe("useUndoRedo", () => {
 
   it("redoes back to the undone snapshot", () => {
     const { view, applied } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b"), "edit b"));
-    act(() => view.result.current.undo());
-    act(() => view.result.current.redo());
+    act(() => {
+      view.result.current.record(snap("b"), "edit b");
+    });
+    act(() => {
+      view.result.current.undo();
+    });
+    act(() => {
+      view.result.current.redo();
+    });
     expect(applied.map(tagOf)).toEqual(["a", "b"]);
     expect(view.result.current.canRedo).toBe(false);
   });
@@ -98,24 +110,38 @@ describe("useUndoRedo", () => {
     ];
     const { view, applied } = mount(withItem);
     // User deletes the only item — the post-edit snapshot has none.
-    act(() => view.result.current.record(snap("a"), "Deleted “milk”"));
-    act(() => view.result.current.undo());
+    act(() => {
+      view.result.current.record(snap("a"), "Deleted “milk”");
+    });
+    act(() => {
+      view.result.current.undo();
+    });
     expect(applied[0]!.checklists[0]!.items).toHaveLength(1);
   });
 
   it("drops the redo branch when a new edit is recorded after an undo", () => {
     const { view } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b"), "edit b"));
-    act(() => view.result.current.undo());
+    act(() => {
+      view.result.current.record(snap("b"), "edit b");
+    });
+    act(() => {
+      view.result.current.undo();
+    });
     expect(view.result.current.canRedo).toBe(true);
-    act(() => view.result.current.record(snap("c"), "edit c"));
+    act(() => {
+      view.result.current.record(snap("c"), "edit c");
+    });
     expect(view.result.current.canRedo).toBe(false);
   });
 
   it("reset re-seeds the timeline and clears history", () => {
     const { view } = mount(snap("a"));
-    act(() => view.result.current.record(snap("b"), "edit b"));
-    act(() => view.result.current.reset(snap("z")));
+    act(() => {
+      view.result.current.record(snap("b"), "edit b");
+    });
+    act(() => {
+      view.result.current.reset(snap("z"));
+    });
     expect(view.result.current.canUndo).toBe(false);
     expect(view.result.current.canRedo).toBe(false);
   });
@@ -123,8 +149,12 @@ describe("useUndoRedo", () => {
   it("is a no-op at the timeline edges", () => {
     const { applied, view } = mount(snap("a"));
     const undoSpy = vi.fn();
-    act(() => view.result.current.undo());
-    act(() => view.result.current.redo());
+    act(() => {
+      view.result.current.undo();
+    });
+    act(() => {
+      view.result.current.redo();
+    });
     expect(applied).toHaveLength(0);
     expect(undoSpy).not.toHaveBeenCalled();
   });

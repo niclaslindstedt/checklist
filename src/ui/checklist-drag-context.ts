@@ -1,7 +1,7 @@
 // The non-component half of the touch drag-to-target layer (see
 // `checklist-drag.tsx` for the provider + item components): the drop-target
 // contract, the two contexts, and the press-and-hold pointer hook. Split out
-// so the `.tsx` file exports only components (React Fast Refresh).
+// so the `.tsx` file exports only components (Fast Refresh).
 //
 // See `checklist-drag.tsx`'s header for how the gesture works and coexists
 // with swipe-to-delete.
@@ -119,7 +119,7 @@ export function useChecklistDrop(): (checklistId: string, key: string) => void {
 
 export type TouchDragHandlers = Partial<{
   onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
-  onClickCapture: (e: ReactMouseEvent) => void;
+  onClickCapture: (e: ReactMouseEvent<HTMLElement>) => void;
 }>;
 
 // Pointer (touch/pen) long-press drag for one checklist. Returns handlers to
@@ -304,7 +304,7 @@ export function useTouchChecklistDrag(
 
   // Swallow the click that trails a drag so releasing over a folder files the
   // list instead of also selecting it.
-  const onClickCapture = useCallback((e: ReactMouseEvent) => {
+  const onClickCapture = useCallback((e: ReactMouseEvent<HTMLElement>) => {
     if (justDragged.current) {
       e.preventDefault();
       e.stopPropagation();

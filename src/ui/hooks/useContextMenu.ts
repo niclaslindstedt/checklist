@@ -23,7 +23,7 @@ export type ContextMenuState = {
   items: ContextMenuItem[];
 };
 
-// A pointer-bearing event that can suppress the native menu — React's
+// A pointer-bearing event that can suppress the native menu — JSX's
 // `MouseEvent` satisfies it, so callers just hand their `onContextMenu` event
 // straight through.
 type MenuEvent = {

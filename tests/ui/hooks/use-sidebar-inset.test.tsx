@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/preact";
 
 import { useSidebarInset } from "../../../src/ui/hooks/useSidebarInset.ts";
 

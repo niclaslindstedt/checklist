@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/preact";
 import { ChecklistView } from "../../src/ui/ChecklistView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
 import type { Checklist, ChecklistItem } from "../../src/domain/types.ts";
 import { renderWithChecklist } from "./context-harness.tsx";
+import { fireDomEvent } from "./fire-dom-event.ts";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
@@ -129,8 +130,10 @@ describe("ChecklistView", () => {
     fireEvent.keyDown(input, { key: "Enter", isComposing: true });
     expect(addItem).not.toHaveBeenCalled();
     // The suggestion is applied and the composition ends — now the corrected
-    // text is what gets added.
-    fireEvent.compositionEnd(input, { target: { value: "the" } });
+    // text is what gets added. The autocorrect lands in the field before
+    // `compositionend` fires, and the handler reads it straight off the input.
+    input.value = "the";
+    fireDomEvent(input, "compositionend");
     expect(addItem).toHaveBeenCalledTimes(1);
     expect(addItem).toHaveBeenCalledWith("the");
   });
@@ -203,7 +206,7 @@ describe("ChecklistView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
     const input = screen.getByLabelText("Add item");
     fireEvent.change(input, { target: { value: "On blur" } });
-    fireEvent.blur(input);
+    fireDomEvent(input, "focusout");
     expect(addItem).toHaveBeenCalledWith("On blur");
   });
 
@@ -211,7 +214,7 @@ describe("ChecklistView", () => {
     const addItem = vi.fn();
     renderView({ items: [], addItem });
     fireEvent.click(screen.getByRole("button", { name: "Add item" }));
-    fireEvent.blur(screen.getByLabelText("Add item"));
+    fireDomEvent(screen.getByLabelText("Add item"), "focusout");
     expect(addItem).not.toHaveBeenCalled();
     // Composer is gone again and the empty state is back.
     expect(screen.getByText(/nothing here yet/i)).toBeTruthy();
@@ -300,7 +303,7 @@ describe("ChecklistView", () => {
       fireEvent.click(screen.getByText("Bread"));
       const input = titleEditor();
       setText(input, "");
-      fireEvent.blur(input);
+      fireDomEvent(input, "focusout");
 
       expect(removeEmpty).toHaveBeenCalledWith("i2");
     });
@@ -693,7 +696,7 @@ describe("ChecklistView", () => {
     }
 
     // The scrolling item region carries the swipe-up listener.
-    const scrollRegion = (root: HTMLElement) =>
+    const scrollRegion = (root: Element) =>
       root.querySelector(".overflow-y-auto") as HTMLElement;
 
     it("reveals the active list's archive on a swipe up at the bottom", () => {
@@ -701,9 +704,15 @@ describe("ChecklistView", () => {
       // No drawer until the gesture crosses the trigger distance.
       expect(screen.queryByRole("dialog")).toBeNull();
       const region = scrollRegion(container);
-      act(() => touch(region, "touchstart", 200));
-      act(() => touch(region, "touchmove", 0));
-      act(() => touch(region, "touchend", null));
+      act(() => {
+        touch(region, "touchstart", 200);
+      });
+      act(() => {
+        touch(region, "touchmove", 0);
+      });
+      act(() => {
+        touch(region, "touchend", null);
+      });
       const dialog = screen.getByRole("dialog");
       expect(dialog).toBeTruthy();
       expect(screen.getByText("Old milk")).toBeTruthy();
@@ -715,9 +724,15 @@ describe("ChecklistView", () => {
         archivedGroups: [{ ...archivedGroups[0]!, id: "other-list" }],
       });
       const region = scrollRegion(container);
-      act(() => touch(region, "touchstart", 200));
-      act(() => touch(region, "touchmove", 0));
-      act(() => touch(region, "touchend", null));
+      act(() => {
+        touch(region, "touchstart", 200);
+      });
+      act(() => {
+        touch(region, "touchmove", 0);
+      });
+      act(() => {
+        touch(region, "touchend", null);
+      });
       expect(screen.queryByRole("dialog")).toBeNull();
     });
 
@@ -725,9 +740,15 @@ describe("ChecklistView", () => {
       const unarchive = vi.fn();
       const { container } = renderView({ archivedGroups, unarchive });
       const region = scrollRegion(container);
-      act(() => touch(region, "touchstart", 200));
-      act(() => touch(region, "touchmove", 0));
-      act(() => touch(region, "touchend", null));
+      act(() => {
+        touch(region, "touchstart", 200);
+      });
+      act(() => {
+        touch(region, "touchmove", 0);
+      });
+      act(() => {
+        touch(region, "touchend", null);
+      });
       fireEvent.click(screen.getByLabelText("Restore item"));
       expect(unarchive).toHaveBeenCalledWith("a1");
     });

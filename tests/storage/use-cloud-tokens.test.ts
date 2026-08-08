@@ -6,7 +6,7 @@
 // reach. The Dropbox and Google Drive auth modules are mocked at their module
 // boundary; the tokens persist through the real `backend-preference` store, so
 // each test clears localStorage and asserts against its getters.
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -160,7 +160,9 @@ describe("useCloudTokens", () => {
     setDropboxToken("stale-access");
     const { result } = renderHook(() => useCloudTokens(vi.fn()));
 
-    act(() => result.current.onDropboxAccessTokenRefreshed("rotated-access"));
+    act(() => {
+      result.current.onDropboxAccessTokenRefreshed("rotated-access");
+    });
 
     expect(result.current.dropboxToken).toBe("rotated-access");
     expect(getDropboxToken()).toBe("rotated-access");
@@ -168,7 +170,9 @@ describe("useCloudTokens", () => {
 
   it("connectDropbox kicks off the OAuth redirect", async () => {
     const { result } = renderHook(() => useCloudTokens(vi.fn()));
-    act(() => result.current.connectDropbox());
+    act(() => {
+      result.current.connectDropbox();
+    });
     // The redirect starter is loaded via a dynamic import; let it resolve.
     await waitFor(() => expect(h.startDropboxAuth).toHaveBeenCalled());
   });
@@ -179,7 +183,9 @@ describe("useCloudTokens", () => {
     const switchToBackend = vi.fn();
     const { result } = renderHook(() => useCloudTokens(switchToBackend));
 
-    act(() => result.current.disconnectDropbox());
+    act(() => {
+      result.current.disconnectDropbox();
+    });
 
     expect(result.current.dropboxToken).toBeNull();
     expect(result.current.dropboxRefresh).toBeNull();
@@ -207,7 +213,9 @@ describe("useCloudTokens", () => {
     const switchToBackend = vi.fn();
     const { result } = renderHook(() => useCloudTokens(switchToBackend));
 
-    act(() => result.current.disconnectGdrive());
+    act(() => {
+      result.current.disconnectGdrive();
+    });
 
     expect(result.current.gdriveToken).toBeNull();
     expect(getGdriveToken()).toBeNull();

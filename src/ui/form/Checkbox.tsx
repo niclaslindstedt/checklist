@@ -69,7 +69,7 @@ export function Checkbox({
         // tool) does not, and an inert box must never report a change.
         onChange={(e) => {
           if (disabled) return;
-          onChange(e.target.checked);
+          onChange(e.currentTarget.checked);
         }}
         aria-label={ariaLabel}
         disabled={disabled}

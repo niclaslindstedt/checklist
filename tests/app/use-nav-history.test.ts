@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -95,7 +95,9 @@ describe("useNavHistory", () => {
     const { result, rerender } = mount(AT());
     const before = window.history.length;
 
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "b" }) });
 
     expect(window.history.length).toBe(before + 1);
@@ -128,7 +130,9 @@ describe("useNavHistory", () => {
     const { result, rerender } = mount(AT());
     expect(window.location.hash).toBe("#list=a");
 
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "b", namespace: "work" }) });
     expect(window.location.hash).toBe("#list=b&ns=work");
   });
@@ -170,9 +174,13 @@ describe("useNavHistory", () => {
   it("walks back and forward through the lists the user opened", async () => {
     const { result, rerender, apply } = mount(AT({ listId: "a" }));
 
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "b" }) });
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "c" }) });
 
     await travel("back");
@@ -191,9 +199,13 @@ describe("useNavHistory", () => {
   it("carries the open view and template in the entry", async () => {
     const { result, rerender, apply } = mount(AT());
 
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ view: "archive" }) });
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ view: "archive", templateId: "t1" }) });
 
     await travel("back");
@@ -203,7 +215,9 @@ describe("useNavHistory", () => {
 
   it("does not re-record the destination it was sent back to", async () => {
     const { result, rerender, apply } = mount(AT({ listId: "a" }));
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "b" }) });
     const afterPush = window.history.length;
 
@@ -220,13 +234,17 @@ describe("useNavHistory", () => {
 
   it("disarms a pending navigation when the user goes back first", async () => {
     const { result, rerender } = mount(AT({ listId: "a" }));
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "b" }) });
     const afterPush = window.history.length;
 
     // A gesture that is announced but overtaken by the back button must not
     // leave the push armed for the next drift.
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     await travel("back");
     rerender({ destination: AT({ listId: "a" }) });
     rerender({ destination: AT({ listId: "drifted" }) });
@@ -246,7 +264,9 @@ describe("useNavHistory", () => {
 
   it("stops listening once unmounted", async () => {
     const { result, rerender, apply, unmount } = mount(AT({ listId: "a" }));
-    act(() => result.current.markNavigation());
+    act(() => {
+      result.current.markNavigation();
+    });
     rerender({ destination: AT({ listId: "b" }) });
 
     unmount();

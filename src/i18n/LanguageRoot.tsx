@@ -1,6 +1,6 @@
 // Top-level language + chrome wrapper, mounted from `main.tsx`. Ported
 // from budget. Lives in its own file (rather than inline in `main.tsx`)
-// so React Fast Refresh has a stable boundary. Provides the active
+// so Fast Refresh has a stable boundary. Provides the active
 // language to the tree, mounts the shared `ToastProvider` so `useToast()`
 // resolves everywhere, and renders the `UpdateToast` prompt on top.
 

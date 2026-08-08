@@ -1,5 +1,5 @@
 // AES-GCM + PBKDF2 envelope used to encrypt the document at rest. Pure
-// helpers — no React, no localStorage. The envelope is itself a JSON
+// helpers — no vdom, no localStorage. The envelope is itself a JSON
 // object so an encrypted document can share the same string-typed
 // storage slot as the plaintext one; readers tell them apart by the
 // `encrypted` discriminator. Ported from the budget project's

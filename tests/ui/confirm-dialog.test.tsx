@@ -6,7 +6,7 @@ import {
   render,
   screen,
   waitFor,
-} from "@testing-library/react";
+} from "@testing-library/preact";
 
 import { ConfirmDialog } from "../../src/ui/ConfirmDialog.tsx";
 

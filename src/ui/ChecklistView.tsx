@@ -273,7 +273,8 @@ function ChecklistViewImpl() {
     [t, setCategory, archive, remove, openDeadline],
   );
   const openRowMenu = useCallback(
-    (id: string, e: React.MouseEvent) => openMenu(rowMenuItems(id), e),
+    (id: string, e: React.MouseEvent<HTMLElement>) =>
+      openMenu(rowMenuItems(id), e),
     [openMenu, rowMenuItems],
   );
   const openRowMenuAt = useCallback(

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/preact";
 
 import { useUndoRedoShortcuts } from "../../../src/ui/hooks/useUndoRedoShortcuts.ts";
 
@@ -41,7 +41,9 @@ describe("useUndoRedoShortcuts", () => {
         onRedo: vi.fn(),
       }),
     );
-    act(() => pressUndo());
+    act(() => {
+      pressUndo();
+    });
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
@@ -55,7 +57,9 @@ describe("useUndoRedoShortcuts", () => {
         onRedo,
       }),
     );
-    act(() => pressRedo());
+    act(() => {
+      pressRedo();
+    });
     expect(onRedo).toHaveBeenCalledTimes(1);
   });
 
@@ -71,8 +75,12 @@ describe("useUndoRedoShortcuts", () => {
         enabled: false,
       }),
     );
-    act(() => pressUndo());
-    act(() => pressRedo());
+    act(() => {
+      pressUndo();
+    });
+    act(() => {
+      pressRedo();
+    });
     expect(onUndo).not.toHaveBeenCalled();
     expect(onRedo).not.toHaveBeenCalled();
   });
@@ -90,10 +98,14 @@ describe("useUndoRedoShortcuts", () => {
         }),
       { initialProps: { enabled: false } },
     );
-    act(() => pressUndo());
+    act(() => {
+      pressUndo();
+    });
     expect(onUndo).not.toHaveBeenCalled();
     rerender({ enabled: true });
-    act(() => pressUndo());
+    act(() => {
+      pressUndo();
+    });
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
