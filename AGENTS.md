@@ -151,9 +151,12 @@ identify the app, fully describe its functionality, explain with
 transparency why the app requests user data, and link to the privacy
 policy — all visible without logging in. It is built exactly like the
 privacy page: `src/ui/ShowcasePage.tsx` is a self-contained React view (no
-app state, English-only), mounted by the path switch in `src/app/main.tsx`
+app state, English-only), mounted by `staticRouteFor` in `src/app/main.tsx`
 and emitted to `dist/home/index.html` by the `emit-showcase-alias` plugin
-in `vite.config.ts`. Its `<head>` SEO, sitemap entry, and `<noscript>`
+in `vite.config.ts`. It is **prerendered** — `src/app/prerender.tsx` renders
+it at build time so the page is readable without running the bundle, which
+is what Google's reviewer (and any crawler) actually fetches. Keep it
+renderable in Node: no app state, no hooks that touch `window`. Its `<head>` SEO, sitemap entry, and `<noscript>`
 fallback come from `SHOWCASE_ROUTE` in `src/seo/routes.ts`.
 
 **Keep it in sync with the product.** Because Google holds us to "fully

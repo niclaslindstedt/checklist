@@ -5,6 +5,7 @@ import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig, type Plugin } from "vitest/config";
+import type { StaticRoute } from "./src/app/static-routes";
 import {
   HOME_ROUTE,
   PRIVACY_ROUTE,
@@ -16,6 +17,7 @@ import {
   renderRobotsTxt,
   renderSitemap,
   resolveNoscriptBody,
+  spliceAppShell,
 } from "./src/seo/routes";
 import {
   SITE_DESCRIPTION,
@@ -182,27 +184,100 @@ function injectHomeSeo(): Plugin {
   };
 }
 
+// Prerendering: `/home` and `/privacy` ship as real HTML documents.
+//
+// Both are self-contained, English-only pages with no app state, so the build
+// can render them ahead of time and splice the markup into `<div id="app">`.
+// That is what makes them readable without running the bundle — the point of
+// the exercise, since `/home` is the page Google's OAuth reviewer reads and
+// both are the only routes a crawler has any reason to index.
+//
+// The app route (`/`) is deliberately NOT prerendered. Its content is the
+// user's own lists, read from storage at runtime: there is nothing to index,
+// and a baked-in empty shell would mean every returning user watches "Nothing
+// here yet" get replaced by their data. It keeps the <noscript> fallback,
+// which is the right answer for a route whose real content is private.
+//
+// `src/app/prerender.tsx` can't just be imported here — it is TSX that resolves
+// `import.meta.env.BASE_URL` and the `preact/compat` aliases. A throwaway Vite
+// server in middleware mode compiles it the same way the app build does, so
+// the markup matches what the client would render, base path included.
+let prerenderedRoutes: Record<StaticRoute, string> | null = null;
+
+async function renderStaticRoutes(): Promise<Record<StaticRoute, string>> {
+  if (prerenderedRoutes) return prerenderedRoutes;
+  const { createServer } = await import("vite");
+  const server = await createServer({
+    configFile: false,
+    root: fileURLToPath(new URL(".", import.meta.url)),
+    base,
+    logLevel: "warn",
+    appType: "custom",
+    // No HMR, no file watching: this server exists to compile two modules and
+    // is closed immediately after.
+    server: { middlewareMode: true, hmr: false, watch: null },
+    plugins: [preact({ prefreshEnabled: false, devToolsEnabled: false })],
+  });
+  try {
+    const mod = (await server.ssrLoadModule("/src/app/prerender.tsx")) as {
+      renderStaticRoutes: () => Record<StaticRoute, string>;
+    };
+    prerenderedRoutes = mod.renderStaticRoutes();
+    return prerenderedRoutes;
+  } finally {
+    await server.close();
+  }
+}
+
+// Render the static routes once, up front, so a failure surfaces at the start
+// of the build rather than from inside an alias plugin at the very end.
+function prerenderStaticRoutes(): Plugin {
+  return {
+    name: "prerender-static-routes",
+    apply: "build",
+    async buildStart() {
+      await renderStaticRoutes();
+    },
+  };
+}
+
+// Build one route alias document from the shared `index.html`: its own <head>
+// SEO, then its prerendered body in place of the generic shell.
+async function renderRouteAlias(
+  html: string,
+  route: RouteSeo,
+  staticRoute: StaticRoute,
+): Promise<string> {
+  const markup = (await renderStaticRoutes())[staticRoute];
+  return spliceAppShell(spliceRouteSeo(html, route), staticRoute, markup);
+}
+
 // Mirror the built `index.html` to `privacy/index.html` so GitHub Pages
 // serves the SPA from the clean URL `/privacy/` (and `/preview/privacy/`,
 // …). The app's `main.tsx` reads `location.pathname` and mounts the
 // privacy page there; the copied HTML loads the same hashed asset URLs
-// (they are origin-absolute), so no rewrite is needed. The HEAD_SEO /
-// NOSCRIPT blocks (filled with the homepage payload by `injectHomeSeo`) are
-// re-spliced with `PRIVACY_ROUTE` so the alias gets its own title, canonical,
-// and fallback body instead of inheriting the homepage's. Runs late so the
-// PWA plugin's manifest-link injection is already baked into the source.
+// (they are origin-absolute), so no rewrite is needed. The HEAD_SEO block
+// (filled with the homepage payload by `injectHomeSeo`) is re-spliced with
+// `PRIVACY_ROUTE` so the alias gets its own title and canonical instead of
+// inheriting the homepage's, and the shell is replaced with the prerendered
+// page. Runs late so the PWA plugin's manifest-link injection is already
+// baked into the source.
 function emitPrivacyAlias(): Plugin {
   return {
     name: "emit-privacy-alias",
     apply: "build",
     enforce: "post",
-    generateBundle(_options, bundle) {
+    async generateBundle(_options, bundle) {
       const index = bundle["index.html"];
       if (index && index.type === "asset") {
         this.emitFile({
           type: "asset",
           fileName: "privacy/index.html",
-          source: spliceRouteSeo(String(index.source), PRIVACY_ROUTE),
+          source: await renderRouteAlias(
+            String(index.source),
+            PRIVACY_ROUTE,
+            "privacy",
+          ),
         });
       }
     },
@@ -213,22 +288,26 @@ function emitPrivacyAlias(): Plugin {
 // the SPA from the clean URL `/home/` (and `/preview/home/`, …). The app's
 // `main.tsx` reads `location.pathname` and mounts the showcase page there;
 // the copied HTML loads the same origin-absolute hashed asset URLs, so no
-// rewrite is needed. The HEAD_SEO / NOSCRIPT blocks are re-spliced with
-// `SHOWCASE_ROUTE` so the alias gets its own title, canonical, and fallback
-// body instead of inheriting the homepage's. Runs late so the PWA plugin's
-// manifest-link injection is already baked into the source.
+// rewrite is needed. The HEAD_SEO block is re-spliced with `SHOWCASE_ROUTE` so
+// the alias gets its own title and canonical instead of inheriting the
+// homepage's, and the shell is replaced with the prerendered page. Runs late so
+// the PWA plugin's manifest-link injection is already baked into the source.
 function emitShowcaseAlias(): Plugin {
   return {
     name: "emit-showcase-alias",
     apply: "build",
     enforce: "post",
-    generateBundle(_options, bundle) {
+    async generateBundle(_options, bundle) {
       const index = bundle["index.html"];
       if (index && index.type === "asset") {
         this.emitFile({
           type: "asset",
           fileName: "home/index.html",
-          source: spliceRouteSeo(String(index.source), SHOWCASE_ROUTE),
+          source: await renderRouteAlias(
+            String(index.source),
+            SHOWCASE_ROUTE,
+            "home",
+          ),
         });
       }
     },
@@ -450,6 +529,10 @@ export default defineConfig({
       }),
     injectHomeSeo(),
     emitVersionJson(),
+    // Renders the standalone routes to HTML before the alias plugins below
+    // splice them in. Runs for the native build too: that build drops the
+    // showcase alias but still ships `/privacy`, which the side menu links to.
+    prerenderStaticRoutes(),
     // `/home` is the no-login marketing page Google's OAuth consent screen
     // points at — it exists for crawlers and reviewers, and nothing inside
     // the app links to it. `/privacy` stays: the side menu links to it as a

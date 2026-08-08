@@ -173,7 +173,9 @@ app's functionality and the purpose of its data access without a login.
 It is built like the privacy page: `src/ui/ShowcasePage.tsx` rendered via
 the path switch in `src/app/main.tsx`, emitted to `dist/home/index.html`
 by the `emit-showcase-alias` plugin in `vite.config.ts`, with SEO copy in
-`SHOWCASE_ROUTE` (`src/seo/routes.ts`).
+`SHOWCASE_ROUTE` (`src/seo/routes.ts`). Both `/home` and `/privacy` are
+**prerendered** at build time, so they read as complete pages without
+running the bundle; the app itself is not (its content is your own lists).
 
 > **Maintainers:** keep this page in sync with the app. Whenever you add,
 > remove, or change a user-facing feature — or change what data the app

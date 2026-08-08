@@ -2856,8 +2856,9 @@ backends: a local folder, Dropbox, and Google Drive send list data to a
 provider only when the user explicitly connects one, and the AES-GCM
 encryption option keeps the cloud copy ciphertext-only. Deliberately
 short and English-only (a legal page, not chrome). The SEO description
-and noscript fallback in `src/seo/routes.ts` (`PRIVACY_ROUTE`) mirror the
-same wording.
+in `src/seo/routes.ts` (`PRIVACY_ROUTE`) mirrors the same wording. The
+build **prerenders** this page into `dist/privacy/index.html`, so it reads
+as a real document without running the bundle — see "Prerendered routes".
 
 ### Showcase page
 
@@ -2868,13 +2869,51 @@ requests Google Drive / Dropbox access (the narrow app-folder scope, only
 when the user turns on cloud sync), and links to the privacy policy — the
 page linked as the "app homepage" on the Google OAuth consent screen, which
 Google requires to describe the app's functionality and data use without a
-login. Built exactly like the privacy page: mounted by the path switch in
+login. Built exactly like the privacy page: mounted by `staticRouteFor` in
 `src/app/main.tsx`, emitted to `dist/home/index.html` by the
-`emit-showcase-alias` plugin in `vite.config.ts`, with SEO copy, sitemap
-entry, and noscript fallback in `SHOWCASE_ROUTE` (`src/seo/routes.ts`).
-English-only by design. **Keep its feature list and data-use copy in sync
+`emit-showcase-alias` plugin in `vite.config.ts`, with SEO copy and sitemap
+entry in `SHOWCASE_ROUTE` (`src/seo/routes.ts`), and **prerendered** so the
+Google reviewer reads the page itself rather than a fallback summary — see
+"Prerendered routes". English-only by design. **Keep its feature list and data-use copy in sync
 with the app** whenever a feature or a data-access path changes — see "The
 `/home` showcase page" in `AGENTS.md`.
+
+### Prerendered routes
+
+The two standalone pages above — `/home` and `/privacy` — ship as real HTML
+documents. `src/app/prerender.tsx` renders each one at build time and the
+alias plugins splice the markup into `<div id="app">`, so a crawler, a link
+unfurler, or the Google OAuth reviewer reads the page without running the
+bundle, and a browser paints it before the bundle has parsed. On load
+`main.tsx` **hydrates** that markup instead of rebuilding it.
+
+Both sides mount `StaticRouteView` (`src/app/StaticRouteView.tsx`) and both
+resolve the URL through `staticRouteFor` (`src/app/static-routes.ts`), which
+is what keeps the two renders identical. The standalone pages mount without
+`LanguageRoot`: they are English-only, use no `useT` and no toasts, and
+leaving off its browser-only work (a `localStorage` read, service-worker
+registration) is what makes them renderable in Node. A side effect worth
+knowing: fetching `/home` no longer registers a service worker.
+
+**The app route (`/`) is deliberately not prerendered.** Its content is the
+user's own lists, read from storage at runtime — there is nothing to index,
+and a baked-in empty shell would mean every returning user watches "Nothing
+here yet" get replaced by their data. It keeps the `<noscript>` fallback.
+
+Two guards hold the scheme together, because a mismatch between the two
+renders is silent:
+
+- `data-prerendered` on the container names the route its markup belongs
+  to. `main.tsx` hydrates only when it matches the route being mounted; a
+  stale cached shell or the dev server (which prerenders nothing) falls back
+  to a clean client render.
+- `renderStaticRoute` fails the build if the markup carries React-style
+  attribute names (`strokeWidth` rather than `stroke-width`). Preact's
+  hydration rewrites mismatched text and creates missing elements, but it
+  never re-applies attributes to a node it adopts — so a wrong attribute is
+  wrong for the life of the page, and the build is the only place to catch
+  it. It comes from `preact/compat`'s prop normalisation, which the
+  prerender module has to import explicitly.
 
 ## Workflows / verbs the user might say
 

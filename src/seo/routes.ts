@@ -67,11 +67,16 @@ function esc(s: string): string {
 
 // --- <noscript> fallback ---------------------------------------------------
 // A pre-hydration body shown to clients that don't run the SPA bundle
-// (crawlers, link unfurlers, no-JS readers). createRoot() in main.tsx
-// replaces #app the moment the bundle runs, so normal visitors never see
-// it. The copy mirrors the meta description so a crawler can't read the
-// body and the description and decide they disagree. Inline single quotes
-// in the style so the fragment stays valid when spliced into the alias.
+// (crawlers, link unfurlers, no-JS readers). main.tsx replaces #app the
+// moment the bundle runs, so normal visitors never see it. The copy mirrors
+// the meta description so a crawler can't read the body and the description
+// and decide they disagree. Inline single quotes in the style so the fragment
+// stays valid when spliced into the alias.
+//
+// This is the fallback for `/` only. The standalone routes ship prerendered
+// markup instead (see `spliceAppShell` below), which is a strictly better
+// answer for the same readers — but they still resolve a body here, because
+// the dev server serves `index.html` unprerendered.
 const NOSCRIPT_STYLE_MAIN = `font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem; color: #c8c8c8; background: #1f2933; line-height: 1.55;`;
 const NOSCRIPT_STYLE_H1 = `font-size: 1.5rem; color: #e5c07b; margin: 0 0 1rem;`;
 
@@ -92,6 +97,41 @@ export function resolveNoscriptBody(route: RouteSeo): string {
     esc(route.description),
     "This page needs JavaScript to render fully. Enable JavaScript and reload.",
   ]);
+}
+
+// --- prerendered app shell -------------------------------------------------
+// `index.html` ships `<div id="app">` holding only the <noscript> fallback
+// above. For a route the build can render ahead of time (the standalone
+// `/home` and `/privacy` pages — see `src/app/prerender.tsx`), this swaps that
+// whole container for one holding the page's real markup.
+//
+// The <noscript> body goes away rather than sitting alongside: it exists to
+// give a non-executing client *something* to read, and with the page itself in
+// the document a no-JS visitor would otherwise read the summary and the page,
+// one after the other. What replaces it is strictly better copy anyway.
+//
+// `data-prerendered` names the route the markup belongs to. `main.tsx` reads
+// it and only hydrates when it matches the route it is about to mount, so a
+// stale cached shell (or the dev server, which prerenders nothing) falls back
+// to a clean client render instead of hydrating onto the wrong DOM.
+const APP_SHELL_RE = /<div id="app">[\s\S]*?<\/noscript>\s*<\/div>/;
+
+export function spliceAppShell(
+  html: string,
+  route: string,
+  markup: string,
+): string {
+  if (!APP_SHELL_RE.test(html)) {
+    throw new Error(
+      'checklist-seo: could not find the `<div id="app">` shell (with its ' +
+        "<noscript> fallback) to replace with prerendered markup for " +
+        `"${route}". Did index.html change shape?`,
+    );
+  }
+  return html.replace(
+    APP_SHELL_RE,
+    `<div id="app" data-prerendered="${esc(route)}">${markup}</div>`,
+  );
 }
 
 // --- JSON-LD graph ---------------------------------------------------------
