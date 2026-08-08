@@ -33,8 +33,10 @@ const item: ChecklistItem = {
   archived: false,
 };
 
-function renderRow(over: Partial<Parameters<typeof ChecklistRow>[0]> = {}) {
-  return render(
+// Split out from `renderRow` so a test can re-render the same row with
+// changed props (e.g. the item coming back checked) via `rerender`.
+function rowTree(over: Partial<Parameters<typeof ChecklistRow>[0]> = {}) {
+  return (
     <ul>
       <ChecklistRow
         item={item}
@@ -46,8 +48,12 @@ function renderRow(over: Partial<Parameters<typeof ChecklistRow>[0]> = {}) {
         dragging={false}
         {...over}
       />
-    </ul>,
+    </ul>
   );
+}
+
+function renderRow(over: Partial<Parameters<typeof ChecklistRow>[0]> = {}) {
+  return render(rowTree(over));
 }
 
 // The sliding foreground is the element carrying the swipe handlers (the
@@ -741,17 +747,13 @@ describe("ChecklistRow editing", () => {
 
   it("toggles the item from the editor's checkbox while editing", () => {
     const onToggle = vi.fn();
-    const onEdit = vi.fn();
-    renderRow({ onToggle, onEdit });
+    renderRow({ onToggle });
 
     fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
     // The checkbox stays live while the row is in edit mode.
     fireEvent.click(screen.getByLabelText("Check item"));
 
     expect(onToggle).toHaveBeenCalledWith("i1");
-    // The editor is still open — toggling doesn't commit/close it.
-    expect(screen.getByLabelText("Edit item")).toBeTruthy();
-    expect(onEdit).not.toHaveBeenCalled();
   });
 
   it("suppresses the checkbox press default so the title input keeps focus", () => {
@@ -798,6 +800,159 @@ describe("ChecklistRow editing", () => {
       title: "Buy milk",
       notes: "new body",
     });
+  });
+});
+
+// A checked item is done, and done items aren't editable. The editor draws a
+// plain input with no strike-through and offers "Add a note" / "Add sub-item",
+// so a checked row sitting in it reads as unfinished work — that state must be
+// unreachable from every direction.
+describe("ChecklistRow checked items are not editable", () => {
+  afterEach(cleanup);
+
+  const checked: ChecklistItem = { ...item, checked: true };
+
+  it("leaves a checked, note-less title inert instead of opening the editor", () => {
+    renderRow({ item: checked });
+
+    // Plain text, not a button — there is nothing to press, and it must not
+    // advertise an edit it won't perform. A *disabled* button would be worse
+    // than a span: browsers disagree on whether one passes the pointer stream
+    // through to the swipe/long-press handlers on the row above it.
+    const title = screen.getByText("Buy milk");
+    expect(title.tagName).toBe("SPAN");
+    expect(screen.queryByRole("button", { name: "Edit item" })).toBeNull();
+
+    fireEvent.click(title);
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+  });
+
+  it("still swipes a checked row open to archive it", () => {
+    // Archiving is exactly what a finished row is swiped for, so the inert
+    // title must not swallow the gesture.
+    const onArchive = vi.fn();
+    renderRow({ item: checked, onArchive });
+    const fg = foreground();
+    stubPointerCapture(fg);
+
+    // Past ARCHIVE_AT (96), then let the slide-off animation (ARCHIVE_MS)
+    // run out — the archive fires on its timer.
+    vi.useFakeTimers();
+    try {
+      dispatchPointer(fg, "pointerdown", { x: 0, y: 0 });
+      dispatchPointer(fg, "pointermove", { x: 120, y: 0 });
+      dispatchPointer(fg, "pointerup", { x: 120, y: 0 });
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(onArchive).toHaveBeenCalledWith("i1");
+  });
+
+  it("does not open the editor from the row line beside a checked title", () => {
+    renderRow({ item: checked });
+    fireEvent.click(screen.getByText("Buy milk").closest("div")!);
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+  });
+
+  it("reveals and hides a checked item's note instead of editing it", () => {
+    renderRow({ item: { ...checked, notes: "**bold** note" } });
+    const title = screen.getByText("Buy milk");
+
+    // The note stays readable on a done item — the tap just flips it open…
+    fireEvent.click(title);
+    expect(screen.getByText("bold").tagName).toBe("STRONG");
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+
+    // …and closed again, rather than dropping into the editor on the second
+    // tap the way an unchecked row does.
+    fireEvent.click(title);
+    expect(screen.queryByText("bold")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+  });
+
+  it("ignores an auto-edit handover onto a checked row", () => {
+    // Backspacing an empty line hands editing to the line above; landing on a
+    // checked one must not open it.
+    renderRow({ item: checked, autoEditTitle: true });
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+
+    cleanup();
+    renderRow({ item: { ...checked, notes: "note" }, autoEditBody: true });
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+  });
+
+  // Simulate the silent focus loss WebKit/Chrome produce when a focused node
+  // is moved in the DOM: activeElement changes with no blur/focusout fired.
+  // jsdom won't move focus without firing events, so stub the property.
+  function dropFocusSilently(): () => void {
+    const original = Object.getOwnPropertyDescriptor(
+      Document.prototype,
+      "activeElement",
+    )!;
+    Object.defineProperty(document, "activeElement", {
+      value: document.body,
+      configurable: true,
+    });
+    return () => Object.defineProperty(document, "activeElement", original);
+  }
+
+  it("closes a stranded editor on the next press elsewhere", () => {
+    // The row that got the user here: checking an item with sort-checked-to-
+    // the-bottom on moves its row, which drops focus without a blur — leaving
+    // the editor open with nothing left to commit it, still reading as the
+    // active row however many other rows were pressed after.
+    const onEdit = vi.fn();
+    renderRow({ onEdit });
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    setText(screen.getByRole("textbox", { name: "Edit item" }), "Buy oat milk");
+
+    const restore = dropFocusSilently();
+    try {
+      fireEvent.pointerDown(document.body);
+    } finally {
+      restore();
+    }
+
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+  });
+
+  it("leaves a focused editor to the blur path on an outside press", () => {
+    // The backstop must not fire while the editor still holds focus: closing
+    // on pointerdown would shrink the row and reflow the list before the
+    // trailing click landed, the miss the row-line mousedown guard prevents.
+    const onEdit = vi.fn();
+    renderRow({ onEdit });
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+
+    fireEvent.pointerDown(document.body);
+
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Edit item" })).toBeTruthy();
+  });
+
+  it("commits and closes an open editor when the item comes back checked", () => {
+    // The check can land from this row's own checkbox or from an ancestor's
+    // check cascading down — either way the parent re-renders the row with
+    // `checked` set, and the editor must stand down rather than linger,
+    // unstruck, still offering "Add a note" / "Add sub-item".
+    const onEdit = vi.fn();
+    const { rerender } = render(rowTree({ onEdit, onAddChild: noop }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit item" }));
+    setText(screen.getByRole("textbox", { name: "Edit item" }), "Buy oat milk");
+    rerender(rowTree({ item: checked, onEdit, onAddChild: noop }));
+
+    // The keystrokes that preceded the check still land — it commits, not
+    // cancels.
+    expect(onEdit).toHaveBeenCalledWith("i1", { title: "Buy oat milk" });
+    expect(screen.queryByRole("textbox", { name: "Edit item" })).toBeNull();
+    expect(screen.queryByText("Add a note")).toBeNull();
+    expect(screen.queryByText("Add sub-item")).toBeNull();
   });
 });
 

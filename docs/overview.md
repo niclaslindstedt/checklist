@@ -101,7 +101,21 @@ on the **body** (a tap on a link inside the note follows the link
 instead). An item with **no** body has nothing to reveal, so a title tap
 edits straight away — where "Add a note" / Shift+Enter adds one. So a
 note reads as markdown until you open it for editing, where it shows as
-raw plain text. The title tap is swallowed after a swipe (the
+raw plain text.
+
+A **checked item is done, and done items aren't editable**: while
+`item.checked` is set, no route opens the editor — not a title tap, not the
+row line beside it, and not an auto-edit handed over by the composer or by a
+backspace walking up the list (they all funnel through the row's `enterEdit`,
+which stands down on a checked item). A checked row's title tap only reveals
+or hides an existing note, so a finished item stays readable; a checked row
+with no note has nothing to press at all, and its title button goes inert
+rather than announcing an "Edit item" it won't perform. Uncheck it to edit it
+again. This closes the gap where a checked item could sit in the editor —
+drawn as a plain unstruck input, still offering "Add a note" and "Add
+sub-item" — and so read as unfinished work.
+
+The title tap is swallowed after a swipe (the
 `useRowSwipe` `onClickCapture` guard), so a drag never drops into edit.
 The whole row line is the tap target, not just the title glyphs: a click
 on the row that doesn't land on a real control (the checkbox, caret,
@@ -124,9 +138,31 @@ the whole row is tinted `bg-surface-2` to signal the active edit); an empty
 disclosure-caret slot in front of the checkbox keeps the editor lined up with
 every other row instead of sliding left. The checkbox stays live while
 editing — its press is `preventDefault`ed (the `Checkbox` `onMouseDown` hook)
-so tapping it ticks the item without blurring the title field (which would
-otherwise commit and close the editor, since iOS doesn't focus the label on
-tap). The title is one line (a native `<input>`), the body an optional note
+so tapping it ticks the item without blurring the title field first (since iOS
+doesn't focus the label on tap, the blur would commit and close the editor
+before the toggle landed). Checking the item then **commits and closes** the
+editor: the editor watches `item.checked` and submits the moment it flips, so
+the keystrokes that preceded the check still land and the editor never lingers
+on a done row. Watching the flag (rather than the checkbox's own handler)
+covers the other way a check reaches an open editor — a check on an **ancestor**
+row, which cascades down the subtree (`toggleItem`).
+
+**The stranded-editor backstop.** Every other close route here runs off
+`focusout`, so an editor that loses focus *silently* would be stranded open
+with nothing left to commit it — and would go on reading as the active row
+however many other rows were pressed afterwards. That is reachable: WebKit and
+Chrome drop focus without firing a blur when the focused node is **moved** in
+the DOM, and re-sorting a row moves it (checking an item with
+[Sort checked items to the bottom](#sort-checked-items-to-the-bottom) on lifts
+its row out of place mid-edit). So the editor also listens for a `pointerdown`
+outside the row and commits — but **only while it no longer holds focus**
+(`node.contains(document.activeElement)`). That guard is what keeps it safe:
+with focus still inside, the ordinary blur path is in charge and this must
+stand aside, since closing on `pointerdown` would shrink the row and reflow
+the list before the trailing click landed — the exact miss the row-line
+`mousedown` `preventDefault` exists to prevent.
+
+The title is one line (a native `<input>`), the body an optional note
 beneath it (a native `<textarea>`), both plain text. The native fields mean
 iOS draws its own keyboard accessory bar (previous / next / Done) above the
 keyboard, and that is the only bar on screen — the app no longer draws its
