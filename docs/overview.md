@@ -1755,8 +1755,9 @@ hint), the "Disable achievements" toggle that drives
 new items at top / bottom" choice that drives `addItemPosition` (moved
 here from the General tab), the **Sort checked items to the bottom**
 toggle (`sortCheckedToBottom`), the **Disable item notes** toggle
-(`disableItemNotes`), and the **Show item count** toggle
-(`showItemCount`).
+(`disableItemNotes`), the **Show item count** toggle
+(`showItemCount`), and the **Count categories** toggle
+(`countCategories`).
 
 ### Sort checked items to the bottom
 
@@ -1823,7 +1824,8 @@ stray number. The **Show item count** toggle on the Lists tab
 for a cleaner header; the flag rides the checklist context
 (`showItemCount` on `ChecklistContextValue`, set by `App` from the
 settings) to `ChecklistView`, which drops the badge when it's off. Hiding
-it unlocks the **Lost Count** achievement.
+it unlocks the **Lost Count** achievement. Which lines the fraction counts
+is a separate preference — see [Count categories](#count-categories).
 
 Pressing the badge opens a small **bulk-action dropdown** (a `FloatingPanel`
 menu anchored to the badge's right edge, so it opens down-and-to-the-left
@@ -1837,6 +1839,32 @@ when the list already matches. The menu greys out **Check all** once
 everything is checked and **Uncheck all** when nothing is, and the badge
 stays a static, non-interactive readout when there are no items. Using
 **Check all** unlocks the **All In** achievement.
+
+### Count categories
+
+What that fraction counts. A [category header](#categories) is a
+grouping label rather than a line of work, so by default it is left out of
+**both** halves of the tally: six groceries under two headers read as `0/6`,
+not `0/8`, and ticking every grocery finishes the list at `6/6` instead of
+stalling at `6/8` behind two headers nobody meant to check. The **Count
+categories** toggle on the Lists tab (`countCategories` on the synced
+`Settings`, **off** by default) counts the headers like any other line for a
+user who does treat them as items — the behaviour the app had before the
+setting existed.
+
+The filtering happens where the counts are derived, not in the view:
+`useChecklist` (`src/app/use-checklist.ts`) takes `countCategories` from
+`App` and runs the open list's display tree through the pure
+`countableItems` (`src/domain/item-display.ts`), which flattens the tree and
+drops `category` items unless asked to keep them. `visibleCount` /
+`checkedCount` reach `ChecklistView` already filtered, so `ItemCount` renders
+the fraction it is given. A list with no categories counts identically either
+way. Turning the setting on unlocks the **Head Count** achievement.
+
+This governs the header badge only. The sidebar's per-list "remaining" badge
+and the native widget's ring still count every visible line — both read the
+separate `progress` helper (`src/domain/item-display.ts`), which the setting
+does not reach.
 
 ### Include archived in copy
 

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { render as mount } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
@@ -28,6 +29,29 @@ describe("AddItemForm", () => {
     fireEvent.change(input, { target: { value: "Buy milk" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onAdd).toHaveBeenCalledWith("Buy milk");
+  });
+
+  // A touch keyboard only opens for a `focus()` that still carries the user
+  // activation of the tap that asked for it, so the composer has to grab focus
+  // in the commit itself rather than in a passive effect that runs a task
+  // later. Mount bare — outside testing-library's `act()`, which would flush
+  // both kinds — so only the synchronous half of the commit has run: seeing
+  // the field already focused is what proves the focus wasn't deferred.
+  it("focuses the field during the commit, so the tap still opens the keyboard", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    mount(
+      <AddItemForm
+        onAdd={noop}
+        onAddWithBody={noop}
+        onImport={() => 0}
+        onClose={noop}
+      />,
+      host,
+    );
+    expect(document.activeElement).toBe(host.querySelector("input"));
+    mount(null, host);
+    host.remove();
   });
 
   // The draft row is focused programmatically right after Enter commits the

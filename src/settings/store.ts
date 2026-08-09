@@ -71,6 +71,11 @@ export const DEFAULT_DISABLE_ITEM_NOTES = false;
 // opt-out hides it for a cleaner header without changing any behaviour.
 export const DEFAULT_SHOW_ITEM_COUNT = true;
 
+// Category headers stay out of that counter by default — a header groups the
+// work, it isn't work itself, so a grouped list still finishes at n/n. The
+// opt-in counts them like any other line.
+export const DEFAULT_COUNT_CATEGORIES = false;
+
 // Copying a list leaves the archived items out by default — the clipboard
 // gets just the active task lines. The opt-in appends the `## Archived`
 // section to the copied markdown.
@@ -108,6 +113,7 @@ export function defaultSettings(): Settings {
     disableToasts: DEFAULT_DISABLE_TOASTS,
     disableItemNotes: DEFAULT_DISABLE_ITEM_NOTES,
     showItemCount: DEFAULT_SHOW_ITEM_COUNT,
+    countCategories: DEFAULT_COUNT_CATEGORIES,
     includeArchivedInCopy: DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
     capitalizeItems: DEFAULT_CAPITALIZE_ITEMS,
     deadlineReminders: DEFAULT_DEADLINE_REMINDERS,
@@ -266,6 +272,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.showItemCount === "boolean"
         ? raw.showItemCount
         : DEFAULT_SHOW_ITEM_COUNT,
+    countCategories:
+      typeof raw.countCategories === "boolean"
+        ? raw.countCategories
+        : DEFAULT_COUNT_CATEGORIES,
     includeArchivedInCopy:
       typeof raw.includeArchivedInCopy === "boolean"
         ? raw.includeArchivedInCopy

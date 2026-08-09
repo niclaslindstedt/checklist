@@ -72,6 +72,13 @@ export type Settings = {
   // total) beside the copy and sync glyphs. On by default; the opt-out
   // hides the badge for a cleaner header without affecting any behaviour.
   showItemCount: boolean;
+  // Whether category headers count toward the header's checked / total
+  // tally. Off by default: a category is a grouping label, not a line of
+  // work, so a list of six groceries under two headers reads as "0/6" and
+  // finishes at "6/6" once the groceries are ticked — the two unchecked
+  // headers no longer hold it back. Turning it on counts every visible line,
+  // headers included (the behaviour before this setting existed).
+  countCategories: boolean;
   // Whether the copy affordance includes the archived items (the
   // `## Archived` section) in the markdown it puts on the clipboard. Off by
   // default — a copied list is just its active `- [ ] / - [x]` lines; the

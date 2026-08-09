@@ -409,6 +409,10 @@ const achievements = {
       name: "Lost Count",
       condition: "Hide the item count in the list header.",
     },
+    headCount: {
+      name: "Head Count",
+      condition: "Turn on counting category headers in the item count.",
+    },
     copyTheArchive: {
       name: "Copy the Archive",
       condition: "Turn on including archived items when you copy a list.",

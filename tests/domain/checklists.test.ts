@@ -11,6 +11,7 @@ import {
   archivedByChecklist,
   archivedChecklists,
   archivedItems,
+  countableItems,
   createChecklist,
   deleteChecked,
   deleteItem,
@@ -1427,6 +1428,45 @@ describe("category headers", () => {
     it("skips a category that has been archived away", () => {
       const c = setArchived(withCategory(), "cat", true, NOW);
       expect(activeCategories(c)).toEqual([]);
+    });
+  });
+
+  describe("countableItems", () => {
+    it("leaves the headers out of the tally by default", () => {
+      const items = activeItems(withCategory());
+      // The header "ICA" is dropped; its two children and the loose item stay.
+      expect(countableItems(items, false).map((it) => it.id)).toEqual([
+        "milk",
+        "bread",
+        "loose",
+      ]);
+    });
+
+    it("counts every line, headers included, when asked to", () => {
+      const items = activeItems(withCategory());
+      expect(countableItems(items, true).map((it) => it.id)).toEqual([
+        "cat",
+        "milk",
+        "bread",
+        "loose",
+      ]);
+    });
+
+    it("lets a grouped list finish at n/n once its real items are checked", () => {
+      let c = withCategory();
+      c = toggleItem(c, "milk", NOW);
+      c = toggleItem(c, "bread", NOW);
+      c = toggleItem(c, "loose", NOW);
+      // The "ICA" header cascaded to checked along with its children, but the
+      // point is the tally: three of three, not three (or four) of four.
+      const counted = countableItems(activeItems(c), false);
+      expect(counted).toHaveLength(3);
+      expect(counted.filter((it) => it.checked)).toHaveLength(3);
+    });
+
+    it("is unchanged for a list with no categories", () => {
+      const plain = activeItems(addItem(base, { id: "i1", title: "A" }, NOW));
+      expect(countableItems(plain, false)).toEqual(countableItems(plain, true));
     });
   });
 

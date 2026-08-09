@@ -691,6 +691,17 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
   {
+    id: "headCount",
+    tier: "expert",
+    glyph: LayersGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.countCategories],
+      predicate: (prev, next) =>
+        !prev.settings.countCategories && next.settings.countCategories,
+    },
+  },
+  {
     id: "copyTheArchive",
     tier: "expert",
     glyph: ArchiveGlyph,
