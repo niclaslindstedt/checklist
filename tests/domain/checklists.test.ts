@@ -1470,6 +1470,22 @@ describe("category headers", () => {
     });
   });
 
+  describe("progress over a grouped list", () => {
+    it("counts the headers by default, and drops them when asked", () => {
+      const c = withCategory();
+      expect(progress(c)).toEqual({ checked: 0, total: 4 });
+      expect(progress(c, false)).toEqual({ checked: 0, total: 3 });
+    });
+
+    it("reaches n/n without the headers being ticked", () => {
+      let c = withCategory();
+      c = toggleItem(c, "milk", NOW);
+      c = toggleItem(c, "bread", NOW);
+      c = toggleItem(c, "loose", NOW);
+      expect(progress(c, false)).toEqual({ checked: 3, total: 3 });
+    });
+  });
+
   it("bulk sweeps no-op when the only checked thing is a category", () => {
     let c = addItem(base, { id: "cat", title: "ICA" }, NOW);
     c = setCategory(c, "cat", true, NOW);

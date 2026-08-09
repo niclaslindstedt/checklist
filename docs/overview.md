@@ -1861,10 +1861,20 @@ drops `category` items unless asked to keep them. `visibleCount` /
 the fraction it is given. A list with no categories counts identically either
 way. Turning the setting on unlocks the **Head Count** achievement.
 
-This governs the header badge only. The sidebar's per-list "remaining" badge
-and the native widget's ring still count every visible line — both read the
-separate `progress` helper (`src/domain/item-display.ts`), which the setting
-does not reach.
+The **sidebar's per-list badge** follows the same rule, so the two agree: a
+list the header calls finished no longer wears a "2 remaining" badge for its
+two headers. `useChecklistLists` (`src/app/use-checklist-lists.ts`) takes the
+same flag and passes it to `progress` (`src/domain/item-display.ts`), whose
+`countCategories` parameter drops the headers before the `checked` / `total`
+split; `ChecklistSummary.remaining` is `total - checked` off that.
+
+Two counts deliberately stay out of it. `progress` defaults to counting
+headers, so the **native widget's ring** (`buildWidgetSnapshot`,
+`src/domain/widget-snapshot.ts`) still tallies every visible line — the
+preference is not mirrored out to the widget. So does a **template's**
+sidebar badge (`TemplateSummary.count`), which reports how many items the
+blueprint will stamp out — headers included, because they are stamped out
+too — rather than progress through them.
 
 ### Include archived in copy
 

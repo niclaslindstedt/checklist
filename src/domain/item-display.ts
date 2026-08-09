@@ -245,13 +245,19 @@ export function isComplete(checklist: ItemList): boolean {
 
 /**
  * Checked / total counts over the active (non-archived) items, sub-items
- * included — every visible checkable line counts toward the header's tally.
+ * included — every visible checkable line counts toward the tally. Category
+ * headers count only when `countCategories` says so (see `countableItems`);
+ * the default keeps them in for callers that report what a list *contains*
+ * rather than how far through it the user is.
  */
-export function progress(checklist: ItemList): {
+export function progress(
+  checklist: ItemList,
+  countCategories = true,
+): {
   checked: number;
   total: number;
 } {
-  const visible = flattenItems(activeItems(checklist));
+  const visible = countableItems(activeItems(checklist), countCategories);
   return {
     checked: visible.filter((it) => it.checked).length,
     total: visible.length,
