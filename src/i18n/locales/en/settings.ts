@@ -70,7 +70,7 @@ const settings = {
       "Show the progress counter (checked / total) in the list header.",
     countCategories: "Count categories",
     countCategoriesHint:
-      "Count category headers in the header’s checked / total counter. Off by default — a header groups the work rather than being work, so a grouped list still finishes at n/n.",
+      "Count category headers in the list header’s checked / total counter and the sidebar’s badge. Off by default — a header groups the work rather than being work, so a grouped list still finishes at n/n.",
     includeArchivedInCopy: "Include archived in copy",
     includeArchivedInCopyHint:
       "When you copy a list, append its archived items under an “Archived” heading. Off by default — a copy holds just the active items.",

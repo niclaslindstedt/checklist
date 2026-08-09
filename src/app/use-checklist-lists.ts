@@ -64,7 +64,11 @@ import { newId, now } from "./side-effects.ts";
 export interface ChecklistSummary {
   id: string;
   name: string;
-  /** Active (non-archived) items still unchecked — the switcher's badge. */
+  /**
+   * Active (non-archived) items still unchecked — the switcher's badge.
+   * Category headers are left out unless the "Count categories" preference
+   * is on, so the badge matches the header's checked / total tally.
+   */
   remaining: number;
   /** The folder this list is grouped under, or undefined when ungrouped. */
   folderId?: string;
@@ -248,9 +252,24 @@ export function useChecklistLists(deps: {
    * each namespace remembers its own selection across reloads and app updates.
    */
   namespace: string;
+  /**
+   * Whether category headers count toward a list's `remaining` badge. Mirrors
+   * the synced "Count categories" preference, so the sidebar agrees with the
+   * checklist header rather than badging a finished list with its headers.
+   */
+  countCategories: boolean;
 }): ChecklistLists {
-  const { doc, docRef, setDoc, scheduleSave, record, notify, t, namespace } =
-    deps;
+  const {
+    doc,
+    docRef,
+    setDoc,
+    scheduleSave,
+    record,
+    notify,
+    t,
+    namespace,
+    countCategories,
+  } = deps;
 
   // Which list the user is looking at. Device-local, restored from the
   // per-namespace cursor on mount: a selection that points at no surviving list
@@ -700,27 +719,32 @@ export function useChecklistLists(deps: {
     [docRef, commit, t, activeId, setActiveId],
   );
 
-  const summarize = (c: Checklist): ChecklistSummary => {
-    const { checked, total } = progress(c);
-    const summary: ChecklistSummary = {
-      id: c.id,
-      name: c.name,
-      remaining: total - checked,
-    };
-    if (c.folderId) summary.folderId = c.folderId;
-    if (c.glyph) summary.glyph = c.glyph;
-    if (c.color) summary.color = c.color;
-    return summary;
-  };
+  // Held stable across renders so the two summary memos below can depend on it
+  // and still only recompute when the document or the counting rule moves.
+  const summarize = useCallback(
+    (c: Checklist): ChecklistSummary => {
+      const { checked, total } = progress(c, countCategories);
+      const summary: ChecklistSummary = {
+        id: c.id,
+        name: c.name,
+        remaining: total - checked,
+      };
+      if (c.folderId) summary.folderId = c.folderId;
+      if (c.glyph) summary.glyph = c.glyph;
+      if (c.color) summary.color = c.color;
+      return summary;
+    },
+    [countCategories],
+  );
 
   const checklists = useMemo(
     () => doc.checklists.filter((c) => !c.archived).map(summarize),
-    [doc.checklists],
+    [doc.checklists, summarize],
   );
 
   const archivedChecklists = useMemo(
     () => doc.checklists.filter((c) => c.archived).map(summarize),
-    [doc.checklists],
+    [doc.checklists, summarize],
   );
 
   // Templates never archive — a blueprint is either kept or deleted — so the

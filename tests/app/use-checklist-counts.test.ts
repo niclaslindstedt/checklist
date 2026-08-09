@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-// The header's checked / total tally, as the composer hook derives it. The
-// interesting case is a **categorised** list: a category header is a grouping
-// label rather than a line of work, so by default it stays out of both halves
-// of the fraction — and the "Count categories" preference puts it back.
-import { act, renderHook } from "@testing-library/preact";
+// The two item counts the composer hook derives — the header's checked /
+// total tally and the sidebar switcher's "remaining" badge. The interesting
+// case is a **categorised** list: a category header is a grouping label rather
+// than a line of work, so by default it stays out of both counts — and the
+// "Count categories" preference puts it back in both.
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -90,5 +91,33 @@ describe("useChecklist header counts", () => {
     });
     // Toggling the header cascades to its two children: three of four.
     expect(result.current.checkedCount).toBe(3);
+  });
+});
+
+// The sidebar switcher badges each list with how many items are still
+// outstanding. It has to follow the same rule as the header, or a list the
+// header calls finished still wears a badge for its category headers.
+describe("side-menu remaining badge", () => {
+  it("leaves category headers out of the badge by default", async () => {
+    const { result } = renderCounts(false);
+    await act(async () => {});
+    expect(result.current.checklists[0]!.remaining).toBe(3);
+  });
+
+  it("clears the badge once the real items are checked", async () => {
+    const { result } = renderCounts(false);
+    await act(async () => {});
+    act(() => {
+      result.current.checkAll();
+    });
+    await waitFor(() =>
+      expect(result.current.checklists[0]!.remaining).toBe(0),
+    );
+  });
+
+  it("counts the headers when the preference is on", async () => {
+    const { result } = renderCounts(true);
+    await act(async () => {});
+    expect(result.current.checklists[0]!.remaining).toBe(4);
   });
 });

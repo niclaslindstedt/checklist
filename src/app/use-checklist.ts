@@ -203,6 +203,7 @@ export function useChecklist(
     notify,
     t,
     namespace,
+    countCategories,
   });
   // What the view renders and the edit verbs mutate: the open template when
   // there is one, otherwise the active checklist. A template mirrors a

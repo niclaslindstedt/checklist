@@ -66,7 +66,7 @@ const settings: SettingsCatalog = {
       "Visa förloppsräknaren (bockade / totalt) i listans rubrik.",
     countCategories: "Räkna kategorier",
     countCategoriesHint:
-      "Räkna kategorirubriker i rubrikens räknare (bockade / totalt). Av som standard – en rubrik grupperar arbetet snarare än att vara arbete, så en grupperad lista blir ändå klar på n/n.",
+      "Räkna kategorirubriker i listrubrikens räknare (bockade / totalt) och i sidomenyns bricka. Av som standard – en rubrik grupperar arbetet snarare än att vara arbete, så en grupperad lista blir ändå klar på n/n.",
     includeArchivedInCopy: "Ta med arkiverade vid kopiering",
     includeArchivedInCopyHint:
       "När du kopierar en lista läggs dess arkiverade poster till under en rubrik ”Arkiverade”. Av som standard – en kopia innehåller bara de aktiva posterna.",
