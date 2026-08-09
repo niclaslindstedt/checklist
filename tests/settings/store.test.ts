@@ -167,6 +167,20 @@ describe("validateSettings", () => {
     expect(validateSettings({ showItemCount: "no" }).showItemCount).toBe(true);
   });
 
+  it("leaves categories out of the count by default and honours an explicit boolean", () => {
+    expect(defaultSettings().countCategories).toBe(false);
+    expect(validateSettings({}).countCategories).toBe(false);
+    expect(validateSettings({ countCategories: true }).countCategories).toBe(
+      true,
+    );
+  });
+
+  it("falls back to uncounted categories on a non-boolean value", () => {
+    expect(validateSettings({ countCategories: "yes" }).countCategories).toBe(
+      false,
+    );
+  });
+
   it("excludes archived from a copy by default and honours an explicit boolean", () => {
     expect(defaultSettings().includeArchivedInCopy).toBe(false);
     expect(validateSettings({}).includeArchivedInCopy).toBe(false);

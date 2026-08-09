@@ -1,5 +1,5 @@
 import {
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -127,7 +127,18 @@ export function AddItemForm({
     setDismissed(false);
   };
 
-  useEffect(() => {
+  // Grab focus the moment the draft row mounts, so the soft keyboard comes up
+  // with it and the user can type straight away.
+  //
+  // This *must* be a layout effect, not a passive one. A touch keyboard only
+  // opens for a `focus()` that still carries the user activation of the tap
+  // that asked for it, and a passive effect is deferred to a later task
+  // (Preact schedules them after paint) — by then the activation is long gone,
+  // so on iOS / Android the field would light up focused with no keyboard
+  // under it, and the user has to tap the row a second time. A layout effect
+  // runs synchronously in the commit that the tap's state update triggers,
+  // which keeps the focus inside the activation window.
+  useLayoutEffect(() => {
     inputRef.current?.focus();
   }, []);
 

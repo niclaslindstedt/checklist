@@ -193,6 +193,7 @@ function AppShell() {
     notify,
     settings.sortCheckedToBottom,
     storage.activeNamespace,
+    settings.countCategories,
   );
 
   // Browser back / forward, and the bookmarkable URL. Where the app *is* —

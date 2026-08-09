@@ -258,6 +258,25 @@ export function progress(checklist: ItemList): {
   };
 }
 
+/**
+ * The lines of a visible item tree that count toward a progress tally,
+ * flattened depth-first — every sub-item counts, exactly as it renders.
+ *
+ * A **category** header is a grouping label rather than a line of work, so by
+ * default it is left out: a list of six groceries under two headers reads as
+ * `0/6`, not `0/8`, and ticking every grocery finishes the list even though
+ * the two headers sit there unchecked. `countCategories` (the "Count
+ * categories" preference) opts the headers back in for a user who does treat
+ * them as items.
+ */
+export function countableItems(
+  items: readonly ChecklistItem[],
+  countCategories: boolean,
+): ChecklistItem[] {
+  const flat = flattenItems(items);
+  return countCategories ? flat : flat.filter((it) => !it.category);
+}
+
 /** One row in the flattened, depth-tagged view the checklist list renders. */
 export interface DisplayRow {
   item: ChecklistItem;

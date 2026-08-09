@@ -76,6 +76,7 @@ export {
 export type { DeadlineStatus } from "./deadlines.ts";
 
 export {
+  countableItems,
   displayItems,
   flattenForDisplay,
   floatDatedToBottom,

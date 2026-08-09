@@ -16,8 +16,8 @@ import { unlock } from "../achievements/bus.ts";
 import {
   type ArchivedGroup,
   archivedByChecklist,
+  countableItems,
   displayItems,
-  flattenItems,
 } from "../domain/checklists.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -67,7 +67,8 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
   items: ChecklistItem[];
   /**
    * How many visible items there are in total, sub-items included — the
-   * denominator of the header's checked/total count.
+   * denominator of the header's checked/total count. Category headers are
+   * counted only when the "Count categories" preference is on.
    */
   visibleCount: number;
   /**
@@ -76,7 +77,7 @@ export interface UseChecklist extends ChecklistEdits, ChecklistLists {
    * nothing archived are omitted.
    */
   archivedGroups: ArchivedGroup[];
-  /** How many visible items are checked. */
+  /** How many of those counted items are checked — the numerator. */
   checkedCount: number;
   /**
    * Re-read the document from the active backend, replacing what's on
@@ -127,6 +128,7 @@ export function useChecklist(
   notify: Notify = noopNotify,
   sortCheckedToBottom = false,
   namespace: string = DEFAULT_NAMESPACE_SLUG,
+  countCategories = true,
 ): UseChecklist {
   const t = useT();
 
@@ -232,8 +234,12 @@ export function useChecklist(
   // list the item came from (see `useChecklistEdits`).
   const archivedGroups = useMemo(() => archivedByChecklist(doc), [doc]);
   // Counts span the whole tree, so a checked or extant sub-item counts toward
-  // the header's checked/total tally.
-  const flat = useMemo(() => flattenItems(items), [items]);
+  // the header's checked/total tally. Category headers are left out unless the
+  // user asked for them (see `countableItems`).
+  const flat = useMemo(
+    () => countableItems(items, countCategories),
+    [items, countCategories],
+  );
   const checkedCount = useMemo(
     () => flat.filter((it) => it.checked).length,
     [flat],

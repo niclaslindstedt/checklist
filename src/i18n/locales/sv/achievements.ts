@@ -403,6 +403,10 @@ const achievements: AchievementsCatalog = {
       name: "Tappat räkningen",
       condition: "Dölj antalet poster i listans rubrik.",
     },
+    headCount: {
+      name: "Huvudräkning",
+      condition: "Slå på att räkna kategorirubriker i antalet poster.",
+    },
     copyTheArchive: {
       name: "Kopiera arkivet",
       condition:

@@ -53,6 +53,12 @@ export function ListsTab({
           onChange={(next) => onUpdate("showItemCount", next)}
         />
         <ToggleRow
+          label={t("settings.lists.countCategories")}
+          hint={t("settings.lists.countCategoriesHint")}
+          checked={settings.countCategories}
+          onChange={(next) => onUpdate("countCategories", next)}
+        />
+        <ToggleRow
           label={t("settings.lists.includeArchivedInCopy")}
           hint={t("settings.lists.includeArchivedInCopyHint")}
           checked={settings.includeArchivedInCopy}
