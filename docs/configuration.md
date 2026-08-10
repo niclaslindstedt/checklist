@@ -16,7 +16,7 @@ at the app-folder root so they travel with the synced/shared folder — see
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:gdrive:token`         | string                                | (unset)       | Google Drive access token from the GIS popup. Short-lived (~1h); the user reconnects when it expires. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
-| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) `disableToasts` (default `false`), `disableAchievements` (default `false`), and `transforms` (the display-transform rules, empty by default — see **Transform** below). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. On a file-based backend this same blob is mirrored to `settings.json` at the app-folder root (below). |
+| `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) `disableToasts` (default `false`), `disableAchievements` (default `false`), and `transforms` (the display-transform rules per namespace, empty by default — see **Transform** below). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. On a file-based backend this same blob is mirrored to `settings.json` at the app-folder root (below). |
 | `checklist:settings:autoArchive` | `boolean`                             | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
 | `checklist:settings:locale`      | BCP-47 string                         | browser value | Override the formatting locale (does not change UI strings; this app is English-only for now). |
 
@@ -92,9 +92,16 @@ stored. Each rule is a pattern plus what a match becomes:
 Rules run top to bottom, and a run one rule has claimed is left alone by
 the rules below it. A rule can be parked (unchecked) without being
 deleted. The editor previews the draft rule against sample text before you
-save it, and offers an **Insert** dropdown of regex building blocks. The
-list persists to `checklist:settings:v1` as `transforms`, so it syncs with
-the rest of the settings.
+save it, and offers an **Insert** dropdown of regex building blocks.
+
+Rules belong to the **namespace** they were written in, so a work
+namespace's ticket links and a home namespace's rules stay apart, and only
+the namespace you're in has its rules applied. With more than one
+namespace around, a **Rules for** picker at the top of the tab switches
+which namespace's rules you're editing; deleting a namespace deletes its
+rules. All of them persist to `checklist:settings:v1` as `transforms` (an
+object keyed by namespace slug), so they sync with the rest of the
+settings.
 
 > **Masking hides text on screen only.** The original stays in the stored
 > document, in the synced file, and in the clipboard copy — use

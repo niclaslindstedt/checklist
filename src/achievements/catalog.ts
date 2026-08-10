@@ -8,6 +8,7 @@
 // the renderer composes the lookup by `id`. `hasLearnMore: true` flags entries
 // that carry an expanded body.
 
+import { hasAnyTransforms, type TransformRules } from "../domain/transforms.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import {
   AccessibilityGlyph,
@@ -116,6 +117,12 @@ const hasGatedItem = (snap: Snapshot) =>
     snap,
     (it) => typeof it.notBefore === "string" && it.notBefore !== "",
   );
+
+// How many namespaces carry transform rules of their own — two is the point
+// at which the user is deliberately keeping one namespace's rules off
+// another's lists.
+const namespacesWithTransforms = (rules: TransformRules) =>
+  Object.values(rules).filter((list) => list.length > 0).length;
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
@@ -752,8 +759,23 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       kind: "derived",
       slices: (s) => [s.settings.transforms],
       predicate: (prev, next) =>
-        prev.settings.transforms.length === 0 &&
-        next.settings.transforms.length > 0,
+        !hasAnyTransforms(prev.settings.transforms) &&
+        hasAnyTransforms(next.settings.transforms),
+    },
+  },
+  // Rules written in two namespaces — the whole point of scoping them, with
+  // work's ticket links and home's masks side by side, neither rewriting the
+  // other's lists.
+  {
+    id: "codeSwitcher",
+    tier: "expert",
+    glyph: LayersGlyph,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.transforms],
+      predicate: (prev, next) =>
+        namespacesWithTransforms(prev.settings.transforms) < 2 &&
+        namespacesWithTransforms(next.settings.transforms) >= 2,
     },
   },
   {

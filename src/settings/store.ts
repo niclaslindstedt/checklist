@@ -33,7 +33,9 @@ import {
   type MaskStyle,
   type TransformKind,
   type TransformRule,
+  type TransformRules,
 } from "../domain/transforms.ts";
+import { DEFAULT_NAMESPACE_SLUG } from "../storage/namespaces.ts";
 import type { AddItemPosition, MenuButtonPosition, Settings } from "./types.ts";
 
 const SETTINGS_KEY = "checklist:settings:v1";
@@ -107,8 +109,8 @@ export const DEFAULT_TRANSFORM_KIND: TransformKind = "link";
 // (`076****123`) — enough to recognise the value without revealing it.
 export const DEFAULT_MASK_STYLE: MaskStyle = "edges";
 
-// How many transform rules are kept. A guard on a corrupt or hand-edited
-// blob rather than a limit a user is expected to hit.
+// How many transform rules are kept per namespace. A guard on a corrupt or
+// hand-edited blob rather than a limit a user is expected to hit.
 const MAX_TRANSFORMS = 200;
 
 // Native deadline reminders are on by default. The opt-out (shown only in the
@@ -144,7 +146,7 @@ export function defaultSettings(): Settings {
     countCategories: DEFAULT_COUNT_CATEGORIES,
     includeArchivedInCopy: DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
     capitalizeItems: DEFAULT_CAPITALIZE_ITEMS,
-    transforms: [],
+    transforms: {},
     deadlineReminders: DEFAULT_DEADLINE_REMINDERS,
     reminderLeadDays: [...DEFAULT_REMINDER_LEAD_DAYS],
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
@@ -188,13 +190,34 @@ function validLeadDays(v: unknown): number[] {
   return [...kept].sort((a, b) => a - b);
 }
 
-// Coerce a stored value into the transform-rule list. A rule needs an id and
-// a non-empty pattern to mean anything, so an entry missing either is dropped
-// (as is a duplicate id, which would break the list keys and the edit target);
-// every other field falls back to its default so a hand-edited or older blob
-// still loads. Whether the pattern actually *compiles* isn't checked here —
-// an invalid one is kept, shown as broken in the editor, and skipped when
-// rendering, so a typo doesn't silently delete the user's rule.
+// Coerce a stored value into the namespace-keyed transform rules. A blob
+// written before transforms were namespace-scoped holds a bare list; it
+// belongs to the default namespace, which is the only one a single-namespace
+// user has. A namespace whose list ends up empty is dropped, so "never had a
+// rule" and "deleted the last rule" persist the same way.
+function validTransformRules(v: unknown): TransformRules {
+  if (Array.isArray(v)) {
+    const legacy = validTransforms(v);
+    return legacy.length > 0 ? { [DEFAULT_NAMESPACE_SLUG]: legacy } : {};
+  }
+  if (!isRecord(v)) return {};
+  const out: TransformRules = {};
+  for (const [slug, list] of Object.entries(v)) {
+    if (slug === "") continue;
+    const rules = validTransforms(list);
+    if (rules.length > 0) out[slug] = rules;
+  }
+  return out;
+}
+
+// Coerce a stored value into one namespace's transform-rule list. A rule
+// needs an id and a non-empty pattern to mean anything, so an entry missing
+// either is dropped (as is a duplicate id, which would break the list keys and
+// the edit target); every other field falls back to its default so a
+// hand-edited or older blob still loads. Whether the pattern actually
+// *compiles* isn't checked here — an invalid one is kept, shown as broken in
+// the editor, and skipped when rendering, so a typo doesn't silently delete
+// the user's rule.
 function validTransforms(v: unknown): TransformRule[] {
   if (!Array.isArray(v)) return [];
   const out: TransformRule[] = [];
@@ -358,7 +381,7 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.capitalizeItems === "boolean"
         ? raw.capitalizeItems
         : DEFAULT_CAPITALIZE_ITEMS,
-    transforms: validTransforms(raw.transforms),
+    transforms: validTransformRules(raw.transforms),
     deadlineReminders:
       typeof raw.deadlineReminders === "boolean"
         ? raw.deadlineReminders

@@ -2,10 +2,10 @@
 
 A transform is a rule that changes how your items **read** without
 changing what they **say**. You write it once in Settings → Transform, and
-from then on every list you open is drawn with it applied. The text in the
-list itself never moves: open an item to edit it and the original is right
-there, and the copy you take, the file that syncs, and the export all keep
-it too.
+from then on every list in that namespace is drawn with it applied. The
+text in the list itself never moves: open an item to edit it and the
+original is right there, and the copy you take, the file that syncs, and
+the export all keep it too.
 
 Each rule starts with a pattern — a regular expression — describing the
 text to look for. Round brackets capture a piece of the match you want to
@@ -79,3 +79,19 @@ written, it just stops being applied.
 A rule that no longer makes sense as a regular expression (an unclosed
 bracket after an edit, say) is flagged in the list and quietly skipped
 while it's broken, so a typo can never make your lists unreadable.
+
+## One set of rules per namespace
+
+Work and home rarely want the same rules. A ticket reference that should
+open your issue tracker is noise on a shopping list, and a rule that masks
+a door code has no business rewriting a work list. So rules belong to the
+namespace you wrote them in: only the namespace you're currently in has
+its rules applied, and switching namespace switches the rules along with
+the lists.
+
+Once you have a second namespace, the tab grows a **Rules for** picker
+above the list. It opens on the namespace you're in — the usual case is
+writing rules for the lists in front of you — and switching it lets you
+write Home's rules without leaving Work. Each namespace in the picker
+shows how many rules it holds, so it's obvious where your rules live.
+Deleting a namespace deletes its rules with it.

@@ -86,6 +86,11 @@ const settings: SettingsCatalog = {
     blurb:
       "Omvandlingsregler ändrar hur dina poster läses — gör en referens till en länk, byt ut en fras mot en annan, eller dölj något känsligt bakom en mask. Dina listor ändras aldrig: den sparade texten, kopian du tar och redigeraren behåller originalet.",
     rulesSection: "Regler",
+    namespaceLabel: "Regler för",
+    namespaceHint:
+      "Regler hör till en namnrymd, så jobb och hem kan ha var sina. Bara reglerna i den namnrymd du är i används.",
+    namespaceCountOne: "{count} regel",
+    namespaceCountOther: "{count} regler",
     empty: "Inga omvandlingar än.",
     add: "Lägg till omvandling",
     editRule: "Redigera ”{pattern}”",

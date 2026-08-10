@@ -5,8 +5,11 @@ import {
   applyTransforms,
   compilePattern,
   expandTemplate,
+  hasAnyTransforms,
   maskValue,
+  namespaceTransforms,
   safeTransformHref,
+  setNamespaceTransforms,
   transformRuleError,
   transformsMatch,
   type TransformRule,
@@ -272,5 +275,39 @@ describe("activeTransforms / transformsMatch", () => {
   it("reports whether anything on screen would change", () => {
     expect(transformsMatch("Fix #134", [rule()])).toBe(true);
     expect(transformsMatch("nothing", [rule()])).toBe(false);
+  });
+});
+
+describe("namespace-scoped rules", () => {
+  it("reads a namespace's rules, and nothing for one that has none", () => {
+    const rules = { work: [rule({ id: "w" })] };
+    expect(namespaceTransforms(rules, "work").map((r) => r.id)).toEqual(["w"]);
+    expect(namespaceTransforms(rules, "home")).toEqual([]);
+  });
+
+  it("hands back the same empty list every time, so a memo stays stable", () => {
+    expect(namespaceTransforms({}, "home")).toBe(
+      namespaceTransforms({}, "work"),
+    );
+  });
+
+  it("replaces one namespace's rules without touching the others", () => {
+    const before = { work: [rule({ id: "w" })], home: [rule({ id: "h" })] };
+    const after = setNamespaceTransforms(before, "work", [rule({ id: "w2" })]);
+    expect(after.work?.map((r) => r.id)).toEqual(["w2"]);
+    expect(after.home).toBe(before.home);
+    // The input is left alone — the caller's copy is still what it was.
+    expect(before.work?.map((r) => r.id)).toEqual(["w"]);
+  });
+
+  it("drops the namespace's entry once its last rule goes", () => {
+    const after = setNamespaceTransforms({ work: [rule()] }, "work", []);
+    expect(after).toEqual({});
+  });
+
+  it("knows whether any namespace has a rule at all", () => {
+    expect(hasAnyTransforms({})).toBe(false);
+    expect(hasAnyTransforms({ work: [] })).toBe(false);
+    expect(hasAnyTransforms({ work: [], home: [rule()] })).toBe(true);
   });
 });

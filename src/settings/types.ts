@@ -8,7 +8,7 @@
 // shouldn't travel with an export or sync, so they sit in their own
 // modules under `src/dev/`.
 
-import type { TransformRule } from "../domain/transforms.ts";
+import type { TransformRules } from "../domain/transforms.ts";
 import type {
   CustomTheme,
   FontFamilyId,
@@ -111,9 +111,12 @@ export type Settings = {
   // time only: the stored document, the clipboard copy, and the editor all
   // keep the original text, so a rule can be changed or dropped at any point
   // without data loss. Empty by default. Order matters — rules run top to
-  // bottom, and a run one rule has claimed is left alone by the rest. See
-  // `src/domain/transforms.ts`.
-  transforms: TransformRule[];
+  // bottom, and a run one rule has claimed is left alone by the rest.
+  //
+  // Keyed by namespace slug: only the active namespace's rules run, so a work
+  // namespace's ticket links stay out of a home list. A namespace with no
+  // rules has no entry. See `src/domain/transforms.ts`.
+  transforms: TransformRules;
   // Whether native deadline reminders are on. When on (the default), the
   // native wrapper schedules a local OS notification for each item with a due
   // date, firing even while the app is closed, and re-arms repeating deadlines
