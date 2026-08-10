@@ -935,7 +935,14 @@ caller opens inside the already-locked settings `Modal`.
 
 `src/ui/form/DatePicker.tsx` (`DatePicker`) — the custom calendar that
 replaces the native `<input type="date">` for choosing a due date in the
-[timing modal](#timing-deadlines-and-not-before). The app ships its own picker because the
+[timing modal](#timing-deadlines-and-not-before). It takes an optional `min`
+day (`YYYY-MM-DD`, inclusive): days before it render inert, and the month
+and year grids grey out any cell whose whole span falls before it, so a
+user can't navigate into a dead region and wonder why nothing responds.
+An empty bounded picker also seeds on `min`'s month rather than today's,
+so the first selectable day is on screen when it opens. All the
+comparisons are plain string compares — `YYYY-MM-DD` sorts
+lexicographically, the same trick the rest of the date code leans on. The app ships its own picker because the
 native control is unusable inside an iOS **standalone PWA**: its popover
 calendar dismisses itself the instant you tap the month header to
 navigate, so a user had to reopen it and land on the right month by luck
@@ -1283,8 +1290,14 @@ a **due date** picker, and a repeat picker, in that order — and commits
 through the `setTiming` edit verb over the pure `setItemTiming`
 (`src/domain/item-ops.ts`), which takes the whole `TimingPatch` at once.
 The two dates are independent (an item can be gated with no deadline, or
-dated with no gate); only the recurrence is bound to the deadline that
-anchors it, so clearing the date drops the repeat with it. **Clear
+dated with no gate) but they cannot **cross**: a due date earlier than the
+gate describes work that must be finished before it may be started. The
+due-date picker is handed the chosen gate as its `min` (see
+[date picker](#date-picker)) so those days are never offered, and pushing
+the gate past an already-chosen due date **clears** that date in front of
+the user rather than saving an impossible pair. Only the recurrence is
+bound to the deadline that anchors it, so clearing the date drops the
+repeat with it. **Clear
 timing** drops all three. The date fields are the custom
 [date picker](#date-picker), not a native `<input type="date">`. Tapping
 the clock also slides the swiped-open row shut (`useRowSwipe`'s `close`),
@@ -1329,7 +1342,10 @@ Four behaviours hang off an item's timing:
   same rule so no other path can tick it early — `toggleItem` refuses the
   item, a parent's check cascade steps over a held-back descendant, and
   `setAllChecked` leaves held-back items out of a bulk **check** (an
-  uncheck is never gated). The gate is *inclusive*: an item held to today
+  uncheck is never gated). The [widget](#widgets) projections drop held
+  items from both the open list and the due list for the same reason:
+  every widget row is a check-off button, and offering one the app would
+  silently decline is a dead control. The gate is *inclusive*: an item held to today
   is checkable today. Nothing else about the row changes — editing,
   notes, nesting, reordering, archiving and delete all behave normally.
 - **Ordering.** Two opt-out settings (Settings → Lists, both **on** by
@@ -1348,6 +1364,13 @@ Four behaviours hang off an item's timing:
   finished, but a gate says it can't be started at all, and there is
   nothing to do at the top of the list about a task you can't touch. With
   everything on, a list reads: dated, free, held, finished.
+
+  Within one gate day the order falls out of that sequence rather than
+  being stated by either sort: the dated float has already pulled the
+  dated ones forward, and the held sink is stable, so a gate group reads
+  dated-soonest-first and then the undated ones. That is the order you'd
+  want, but it is emergent — `tests/domain/checklists.test.ts` pins it so
+  reordering the transforms can't change it silently.
 - **Recurrence.** Checking a recurring item advances its `deadline` by
   `nextOccurrence` (`src/domain/deadlines.ts`) instead of marking it
   checked — the date-math helpers (`addRecurrence`, clamping the day of

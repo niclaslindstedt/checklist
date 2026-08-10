@@ -100,7 +100,21 @@ title, the hold in grey and the due date in its usual colour. An item
 that's both gated and due sinks with the held-back ones: a due date says
 when work must be finished, but a hold says it can't be started at all,
 and there's nothing useful to do at the top of a list about a task you
-can't touch yet.
+can't touch yet. Where several items share a hold, the ones with a due
+date come first, soonest first.
+
+What the two dates *can't* do is cross. A due date earlier than the hold
+would mean work that has to be finished before it's allowed to start, so
+the due-date calendar simply greys out every day before the hold — whole
+months and years too, so you can't page back into a dead region and
+wonder why nothing responds. The hold day itself is fair game. And if you
+move the hold *past* a due date you'd already picked, that date is
+cleared as you watch, rather than left behind as a deadline you could
+never meet.
+
+Held-back items also stay out of the widgets. Every widget row is a
+button you tap to tick something off, and a held item can't be ticked, so
+it isn't offered — it reappears on the day its hold lifts.
 
 ## Repeating tasks
 

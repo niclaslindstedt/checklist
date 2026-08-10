@@ -18,7 +18,7 @@
 // which items count as "due today" depends solely on the arguments.
 
 import { activeItems } from "./archive-ops.ts";
-import { deadlineStatus, nextOccurrence } from "./deadlines.ts";
+import { deadlineStatus, isHeldBack, nextOccurrence } from "./deadlines.ts";
 import {
   displayItems,
   DOCUMENT_ORDER,
@@ -165,7 +165,11 @@ export function buildWidgetSnapshot(
         open: flattenItems(
           displayItems(active, options.order ?? DOCUMENT_ORDER, now),
         )
-          .filter((it) => !it.checked)
+          // A held-back item can't be checked off (`toggleItem` refuses it),
+          // so the widget must not offer it: its rows are check-off buttons,
+          // and a tap that the app silently declines is a dead control the
+          // user gets no explanation for. It reappears the day its hold lifts.
+          .filter((it) => !it.checked && !isHeldBack(it, now))
           .slice(0, itemLimit)
           .map((it) => {
             const view: WidgetItemView = { id: it.id, title: it.title };
@@ -177,11 +181,14 @@ export function buildWidgetSnapshot(
     : null;
 
   // Due today or overdue across every visible list. A checked item is done —
-  // even if its date has passed — so only unchecked items count.
+  // even if its date has passed — so only unchecked items count, and a
+  // held-back one is skipped for the same reason as above: it is not yet
+  // actionable, so surfacing it as something to tick off would be a lie.
   const due: WidgetDueItem[] = [];
   for (const list of visibleLists) {
     for (const it of flattenItems(activeItems(list))) {
       if (it.checked || !it.deadline) continue;
+      if (isHeldBack(it, now)) continue;
       const deadline = resolvedDeadline(it, now)!;
       const status = deadlineStatus(deadline, now);
       if (status !== "overdue" && status !== "due-soon") continue;
