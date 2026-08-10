@@ -41,7 +41,8 @@ Try it: **<https://checklist.niclaslindstedt.se>**
 - **Transform rules.** Match text with a regular expression
   (**Settings → Transform**) and rewrite how it reads: turn `#134` into a
   link to that issue, swap one phrase for another, or mask a code as
-  `076****123` so it can't be read over your shoulder. Rules change only
+  `076****123` so it can't be read over your shoulder. Each namespace has
+  its own rules, so work and home don't share them. Rules change only
   what's drawn — the stored list, the clipboard copy, and the editor keep
   the original text.
 - **Local folder + markdown files.** Point the app at a folder on your

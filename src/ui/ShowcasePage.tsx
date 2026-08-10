@@ -125,8 +125,10 @@ export function ShowcasePage() {
               link you can tap (a ticket reference becoming its issue page,
               say), into different words, or into a mask like{" "}
               <code className="text-meta">076****123</code> that hides a code or
-              a number from anyone glancing at your screen. The rules change
-              only what is drawn — your lists keep the original text.
+              a number from anyone glancing at your screen. Each namespace keeps
+              its own rules, so the ones you write for work stay out of your
+              home lists. The rules change only what is drawn — your lists keep
+              the original text.
             </li>
             <li>
               <strong className="text-fg-bright">Set deadlines</strong> — give

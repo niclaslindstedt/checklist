@@ -32,12 +32,14 @@ export function Section({
   );
 }
 
-/** A labelled row of custom controls. */
+/** A labelled row of custom controls, with an optional explanatory line. */
 export function Field({
   label,
+  hint,
   children,
 }: {
   label: string;
+  hint?: string;
   children: ReactNode;
 }) {
   const labelId = useId();
@@ -51,6 +53,7 @@ export function Field({
         {label}
       </span>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
+      {hint && <span className="text-xs text-muted">{hint}</span>}
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import {
   compilePattern,
+  namespaceTransforms,
+  setNamespaceTransforms,
   type TransformRule,
 } from "../../../domain/transforms.ts";
 import { useT, type MessageKey, type TFunction } from "../../../i18n";
@@ -11,7 +13,13 @@ import {
 } from "../../../settings/store.ts";
 import type { Settings } from "../../../settings/types.ts";
 import type { UpdateSetting } from "../../../settings/useSettings.ts";
-import { Button, Checkbox } from "../../form/index.ts";
+import type { Namespace } from "../../../storage/namespaces.ts";
+import {
+  Button,
+  Checkbox,
+  SelectPicker,
+  type SelectOption,
+} from "../../form/index.ts";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -19,13 +27,18 @@ import {
   PlusIcon,
   TrashIcon,
 } from "../../icons.tsx";
-import { Section } from "../shared.tsx";
+import { Field, Section } from "../shared.tsx";
 import { TransformRuleModal } from "../TransformRuleModal.tsx";
 
 // The Transform tab: the user's list of display-transform rules, in the order
 // they run. Each row is a rule — its pattern, what it turns a match into, and
 // the switches to park it, move it, edit it, or drop it. Writing a rule
 // happens in `TransformRuleModal`, which previews it against sample text.
+//
+// Rules belong to one namespace, so the tab edits a single namespace's list at
+// a time — the active one when the dialog opens. With more than one namespace
+// around, a picker switches which list is on screen, so the rules for Home can
+// be written without leaving Work.
 //
 // The rules are edited on the settings draft like every other tab, so nothing
 // reaches the document until the dialog is saved.
@@ -48,16 +61,35 @@ function blankRule(): TransformRule {
 export function TransformTab({
   settings,
   onUpdate,
+  namespaces,
+  activeNamespace,
 }: {
   settings: Settings;
   onUpdate: UpdateSetting;
+  /** Every namespace on the device, for the "whose rules am I editing" picker. */
+  namespaces: readonly Namespace[];
+  /** The namespace the app is in — the list the tab opens on. */
+  activeNamespace: string;
 }) {
   const t = useT();
-  const rules = settings.transforms;
+  // Which namespace's rules are on screen. Starts on the active one and is
+  // the user's own cursor from there; it isn't persisted, so re-opening the
+  // dialog lands back on the namespace they're actually working in. A pick
+  // that has since gone away (the namespace was deleted from the side menu)
+  // falls back to the active one rather than editing a list nothing reads.
+  const [picked, setPicked] = useState(activeNamespace);
+  const slug = namespaces.some((n) => n.slug === picked)
+    ? picked
+    : activeNamespace;
+  const rules = namespaceTransforms(settings.transforms, slug);
   // The rule open in the editor. A rule not yet in the list is an add.
   const [editing, setEditing] = useState<TransformRule | null>(null);
 
-  const write = (next: TransformRule[]) => onUpdate("transforms", next);
+  const write = (next: readonly TransformRule[]) =>
+    onUpdate(
+      "transforms",
+      setNamespaceTransforms(settings.transforms, slug, next),
+    );
 
   const upsert = (rule: TransformRule) => {
     const idx = rules.findIndex((r) => r.id === rule.id);
@@ -84,6 +116,38 @@ export function TransformTab({
       <p className="mb-3 text-xs text-muted">{t("settings.transform.blurb")}</p>
 
       <Section title={t("settings.transform.rulesSection")}>
+        {namespaces.length > 1 && (
+          <Field
+            label={t("settings.transform.namespaceLabel")}
+            hint={t("settings.transform.namespaceHint")}
+          >
+            <SelectPicker<string>
+              value={slug}
+              onChange={setPicked}
+              ariaLabel={t("settings.transform.namespaceLabel")}
+              options={namespaces.map((ns): SelectOption<string> => {
+                const count = namespaceTransforms(
+                  settings.transforms,
+                  ns.slug,
+                ).length;
+                return {
+                  value: ns.slug,
+                  label: ns.name,
+                  hint:
+                    count > 0
+                      ? t(
+                          count === 1
+                            ? "settings.transform.namespaceCountOne"
+                            : "settings.transform.namespaceCountOther",
+                          { count },
+                        )
+                      : undefined,
+                };
+              })}
+            />
+          </Field>
+        )}
+
         {rules.length === 0 ? (
           <p className="text-sm text-muted">{t("settings.transform.empty")}</p>
         ) : (

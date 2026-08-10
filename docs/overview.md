@@ -2003,14 +2003,23 @@ pattern no longer compiles is badged **Invalid pattern** rather than
 silently dropped. "Add transform" and the pencil both open the
 [transform rule editor](#transform-rule-editor). The rules are edited on
 the settings draft like every other tab, so nothing lands until the dialog
-is saved. Writing the first rule unlocks the **Shape Shifter**
-achievement.
+is saved. Writing the first rule — in any namespace — unlocks the
+**Shape Shifter** achievement.
+
+Rules belong to one [namespace](#namespaces), so the tab edits a single
+namespace's list at a time: it opens on the active one, and once a second
+namespace exists a **Rules for** picker above the list switches which
+namespace's rules are on screen (badged with how many each holds), so the
+rules for Home can be written without leaving Work. The pick is a local
+cursor — not persisted — so the next open lands back on the namespace the
+user is actually in, and a pick whose namespace was deleted meanwhile
+falls back to the active one. Rules in a second namespace unlock the
+**Code Switcher** achievement.
 
 ### Transforms
 
-A **transform rule** (`TransformRule` in `src/domain/transforms.ts`,
-persisted as `Settings.transforms`) is a regular expression plus what each
-match should become:
+A **transform rule** (`TransformRule` in `src/domain/transforms.ts`) is a
+regular expression plus what each match should become:
 
 - **link** — the replacement is a URL template, so `#(\d+)` with
   `https://…/issues/$1` turns every `#134` in a list into a tappable link
@@ -2023,6 +2032,18 @@ match should become:
   keep the last four (`******4123`), hide everything at the original
   length, or a fixed-width mask that hides the length too.
 
+Rules are **namespace-scoped**. `Settings.transforms` is a
+`TransformRules` map — namespace slug → that namespace's ordered rules
+(`namespaceTransforms` reads one, `setNamespaceTransforms` replaces one,
+`hasAnyTransforms` asks whether any namespace has one at all) — and `App`
+looks up only the active namespace's list, so a work list's ticket links
+never rewrite a home list. A namespace with no rules simply has no entry;
+deleting the last rule drops the entry, and deleting a namespace takes its
+rules with it. The map rides in the same synced `settings.json` as the
+rest of the settings, so it follows the user across devices. A blob
+written before the rules were scoped holds a bare list; the validator
+reads it as the default namespace's rules.
+
 The engine (`applyTransforms`) is pure and DOM-free: it returns a list of
 `TransformSegment`s — plain text, a link, a masked run — and leaves the
 look to the UI. Rules run **top to bottom**, and each rule only sees the
@@ -2032,9 +2053,9 @@ string steps past it instead of spinning, and one rule rewrites at most
 200 matches in a single string. Patterns are compiled through a shared
 cache (`compilePattern`), so the same handful of rules re-applied to every
 visible row costs one compile each. `activeTransforms` filters the list to
-the enabled rules whose pattern compiles — `App` calls it once and puts the
-result on the checklist context, so a parked or broken rule costs nothing
-per row.
+the enabled rules whose pattern compiles — `App` calls it once on the
+active namespace's rules and puts the result on the checklist context, so a
+parked or broken rule costs nothing per row.
 
 Rendering lives in `src/ui/markdown/renderTransformed.tsx`
 (`renderTransformed` / `renderSegment`). A link segment becomes the same

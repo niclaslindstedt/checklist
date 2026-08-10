@@ -2,7 +2,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
-import type { TransformRule } from "../../src/domain/transforms.ts";
+import type {
+  TransformRule,
+  TransformRules,
+} from "../../src/domain/transforms.ts";
 import { defaultSettings } from "../../src/settings/store.ts";
 import type { Settings } from "../../src/settings/types.ts";
 import { TransformTab } from "../../src/ui/settings/tabs/transform.tsx";
@@ -25,17 +28,45 @@ function rule(over: Partial<TransformRule> = {}): TransformRule {
   };
 }
 
+const WORK = { slug: "work", name: "Work" };
+const HOME = { slug: "home", name: "Home" };
+
+// The tab as a single-namespace user sees it: no picker, one list of rules.
 function renderTab(transforms: TransformRule[]) {
+  return renderTabIn({ work: transforms }, [WORK], "work");
+}
+
+// The tab with several namespaces around, opened on `activeNamespace`.
+function renderTabIn(
+  transforms: TransformRules,
+  namespaces: { slug: string; name: string }[],
+  activeNamespace: string,
+) {
   const onUpdate = vi.fn();
   const settings: Settings = { ...defaultSettings(), transforms };
-  render(<TransformTab settings={settings} onUpdate={onUpdate} />);
+  render(
+    <TransformTab
+      settings={settings}
+      onUpdate={onUpdate}
+      namespaces={namespaces}
+      activeNamespace={activeNamespace}
+    />,
+  );
   return onUpdate;
 }
 
-// The last `transforms` value the tab wrote.
-function written(onUpdate: ReturnType<typeof vi.fn>): TransformRule[] {
+// The last transform map the tab wrote.
+function writtenMap(onUpdate: ReturnType<typeof vi.fn>): TransformRules {
   const calls = onUpdate.mock.calls;
-  return calls[calls.length - 1]![1] as TransformRule[];
+  return calls[calls.length - 1]![1] as TransformRules;
+}
+
+// The last rule list the tab wrote for `slug`.
+function written(
+  onUpdate: ReturnType<typeof vi.fn>,
+  slug = "work",
+): TransformRule[] {
+  return writtenMap(onUpdate)[slug] ?? [];
 }
 
 afterEach(cleanup);
@@ -83,6 +114,70 @@ describe("transform tab", () => {
     expect((up[0] as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(up[1]!);
     expect(written(onUpdate).map((r) => r.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("transform tab — namespace scoping", () => {
+  it("hides the namespace picker when there's only one namespace", () => {
+    renderTab([rule()]);
+    expect(screen.queryByRole("combobox", { name: "Rules for" })).toBeNull();
+  });
+
+  it("opens on the active namespace's rules and leaves the others off screen", () => {
+    renderTabIn(
+      {
+        work: [rule({ pattern: "#(\\d+)" })],
+        home: [rule({ pattern: "milk" })],
+      },
+      [WORK, HOME],
+      "work",
+    );
+    expect(screen.getByText("#(\\d+)")).toBeTruthy();
+    expect(screen.queryByText("milk")).toBeNull();
+    expect(
+      screen.getByRole("combobox", { name: "Rules for" }).textContent,
+    ).toContain("Work");
+  });
+
+  it("writes a rule into the namespace on screen, leaving the rest untouched", () => {
+    const onUpdate = renderTabIn(
+      { work: [rule({ id: "w" })], home: [rule({ id: "h" })] },
+      [WORK, HOME],
+      "work",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remove “#(\\d+)”" }));
+    expect(writtenMap(onUpdate)).toEqual({ home: [rule({ id: "h" })] });
+  });
+
+  it("switches to another namespace's rules and edits those instead", () => {
+    const onUpdate = renderTabIn(
+      { work: [rule({ id: "w" })], home: [rule({ id: "h", pattern: "milk" })] },
+      [WORK, HOME],
+      "work",
+    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Rules for" }));
+    fireEvent.click(screen.getByRole("option", { name: /Home/ }));
+
+    expect(screen.getByText("milk")).toBeTruthy();
+    expect(screen.queryByText("#(\\d+)")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove “milk”" }));
+    expect(writtenMap(onUpdate)).toEqual({ work: [rule({ id: "w" })] });
+  });
+
+  it("starts a namespace with no rules of its own from empty", () => {
+    const onUpdate = renderTabIn({ work: [rule()] }, [WORK, HOME], "home");
+    expect(screen.getByText("No transforms yet.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add transform" }));
+    fireEvent.change(screen.getByLabelText("Match"), {
+      target: { value: "milk" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const map = writtenMap(onUpdate);
+    expect(map.home?.map((r) => r.pattern)).toEqual(["milk"]);
+    expect(map.work).toHaveLength(1);
   });
 });
 

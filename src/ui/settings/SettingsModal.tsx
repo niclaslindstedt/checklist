@@ -240,7 +240,12 @@ export function SettingsModal({
             <ListsTab settings={draft} onUpdate={update} />
           )}
           {activeTab === "transform" && (
-            <TransformTab settings={draft} onUpdate={update} />
+            <TransformTab
+              settings={draft}
+              onUpdate={update}
+              namespaces={storage.namespaces}
+              activeNamespace={storage.activeNamespace}
+            />
           )}
           {activeTab === "theme" && (
             <AppearanceTab settings={draft} onUpdate={update} />

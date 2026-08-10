@@ -61,7 +61,11 @@ import { useAppNavigation } from "./use-app-navigation.ts";
 import { useWidgetMirror } from "./use-widget-mirror.ts";
 import { useWidgetDeepLink } from "./use-widget-deep-link.ts";
 import { useNotificationScheduler } from "./use-notification-scheduler.ts";
-import { activeTransforms } from "../domain/transforms.ts";
+import {
+  activeTransforms,
+  namespaceTransforms,
+  setNamespaceTransforms,
+} from "../domain/transforms.ts";
 import type { WidgetAction } from "../domain/widget-snapshot.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
@@ -340,9 +344,20 @@ function AppShell() {
     async (slug: string) => {
       const name = namespaces.find((n) => n.slug === slug)?.name ?? slug;
       await removeNs(slug);
+      // The namespace's display transforms go with it — nothing else can
+      // reach them once the namespace is gone, and leaving them behind would
+      // resurrect them if the same slug were ever minted again.
+      replace((prev) =>
+        prev.transforms[slug]
+          ? {
+              ...prev,
+              transforms: setNamespaceTransforms(prev.transforms, slug, []),
+            }
+          : prev,
+      );
       push({ message: t("toast.namespaceDeleted", { name }), kind: "info" });
     },
-    [removeNs, namespaces, push, t],
+    [removeNs, namespaces, push, replace, t],
   );
 
   // Move a checklist into another namespace (the sidebar drag): write its bytes
@@ -612,7 +627,11 @@ function AppShell() {
       showItemCount: settings.showItemCount,
       includeArchivedInCopy: settings.includeArchivedInCopy,
       capitalizeItems: settings.capitalizeItems,
-      transforms: activeTransforms(settings.transforms),
+      // Only the active namespace's rules run: a work list's ticket links
+      // have no business rewriting a home list.
+      transforms: activeTransforms(
+        namespaceTransforms(settings.transforms, storage.activeNamespace),
+      ),
       animateReorder:
         settings.sortCheckedToBottom && settings.animateSortChecked,
     }),
@@ -625,6 +644,7 @@ function AppShell() {
       settings.includeArchivedInCopy,
       settings.capitalizeItems,
       settings.transforms,
+      storage.activeNamespace,
       settings.sortCheckedToBottom,
       settings.animateSortChecked,
     ],

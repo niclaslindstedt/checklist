@@ -90,6 +90,11 @@ const settings = {
     blurb:
       "Transform rules rewrite how your items read — turn a reference into a link, swap one phrase for another, or hide something sensitive behind a mask. Your lists are never changed: the stored text, the copy you take, and the editor all keep the original.",
     rulesSection: "Rules",
+    namespaceLabel: "Rules for",
+    namespaceHint:
+      "Rules belong to one namespace, so work and home can each have their own. Only the namespace you're in has its rules applied.",
+    namespaceCountOne: "{count} rule",
+    namespaceCountOther: "{count} rules",
     empty: "No transforms yet.",
     add: "Add transform",
     editRule: "Edit “{pattern}”",
