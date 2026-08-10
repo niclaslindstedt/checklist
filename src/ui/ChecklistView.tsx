@@ -55,10 +55,10 @@ import {
 // those renders (see `useChecklist`'s memoized return and App's memoized
 // provider value), so `memo` skips the whole list instead of reconciling N
 // rows. Theme is applied as CSS vars on `:root`, not through context.
-// Deferred: the deadline sheet is the only thing that pulls in `DatePicker`,
+// Deferred: the timing sheet is the only thing that pulls in `DatePicker`,
 // and it opens from a row's context menu rather than on first paint.
-const DeadlineModal = defer(() =>
-  import("./DeadlineModal.tsx").then((m) => m.DeadlineModal),
+const TimingModal = defer(() =>
+  import("./TimingModal.tsx").then((m) => m.TimingModal),
 );
 
 function ChecklistViewImpl() {
@@ -72,7 +72,7 @@ function ChecklistViewImpl() {
     importItemsAfter,
     editItem,
     toggle,
-    setDeadline,
+    setTiming,
     checkAll,
     uncheckAll,
     remove,
@@ -125,13 +125,13 @@ function ChecklistViewImpl() {
     });
   }, []);
 
-  // The item whose deadline modal is open (null when none). Set from a row's
+  // The item whose timing modal is open (null when none). Set from a row's
   // clock affordance (or the desktop right-click menu); the item itself is
-  // resolved from the live tree so the modal always reflects the current date.
-  const [deadlineItemId, setDeadlineItemId] = useState<string | null>(null);
-  const openDeadline = useCallback((id: string) => setDeadlineItemId(id), []);
-  const closeDeadline = useCallback(() => setDeadlineItemId(null), []);
-  const deadlineItem = deadlineItemId ? findItem(items, deadlineItemId) : null;
+  // resolved from the live tree so the modal always reflects the current dates.
+  const [timingItemId, setTimingItemId] = useState<string | null>(null);
+  const openTiming = useCallback((id: string) => setTimingItemId(id), []);
+  const closeTiming = useCallback(() => setTimingItemId(null), []);
+  const timingItem = timingItemId ? findItem(items, timingItemId) : null;
 
   // The item tree flattened into the ordered, depth-tagged rows the list
   // renders; a collapsed item's children are skipped.
@@ -257,9 +257,9 @@ function ChecklistViewImpl() {
         });
       }
       menu.push({
-        label: t("app.setDeadline"),
+        label: t("app.setTiming"),
         icon: <ClockIcon className="h-4 w-4" />,
-        onSelect: () => openDeadline(id),
+        onSelect: () => openTiming(id),
       });
       // A template has no archive to send an item to — only delete.
       if (!templateModeRef.current) {
@@ -277,7 +277,7 @@ function ChecklistViewImpl() {
       });
       return menu;
     },
-    [t, setCategory, archive, remove, openDeadline],
+    [t, setCategory, archive, remove, openTiming],
   );
   const openRowMenu = useCallback(
     (id: string, e: React.MouseEvent<HTMLElement>) =>
@@ -586,7 +586,7 @@ function ChecklistViewImpl() {
                   onArchive={archive}
                   onDelete={remove}
                   onEdit={editItem}
-                  onEditDeadline={openDeadline}
+                  onEditTiming={openTiming}
                   onRemoveEmpty={removeEmpty}
                   onBackspaceEmpty={backspaceEmpty}
                   onAddAfter={composer.startAfter}
@@ -678,14 +678,12 @@ function ChecklistViewImpl() {
         transforms={transforms}
       />
 
-      {deadlineItem && (
-        <DeadlineModal
-          key={deadlineItem.id}
-          item={deadlineItem}
-          onSubmit={(deadline, recurrence) =>
-            setDeadline(deadlineItem.id, deadline, recurrence)
-          }
-          onClose={closeDeadline}
+      {timingItem && (
+        <TimingModal
+          key={timingItem.id}
+          item={timingItem}
+          onSubmit={(timing) => setTiming(timingItem.id, timing)}
+          onClose={closeTiming}
         />
       )}
     </div>

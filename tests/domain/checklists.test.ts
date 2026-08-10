@@ -35,7 +35,7 @@ import {
   setCategory,
   setChecklistAppearance,
   setChecklistArchived,
-  setItemDeadline,
+  setItemTiming,
   sortCheckedToBottom,
   toggleItem,
 } from "../../src/domain/checklists.ts";
@@ -44,6 +44,7 @@ import type {
   Checklist,
   ChecklistItem,
   Template,
+  TimingPatch,
 } from "../../src/domain/types.ts";
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -1223,7 +1224,7 @@ describe("moveDisplayedItem", () => {
   });
 });
 
-describe("setItemDeadline", () => {
+describe("setItemTiming", () => {
   function listOf(...titles: string[]) {
     let c = createChecklist("c1", "List", NOW);
     titles.forEach((t, i) => {
@@ -1232,19 +1233,32 @@ describe("setItemDeadline", () => {
     return c;
   }
   const LATER = "2026-02-01T00:00:00.000Z";
+  const timing = (t: Partial<TimingPatch>): TimingPatch => ({
+    notBefore: null,
+    deadline: null,
+    recurrence: null,
+    ...t,
+  });
 
   it("sets a due date on an item", () => {
-    const c = setItemDeadline(listOf("A"), "i1", "2026-07-20", null, LATER);
+    const c = setItemTiming(
+      listOf("A"),
+      "i1",
+      timing({ deadline: "2026-07-20" }),
+      LATER,
+    );
     expect(findItem(c.items, "i1")?.deadline).toBe("2026-07-20");
     expect(c.updatedAt).toBe(LATER);
   });
 
   it("stores a recurrence alongside a deadline", () => {
-    const c = setItemDeadline(
+    const c = setItemTiming(
       listOf("A"),
       "i1",
-      "2026-07-20",
-      { unit: "week", interval: 2 },
+      timing({
+        deadline: "2026-07-20",
+        recurrence: { unit: "week", interval: 2 },
+      }),
       LATER,
     );
     expect(findItem(c.items, "i1")?.recurrence).toEqual({
@@ -1254,11 +1268,10 @@ describe("setItemDeadline", () => {
   });
 
   it("drops a recurrence supplied without a deadline", () => {
-    const c = setItemDeadline(
+    const c = setItemTiming(
       listOf("A"),
       "i1",
-      null,
-      { unit: "week", interval: 2 },
+      timing({ recurrence: { unit: "week", interval: 2 } }),
       LATER,
     );
     expect(findItem(c.items, "i1")?.deadline).toBeUndefined();
@@ -1266,22 +1279,145 @@ describe("setItemDeadline", () => {
   });
 
   it("clears the deadline and any recurrence with it", () => {
-    let c = setItemDeadline(
+    let c = setItemTiming(
       listOf("A"),
       "i1",
-      "2026-07-20",
-      { unit: "month", interval: 1 },
+      timing({
+        deadline: "2026-07-20",
+        recurrence: { unit: "month", interval: 1 },
+      }),
       LATER,
     );
-    c = setItemDeadline(c, "i1", null, null, LATER);
+    c = setItemTiming(c, "i1", timing({}), LATER);
     const it = findItem(c.items, "i1");
     expect(it?.deadline).toBeUndefined();
     expect(it?.recurrence).toBeUndefined();
   });
 
   it("is a no-op (same reference) when nothing changes", () => {
-    const c = setItemDeadline(listOf("A"), "i1", "2026-07-20", null, LATER);
-    expect(setItemDeadline(c, "i1", "2026-07-20", null, NOW)).toBe(c);
+    const c = setItemTiming(
+      listOf("A"),
+      "i1",
+      timing({ deadline: "2026-07-20" }),
+      LATER,
+    );
+    expect(
+      setItemTiming(c, "i1", timing({ deadline: "2026-07-20" }), NOW),
+    ).toBe(c);
+  });
+
+  it("sets a not-before day with no deadline at all", () => {
+    const c = setItemTiming(
+      listOf("A"),
+      "i1",
+      timing({ notBefore: "2026-07-20" }),
+      LATER,
+    );
+    const it = findItem(c.items, "i1");
+    expect(it?.notBefore).toBe("2026-07-20");
+    expect(it?.deadline).toBeUndefined();
+  });
+
+  it("carries a not-before day and a deadline together, independently", () => {
+    let c = setItemTiming(
+      listOf("A"),
+      "i1",
+      timing({ notBefore: "2026-07-01", deadline: "2026-07-20" }),
+      LATER,
+    );
+    expect(findItem(c.items, "i1")?.notBefore).toBe("2026-07-01");
+    // Clearing only the deadline leaves the gate standing.
+    c = setItemTiming(c, "i1", timing({ notBefore: "2026-07-01" }), LATER);
+    const it = findItem(c.items, "i1");
+    expect(it?.notBefore).toBe("2026-07-01");
+    expect(it?.deadline).toBeUndefined();
+  });
+
+  it("clears a not-before day", () => {
+    let c = setItemTiming(
+      listOf("A"),
+      "i1",
+      timing({ notBefore: "2026-07-20" }),
+      LATER,
+    );
+    c = setItemTiming(c, "i1", timing({}), LATER);
+    expect(findItem(c.items, "i1")?.notBefore).toBeUndefined();
+  });
+});
+
+describe("toggleItem with a not-before day", () => {
+  const TODAY = "2026-07-20T09:00:00.000Z";
+  function gated(notBefore: string) {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "i1", title: "Post the forms" }, NOW);
+    return setItemTiming(
+      c,
+      "i1",
+      { notBefore, deadline: null, recurrence: null },
+      NOW,
+    );
+  }
+
+  it("refuses to check an item whose day hasn't arrived", () => {
+    const c = gated("2026-07-21");
+    expect(toggleItem(c, "i1", TODAY)).toBe(c);
+  });
+
+  it("checks it on the day itself — the gate is inclusive", () => {
+    const c = toggleItem(gated("2026-07-20"), "i1", TODAY);
+    expect(findItem(c.items, "i1")?.checked).toBe(true);
+  });
+
+  it("still unchecks an item gated after it was checked", () => {
+    let c = gated("2026-07-20");
+    c = toggleItem(c, "i1", TODAY);
+    // Push the gate out past today, then untick it.
+    c = setItemTiming(
+      c,
+      "i1",
+      { notBefore: "2026-08-01", deadline: null, recurrence: null },
+      TODAY,
+    );
+    c = toggleItem(c, "i1", TODAY);
+    expect(findItem(c.items, "i1")?.checked).toBe(false);
+  });
+
+  it("leaves a held-back sub-item behind when its parent is checked", () => {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "p1", title: "Trip" }, NOW);
+    c = addItem(c, { id: "c1", title: "Pack" }, NOW, "bottom", "p1");
+    c = addItem(c, { id: "c2", title: "Check in" }, NOW, "bottom", "p1");
+    c = setItemTiming(
+      c,
+      "c2",
+      { notBefore: "2026-08-01", deadline: null, recurrence: null },
+      NOW,
+    );
+    c = toggleItem(c, "p1", TODAY);
+    expect(findItem(c.items, "p1")?.checked).toBe(true);
+    expect(findItem(c.items, "c1")?.checked).toBe(true);
+    expect(findItem(c.items, "c2")?.checked).toBe(false);
+  });
+
+  it("skips held-back items in a bulk check, and is a no-op when only those remain", () => {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "i1", title: "Now" }, NOW);
+    c = addItem(c, { id: "i2", title: "Later" }, NOW);
+    c = setItemTiming(
+      c,
+      "i2",
+      { notBefore: "2026-08-01", deadline: null, recurrence: null },
+      NOW,
+    );
+    const swept = setAllChecked(c, true, TODAY);
+    expect(findItem(swept.items, "i1")?.checked).toBe(true);
+    expect(findItem(swept.items, "i2")?.checked).toBe(false);
+    // Nothing left the sweep is allowed to move — same reference, no write.
+    expect(setAllChecked(swept, true, TODAY)).toBe(swept);
+    // Unchecking is never gated, so it still sweeps everything.
+    expect(
+      findItem(setAllChecked(swept, false, TODAY).items, "i1")?.checked,
+    ).toBe(false);
   });
 });
 
@@ -1289,11 +1425,14 @@ describe("toggleItem with a recurrence", () => {
   function dated(recurring: boolean) {
     let c = createChecklist("c1", "List", NOW);
     c = addItem(c, { id: "i1", title: "Water plants" }, NOW);
-    return setItemDeadline(
+    return setItemTiming(
       c,
       "i1",
-      "2026-07-20",
-      recurring ? { unit: "week", interval: 1 } : null,
+      {
+        notBefore: null,
+        deadline: "2026-07-20",
+        recurrence: recurring ? { unit: "week", interval: 1 } : null,
+      },
       NOW,
     );
   }
@@ -1324,14 +1463,24 @@ describe("displayItems with dated items", () => {
 
   it("floats dated unchecked items below undated ones, soonest first", () => {
     let c = listOf("A", "B", "C", "D");
-    c = setItemDeadline(c, "i1", "2026-08-01", null, NOW); // later
-    c = setItemDeadline(c, "i3", "2026-07-20", null, NOW); // sooner
+    const due = (deadline: string) => ({
+      notBefore: null,
+      deadline,
+      recurrence: null,
+    });
+    c = setItemTiming(c, "i1", due("2026-08-01"), NOW); // later
+    c = setItemTiming(c, "i3", due("2026-07-20"), NOW); // sooner
     expect(ids(displayItems(c, false))).toEqual(["i2", "i4", "i3", "i1"]);
   });
 
   it("keeps dated unchecked items above the checked group when sinking", () => {
     let c = listOf("A", "B", "C");
-    c = setItemDeadline(c, "i1", "2026-07-20", null, NOW); // dated
+    c = setItemTiming(
+      c,
+      "i1",
+      { notBefore: null, deadline: "2026-07-20", recurrence: null },
+      NOW,
+    ); // dated
     c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z"); // checked
     // Undated unchecked (i3), then dated unchecked (i1), then checked (i2).
     expect(ids(displayItems(c, true))).toEqual(["i3", "i1", "i2"]);

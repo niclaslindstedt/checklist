@@ -4,6 +4,7 @@ import type {
   ChecklistItem,
   Recurrence,
   RecurrenceUnit,
+  TimingPatch,
 } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { Modal } from "./Modal.tsx";
@@ -11,25 +12,29 @@ import { DatePicker } from "./form/DatePicker.tsx";
 import { SelectPicker } from "./form/SelectPicker.tsx";
 import { ClockIcon } from "./icons.tsx";
 
-// The modal the clock affordance opens: pick a due date for an item and,
-// optionally, how it repeats (every N weeks / months / years). Confirming
-// hands the chosen date + recurrence back to `setDeadline`; recurrence is only
-// offered once a date is set, since a repeat needs an anchor day. Clearing the
-// date drops the deadline (and any recurrence) entirely.
+// The modal the clock affordance opens: an item's whole timing in one sheet —
+// the earliest day it may be checked off ("Not before"), a due date, and,
+// optionally, how that due date repeats (every N weeks / months / years).
+//
+// The two dates are independent: an item can be gated with no deadline, dated
+// with no gate, or both. Recurrence is the exception — it's only offered once
+// a due date is set, since a repeat needs an anchor day. Confirming hands all
+// three back to `setTiming`; "Clear timing" drops every one of them at once.
 
 // The recurrence unit, plus a "none" sentinel for the one-off / undated case.
 type RepeatChoice = "none" | RecurrenceUnit;
 
 type Props = {
   item: ChecklistItem;
-  onSubmit: (deadline: string | null, recurrence: Recurrence | null) => void;
+  onSubmit: (timing: TimingPatch) => void;
   onClose: () => void;
 };
 
-export function DeadlineModal({ item, onSubmit, onClose }: Props) {
+export function TimingModal({ item, onSubmit, onClose }: Props) {
   const t = useT();
   const headingId = useId();
 
+  const [notBefore, setNotBefore] = useState(item.notBefore ?? "");
   const [date, setDate] = useState(item.deadline ?? "");
   const [unit, setUnit] = useState<RepeatChoice>(
     item.recurrence?.unit ?? "none",
@@ -45,23 +50,23 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
   const parsedInterval = Math.max(1, parseInt(intervalText, 10) || 1);
 
   const repeatOptions = [
-    { value: "none" as const, label: t("app.deadline.noRepeat") },
-    { value: "week" as const, label: t("app.deadline.unitWeek") },
-    { value: "month" as const, label: t("app.deadline.unitMonth") },
-    { value: "year" as const, label: t("app.deadline.unitYear") },
+    { value: "none" as const, label: t("app.timing.noRepeat") },
+    { value: "week" as const, label: t("app.timing.unitWeek") },
+    { value: "month" as const, label: t("app.timing.unitMonth") },
+    { value: "year" as const, label: t("app.timing.unitYear") },
   ];
 
   const save = () => {
     const deadline = date || null;
-    // Recurrence only rides with a date, and only when a real unit is chosen.
+    // Recurrence only rides with a due date, and only when a real unit is chosen.
     const recurrence: Recurrence | null =
       deadline && unit !== "none" ? { unit, interval: parsedInterval } : null;
-    onSubmit(deadline, recurrence);
+    onSubmit({ notBefore: notBefore || null, deadline, recurrence });
     onClose();
   };
 
   const clear = () => {
-    onSubmit(null, null);
+    onSubmit({ notBefore: null, deadline: null, recurrence: null });
     onClose();
   };
 
@@ -79,37 +84,51 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
           className="flex items-center gap-2 text-base font-semibold text-fg-bright"
         >
           <ClockIcon className="h-5 w-5 text-accent" />
-          {t("app.deadline.title")}
+          {t("app.timing.title")}
         </h2>
+
+        {/* "Not before" sits above the due date: it gates the *start* of the
+            work, so it reads first, ahead of when the work is due. */}
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium tracking-wide text-muted uppercase">
+            {t("app.timing.notBefore")}
+          </span>
+          <DatePicker
+            value={notBefore}
+            onChange={setNotBefore}
+            ariaLabel={t("app.timing.notBefore")}
+            placeholder={t("app.timing.pickDate")}
+          />
+        </label>
 
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium tracking-wide text-muted uppercase">
-            {t("app.deadline.dueDate")}
+            {t("app.timing.dueDate")}
           </span>
           <DatePicker
             value={date}
             onChange={setDate}
-            ariaLabel={t("app.deadline.dueDate")}
-            placeholder={t("app.deadline.pickDate")}
+            ariaLabel={t("app.timing.dueDate")}
+            placeholder={t("app.timing.pickDate")}
           />
         </label>
 
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium tracking-wide text-muted uppercase">
-            {t("app.deadline.repeat")}
+            {t("app.timing.repeat")}
           </span>
           <div className="flex items-center gap-2">
             {unit !== "none" && (
               <>
                 <span className="text-sm text-muted">
-                  {t("app.deadline.every")}
+                  {t("app.timing.every")}
                 </span>
                 <input
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={intervalText}
-                  aria-label={t("app.deadline.interval")}
+                  aria-label={t("app.timing.interval")}
                   disabled={!date}
                   onFocus={(e) => e.currentTarget.select()}
                   onChange={(e) =>
@@ -127,7 +146,7 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
                 value={unit}
                 options={repeatOptions}
                 onChange={(next) => setUnit(next)}
-                ariaLabel={t("app.deadline.repeat")}
+                ariaLabel={t("app.timing.repeat")}
                 disabled={!date}
               />
             </div>
@@ -138,10 +157,10 @@ export function DeadlineModal({ item, onSubmit, onClose }: Props) {
           <button
             type="button"
             onClick={clear}
-            disabled={!item.deadline}
+            disabled={!item.deadline && !item.notBefore}
             className="text-sm text-danger hover:underline disabled:invisible"
           >
-            {t("app.deadline.clear")}
+            {t("app.timing.clear")}
           </button>
           <div className="flex items-center gap-2">
             <button

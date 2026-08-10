@@ -36,6 +36,7 @@ import {
   FolderMoveGlyph,
   GlobeGlyph,
   HashGlyph,
+  HourglassGlyph,
   LayersGlyph,
   LightbulbGlyph,
   LinkGlyph,
@@ -110,6 +111,11 @@ const hasStyledChecklist = (snap: Snapshot) =>
   snap.checklists.some((c) => Boolean(c.glyph) || Boolean(c.color));
 const hasDatedItem = (snap: Snapshot) =>
   someItem(snap, (it) => typeof it.deadline === "string" && it.deadline !== "");
+const hasGatedItem = (snap: Snapshot) =>
+  someItem(
+    snap,
+    (it) => typeof it.notBefore === "string" && it.notBefore !== "",
+  );
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
@@ -276,6 +282,18 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.snapshot],
       predicate: (prev, next) =>
         !hasDatedItem(prev.snapshot) && hasDatedItem(next.snapshot),
+    },
+  },
+  {
+    id: "notYet",
+    tier: "intermediate",
+    glyph: HourglassGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot],
+      predicate: (prev, next) =>
+        !hasGatedItem(prev.snapshot) && hasGatedItem(next.snapshot),
     },
   },
   {
