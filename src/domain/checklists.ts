@@ -63,7 +63,7 @@ export {
   editItem,
   setAllChecked,
   setCategory,
-  setItemDeadline,
+  setItemTiming,
   toggleItem,
 } from "./item-ops.ts";
 
@@ -71,6 +71,7 @@ export {
   addRecurrence,
   daysUntil,
   deadlineStatus,
+  isHeldBack,
   nextOccurrence,
 } from "./deadlines.ts";
 export type { DeadlineStatus } from "./deadlines.ts";

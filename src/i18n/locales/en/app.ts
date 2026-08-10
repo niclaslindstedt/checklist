@@ -25,9 +25,11 @@ const app = {
   delete: "Delete",
   promoteToCategory: "Promote to category",
   demoteFromCategory: "Remove category",
-  setDeadline: "Set deadline",
-  deadline: {
-    title: "Deadline",
+  setTiming: "Set timing",
+  timing: {
+    title: "Timing",
+    notBefore: "Not before",
+    notBeforeLabel: "Not before {date}",
     dueDate: "Due date",
     pickDate: "Pick a date",
     repeat: "Repeat",
@@ -37,7 +39,7 @@ const app = {
     unitWeek: "weeks",
     unitMonth: "months",
     unitYear: "years",
-    clear: "Clear deadline",
+    clear: "Clear timing",
     overdue: "Overdue",
     repeats: "Repeats {summary}",
     everyWeekOne: "every week",

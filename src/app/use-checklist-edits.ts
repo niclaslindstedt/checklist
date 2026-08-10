@@ -31,14 +31,14 @@ import {
   setAllChecked as setAllCheckedOp,
   setArchived,
   setCategory as setCategoryOp,
-  setItemDeadline as setItemDeadlineOp,
+  setItemTiming as setItemTimingOp,
   toggleItem as toggleItemOp,
   type DropMode,
 } from "../domain/checklists.ts";
 import type {
   ChecklistItem,
   ItemList,
-  Recurrence,
+  TimingPatch,
   Snapshot,
 } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
@@ -128,17 +128,14 @@ export interface ChecklistEdits {
    */
   toggleItemInList: (listId: string, itemId: string) => void;
   /**
-   * Set or clear an item's due date and how it repeats — the clock
-   * affordance on a swiped-open row. Pass a `YYYY-MM-DD` date (with an
-   * optional `recurrence`) to schedule it, or `null` / `null` to clear the
-   * deadline (which drops any recurrence with it). A no-op leaves the list
+   * Set or clear an item's whole timing — the clock affordance on a
+   * swiped-open row. Each field is a `YYYY-MM-DD` day (or `null` to clear
+   * it): `notBefore` is the earliest day the item may be checked off,
+   * `deadline` its due date, and `recurrence` how that due date repeats
+   * (dropped with the deadline, which anchors it). A no-op leaves the list
    * untouched.
    */
-  setDeadline: (
-    itemId: string,
-    deadline: string | null,
-    recurrence: Recurrence | null,
-  ) => void;
+  setTiming: (itemId: string, timing: TimingPatch) => void;
   /**
    * Check every active (non-archived) item in one sweep — the "Check all"
    * action in the header count's dropdown. A no-op (everything already
@@ -463,27 +460,18 @@ export function useChecklistEdits(deps: {
     [commit, docRef, t],
   );
 
-  const setDeadline = useCallback(
-    (
-      itemId: string,
-      deadline: string | null,
-      recurrence: Recurrence | null,
-    ) => {
+  const setTiming = useCallback(
+    (itemId: string, timing: TimingPatch) => {
       const found = findOwner(itemId);
       if (!found) return;
-      const next = setItemDeadlineOp(
-        found.checklist,
-        itemId,
-        deadline,
-        recurrence,
-        now(),
-      );
-      // A no-op (the same date already set, or clearing an undated item)
+      const next = setItemTimingOp(found.checklist, itemId, timing, now());
+      // A no-op (the same dates already set, or clearing an untimed item)
       // returns the same list — skip the write and the undo step.
       if (next === found.checklist) return;
-      const label = deadline
-        ? t("toast.deadlineSet", { title: found.item.title })
-        : t("toast.deadlineCleared", { title: found.item.title });
+      const label =
+        timing.notBefore || timing.deadline
+          ? t("toast.timingSet", { title: found.item.title })
+          : t("toast.timingCleared", { title: found.item.title });
       commit(next, label);
       notify(label);
     },
@@ -643,7 +631,7 @@ export function useChecklistEdits(deps: {
       editItem,
       toggle,
       toggleItemInList,
-      setDeadline,
+      setTiming,
       checkAll,
       uncheckAll,
       remove,
@@ -664,7 +652,7 @@ export function useChecklistEdits(deps: {
       editItem,
       toggle,
       toggleItemInList,
-      setDeadline,
+      setTiming,
       checkAll,
       uncheckAll,
       remove,

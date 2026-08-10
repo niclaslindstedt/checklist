@@ -77,7 +77,7 @@ single unbroken run can't overflow the row), a body-hint note glyph
 (only on items that carry a note — muted while the body is collapsed,
 accent-coloured while it's revealed), and a grip handle for vertical
 reordering. Swiping **left** latches open a trailing pair of buttons — a
-neutral **clock** that opens the [deadline modal](#deadlines) and a red
+neutral **clock** that opens the [timing modal](#timing-deadlines-and-not-before) and a red
 **trash** (an icon, not the word) that deletes (two-step, so a delete is
 never a single flick); swiping **right** archives the row (hidden, not
 destroyed). The two action layers are gated on the swipe direction
@@ -86,7 +86,7 @@ while sliding right, the right-aligned button pair only while sliding
 left. That gating matters for the archive slide-off — the foreground
 travels the full row width to the right, so without it the trailing-edge
 buttons would be bared as the row clears the screen on its way to the
-archive. A dated item also renders a slim [date row](#deadlines) above
+archive. A timed item also renders a slim [date row](#timing-deadlines-and-not-before) above
 its title, inside the sliding foreground so it travels with the swipe.
 
 **Editing the text — reveal, then edit.** An item with a markdown
@@ -935,7 +935,7 @@ caller opens inside the already-locked settings `Modal`.
 
 `src/ui/form/DatePicker.tsx` (`DatePicker`) — the custom calendar that
 replaces the native `<input type="date">` for choosing a due date in the
-[deadline modal](#deadlines). The app ships its own picker because the
+[timing modal](#timing-deadlines-and-not-before). The app ships its own picker because the
 native control is unusable inside an iOS **standalone PWA**: its popover
 calendar dismisses itself the instant you tap the month header to
 navigate, so a user had to reopen it and land on the right month by luck
@@ -1259,7 +1259,7 @@ checklist](#copy-checklist) for the inverse.
 `checked` flag (cascading through its subtree). Surfaced by tapping the
 row's checkbox. A **recurring** dated item is the exception: checking it
 doesn't tick it off but rolls its `deadline` forward to the next
-occurrence and leaves it unchecked (see [Deadlines](#deadlines)), so the
+occurrence and leaves it unchecked (see [Timing](#timing-deadlines-and-not-before)), so the
 task reappears on its next due date.
 
 ### Delete item
@@ -1270,47 +1270,71 @@ glyph (or Delete in the archive view / the desktop right-click menu).
 Recoverable only via undo, which resurrects it from the prior
 whole-document snapshot.
 
-### Deadlines
+### Timing (deadlines and "not before")
 
-A checklist item can carry a **deadline** (an optional `deadline`
-`YYYY-MM-DD` day on `ChecklistItem`) and a **recurrence** (`recurrence`:
-`{ unit: "week" | "month" | "year", interval }`, only alongside a
-deadline). Set from the **clock** button revealed on a left swipe (or the
-desktop right-click menu), which opens `DeadlineModal`
-(`src/ui/DeadlineModal.tsx`) — a **date picker** plus a repeat picker —
-and commits through the `setDeadline` edit verb over the pure
-`setItemDeadline` (`src/domain/item-ops.ts`). Clearing the date drops the
-recurrence with it. The date field is the custom
+A checklist item can carry a **timing**: a **not-before** day
+(`notBefore`), a **deadline** (`deadline`) — both optional
+`YYYY-MM-DD` days on `ChecklistItem` — and a **recurrence**
+(`recurrence`: `{ unit: "week" | "month" | "year", interval }`, only
+alongside a deadline). All three are set from one sheet: the **clock**
+button revealed on a left swipe (or the desktop right-click menu) opens
+`TimingModal` (`src/ui/TimingModal.tsx`) — a **not before** date picker,
+a **due date** picker, and a repeat picker, in that order — and commits
+through the `setTiming` edit verb over the pure `setItemTiming`
+(`src/domain/item-ops.ts`), which takes the whole `TimingPatch` at once.
+The two dates are independent (an item can be gated with no deadline, or
+dated with no gate); only the recurrence is bound to the deadline that
+anchors it, so clearing the date drops the repeat with it. **Clear
+timing** drops all three. The date fields are the custom
 [date picker](#date-picker), not a native `<input type="date">`. Tapping
 the clock also slides the swiped-open row shut (`useRowSwipe`'s `close`),
-so once the modal dismisses — whether a date was set or cancelled — the
+so once the modal dismisses — whether dates were set or cancelled — the
 row is back in its resting position rather than stranded open over the
 clock / delete buttons.
 
-Three behaviours hang off a deadline:
+Four behaviours hang off an item's timing:
 
-- **Date row.** A dated item shows `DeadlineRow`
-  (`src/ui/DeadlineRow.tsx`) above its title — a slim, small-font line
-  with the formatted due date (and a repeat glyph + summary when
-  recurring), colour-coded by `deadlineStatus`
+- **Date row.** A timed item shows `TimingRow` (`src/ui/TimingRow.tsx`)
+  above its title — a slim, small-font line carrying whichever dates
+  apply. The **due date** is colour-coded by `deadlineStatus`
   (`src/domain/deadlines.ts`): muted while far off, then **yellow**
   (`text-meta`, within a week), **orange** (`text-flag`, within a day),
-  and **red** (`text-danger`, overdue).
+  and **red** (`text-danger`, overdue). The **not-before** half is
+  deliberately colourless — nothing is late, the item just isn't open
+  yet — so it stays `text-muted` at every distance, and it is
+  *temporary*: it shows only while the day is still ahead and disappears
+  the moment the day arrives. An item carrying both reads
+  `Not before 1 Jul · 20 Jul`, each half in its own colour.
+- **The hold.** While its `notBefore` day is still in the future an item
+  is **held back**: `isHeldBack` (`src/domain/deadlines.ts`) is the one
+  test behind it. The row and the row editor both draw the checkbox
+  `disabled` (dashed, like a template's), and the domain enforces the
+  same rule so no other path can tick it early — `toggleItem` refuses the
+  item, a parent's check cascade steps over a held-back descendant, and
+  `setAllChecked` leaves held-back items out of a bulk **check** (an
+  uncheck is never gated). The gate is *inclusive*: an item held to today
+  is checkable today. Nothing else about the row changes — editing,
+  notes, nesting, reordering, archiving and delete all behave normally.
 - **Ordering.** `floatDatedToBottom` (folded into `displayItems`,
-  `src/domain/item-display.ts`) floats the dated unchecked items to the
-  bottom of the unchecked group, sorted by due date (soonest first), so
-  every dated task clusters together just above the checked items. This
-  applies whatever the "sort checked to the bottom" setting is.
+  `src/domain/item-display.ts`) floats the **dated** unchecked items to
+  the bottom of the unchecked group, sorted by due date (soonest first),
+  so every dated task clusters together just above the checked items.
+  This applies whatever the "sort checked to the bottom" setting is. A
+  not-before gate does not move an item — it changes when the work can be
+  done, not where it sits.
 - **Recurrence.** Checking a recurring item advances its `deadline` by
   `nextOccurrence` (`src/domain/deadlines.ts`) instead of marking it
   checked — the date-math helpers (`addRecurrence`, clamping the day of
   month) live there. Giving any item a deadline unlocks the **On the
-  Clock** [achievement](#achievements).
+  Clock** [achievement](#achievements); holding one back unlocks
+  **Not Yet**.
 
-On the file / cloud backends the deadline and recurrence round-trip
-through the markdown codec as an italic `*(due 2026-07-20, every 2
-weeks)*` marker on the item line (`src/storage/markdown/codec.ts`), the
-same human-readable, tool-friendly convention as `*(required)*`.
+On the file / cloud backends both dates round-trip through the markdown
+codec as italic markers on the item line
+(`src/storage/markdown/codec.ts`) — `*(not before 2026-07-01)*` and
+`*(due 2026-07-20, every 2 weeks)*`, written in that order and parsed
+independently — the same human-readable, tool-friendly convention as
+`*(required)*`.
 
 ### Archive / unarchive item
 
@@ -1519,14 +1543,14 @@ adds nothing at all.
 That shared base is the load-bearing decision behind the whole feature.
 Because a template holds the **same item model** a checklist does, every
 item operation is generic over it — `addItem`, `editItem`, `deleteItem`,
-`toggleItem`, `setCategory`, `setItemDeadline`, `moveItemInto`,
+`toggleItem`, `setCategory`, `setItemTiming`, `moveItemInto`,
 `displayItems`, `progress`, … are all `<L extends ItemList>(list: L, …):
 L`, funnelling their one write through `withItems`
 (`src/domain/item-tree.ts`). So a template is edited by *exactly* the
 same verbs, the same hook, and the same view as a list, rather than a
 parallel set that would drift apart. `cloneItemsUnchecked` (also
 `item-tree.ts`) is the shared deep-copy both directions of the round trip
-use: it keeps title, notes, required, category, children, deadline, and
+use: it keeps title, notes, required, category, children, timing, and
 recurrence, drops `checked` / `checkedAt` / `archived`, and mints a fresh
 id per node from an injected factory (the domain layer never generates
 ids itself).

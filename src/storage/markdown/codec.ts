@@ -64,6 +64,11 @@ const CATEGORY_MARKER = "*(category)*";
 const DUE_MARKER_RE =
   /\s*\*\(due (\d{4}-\d{2}-\d{2})(?:, every (?:(\d+) )?(week|month|year)s?)?\)\*/;
 
+// Trailing marker carrying an item's `not before` gate — the earliest day it
+// may be checked off — e.g. `*(not before 2026-07-20)*`. Written and read
+// independently of the due marker, since the two dates are independent.
+const NOT_BEFORE_MARKER_RE = /\s*\*\(not before (\d{4}-\d{2}-\d{2})\)\*/;
+
 // -- Filenames --------------------------------------------------------
 
 /**
@@ -271,7 +276,7 @@ function scopeToCategory(checklist: ItemList, categoryId: string): ItemList {
 /**
  * A template as standalone markdown. Rendered exactly like a checklist — the
  * same nested `- [ ]` task lines with the same `*(required)*` /
- * `*(category)*` / `*(due …)*` markers — because a template carries the same
+ * `*(category)*` / `*(not before …)*` / `*(due …)*` markers — because a template carries the same
  * item model a checklist does. Every box is unchecked (a stored template holds
  * no checked state), and there is no `## Archived` section: extraction drops
  * archived items rather than capturing them.
@@ -312,7 +317,7 @@ function renderChecklistItem(
   const box = item.checked ? "x" : " ";
   const marker = categoryMarkers ? renderCategoryMarker(item) : "";
   const lines = [
-    `${pad}- [${box}] ${renderItemTitle(item)}${marker}${renderDueMarker(item)}`,
+    `${pad}- [${box}] ${renderItemTitle(item)}${marker}${renderNotBeforeMarker(item)}${renderDueMarker(item)}`,
     ...renderNotes(item.notes, pad),
   ];
   for (const child of item.children ?? []) {
@@ -324,6 +329,11 @@ function renderChecklistItem(
 /** The ` *(category)*` suffix for a category header, or "" otherwise. */
 function renderCategoryMarker(item: ChecklistItem): string {
   return item.category ? ` ${CATEGORY_MARKER}` : "";
+}
+
+/** The ` *(not before …)*` suffix for a gated item, or "" when it's ungated. */
+function renderNotBeforeMarker(item: ChecklistItem): string {
+  return item.notBefore ? ` *(not before ${item.notBefore})*` : "";
 }
 
 /** The ` *(due …)*` suffix for a dated item, or "" when it has no deadline. */
@@ -439,6 +449,11 @@ export interface ImportedItem {
   checked: boolean;
   required: boolean;
   notes?: string;
+  /**
+   * The earliest day this item may be checked off (`YYYY-MM-DD`), recovered
+   * from a `*(not before …)*` marker. Independent of `deadline`.
+   */
+  notBefore?: string;
   /** A due date (`YYYY-MM-DD`) recovered from a `*(due …)*` marker. */
   deadline?: string;
   /** How the deadline repeats, recovered alongside it. Only with a deadline. */
@@ -470,6 +485,7 @@ export function parseItemsFromMarkdown(text: string): ImportedItem[] {
       required: raw.required,
     };
     if (raw.notes) item.notes = raw.notes;
+    if (raw.notBefore) item.notBefore = raw.notBefore;
     if (raw.deadline) item.deadline = raw.deadline;
     if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
     if (raw.category) item.category = true;
@@ -487,6 +503,7 @@ type RawItem = {
   required: boolean;
   notes?: string;
   archived?: boolean;
+  notBefore?: string;
   deadline?: string;
   recurrence?: Recurrence;
   category?: boolean;
@@ -498,6 +515,7 @@ function toChecklistItem(raw: RawItem, id: string): ChecklistItem {
   if (raw.notes) item.notes = raw.notes;
   if (raw.required) item.required = true;
   if (raw.archived) item.archived = true;
+  if (raw.notBefore) item.notBefore = raw.notBefore;
   if (raw.deadline) item.deadline = raw.deadline;
   if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
   if (raw.category) item.category = true;
@@ -621,6 +639,7 @@ function parseItemLine(line: string): { indent: number; item: RawItem } | null {
       title: meta.title,
       checked,
       required: meta.required,
+      ...(meta.notBefore ? { notBefore: meta.notBefore } : {}),
       ...(meta.deadline ? { deadline: meta.deadline } : {}),
       ...(meta.deadline && meta.recurrence
         ? { recurrence: meta.recurrence }
@@ -630,15 +649,17 @@ function parseItemLine(line: string): { indent: number; item: RawItem } | null {
   };
 }
 
-// Peel the trailing `*(required)*` / `*(category)*` / `*(due …)*` markers off
-// an item's text, returning the clean title plus whatever the markers carried.
-// The due marker may sit anywhere in the string (it's spliced out in place);
-// the tail then reads `title *(required)* *(category)*` (the order they
-// render), so category is peeled first and required last.
+// Peel the trailing `*(required)*` / `*(category)*` / `*(not before …)*` /
+// `*(due …)*` markers off an item's text, returning the clean title plus
+// whatever the markers carried. The two date markers may sit anywhere in the
+// string (each is spliced out in place); the tail then reads
+// `title *(required)* *(category)*` (the order they render), so category is
+// peeled first and required last.
 function parseItemMeta(raw: string): {
   title: string;
   required: boolean;
   category: boolean;
+  notBefore?: string;
   deadline?: string;
   recurrence?: Recurrence;
 } {
@@ -656,9 +677,15 @@ function parseItemMeta(raw: string): {
     }
     text = text.slice(0, due.index) + text.slice(due.index + due[0].length);
   }
+  let notBefore: string | undefined;
+  const gate = NOT_BEFORE_MARKER_RE.exec(text);
+  if (gate) {
+    notBefore = gate[1];
+    text = text.slice(0, gate.index) + text.slice(gate.index + gate[0].length);
+  }
   const { title: withoutCategory, category } = stripCategory(text);
   const { title, required } = stripRequired(withoutCategory);
-  return { title, required, category, deadline, recurrence };
+  return { title, required, category, notBefore, deadline, recurrence };
 }
 
 function stripRequired(raw: string): { title: string; required: boolean } {

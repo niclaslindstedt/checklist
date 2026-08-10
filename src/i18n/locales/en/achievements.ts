@@ -141,6 +141,12 @@ const achievements = {
       learnMore:
         "Swipe an item left and tap the clock to set a due date — and, if the task comes back around, a repeat like “every 2 weeks”. Dated items sink to the bottom of the unchecked list under a date row that warms from yellow to orange to red as the day nears and passes; checking off a recurring one rolls it to its next due date instead of ticking it away.",
     },
+    notYet: {
+      name: "Not Yet",
+      condition: "Hold an item back until a later day.",
+      learnMore:
+        "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be ticked off. Until that day comes round the item's box stays shut and a plain grey line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
+    },
     archivist: {
       name: "Archivist",
       condition: "Archive an item.",

@@ -72,7 +72,7 @@ always mounted, hidden by its own `open` prop. **`active` controls fetching,
 not rendering.** A surface the user never opens is never fetched or parsed.
 
 Split today: every modal (settings, changelog, search, sync details,
-namespaces, both achievements dialogs), the deadline sheet (which is the only
+namespaces, both achievements dialogs), the timing sheet (which is the only
 thing that pulls in `DatePicker`), and the standalone `/home` + `/privacy`
 pages. The Swedish catalogue and `workbox-window` were already split.
 
@@ -178,12 +178,13 @@ The types live in `src/domain/types.ts`, built on one shared base:
   optional `folderId`.
 - `Item` — `{ id, title, notes?, required? }`, the base a `ChecklistItem`
   extends with `checked`, `checkedAt?`, `archived?`, `children?`,
-  `deadline?`, `recurrence?`, and `category?`.
+  `notBefore?`, `deadline?`, `recurrence?`, and `category?`.
 
 **Templates carry the checklist item model.** `Template.items` is
 `ChecklistItem[]`, the same array type a checklist holds, so a template
 captures everything a list can express — sub-items, categories, notes,
-required flags, deadlines. Every item in a stored template is unchecked;
+required flags, and item timing (`notBefore` / `deadline` / `recurrence`).
+Every item in a stored template is unchecked;
 `checked` is present only because the model is shared.
 
 That sharing is what keeps the two from drifting: every item operation is

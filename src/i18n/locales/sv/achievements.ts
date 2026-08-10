@@ -134,6 +134,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Svep en post åt vänster och tryck på klockan för att ange ett förfallodatum — och, om uppgiften återkommer, en upprepning som ”var 2:e vecka”. Daterade poster sjunker till botten av de ej avbockade under en datumrad som går från gul till orange till röd när dagen närmar sig och passeras; att bocka av en återkommande post rullar den fram till nästa förfallodatum istället för att stryka den.",
     },
+    notYet: {
+      name: "Inte än",
+      condition: "Håll tillbaka en post till en senare dag.",
+      learnMore:
+        "Samma klocka som sätter ett förfallodatum sätter också ett ”Tidigast”-datum — den tidigaste dagen posten får bockas av. Fram till dess är rutan låst och en enkel grå rad ovanför posten berättar när den öppnar; på dagen försvinner raden och rutan fungerar som vilken annan som helst. Använd det för sådant som helt enkelt inte kan börja än: blanketten som inte kommer förrän den första i månaden, uppföljningssamtalet du inte bör ringa före nästa vecka.",
+    },
     archivist: {
       name: "Arkivarien",
       condition: "Arkivera en post.",

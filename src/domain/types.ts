@@ -110,6 +110,18 @@ export interface ChecklistItem extends Item {
    */
   deadline?: string;
   /**
+   * An optional **not before** day (a plain `YYYY-MM-DD` calendar day, no time
+   * zone) — the earliest day the item may be checked off. Set from the same
+   * timing modal as {@link deadline}, and independent of it: an item may carry
+   * either, both, or neither. While the day is still in the future the item is
+   * *held back* — its checkbox is inert (see `isHeldBack`) and a colourless
+   * date row states when it opens up. The moment the day arrives the hold
+   * lifts and the row disappears, leaving an ordinary item behind, so the
+   * field is a gate rather than a badge. Absent (rather than `null`) when
+   * ungated, so an older document needs no migration.
+   */
+  notBefore?: string;
+  /**
    * How this item's {@link deadline} repeats, if at all. Only carried
    * alongside a `deadline` (recurrence needs an anchor date); checking a
    * recurring item advances its `deadline` by one interval and leaves it
@@ -165,6 +177,20 @@ export interface Checklist extends ItemList {
    * projection of it.
    */
   folderId?: string;
+}
+
+/**
+ * A complete replacement for an item's timing, as the timing modal commits it:
+ * the earliest day it may be checked off, its due date, and how that due date
+ * repeats. Every field is absolute rather than a patch — `null` clears — so
+ * one save can set one date and drop another. `notBefore` and `deadline` are
+ * independent; `recurrence` only survives alongside a `deadline`, which
+ * anchors it (see `setItemTiming`).
+ */
+export interface TimingPatch {
+  notBefore: string | null;
+  deadline: string | null;
+  recurrence: Recurrence | null;
 }
 
 /**

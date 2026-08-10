@@ -631,6 +631,81 @@ describe("markdown codec", () => {
       expect(items[0]?.recurrence).toEqual({ unit: "week", interval: 2 });
     });
   });
+
+  describe("not-before gates", () => {
+    const gated: Checklist = {
+      ...checklist,
+      items: [
+        {
+          id: "1",
+          title: "Book the venue",
+          checked: false,
+          notBefore: "2026-07-01",
+        },
+        {
+          id: "2",
+          title: "Send invites",
+          checked: false,
+          notBefore: "2026-07-01",
+          deadline: "2026-07-20",
+          recurrence: { unit: "week", interval: 2 },
+        },
+      ],
+    };
+
+    it("renders the not-before marker, alone or beside a due marker", () => {
+      const md = checklistToMarkdown(gated);
+      expect(md).toContain("- [ ] Book the venue *(not before 2026-07-01)*");
+      expect(md).toContain(
+        "- [ ] Send invites *(not before 2026-07-01)* *(due 2026-07-20, every 2 weeks)*",
+      );
+    });
+
+    it("omits the marker for an ungated item", () => {
+      expect(checklistToMarkdown(checklist)).not.toContain("*(not before");
+    });
+
+    it("round-trips a gate through parse, independently of the deadline", () => {
+      const parsed = parseEntry(checklistToMarkdown(gated));
+      expect(parsed?.kind).toBe("checklist");
+      if (parsed?.kind === "checklist") {
+        const items = parsed.checklist.items;
+        expect(items[0]?.notBefore).toBe("2026-07-01");
+        expect(items[0]?.deadline).toBeUndefined();
+        expect(items[1]?.notBefore).toBe("2026-07-01");
+        expect(items[1]?.deadline).toBe("2026-07-20");
+        expect(items[1]?.recurrence).toEqual({ unit: "week", interval: 2 });
+      }
+    });
+
+    it("keeps the title clean alongside the other markers", () => {
+      const md = checklistToMarkdown({
+        ...checklist,
+        items: [
+          {
+            id: "1",
+            title: "Invites",
+            checked: false,
+            required: true,
+            notBefore: "2026-07-01",
+          },
+        ],
+      });
+      const parsed = parseEntry(md);
+      if (parsed?.kind === "checklist") {
+        expect(parsed.checklist.items[0]?.title).toBe("Invites");
+        expect(parsed.checklist.items[0]?.required).toBe(true);
+        expect(parsed.checklist.items[0]?.notBefore).toBe("2026-07-01");
+      }
+    });
+
+    it("recovers a gate from a pasted checklist", () => {
+      const items = parseItemsFromMarkdown(
+        "- [ ] Send invites *(not before 2026-07-01)*",
+      );
+      expect(items[0]?.notBefore).toBe("2026-07-01");
+    });
+  });
 });
 
 describe("category headers", () => {

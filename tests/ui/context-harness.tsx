@@ -77,7 +77,7 @@ export function makeChecklistValue(
     toggleItemInList: noop,
     editItem: noop,
     toggle: noop,
-    setDeadline: noop,
+    setTiming: noop,
     checkAll: noop,
     uncheckAll: noop,
     remove: noop,
