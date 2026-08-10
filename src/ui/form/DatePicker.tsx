@@ -44,6 +44,16 @@ type Props = {
   ariaLabel?: string;
   // Placeholder shown on the trigger when no date is selected.
   placeholder?: string;
+  /**
+   * The earliest selectable day as `YYYY-MM-DD`, **inclusive**. Days before it
+   * are rendered but inert, and the month / year grids grey out any cell whose
+   * whole span falls before it, so a user can't navigate into a dead region and
+   * wonder why nothing responds. Omitted for an unbounded picker.
+   *
+   * Comparisons are plain string compares — `YYYY-MM-DD` is lexicographically
+   * ordered, which is the same trick the rest of the date code leans on.
+   */
+  min?: string;
 };
 
 // Which drill-down level the calendar body is showing.
@@ -115,7 +125,13 @@ function triggerLabel(lang: Lang, value: string): string | null {
   }).format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day)));
 }
 
-export function DatePicker({ value, onChange, ariaLabel, placeholder }: Props) {
+export function DatePicker({
+  value,
+  onChange,
+  ariaLabel,
+  placeholder,
+  min,
+}: Props) {
   const lang = useLang();
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -136,13 +152,13 @@ export function DatePicker({ value, onChange, ariaLabel, placeholder }: Props) {
   // The month currently on screen. Seeds from the selected value (or today when
   // empty) and is re-seeded each time the panel opens so reopening always lands
   // on the relevant month rather than wherever the user last browsed.
-  const [shown, setShown] = useState(() => seedView(value, todayIso));
+  const [shown, setShown] = useState(() => seedView(value, todayIso, min));
   useEffect(() => {
     if (open) {
-      setShown(seedView(value, todayIso));
+      setShown(seedView(value, todayIso, min));
       setView("days");
     }
-  }, [open, value, todayIso]);
+  }, [open, value, todayIso, min]);
 
   const close = () => {
     setOpen(false);
@@ -150,6 +166,10 @@ export function DatePicker({ value, onChange, ariaLabel, placeholder }: Props) {
   };
 
   const pickDay = (cell: DayCell) => {
+    // Belt and braces: the button is already `disabled`, but a synthetic click
+    // (a test, an assistive tool) reaches a Preact handler regardless — see the
+    // same guard on `Checkbox`.
+    if (min && cell.iso < min) return;
     onChange(cell.iso);
     close();
   };
@@ -197,6 +217,7 @@ export function DatePicker({ value, onChange, ariaLabel, placeholder }: Props) {
               }
               onOpenMonths={() => setView("months")}
               onPickDay={pickDay}
+              min={min}
             />
           )}
           {view === "months" && (
@@ -214,6 +235,7 @@ export function DatePicker({ value, onChange, ariaLabel, placeholder }: Props) {
                 setShown((s) => ({ ...s, month }));
                 setView("days");
               }}
+              min={min}
             />
           )}
           {view === "years" && (
@@ -229,6 +251,7 @@ export function DatePicker({ value, onChange, ariaLabel, placeholder }: Props) {
                 setShown((s) => ({ ...s, year }));
                 setView("months");
               }}
+              min={min}
             />
           )}
         </div>
@@ -293,12 +316,36 @@ function CaptionButton({
 
 // Tailwind classes for a grid cell, shared by the month and year buttons:
 // selected fills accent, today gets an accent ring, everything else is plain.
-function cellClass(isSelected: boolean, isToday: boolean): string {
+// An out-of-range cell (before `min`) is dimmed and loses its hover, so the
+// dead region reads as unavailable rather than unresponsive.
+function cellClass(
+  isSelected: boolean,
+  isToday: boolean,
+  isDisabled = false,
+): string {
+  if (isDisabled) {
+    return "flex h-10 items-center justify-center rounded text-sm text-muted opacity-40";
+  }
   return `flex h-10 items-center justify-center rounded text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
     isSelected
       ? "bg-accent font-semibold text-page-bg"
       : "text-fg-bright hover:bg-surface"
   } ${isToday && !isSelected ? "ring-1 ring-inset ring-accent/60" : ""}`;
+}
+
+/** True when every day of `year`-`month` falls before the `min` day. */
+function monthBefore(year: number, month: number, min?: string): boolean {
+  if (!min) return false;
+  // The last day of the month is the latest thing it could offer; if even that
+  // is before `min`, nothing in the month is reachable. Day 0 of the next month
+  // is the last day of this one.
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return toISODate(year, month, lastDay) < min;
+}
+
+/** True when every day of `year` falls before the `min` day. */
+function yearBefore(year: number, min?: string): boolean {
+  return min ? toISODate(year, 12, 31) < min : false;
 }
 
 function DaysView({
@@ -311,6 +358,7 @@ function DaysView({
   onStep,
   onOpenMonths,
   onPickDay,
+  min,
 }: {
   lang: Lang;
   t: T;
@@ -321,6 +369,7 @@ function DaysView({
   onStep: (delta: number) => void;
   onOpenMonths: () => void;
   onPickDay: (cell: DayCell) => void;
+  min?: string;
 }) {
   const grid = useMemo(
     () => buildMonthGrid(shown.year, shown.month, weekStartsOn),
@@ -368,6 +417,7 @@ function DaysView({
         {grid.flat().map((cell) => {
           const isSelected = cell.iso === selectedIso;
           const isToday = cell.iso === todayIso;
+          const isDisabled = Boolean(min) && cell.iso < min!;
           return (
             <button
               key={cell.iso}
@@ -375,14 +425,19 @@ function DaysView({
               aria-label={dayAriaLabel(lang, cell)}
               aria-pressed={isSelected}
               aria-current={isToday ? "date" : undefined}
+              disabled={isDisabled}
               onClick={() => onPickDay(cell)}
-              className={`flex h-8 items-center justify-center rounded text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
-                isSelected
-                  ? "bg-accent font-semibold text-page-bg"
-                  : cell.inMonth
-                    ? "text-fg-bright hover:bg-surface"
-                    : "text-muted hover:bg-surface"
-              } ${isToday && !isSelected ? "ring-1 ring-inset ring-accent/60" : ""}`}
+              className={
+                isDisabled
+                  ? "flex h-8 items-center justify-center rounded text-sm text-muted opacity-40"
+                  : `flex h-8 items-center justify-center rounded text-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+                      isSelected
+                        ? "bg-accent font-semibold text-page-bg"
+                        : cell.inMonth
+                          ? "text-fg-bright hover:bg-surface"
+                          : "text-muted hover:bg-surface"
+                    } ${isToday && !isSelected ? "ring-1 ring-inset ring-accent/60" : ""}`
+              }
             >
               {cell.day}
             </button>
@@ -402,6 +457,7 @@ function MonthsView({
   onStepYear,
   onOpenYears,
   onPickMonth,
+  min,
 }: {
   lang: Lang;
   t: T;
@@ -411,6 +467,7 @@ function MonthsView({
   onStepYear: (delta: number) => void;
   onOpenYears: () => void;
   onPickMonth: (month: number) => void;
+  min?: string;
 }) {
   const names = useMemo(() => monthShortNames(lang), [lang]);
 
@@ -440,14 +497,16 @@ function MonthsView({
           const isSelected =
             selected?.year === shown.year && selected?.month === month;
           const isToday = today.year === shown.year && today.month === month;
+          const isDisabled = monthBefore(shown.year, month, min);
           return (
             <button
               key={month}
               type="button"
               aria-label={monthLongName(lang, month)}
               aria-pressed={isSelected}
+              disabled={isDisabled}
               onClick={() => onPickMonth(month)}
-              className={cellClass(isSelected, isToday)}
+              className={cellClass(isSelected, isToday, isDisabled)}
             >
               {name}
             </button>
@@ -465,6 +524,7 @@ function YearsView({
   today,
   onStepBlock,
   onPickYear,
+  min,
 }: {
   t: T;
   shown: YM;
@@ -472,6 +532,7 @@ function YearsView({
   today: YMD;
   onStepBlock: (delta: number) => void;
   onPickYear: (year: number) => void;
+  min?: string;
 }) {
   const start = yearRangeStart(shown.year, YEAR_BLOCK);
   const years = Array.from({ length: YEAR_BLOCK }, (_, i) => start + i);
@@ -501,13 +562,15 @@ function YearsView({
         {years.map((year) => {
           const isSelected = selected?.year === year;
           const isToday = today.year === year;
+          const isDisabled = yearBefore(year, min);
           return (
             <button
               key={year}
               type="button"
               aria-pressed={isSelected}
+              disabled={isDisabled}
               onClick={() => onPickYear(year)}
-              className={cellClass(isSelected, isToday)}
+              className={cellClass(isSelected, isToday, isDisabled)}
             >
               {year}
             </button>
@@ -518,9 +581,20 @@ function YearsView({
   );
 }
 
-/** Which month to show first: the selected value's month, else today's. */
-function seedView(value: string, todayIso: string): YM {
+/**
+ * Which month to show first: the selected value's month, else today's — but
+ * never a month that lies entirely before `min`. Opening an empty, bounded
+ * picker on today's month would otherwise land the user in a grid where every
+ * cell is dead; seeding on `min`'s month puts the first selectable day on
+ * screen instead.
+ */
+function seedView(value: string, todayIso: string, min?: string): YM {
   const anchor = parseISODate(value) ?? parseISODate(todayIso);
   // `todayIso` is always a valid day, so `anchor` is never null in practice.
-  return { year: anchor!.year, month: anchor!.month };
+  const { year, month } = anchor!;
+  if (monthBefore(year, month, min)) {
+    const floor = parseISODate(min!);
+    if (floor) return { year: floor.year, month: floor.month };
+  }
+  return { year, month };
 }

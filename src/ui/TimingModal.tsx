@@ -17,9 +17,15 @@ import { ClockIcon } from "./icons.tsx";
 // optionally, how that due date repeats (every N weeks / months / years).
 //
 // The two dates are independent: an item can be gated with no deadline, dated
-// with no gate, or both. Recurrence is the exception — it's only offered once
-// a due date is set, since a repeat needs an anchor day. Confirming hands all
-// three back to `setTiming`; "Clear timing" drops every one of them at once.
+// with no gate, or both — but they can't *cross*. A due date earlier than the
+// gate describes work that must be finished before it may be started, so the
+// due-date picker greys out every day before the chosen gate, and pushing the
+// gate past an already-chosen due date clears that date rather than leaving an
+// impossible pair behind.
+//
+// Recurrence is the other constraint — it's only offered once a due date is
+// set, since a repeat needs an anchor day. Confirming hands all three back to
+// `setTiming`; "Clear timing" drops every one of them at once.
 
 // The recurrence unit, plus a "none" sentinel for the one-off / undated case.
 type RepeatChoice = "none" | RecurrenceUnit;
@@ -36,6 +42,18 @@ export function TimingModal({ item, onSubmit, onClose }: Props) {
 
   const [notBefore, setNotBefore] = useState(item.notBefore ?? "");
   const [date, setDate] = useState(item.deadline ?? "");
+
+  // Moving the gate past the due date would leave an item that can't be
+  // started until after it was meant to be finished. The due-date picker
+  // refuses to *offer* such a day (`min` below), so the only way in is to push
+  // the gate forward past a date already chosen — in which case that date is
+  // dropped, visibly, as the field empties under the user's hand. Silently
+  // keeping an unreachable due date would be worse: it would sit there
+  // colour-coded and urgent for work that isn't open yet.
+  const changeNotBefore = (next: string) => {
+    setNotBefore(next);
+    if (next && date && date < next) setDate("");
+  };
   const [unit, setUnit] = useState<RepeatChoice>(
     item.recurrence?.unit ?? "none",
   );
@@ -95,7 +113,7 @@ export function TimingModal({ item, onSubmit, onClose }: Props) {
           </span>
           <DatePicker
             value={notBefore}
-            onChange={setNotBefore}
+            onChange={changeNotBefore}
             ariaLabel={t("app.timing.notBefore")}
             placeholder={t("app.timing.pickDate")}
           />
@@ -105,11 +123,14 @@ export function TimingModal({ item, onSubmit, onClose }: Props) {
           <span className="text-xs font-medium tracking-wide text-muted uppercase">
             {t("app.timing.dueDate")}
           </span>
+          {/* A due date before the gate is unreachable work, so the picker
+              simply doesn't offer those days. */}
           <DatePicker
             value={date}
             onChange={setDate}
             ariaLabel={t("app.timing.dueDate")}
             placeholder={t("app.timing.pickDate")}
+            min={notBefore || undefined}
           />
         </label>
 

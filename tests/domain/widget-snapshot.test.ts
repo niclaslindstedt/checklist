@@ -187,6 +187,57 @@ describe("buildWidgetSnapshot", () => {
   });
 });
 
+describe("buildWidgetSnapshot with held-back items", () => {
+  // Far enough out that the gate is pending whenever the suite runs.
+  const GATE = "2099-07-01";
+
+  it("leaves a held-back item out of the open list", () => {
+    const doc = snapshot([
+      list({
+        id: "a",
+        items: [item({ id: "free" }), item({ id: "held", notBefore: GATE })],
+      }),
+    ]);
+    const open = buildWidgetSnapshot(doc, { now: NOW }).active!.open;
+    expect(open.map((o) => o.id)).toEqual(["free"]);
+  });
+
+  it("leaves a held-back item out of the due list even when it is overdue", () => {
+    const doc = snapshot([
+      list({
+        id: "a",
+        items: [
+          item({ id: "overdue", deadline: "2026-07-01" }),
+          item({ id: "held", deadline: "2026-07-01", notBefore: GATE }),
+        ],
+      }),
+    ]);
+    // Both are overdue, but only the actionable one is offered — the widget's
+    // rows are check-off buttons, and `toggleItem` refuses a held item.
+    expect(buildWidgetSnapshot(doc, { now: NOW }).due.map((d) => d.id)).toEqual(
+      ["overdue"],
+    );
+  });
+
+  it("surfaces an item again once its gate has passed", () => {
+    const doc = snapshot([
+      list({
+        id: "a",
+        items: [
+          item({
+            id: "released",
+            deadline: "2026-07-01",
+            notBefore: "2000-01-01",
+          }),
+        ],
+      }),
+    ]);
+    const snap = buildWidgetSnapshot(doc, { now: NOW });
+    expect(snap.due.map((d) => d.id)).toEqual(["released"]);
+    expect(snap.active!.open.map((o) => o.id)).toEqual(["released"]);
+  });
+});
+
 describe("resolvedDeadline", () => {
   it("returns undefined for an undated item", () => {
     expect(resolvedDeadline({}, NOW)).toBeUndefined();

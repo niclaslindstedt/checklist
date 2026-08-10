@@ -1578,6 +1578,35 @@ describe("displayItems with dated and held-back items", () => {
     ]);
   });
 
+  it("orders a gate group by due date, dated before undated", () => {
+    // Three items share one gate day. The dated float runs before the held
+    // sink and the sink is stable, so within the run the dated ones lead in
+    // due-date order and the undated one trails. Pinned here because that
+    // secondary order is emergent from the transform order rather than stated
+    // by either sort on its own — reordering them would silently change it.
+    let c = listOf("A", "B", "C", "D");
+    c = setItemTiming(c, "i1", gate("2099-07-01"), NOW);
+    c = setItemTiming(
+      c,
+      "i2",
+      { notBefore: "2099-07-01", deadline: "2026-12-01", recurrence: null },
+      NOW,
+    );
+    c = setItemTiming(
+      c,
+      "i3",
+      { notBefore: "2099-07-01", deadline: "2026-09-01", recurrence: null },
+      NOW,
+    );
+    const order = { sinkChecked: true, datedFirst: true, heldLast: true };
+    expect(ids(displayItems(c, order, TODAY))).toEqual([
+      "i4", // free
+      "i3", // gated, due soonest
+      "i2", // gated, due later
+      "i1", // gated, undated
+    ]);
+  });
+
   it("leaves an undated, ungated level's order untouched", () => {
     const items = listOf("A", "B").items;
     expect(ids(floatDatedToTop(items))).toEqual(["i1", "i2"]);

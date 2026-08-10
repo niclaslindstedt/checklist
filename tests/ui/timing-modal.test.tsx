@@ -117,6 +117,137 @@ describe("TimingModal", () => {
     });
   });
 
+  it("greys out due-date days that fall before the chosen gate", () => {
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2099-08-15" }}
+        onSubmit={vi.fn()}
+        onClose={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+    // With no due date yet, a bounded picker seeds on the gate's own month
+    // rather than today's — so both sides of the boundary are on screen
+    // whatever day the suite runs on.
+    const before = screen.getByRole("button", {
+      name: /\b14 August 2099$/,
+    }) as HTMLButtonElement;
+    const onTheDay = screen.getByRole("button", {
+      name: /\b15 August 2099$/,
+    }) as HTMLButtonElement;
+    // The gate day itself is selectable — `notBefore` is inclusive.
+    expect(before.disabled).toBe(true);
+    expect(onTheDay.disabled).toBe(false);
+  });
+
+  it("refuses a synthetic click on an out-of-range day", () => {
+    const onSubmit = vi.fn();
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2099-08-15" }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+    // Preact dispatches to a disabled button's handler, so the guard inside
+    // `pickDay` is what actually holds — saving carries no due date.
+    fireEvent.click(screen.getByRole("button", { name: /\b14 August 2099$/ }));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: "2099-08-15",
+      deadline: null,
+      recurrence: null,
+    });
+  });
+
+  it("greys out whole months and years that end before the gate", () => {
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2099-08-15" }}
+        onSubmit={vi.fn()}
+        onClose={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose month" }));
+    // July 2099 ends before the gate; August still holds selectable days.
+    expect(
+      (screen.getByRole("button", { name: "July" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "August" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose year" }));
+    expect(
+      (screen.getByRole("button", { name: "2098" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "2099" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("leaves the due-date picker unbounded when there is no gate", () => {
+    render(<TimingModal item={base} onSubmit={vi.fn()} onClose={noop} />);
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+    const days = screen
+      .getAllByRole("button")
+      .filter((b) => /\d{4}$/.test(b.getAttribute("aria-label") ?? ""));
+    expect(days.length).toBeGreaterThan(0);
+    expect(days.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
+  });
+
+  it("drops a due date the gate has just overtaken", () => {
+    const onSubmit = vi.fn();
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2026-08-01", deadline: "2026-08-10" }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Due date" }).textContent,
+    ).toContain("10 Aug");
+    // Push the gate past the due date — the now-unreachable date is cleared
+    // in front of the user rather than saved as an impossible pair.
+    fireEvent.click(screen.getByRole("button", { name: "Not before" }));
+    fireEvent.click(screen.getByRole("button", { name: /\b20 August 2026$/ }));
+    expect(
+      screen.getByRole("button", { name: "Due date" }).textContent,
+    ).toContain("Pick a date");
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: "2026-08-20",
+      deadline: null,
+      recurrence: null,
+    });
+  });
+
+  it("keeps a due date the gate does not overtake", () => {
+    const onSubmit = vi.fn();
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2026-08-01", deadline: "2026-08-25" }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Not before" }));
+    fireEvent.click(screen.getByRole("button", { name: /\b20 August 2026$/ }));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: "2026-08-20",
+      deadline: "2026-08-25",
+      recurrence: null,
+    });
+  });
+
   it("clears the whole timing — both dates and the recurrence", () => {
     const onSubmit = vi.fn();
     render(
