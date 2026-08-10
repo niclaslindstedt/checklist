@@ -1,6 +1,7 @@
-// Pure date arithmetic over item deadlines: how soon a due date is (the
-// colour bucket the date row paints with) and how a recurring deadline rolls
-// forward. Deadlines are plain `YYYY-MM-DD` calendar days with no time zone,
+// Pure date arithmetic over an item's timing: how soon a due date is (the
+// colour bucket the date row paints with), whether a `not before` day has
+// arrived yet, and how a recurring deadline rolls forward. Both dates are
+// plain `YYYY-MM-DD` calendar days with no time zone,
 // and every function takes the "now" instant explicitly, so this module stays
 // deterministic and DOM-free like the rest of `domain/` (see AGENTS.md). The
 // `Date` constructor is used only for UTC calendar math on those given
@@ -49,6 +50,21 @@ export function deadlineStatus(deadline: string, now: string): DeadlineStatus {
   if (days <= 1) return "due-soon";
   if (days <= 7) return "upcoming";
   return "later";
+}
+
+/**
+ * Whether an item is **held back** by a `notBefore` day that hasn't arrived —
+ * i.e. it carries one and that day is still in the future. A held-back item
+ * can't be checked off (the box is inert, and `toggleItem` refuses it), and it
+ * shows a colourless date row saying when it opens up.
+ *
+ * The hold lifts on the day itself: `notBefore` is inclusive, so an item
+ * gated to today is checkable today. Takes a structural shape rather than the
+ * full `ChecklistItem` so the widget / notification projections — which carry
+ * only a subset of the fields — can ask the same question.
+ */
+export function isHeldBack(item: { notBefore?: string }, now: string): boolean {
+  return item.notBefore !== undefined && daysUntil(item.notBefore, now) > 0;
 }
 
 /**

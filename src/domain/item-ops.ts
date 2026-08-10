@@ -7,7 +7,7 @@
 // and DOM-free.
 
 import { activeItems } from "./archive-ops.ts";
-import { nextOccurrence } from "./deadlines.ts";
+import { isHeldBack, nextOccurrence } from "./deadlines.ts";
 import {
   findItem,
   flattenItems,
@@ -16,7 +16,12 @@ import {
   withChildren,
   withItems,
 } from "./item-tree.ts";
-import type { ChecklistItem, ItemList, Recurrence } from "./types.ts";
+import type {
+  ChecklistItem,
+  ItemList,
+  Recurrence,
+  TimingPatch,
+} from "./types.ts";
 
 /** True when two recurrences describe the same cadence. */
 function sameRecurrence(a?: Recurrence, b?: Recurrence): boolean {
@@ -214,24 +219,37 @@ export function editItem<L extends ItemList>(
 }
 
 /**
- * Set (or clear) an item's due date and how it repeats. `deadline` is a
- * `YYYY-MM-DD` day or `null` to clear it; `recurrence` describes the repeat
- * cadence or `null` for a one-off. Clearing the deadline drops any recurrence
- * with it (recurrence needs an anchor date), and a `recurrence` supplied
- * without a `deadline` is ignored for the same reason. A no-op (nothing
+ * Set (or clear) an item's whole timing: the earliest day it may be checked
+ * off, its due date, and how that due date repeats. Every field is a
+ * `YYYY-MM-DD` day (or `null` to clear it) except `recurrence`, which
+ * describes the repeat cadence or is `null` for a one-off.
+ *
+ * The two dates are independent — an item may be gated by `notBefore` with no
+ * deadline, or dated with no gate. Recurrence, though, only rides alongside a
+ * live deadline: clearing the deadline drops it, and one supplied without a
+ * deadline is ignored, since a repeat needs an anchor date. A no-op (nothing
  * actually changed) returns the same checklist untouched, so it never bumps
  * `updatedAt` or triggers a write.
  */
-export function setItemDeadline<L extends ItemList>(
+export function setItemTiming<L extends ItemList>(
   checklist: L,
   itemId: string,
-  deadline: string | null,
-  recurrence: Recurrence | null,
+  timing: TimingPatch,
   now: string,
 ): L {
+  const { notBefore, deadline, recurrence } = timing;
   const items = updateItem(checklist.items, itemId, (it) => {
     const next: ChecklistItem = { ...it };
     let changed = false;
+    if (notBefore) {
+      if (it.notBefore !== notBefore) {
+        next.notBefore = notBefore;
+        changed = true;
+      }
+    } else if (it.notBefore !== undefined) {
+      delete next.notBefore;
+      changed = true;
+    }
     if (deadline) {
       if (it.deadline !== deadline) {
         next.deadline = deadline;
@@ -317,6 +335,12 @@ export function toggleItem<L extends ItemList>(
   const target = findItem(checklist.items, itemId);
   if (!target) return checklist;
   const check = !target.checked;
+  // An item held back by a `notBefore` day that hasn't arrived can't be
+  // checked off at all — the box is drawn inert, but the refusal lives here so
+  // no path (a keyboard activation, the widget's queued taps, a cascade from a
+  // parent below) can tick it early. Unchecking always works, so an item
+  // gated *after* it was already checked can still be undone.
+  if (check && isHeldBack(target, now)) return checklist;
   // A recurring item isn't ticked off — checking it rolls its deadline
   // forward to the next occurrence and leaves it unchecked, so the task
   // reappears on its next due date instead of vanishing into the checked
@@ -333,9 +357,16 @@ export function toggleItem<L extends ItemList>(
   // `checkedAt` (the recency key the "sort checked to the bottom" view sorts
   // on); unchecking drops it so it never lingers on an active item.
   const apply = (it: ChecklistItem): ChecklistItem => {
-    const next: ChecklistItem = check
-      ? { ...it, checked: true, checkedAt: now }
-      : { ...it, checked: false };
+    // A held-back descendant sits the cascade out — it keeps its own state
+    // while its siblings flip — so checking a parent can't tick off work the
+    // user has explicitly gated to a later day. The walk still recurses past
+    // it, since its own children may be free to move.
+    const skip = check && isHeldBack(it, now);
+    const next: ChecklistItem = skip
+      ? { ...it }
+      : check
+        ? { ...it, checked: true, checkedAt: now }
+        : { ...it, checked: false };
     if (!check) delete next.checkedAt;
     if (it.children) next.children = it.children.map(apply);
     return next;
@@ -349,17 +380,26 @@ export function toggleItem<L extends ItemList>(
  * action behind the header count's dropdown ("Check all" / "Uncheck all").
  * Walks the whole tree but skips archived subtrees, since archived items are
  * hidden from the count this action mirrors. Checking stamps `checkedAt` (the
- * recency key the sink-checked view sorts on); unchecking clears it. A no-op
- * (every active item already in the requested state) returns the same
- * checklist untouched, so it never bumps `updatedAt` or triggers a write.
+ * recency key the sink-checked view sorts on); unchecking clears it. Items
+ * held back by a `notBefore` day that hasn't arrived sit the sweep out when
+ * it checks (they aren't checkable yet) and take part normally when it
+ * unchecks. A no-op (every item the sweep could move already in the requested
+ * state) returns the same checklist untouched, so it never bumps `updatedAt`
+ * or triggers a write.
  */
 export function setAllChecked<L extends ItemList>(
   checklist: L,
   checked: boolean,
   now: string,
 ): L {
+  // Whether the sweep is allowed to move this item at all — a held-back item
+  // can't be checked, so it counts neither toward "is there anything to do"
+  // below nor toward the sweep itself.
+  const movable = (it: ChecklistItem) => !(checked && isHeldBack(it, now));
   if (
-    !flattenItems(activeItems(checklist)).some((it) => it.checked !== checked)
+    !flattenItems(activeItems(checklist)).some(
+      (it) => it.checked !== checked && movable(it),
+    )
   ) {
     return checklist;
   }
@@ -368,7 +408,7 @@ export function setAllChecked<L extends ItemList>(
     // they're hidden, so a bulk check over the visible list never touches them.
     if (it.archived) return it;
     let next = it;
-    if (it.checked !== checked) {
+    if (it.checked !== checked && movable(it)) {
       next = checked
         ? { ...it, checked: true, checkedAt: now }
         : { ...it, checked: false };

@@ -8,11 +8,11 @@ import {
 } from "react";
 
 import { unlock } from "../achievements/bus.ts";
-import type { DropMode } from "../domain/checklists.ts";
+import { isHeldBack, type DropMode } from "../domain/checklists.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
-import { DeadlineRow } from "./DeadlineRow.tsx";
+import { TimingRow } from "./TimingRow.tsx";
 import { Checkbox } from "./form/index.ts";
 import type { DragHandleProps } from "./hooks/useListReorder.ts";
 import { useLongPress } from "./hooks/useLongPress.ts";
@@ -57,6 +57,11 @@ export const INDENT_PER_LEVEL = 32;
 // The editor (`ChecklistRowEditor`) shows the title and body as raw plain
 // text; the row renders the body back as markdown once the edit commits.
 //
+// An item **held back** by a "not before" day that hasn't arrived draws its
+// checkbox inert (dashed, like a template's) and states the day in the date
+// row above the title. The hold lifts on the day itself, at which point the
+// label disappears and the box becomes an ordinary one.
+//
 // When the user switches item notes off (Settings → Lists, `notesDisabled`),
 // the row is title-only: the note glyph and rendered body never appear and the
 // editor drops its note field. Any note already on the item is left in the
@@ -74,11 +79,11 @@ type Props = {
   onDelete: (id: string) => void;
   onEdit: (id: string, fields: { title?: string; notes?: string }) => void;
   /**
-   * Open the deadline modal for this item — fired by the clock button
-   * revealed on a left swipe (and the desktop right-click menu). Sets or
-   * clears the item's due date and recurrence.
+   * Open the timing modal for this item — fired by the clock button revealed
+   * on a left swipe (and the desktop right-click menu). Sets or clears the
+   * item's "not before" gate, its due date, and its recurrence.
    */
-  onEditDeadline?: (id: string) => void;
+  onEditTiming?: (id: string) => void;
   /**
    * Delete this item because the user emptied it out — committed with a blank
    * title and no body, or backspaced past the start of an empty line. Lets the
@@ -184,7 +189,7 @@ function ChecklistRowImpl({
   onArchive,
   onDelete,
   onEdit,
-  onEditDeadline,
+  onEditTiming,
   onRemoveEmpty,
   onBackspaceEmpty,
   onAddAfter,
@@ -217,6 +222,13 @@ function ChecklistRowImpl({
   // item — see the styling below. Only the two bulk sweeps and this styling
   // treat it specially (see `ChecklistItem.category`).
   const category = Boolean(item.category);
+  // An item gated by a "not before" day that hasn't arrived is *held back*:
+  // its box is drawn but inert until the day comes round, and the date row
+  // above says when that is. Everything else about the row — editing, notes,
+  // nesting, reordering, archiving — works as usual; only ticking it off is
+  // out of reach. `toggleItem` refuses it too, so this is presentation, not
+  // the enforcement.
+  const held = isHeldBack(item, new Date().toISOString());
   // A template row has nothing to archive, so the swipe's archive commit is
   // wired to a no-op there — the gesture still reveals the delete side.
   const archive = useCallback(() => {
@@ -456,7 +468,7 @@ function ChecklistRowImpl({
             }`}
           >
             {/* The trailing action buttons, uncovered by a left swipe: a clock
-                to set a deadline and a trash to delete. Both hold focus on
+                to set the item's timing and a trash to delete. Both hold focus on
                 mousedown so a tap doesn't first blur an open editor elsewhere —
                 that blur commits and closes the editor, reflows the list, and
                 slides the button out from under the finger before the click
@@ -468,14 +480,14 @@ function ChecklistRowImpl({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                // Slide the row shut as the deadline modal opens, so once it
+                // Slide the row shut as the timing modal opens, so once it
                 // closes (whether the date was set or cancelled) the row is
                 // back in its resting position rather than stranded swiped
                 // open over the clock / delete buttons.
                 swipe.close();
-                onEditDeadline?.(item.id);
+                onEditTiming?.(item.id);
               }}
-              aria-label={t("app.setDeadline")}
+              aria-label={t("app.setTiming")}
               className="flex h-full w-16 items-center justify-center bg-surface-3 text-fg"
             >
               <ClockIcon className="h-5 w-5" />
@@ -515,10 +527,14 @@ function ChecklistRowImpl({
           !desktop && swipe.animating ? "transition-transform duration-200" : ""
         }`}
       >
-        {/* The slim, colour-coded date row above a dated item's title. */}
-        {item.deadline && (
-          <DeadlineRow deadline={item.deadline} recurrence={item.recurrence} />
-        )}
+        {/* The slim date row above a timed item's title — the muted "not
+            before" gate while it holds, the colour-coded due date, or both.
+            Renders nothing when the item carries neither. */}
+        <TimingRow
+          notBefore={item.notBefore}
+          deadline={item.deadline}
+          recurrence={item.recurrence}
+        />
 
         {/* The whole row line is a pointer target for editing: a click that
             isn't on one of the real controls (checkbox, caret, note glyph,
@@ -580,7 +596,7 @@ function ChecklistRowImpl({
                   ? t("app.uncheck")
                   : t("app.check")
             }
-            disabled={templateMode}
+            disabled={templateMode || held}
             size={nested || category ? "sm" : "md"}
             className="p-2.5 -m-2.5"
           />

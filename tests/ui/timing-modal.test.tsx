@@ -4,18 +4,18 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
 import { fireDomEvent } from "./fire-dom-event.ts";
-import { DeadlineModal } from "../../src/ui/DeadlineModal.tsx";
+import { TimingModal } from "../../src/ui/TimingModal.tsx";
 
 const noop = (): void => {};
 const base: ChecklistItem = { id: "i1", title: "Task", checked: false };
 
 afterEach(cleanup);
 
-describe("DeadlineModal", () => {
+describe("TimingModal", () => {
   it("prefills the current due date and saves an edited one", () => {
     const onSubmit = vi.fn();
     render(
-      <DeadlineModal
+      <TimingModal
         item={{ ...base, deadline: "2026-08-01" }}
         onSubmit={onSubmit}
         onClose={noop}
@@ -31,13 +31,17 @@ describe("DeadlineModal", () => {
       screen.getByRole("button", { name: /\b1 September 2026$/ }),
     );
     fireEvent.click(screen.getByText("Save"));
-    expect(onSubmit).toHaveBeenCalledWith("2026-09-01", null);
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: "2026-09-01",
+      recurrence: null,
+    });
   });
 
   it("preserves a preset recurrence when saving untouched", () => {
     const onSubmit = vi.fn();
     render(
-      <DeadlineModal
+      <TimingModal
         item={{
           ...base,
           deadline: "2026-08-01",
@@ -48,16 +52,75 @@ describe("DeadlineModal", () => {
       />,
     );
     fireEvent.click(screen.getByText("Save"));
-    expect(onSubmit).toHaveBeenCalledWith("2026-08-01", {
-      unit: "week",
-      interval: 2,
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: "2026-08-01",
+      recurrence: { unit: "week", interval: 2 },
     });
   });
 
-  it("clears the deadline (and its recurrence)", () => {
+  it("prefills a not-before day and saves it alongside an untouched due date", () => {
     const onSubmit = vi.fn();
     render(
-      <DeadlineModal
+      <TimingModal
+        item={{ ...base, notBefore: "2026-08-01", deadline: "2026-08-20" }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "Not before" });
+    expect(trigger.textContent).toContain("1 Aug 2026");
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: "2026-08-01",
+      deadline: "2026-08-20",
+      recurrence: null,
+    });
+  });
+
+  it("saves an edited not-before day on its own, with no due date", () => {
+    const onSubmit = vi.fn();
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2026-08-01" }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Not before" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /\b1 September 2026$/ }),
+    );
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: "2026-09-01",
+      deadline: null,
+      recurrence: null,
+    });
+  });
+
+  it("offers Clear timing for a gated item that has no due date", () => {
+    const onSubmit = vi.fn();
+    render(
+      <TimingModal
+        item={{ ...base, notBefore: "2026-08-01" }}
+        onSubmit={onSubmit}
+        onClose={noop}
+      />,
+    );
+    fireEvent.click(screen.getByText("Clear timing"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: null,
+      recurrence: null,
+    });
+  });
+
+  it("clears the whole timing — both dates and the recurrence", () => {
+    const onSubmit = vi.fn();
+    render(
+      <TimingModal
         item={{
           ...base,
           deadline: "2026-08-01",
@@ -67,21 +130,29 @@ describe("DeadlineModal", () => {
         onClose={noop}
       />,
     );
-    fireEvent.click(screen.getByText("Clear deadline"));
-    expect(onSubmit).toHaveBeenCalledWith(null, null);
+    fireEvent.click(screen.getByText("Clear timing"));
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: null,
+      recurrence: null,
+    });
   });
 
   it("saves nothing (a clear) when no date is set", () => {
     const onSubmit = vi.fn();
-    render(<DeadlineModal item={base} onSubmit={onSubmit} onClose={noop} />);
+    render(<TimingModal item={base} onSubmit={onSubmit} onClose={noop} />);
     fireEvent.click(screen.getByText("Save"));
-    expect(onSubmit).toHaveBeenCalledWith(null, null);
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: null,
+      recurrence: null,
+    });
   });
 
   it("lets the interval be retyped freely and saves the new value", () => {
     const onSubmit = vi.fn();
     render(
-      <DeadlineModal
+      <TimingModal
         item={{
           ...base,
           deadline: "2026-08-01",
@@ -99,16 +170,17 @@ describe("DeadlineModal", () => {
     fireEvent.change(field, { target: { value: "3" } });
     expect(field.value).toBe("3");
     fireEvent.click(screen.getByText("Save"));
-    expect(onSubmit).toHaveBeenCalledWith("2026-08-01", {
-      unit: "week",
-      interval: 3,
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: "2026-08-01",
+      recurrence: { unit: "week", interval: 3 },
     });
   });
 
   it("normalises a cleared interval back to 1 on blur and rejects non-digits", () => {
     const onSubmit = vi.fn();
     render(
-      <DeadlineModal
+      <TimingModal
         item={{
           ...base,
           deadline: "2026-08-01",
@@ -128,9 +200,10 @@ describe("DeadlineModal", () => {
     fireDomEvent(field, "focusout");
     expect(field.value).toBe("1");
     fireEvent.click(screen.getByText("Save"));
-    expect(onSubmit).toHaveBeenCalledWith("2026-08-01", {
-      unit: "month",
-      interval: 1,
+    expect(onSubmit).toHaveBeenCalledWith({
+      notBefore: null,
+      deadline: "2026-08-01",
+      recurrence: { unit: "month", interval: 1 },
     });
   });
 });

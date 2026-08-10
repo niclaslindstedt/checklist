@@ -19,9 +19,11 @@ const app: AppCatalog = {
   delete: "Ta bort",
   promoteToCategory: "Gör till kategori",
   demoteFromCategory: "Ta bort kategori",
-  setDeadline: "Ange deadline",
-  deadline: {
-    title: "Deadline",
+  setTiming: "Ange tidsplan",
+  timing: {
+    title: "Tidsplan",
+    notBefore: "Tidigast",
+    notBeforeLabel: "Tidigast {date}",
     dueDate: "Förfallodatum",
     pickDate: "Välj ett datum",
     repeat: "Upprepa",
@@ -31,7 +33,7 @@ const app: AppCatalog = {
     unitWeek: "vecka",
     unitMonth: "månad",
     unitYear: "år",
-    clear: "Ta bort deadline",
+    clear: "Ta bort tidsplan",
     overdue: "Försenad",
     repeats: "Upprepas {summary}",
     everyWeekOne: "varje vecka",

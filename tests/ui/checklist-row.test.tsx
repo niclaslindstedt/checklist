@@ -154,27 +154,27 @@ describe("ChecklistRow swipe action layers", () => {
     expect(onDelete).toHaveBeenCalledWith("i1");
   });
 
-  it("opens the deadline editor from the revealed clock button", () => {
-    const onEditDeadline = vi.fn();
-    renderRow({ onEditDeadline });
-    fireEvent.click(screen.getByLabelText("Set deadline"));
-    expect(onEditDeadline).toHaveBeenCalledWith("i1");
+  it("opens the timing editor from the revealed clock button", () => {
+    const onEditTiming = vi.fn();
+    renderRow({ onEditTiming });
+    fireEvent.click(screen.getByLabelText("Set timing"));
+    expect(onEditTiming).toHaveBeenCalledWith("i1");
   });
 
-  it("slides the row shut when the clock button opens the deadline editor", () => {
-    renderRow({ onEditDeadline: noop });
+  it("slides the row shut when the clock button opens the timing editor", () => {
+    renderRow({ onEditTiming: noop });
     const fg = foreground();
     stubPointerCapture(fg);
 
     // Latch the row open with a left-swipe past the threshold, then tap the
     // clock — the foreground must return to its resting position so the row is
-    // visible again once the deadline modal closes.
+    // visible again once the timing modal closes.
     dispatchPointer(fg, "pointerdown", { x: 0, y: 0 });
     dispatchPointer(fg, "pointermove", { x: -60, y: 0 });
     dispatchPointer(fg, "pointerup", { x: -60, y: 0 });
     expect(fg.style.transform).toBe("translateX(-128px)");
 
-    fireEvent.click(screen.getByLabelText("Set deadline"));
+    fireEvent.click(screen.getByLabelText("Set timing"));
     expect(fg.style.transform).toBe("translateX(0px)");
   });
 });
@@ -183,9 +183,40 @@ describe("ChecklistRow date row", () => {
   it("shows a colour-coded, overdue date row for a past deadline", () => {
     renderRow({ item: { ...item, deadline: "2000-01-01" } });
     const label = screen.getByText(/Overdue/);
-    // Overdue paints the row red (the danger token).
-    expect(label.closest("div")?.className).toContain("text-danger");
+    // Overdue paints the due-date half of the row red (the danger token).
+    expect(label.closest("span")?.parentElement?.className).toContain(
+      "text-danger",
+    );
     expect(label.textContent).toContain("2000");
+  });
+
+  it("states a pending not-before day, colourless, and holds the checkbox shut", () => {
+    renderRow({ item: { ...item, notBefore: "2099-01-01" } });
+    const label = screen.getByText(/Not before/);
+    // No urgency colour: nothing is late, the item simply isn't open yet.
+    const line = label.closest("span")?.parentElement;
+    expect(line?.className).toContain("text-muted");
+    expect(line?.className).not.toContain("text-danger");
+    expect(line?.className).not.toContain("text-flag");
+    expect(
+      (screen.getByLabelText("Check item") as HTMLInputElement).disabled,
+    ).toBe(true);
+  });
+
+  it("drops the not-before label and frees the checkbox once the day has arrived", () => {
+    renderRow({ item: { ...item, notBefore: "2000-01-01" } });
+    expect(screen.queryByText(/Not before/)).toBeNull();
+    expect(
+      (screen.getByLabelText("Check item") as HTMLInputElement).disabled,
+    ).toBe(false);
+  });
+
+  it("shows a pending gate and a due date side by side", () => {
+    renderRow({
+      item: { ...item, notBefore: "2099-01-01", deadline: "2000-01-01" },
+    });
+    expect(screen.getByText(/Not before/)).toBeTruthy();
+    expect(screen.getByText(/Overdue/)).toBeTruthy();
   });
 
   it("summarises a recurrence in the date row", () => {

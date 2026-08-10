@@ -127,6 +127,13 @@ export function ShowcasePage() {
               next due date.
             </li>
             <li>
+              <strong className="text-fg-bright">Hold work back</strong> — the
+              same clock sets a &ldquo;Not before&rdquo; day: the item&rsquo;s
+              checkbox stays shut until that day arrives, with a plain grey line
+              above it saying when it opens up. On the day the line disappears
+              and the item behaves like any other.
+            </li>
+            <li>
               <strong className="text-fg-bright">Reuse templates</strong> —
               right-click a list (or swipe it left) and save it as a template:
               sub-items, categories, notes and deadlines are all captured, every

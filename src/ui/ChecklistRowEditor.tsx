@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { isHeldBack } from "../domain/checklists.ts";
 import { capitalizeFirst } from "../domain/text.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -327,7 +328,9 @@ export function ChecklistRowEditor({
                 ? t("app.uncheck")
                 : t("app.check")
           }
-          disabled={templateMode}
+          // Held back by a "not before" day that hasn't arrived: inert here
+          // too, so the editor can't tick off what the row itself refuses.
+          disabled={templateMode || isHeldBack(item, new Date().toISOString())}
           // Keep the press from blurring the open title field (which would
           // commit and close the editor before the toggle lands).
           onMouseDown={(e) => e.preventDefault()}
