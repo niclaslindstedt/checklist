@@ -80,12 +80,14 @@ export {
   countableItems,
   displayItems,
   flattenForDisplay,
-  floatDatedToBottom,
+  floatDatedToTop,
   isComplete,
   moveDisplayedItem,
   moveItem,
   moveItemInto,
   progress,
+  sinkHeldToBottom,
   sortCheckedToBottom,
+  DOCUMENT_ORDER,
 } from "./item-display.ts";
-export type { DisplayRow, DropMode } from "./item-display.ts";
+export type { DisplayOrder, DisplayRow, DropMode } from "./item-display.ts";

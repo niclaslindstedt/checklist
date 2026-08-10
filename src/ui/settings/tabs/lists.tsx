@@ -41,6 +41,18 @@ export function ListsTab({
           onChange={(next) => onUpdate("sortCheckedToBottom", next)}
         />
         <ToggleRow
+          label={t("settings.lists.sortDatedToTop")}
+          hint={t("settings.lists.sortDatedToTopHint")}
+          checked={settings.sortDatedToTop}
+          onChange={(next) => onUpdate("sortDatedToTop", next)}
+        />
+        <ToggleRow
+          label={t("settings.lists.sortHeldToBottom")}
+          hint={t("settings.lists.sortHeldToBottomHint")}
+          checked={settings.sortHeldToBottom}
+          onChange={(next) => onUpdate("sortHeldToBottom", next)}
+        />
+        <ToggleRow
           label={t("settings.lists.disableItemNotes")}
           hint={t("settings.lists.disableItemNotesHint")}
           checked={settings.disableItemNotes}

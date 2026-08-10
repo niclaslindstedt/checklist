@@ -51,7 +51,27 @@ on, items are title-only: the markdown note body beneath each title is
 hidden and the editor's note field is dropped, but any notes already
 written stay saved and reappear when the toggle is turned back off. **Show
 item count** (on by default) toggles the checked / total progress badge in
-the list header. These choices persist to `checklist:settings:v1`.
+the list header.
+
+Three toggles govern the order the list renders in. All three are
+**view-only sorts** — the stored document order is never touched, so
+switching one off drops every item straight back where it sat:
+
+- **Sort checked items to the bottom** (off by default) sinks a checked
+  item below the unchecked ones, most recently checked first.
+- **Sort due dates to the top** (**on** by default) floats items carrying a
+  due date to the head of the list, soonest — and overdue — first.
+- **Sort held-back items to the bottom** (**on** by default) sinks items
+  waiting on a "not before" day below the rest of the unchecked work,
+  soonest gate first, but still above anything checked. An item whose gate
+  has already passed is an ordinary item and doesn't move.
+
+With all three on, a list reads: dated work, then free work, then
+held-back work, then finished work. An item that is both dated and held
+back sinks — a due date says when work must be finished, but a gate says it
+can't be started at all.
+
+These choices persist to `checklist:settings:v1`.
 
 ### Transform
 

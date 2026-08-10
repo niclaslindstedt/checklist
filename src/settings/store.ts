@@ -48,6 +48,14 @@ export const DEFAULT_ADD_ITEM_POSITION: AddItemPosition = "bottom";
 // the bottom of the active list as a view-only sort.
 export const DEFAULT_SORT_CHECKED_TO_BOTTOM = false;
 
+// Items with a due date lead the list by default, and items held back by a
+// "not before" day that hasn't arrived sink below the rest of the unchecked
+// work. Both are view-only sorts, and both are opt-out: the dates are there to
+// be acted on in order, so the list arranges itself around them unless the
+// user would rather keep a hand-arranged order.
+export const DEFAULT_SORT_DATED_TO_TOP = true;
+export const DEFAULT_SORT_HELD_TO_BOTTOM = true;
+
 // The sink-to-bottom re-sort is animated by default — checked items glide to
 // their new spot. The opt-out makes it instant. Only visible while
 // `sortCheckedToBottom` is on.
@@ -125,6 +133,8 @@ export function defaultSettings(): Settings {
     customTheme: DEFAULT_CUSTOM_THEME,
     addItemPosition: DEFAULT_ADD_ITEM_POSITION,
     sortCheckedToBottom: DEFAULT_SORT_CHECKED_TO_BOTTOM,
+    sortDatedToTop: DEFAULT_SORT_DATED_TO_TOP,
+    sortHeldToBottom: DEFAULT_SORT_HELD_TO_BOTTOM,
     animateSortChecked: DEFAULT_ANIMATE_SORT_CHECKED,
     menuButtonPosition: DEFAULT_MENU_BUTTON_POSITION,
     showMenuButton: DEFAULT_SHOW_MENU_BUTTON,
@@ -307,6 +317,14 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.sortCheckedToBottom === "boolean"
         ? raw.sortCheckedToBottom
         : DEFAULT_SORT_CHECKED_TO_BOTTOM,
+    sortDatedToTop:
+      typeof raw.sortDatedToTop === "boolean"
+        ? raw.sortDatedToTop
+        : DEFAULT_SORT_DATED_TO_TOP,
+    sortHeldToBottom:
+      typeof raw.sortHeldToBottom === "boolean"
+        ? raw.sortHeldToBottom
+        : DEFAULT_SORT_HELD_TO_BOTTOM,
     animateSortChecked:
       typeof raw.animateSortChecked === "boolean"
         ? raw.animateSortChecked

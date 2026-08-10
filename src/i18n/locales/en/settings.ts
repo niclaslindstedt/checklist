@@ -63,6 +63,12 @@ const settings = {
     sortCheckedToBottom: "Sort checked items to the bottom",
     sortCheckedToBottomHint:
       "Checking an item sinks it below the unchecked ones, with the most recently checked first. The list itself isn’t reordered — unchecking puts it straight back.",
+    sortDatedToTop: "Sort due dates to the top",
+    sortDatedToTopHint:
+      "Items with a due date lead the list, soonest first, so what’s on a clock reads down the screen in the order it falls due. The list itself isn’t reordered.",
+    sortHeldToBottom: "Sort held-back items to the bottom",
+    sortHeldToBottomHint:
+      "Items waiting on a “not before” day sink below the rest of the unchecked work, soonest first. They come back up on the day their hold lifts.",
     disableItemNotes: "Disable item notes",
     disableItemNotesHint:
       "Make items title-only — hide the note body and the “Add note” editor. Notes you’ve already written are kept, just hidden.",

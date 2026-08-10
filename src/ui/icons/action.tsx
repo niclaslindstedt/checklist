@@ -355,6 +355,57 @@ export function ClockIcon({ className }: IconProps) {
   );
 }
 
+// The two timing glyphs are a matched pair, and the whole point is that they
+// read as opposites at a glance — a bar marking the bound, and a clock face on
+// the side the work lives. `|—◷` opens a window on the right (nothing before
+// this day); `◷—|` closes one on the left (everything up to this day). Drawn
+// on the same 24×24 grid as the rest of the set, but with a smaller r=7 face
+// so the bar and its stem fit beside it without crowding.
+
+/** A bar, then a clock — the earliest day an item may be checked off. */
+export function NotBeforeIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable="false"
+      className={className}
+    >
+      <path d="M3 4v16" />
+      <path d="M3 12h5" />
+      <circle cx="15" cy="12" r="6" />
+      <path d="M15 8.5v3.5l2.5 1.5" />
+    </svg>
+  );
+}
+
+/** A clock, then a bar — the day an item falls due. */
+export function DeadlineIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable="false"
+      className={className}
+    >
+      <circle cx="9" cy="12" r="6" />
+      <path d="M9 8.5v3.5l2.5 1.5" />
+      <path d="M16 12h5" />
+      <path d="M21 4v16" />
+    </svg>
+  );
+}
+
 /** Two arrows chasing a loop — marks a recurring deadline. */
 export function RepeatIcon({ className }: IconProps) {
   return (

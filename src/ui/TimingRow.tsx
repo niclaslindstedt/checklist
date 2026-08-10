@@ -5,28 +5,32 @@ import {
 } from "../domain/checklists.ts";
 import type { Recurrence } from "../domain/types.ts";
 import { bcp47, useLang, useT } from "../i18n";
-import { ClockIcon, RepeatIcon } from "./icons.tsx";
+import { DeadlineIcon, NotBeforeIcon, RepeatIcon } from "./icons.tsx";
 
-// The slim "date row" shown above a checklist item that carries any timing: a
-// small, narrow line stating the earliest day the item may be checked off
-// ("Not before …"), its due date (with a repeat glyph for a recurring one), or
-// both.
+// The slim "date row" above a checklist item that carries any timing. It says
+// as little as possible: a glyph and a date, no labels.
 //
-// The two halves read very differently on purpose:
+// The two glyphs are a matched pair and carry the meaning between them —
+// `|—◷` for the earliest day the item may be started, `◷—|` for the day it
+// falls due — so neither needs the words spelling it out. What's left is
+// three signals doing the work:
 //
-//   • The **due date** is colour-coded by how soon it is — muted while it's
-//     far off, warming through yellow (within a week) and orange (within a
-//     day) to red once it's overdue. The urgency bucket is `deadlineStatus`
-//     from the domain.
-//   • The **not-before** date carries no urgency at all: nothing is late, the
-//     item simply isn't open yet, so it stays muted whatever the distance. It
-//     is also *temporary* — the row shows it only while the day is still in
-//     the future, and it disappears the moment the day arrives, leaving an
-//     ordinary (or merely dated) item behind. That's why the hold and its
-//     label are one and the same test: `isHeldBack`.
+//   • **The glyph** says which bound this is.
+//   • **The colour** says how urgent a due date is: muted while it's far off,
+//     warming through yellow (within a week) and orange (within a day) to red
+//     once it's overdue (`deadlineStatus`). A "not before" date carries no
+//     urgency at all — nothing is late, the item just isn't open yet — so it
+//     stays muted at every distance.
+//   • **The checkbox** says whether the item can be acted on: a held-back one
+//     is drawn inert. That's the signal that never scrolls away, which is why
+//     a run of items sharing one gate day can state the day once (see
+//     `sameGate`) instead of stacking the same date down the screen.
 //
-// Formatting the dates and the recurrence summary is a presentation concern
-// and lives here; the buckets and the hold test are pure domain.
+// The gate half is temporary — shown only while the day is still ahead, gone
+// the moment it arrives, the same test that releases the checkbox
+// (`isHeldBack`). Formatting the dates and the recurrence summary is a
+// presentation concern and lives here; the buckets and the hold test are pure
+// domain.
 
 // Urgency band → text colour. `later` stays muted; the rest warm up. The
 // tokens map to the theme (see `styles/palettes.css`): `meta` is the yellow
@@ -42,44 +46,50 @@ type Props = {
   notBefore?: string;
   deadline?: string;
   recurrence?: Recurrence;
+  /**
+   * The row above already states this same gate day — drop the gate half and
+   * let this row read as a continuation of that run. The inert checkbox still
+   * marks it as held back.
+   */
+  sameGate?: boolean;
 };
 
-// The `ml-8` lines the row up under the item title (past the caret + checkbox
-// columns); the enclosing foreground already carries the nesting indent, so a
-// sub-item's date row shifts right with it automatically.
-export function TimingRow({ notBefore, deadline, recurrence }: Props) {
+// `ml-16` lines the row up under the item **title**, clearing the caret and
+// checkbox columns (20px caret + 12px gap + 20px box + 12px gap): the dates
+// belong to the words, not to the box. The enclosing foreground already
+// carries the nesting indent, so a sub-item's date row shifts right with it.
+export function TimingRow({
+  notBefore,
+  deadline,
+  recurrence,
+  sameGate = false,
+}: Props) {
   const t = useT();
   const lang = useLang();
   const now = new Date().toISOString();
-  // A passed not-before date has done its job and is dropped from the row —
-  // the same test that releases the checkbox hides the label.
-  const held = isHeldBack({ notBefore }, now);
+  const held = isHeldBack({ notBefore }, now) && !sameGate;
   const status = deadline ? deadlineStatus(deadline, now) : null;
   const summary = recurrence ? recurrenceSummary(recurrence, t) : null;
 
   if (!held && !deadline) return null;
 
   return (
-    <div className="ml-8 flex items-center gap-1 pt-1 text-[0.7rem] leading-none font-medium tracking-wide">
+    <div className="ml-16 flex items-center gap-2 pt-1 pb-0.5 text-[0.7rem] leading-none font-medium tracking-wide">
       {held && (
-        <span className="flex items-center gap-1 truncate text-muted">
-          <ClockIcon className="h-3 w-3 shrink-0" />
-          <span className="truncate">
-            {t("app.timing.notBeforeLabel", {
-              date: formatDay(notBefore!, lang),
-            })}
-          </span>
+        <span
+          className="flex items-center gap-1 truncate text-muted"
+          title={t("app.timing.notBefore")}
+        >
+          <NotBeforeIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{formatDay(notBefore!, lang)}</span>
         </span>
       )}
-      {/* Both dates on one line: the gate reads muted, the due date keeps its
-          own urgency colour, and a middle dot separates them when an item
-          carries both. */}
-      {held && deadline && <span className="text-muted">·</span>}
       {deadline && status && (
         <span
           className={`flex items-center gap-1 truncate ${STATUS_CLASS[status]}`}
+          title={t("app.timing.dueDate")}
         >
-          {!held && <ClockIcon className="h-3 w-3 shrink-0" />}
+          <DeadlineIcon className="h-4 w-4 shrink-0" />
           <span className="truncate">
             {status === "overdue"
               ? `${t("app.timing.overdue")} · ${formatDay(deadline, lang)}`

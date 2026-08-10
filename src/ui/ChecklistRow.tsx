@@ -66,7 +66,9 @@ const EMPTY_TRANSFORMS: readonly TransformRule[] = [];
 // An item **held back** by a "not before" day that hasn't arrived draws its
 // checkbox inert (dashed, like a template's) and states the day in the date
 // row above the title. The hold lifts on the day itself, at which point the
-// label disappears and the box becomes an ordinary one.
+// date disappears and the box becomes an ordinary one. A run of held items
+// sharing one gate day states that day on its first row only (`sameGate`) —
+// the inert boxes carry the rest.
 //
 // When the user switches item notes off (Settings → Lists, `notesDisabled`),
 // the row is title-only: the note glyph and rendered body never appear and the
@@ -154,6 +156,12 @@ type Props = {
    * shows the raw stored text.
    */
   transforms?: readonly TransformRule[];
+  /**
+   * The row directly above already states this item's "not before" day — so
+   * this row leaves the date off and reads as part of that run (see
+   * `DisplayRow.sameGateAsPrevious`). The checkbox stays inert either way.
+   */
+  sameGate?: boolean;
   /** Nesting depth — indents the row one step per level. */
   depth?: number;
   /** Whether the item has sub-items, so it shows the expand/collapse caret. */
@@ -214,6 +222,7 @@ function ChecklistRowImpl({
   notesDisabled = false,
   capitalizeItems = false,
   transforms = EMPTY_TRANSFORMS,
+  sameGate = false,
   depth = 0,
   hasChildren = false,
   collapsed = false,
@@ -561,6 +570,7 @@ function ChecklistRowImpl({
           notBefore={item.notBefore}
           deadline={item.deadline}
           recurrence={item.recurrence}
+          sameGate={sameGate}
         />
 
         {/* The whole row line is a pointer target for editing: a click that

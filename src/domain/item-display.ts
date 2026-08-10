@@ -1,13 +1,15 @@
 // Move, reorder, and display transforms over a checklist's item tree:
 // drag-to-reorder among the active items, drag-to-nest relative to another
-// item, the "sort checked to the bottom" view order, and the flattened,
-// depth-tagged rows the list renders. Several of these are pure view
+// item, the three opt-in view sorts (checked to the bottom, dated to the top,
+// held-back to the bottom), and the flattened, depth-tagged rows the list
+// renders. Several of these are pure view
 // transforms that never touch the stored document order. They compose over the
 // tree primitives in `item-tree.ts` and the `activeItems` view from
 // `archive-ops.ts`. Callers supply timestamps so every function is
 // deterministic and DOM-free.
 
 import { activeItems } from "./archive-ops.ts";
+import { isHeldBack } from "./deadlines.ts";
 import {
   findItem,
   flattenItems,
@@ -162,73 +164,138 @@ export function sortCheckedToBottom(
 }
 
 /**
- * Float the unchecked items that carry a `deadline` to the bottom of the
- * unchecked group, sorted by due date (soonest — and overdue — first), so
- * every dated task clusters together just above the checked items with its
- * date row on show. Undated unchecked items and checked items keep their
- * incoming relative order; the dated ones slot in right after the last
- * unchecked item. Recurses into each sub-list so nested dated items float the
- * same way. A pure view transform — it never touches the stored document
- * order — and leaves an undated level's order untouched.
+ * Float the unchecked items that carry a `deadline` to the **top** of the
+ * level, soonest (and overdue) first, so what's on a clock leads the list and
+ * its dates read down the screen in the order they fall due. Undated items and
+ * checked items keep their incoming relative order beneath the dated cluster.
+ * Recurses into each sub-list so nested dated items float the same way. A pure
+ * view transform — it never touches the stored document order — and leaves an
+ * undated level's order untouched.
  */
-export function floatDatedToBottom(
+export function floatDatedToTop(
   items: readonly ChecklistItem[],
 ): ChecklistItem[] {
   const mapped = items.map((it) =>
-    it.children ? withChildren(it, floatDatedToBottom(it.children)) : it,
+    it.children ? withChildren(it, floatDatedToTop(it.children)) : it,
   );
   const isDated = (it: ChecklistItem) => !it.checked && Boolean(it.deadline);
   if (!mapped.some(isDated)) return mapped;
+  // Array.prototype.sort is stable, so items sharing a due date keep their
+  // incoming order — which is what lets the view group a run of them under one
+  // date instead of repeating it per row.
   const dated = mapped
     .filter(isDated)
     .sort((a, b) => a.deadline!.localeCompare(b.deadline!));
-  const rest = mapped.filter((it) => !isDated(it));
-  // Insert the dated cluster right after the last unchecked item — the bottom
+  return [...dated, ...mapped.filter((it) => !isDated(it))];
+}
+
+/**
+ * Sink the unchecked items that are **held back** — gated by a `notBefore` day
+ * that hasn't arrived (see `isHeldBack`) — to the bottom of the unchecked
+ * group, soonest gate first, so work that can't be started yet sits out of the
+ * way but still above the finished items. An item whose gate has already
+ * passed is an ordinary item and doesn't move.
+ *
+ * Everything else keeps its incoming relative order, and the held cluster
+ * slots in right after the last unchecked item so it never falls below a
+ * checked row. Recurses into each sub-list. `now` is a full ISO timestamp —
+ * held-ness is relative to today, so unlike the other view transforms this one
+ * needs the clock passed in rather than reading it.
+ */
+export function sinkHeldToBottom(
+  items: readonly ChecklistItem[],
+  now: string,
+): ChecklistItem[] {
+  const mapped = items.map((it) =>
+    it.children ? withChildren(it, sinkHeldToBottom(it.children, now)) : it,
+  );
+  const isHeld = (it: ChecklistItem) => !it.checked && isHeldBack(it, now);
+  if (!mapped.some(isHeld)) return mapped;
+  // Stable, like the dated float above — a run sharing one gate day stays in
+  // its incoming order so the view can show that day once for the whole run.
+  const held = mapped
+    .filter(isHeld)
+    .sort((a, b) => a.notBefore!.localeCompare(b.notBefore!));
+  const rest = mapped.filter((it) => !isHeld(it));
+  // Insert the held cluster right after the last unchecked item — the bottom
   // of the unchecked group — so it sits above any checked rows.
   let insertAt = 0;
   rest.forEach((it, i) => {
     if (!it.checked) insertAt = i + 1;
   });
-  return [...rest.slice(0, insertAt), ...dated, ...rest.slice(insertAt)];
+  return [...rest.slice(0, insertAt), ...held, ...rest.slice(insertAt)];
 }
 
 /**
- * The active items in the order the checklist view renders them: plain
- * document order (or, when `sinkChecked` is on, with the checked items sorted
- * to the bottom — see `sortCheckedToBottom`), then with any dated unchecked
- * items floated to the bottom of the unchecked group (see
- * `floatDatedToBottom`). The dated float always applies; the checked sink is
- * opt-in.
+ * How the checklist view orders the items it renders. Every field is a user
+ * preference (Settings → Lists); all three are pure view transforms that never
+ * touch the stored document order, so switching one off drops each item
+ * straight back where it sat.
+ */
+export interface DisplayOrder {
+  /** Sort checked items below the unchecked ones (`sortCheckedToBottom`). */
+  sinkChecked: boolean;
+  /** Float items with a due date to the top, soonest first (`floatDatedToTop`). */
+  datedFirst: boolean;
+  /** Sink held-back items to the bottom of the unchecked group (`sinkHeldToBottom`). */
+  heldLast: boolean;
+}
+
+/** Nothing reordered — plain document order. The base for tests and callers
+ * that render a list exactly as stored. */
+export const DOCUMENT_ORDER: DisplayOrder = {
+  sinkChecked: false,
+  datedFirst: false,
+  heldLast: false,
+};
+
+/**
+ * The active items in the order the checklist view renders them, applying each
+ * enabled transform in turn: the checked sink first, then the dated float to
+ * the top, then the held-back sink to the bottom.
+ *
+ * The order of those last two is what settles an item that is *both* dated and
+ * held back: the sink runs last, so it wins. That's the right call — a due date
+ * says when work must be finished, but a gate says it can't be started at all,
+ * and there is nothing to do at the top of the list about a task you can't
+ * touch yet.
  */
 export function displayItems(
   checklist: ItemList,
-  sinkChecked: boolean,
+  order: DisplayOrder,
+  now: string,
 ): ChecklistItem[] {
   const active = activeItems(checklist);
-  const sunk = sinkChecked ? sortCheckedToBottom(active) : active;
-  return floatDatedToBottom(sunk);
+  const sunk = order.sinkChecked ? sortCheckedToBottom(active) : active;
+  const dated = order.datedFirst ? floatDatedToTop(sunk) : sunk;
+  return order.heldLast ? sinkHeldToBottom(dated, now) : dated;
 }
 
 /**
  * Move a visible item to `toIndex` expressed against the *displayed* order.
- * With `sinkChecked` off this is just `moveItem`. With it on, the displayed
- * order is a permutation of the document order, so the drop index is
- * translated through the item currently sitting at that display slot (the
- * "anchor"): the dragged item takes that anchor's place in the document, and
- * the view re-derives its sorted order from there. Keeps drag-to-reorder
- * working without ever persisting the sunk-to-bottom ordering.
+ * When nothing is reordering the level, that index is the document index and
+ * this is just `moveItem`. Otherwise the displayed order is a permutation of
+ * the document order, so the drop index is translated through the item
+ * currently sitting at that display slot (the "anchor"): the dragged item takes
+ * that anchor's place in the document, and the view re-derives its sorted order
+ * from there. Keeps drag-to-reorder working without ever persisting a sorted
+ * ordering.
  */
 export function moveDisplayedItem<L extends ItemList>(
   checklist: L,
   itemId: string,
   toIndex: number,
-  sinkChecked: boolean,
+  order: DisplayOrder,
   now: string,
 ): L {
-  if (!sinkChecked) return moveItem(checklist, itemId, toIndex, now);
-  const display = displayItems(checklist, true);
-  if (display.length === 0) return checklist;
   const active = activeItems(checklist);
+  const display = displayItems(checklist, order, now);
+  if (display.length === 0) return checklist;
+  // Every transform is off, or none of them moved anything on this list —
+  // the display index *is* the document index, so drop straight through.
+  if (display.every((it, i) => it.id === active[i]?.id)) {
+    return moveItem(checklist, itemId, toIndex, now);
+  }
   const clamped = Math.max(0, Math.min(toIndex, display.length - 1));
   const anchorId = display[clamped]!.id;
   const docIndex = active.findIndex((it) => it.id === anchorId);
@@ -290,6 +357,18 @@ export interface DisplayRow {
   depth: number;
   /** Whether the item has any sub-items (so the row shows an expand toggle). */
   hasChildren: boolean;
+  /**
+   * The row directly above already shows this item's `notBefore` day, at the
+   * same depth — so this row leaves the date off and reads as a continuation
+   * of the run above it. The sort clusters items sharing a gate day together
+   * (see `sinkHeldToBottom`), which would otherwise stack the identical date
+   * down the screen once per row; the inert checkbox carries the "not yet"
+   * signal on every row regardless, so the date is only worth stating once.
+   *
+   * Optional so a hand-built row (a drag ghost, a test fixture) needn't carry
+   * it — absent reads the same as false: state the date.
+   */
+  sameGateAsPrevious?: boolean;
 }
 
 /**
@@ -298,6 +377,11 @@ export interface DisplayRow {
  * still appears, but its children are skipped — the expand toggle reveals
  * them, mirroring how a note body is revealed. Pure, so the view can derive
  * its row list without a DOM.
+ *
+ * Each row is also tagged with `sameGateAsPrevious` so a run of items sharing
+ * one "not before" day states it once. That's a purely structural comparison
+ * against the row above (same day, same depth) and needs no clock: two items
+ * carrying the same gate day are always held, or released, together.
  */
 export function flattenForDisplay(
   items: readonly ChecklistItem[],
@@ -307,7 +391,20 @@ export function flattenForDisplay(
   const walk = (list: readonly ChecklistItem[], depth: number) => {
     for (const it of list) {
       const children = it.children ?? [];
-      out.push({ item: it, depth, hasChildren: children.length > 0 });
+      const prev = out[out.length - 1];
+      const row: DisplayRow = {
+        item: it,
+        depth,
+        hasChildren: children.length > 0,
+      };
+      if (
+        it.notBefore !== undefined &&
+        prev?.depth === depth &&
+        prev.item.notBefore === it.notBefore
+      ) {
+        row.sameGateAsPrevious = true;
+      }
+      out.push(row);
       if (children.length > 0 && !collapsed.has(it.id)) {
         walk(children, depth + 1);
       }

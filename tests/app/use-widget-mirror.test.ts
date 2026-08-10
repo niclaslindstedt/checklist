@@ -2,6 +2,7 @@
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { DOCUMENT_ORDER } from "../../src/domain/checklists.ts";
 import { emptySnapshot, type Snapshot } from "../../src/domain/types.ts";
 import type { WidgetAction } from "../../src/domain/widget-snapshot.ts";
 import { useWidgetMirror } from "../../src/app/use-widget-mirror.ts";
@@ -54,7 +55,7 @@ describe("useWidgetMirror", () => {
         snapshot: docWithList,
         activeChecklistId: "a",
         loaded: true,
-        sinkChecked: false,
+        order: DOCUMENT_ORDER,
         onAction: () => {},
       }),
     );
@@ -77,7 +78,7 @@ describe("useWidgetMirror", () => {
         snapshot: docWithList,
         activeChecklistId: "a",
         loaded: false,
-        sinkChecked: false,
+        order: DOCUMENT_ORDER,
         onAction: () => {},
       }),
     );
@@ -95,7 +96,7 @@ describe("useWidgetMirror", () => {
         snapshot: docWithList,
         activeChecklistId: "a",
         loaded: true,
-        sinkChecked: false,
+        order: DOCUMENT_ORDER,
         onAction,
       }),
     );
@@ -120,7 +121,7 @@ describe("useWidgetMirror", () => {
         snapshot: emptySnapshot(),
         activeChecklistId: "a",
         loaded: true,
-        sinkChecked: false,
+        order: DOCUMENT_ORDER,
         onAction,
       }),
     );
@@ -157,7 +158,7 @@ describe("useWidgetMirror", () => {
         snapshot: emptySnapshot(),
         activeChecklistId: "a",
         loaded: true,
-        sinkChecked: false,
+        order: DOCUMENT_ORDER,
         onAction,
       }),
     );

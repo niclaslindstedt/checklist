@@ -23,7 +23,6 @@ const app: AppCatalog = {
   timing: {
     title: "Tidsplan",
     notBefore: "Tidigast",
-    notBeforeLabel: "Tidigast {date}",
     dueDate: "Förfallodatum",
     pickDate: "Välj ett datum",
     repeat: "Upprepa",

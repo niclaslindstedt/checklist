@@ -190,33 +190,62 @@ describe("ChecklistRow date row", () => {
     expect(label.textContent).toContain("2000");
   });
 
-  it("states a pending not-before day, colourless, and holds the checkbox shut", () => {
+  it("marks a pending not-before day with its own glyph, colourless, and holds the checkbox shut", () => {
     renderRow({ item: { ...item, notBefore: "2099-01-01" } });
-    const label = screen.getByText(/Not before/);
+    // The glyph carries the meaning — the row states the date and nothing else.
+    const gate = screen.getByTitle("Not before");
+    expect(gate.textContent).toContain("2099");
+    expect(gate.textContent).not.toMatch(/not before/i);
     // No urgency colour: nothing is late, the item simply isn't open yet.
-    const line = label.closest("span")?.parentElement;
-    expect(line?.className).toContain("text-muted");
-    expect(line?.className).not.toContain("text-danger");
-    expect(line?.className).not.toContain("text-flag");
+    expect(gate.className).toContain("text-muted");
+    expect(gate.className).not.toContain("text-danger");
+    expect(gate.className).not.toContain("text-flag");
     expect(
       (screen.getByLabelText("Check item") as HTMLInputElement).disabled,
     ).toBe(true);
   });
 
-  it("drops the not-before label and frees the checkbox once the day has arrived", () => {
+  it("drops the not-before date and frees the checkbox once the day has arrived", () => {
     renderRow({ item: { ...item, notBefore: "2000-01-01" } });
-    expect(screen.queryByText(/Not before/)).toBeNull();
+    expect(screen.queryByTitle("Not before")).toBeNull();
     expect(
       (screen.getByLabelText("Check item") as HTMLInputElement).disabled,
     ).toBe(false);
   });
 
-  it("shows a pending gate and a due date side by side", () => {
+  it("shows a pending gate and a due date side by side, each in its own colour", () => {
     renderRow({
       item: { ...item, notBefore: "2099-01-01", deadline: "2000-01-01" },
     });
-    expect(screen.getByText(/Not before/)).toBeTruthy();
-    expect(screen.getByText(/Overdue/)).toBeTruthy();
+    expect(screen.getByTitle("Not before").className).toContain("text-muted");
+    expect(screen.getByTitle("Due date").className).toContain("text-danger");
+  });
+
+  it("drops the repeated date on a row grouped with the one above, but not its held checkbox", () => {
+    renderRow({ item: { ...item, notBefore: "2099-01-01" }, sameGate: true });
+    expect(screen.queryByTitle("Not before")).toBeNull();
+    // The inert box is what marks the run as held, so it must survive.
+    expect(
+      (screen.getByLabelText("Check item") as HTMLInputElement).disabled,
+    ).toBe(true);
+  });
+
+  it("still shows a grouped row's own due date", () => {
+    renderRow({
+      item: { ...item, notBefore: "2099-01-01", deadline: "2000-01-01" },
+      sameGate: true,
+    });
+    expect(screen.queryByTitle("Not before")).toBeNull();
+    expect(screen.getByTitle("Due date")).toBeTruthy();
+  });
+
+  it("lines the date row up under the title, clear of the checkbox column", () => {
+    renderRow({ item: { ...item, deadline: "2000-01-01" } });
+    // ml-16 = caret (20) + gap (12) + box (20) + gap (12): the dates belong to
+    // the words, not to the box.
+    expect(screen.getByTitle("Due date").parentElement?.className).toContain(
+      "ml-16",
+    );
   });
 
   it("summarises a recurrence in the date row", () => {
