@@ -8,6 +8,7 @@
 // shouldn't travel with an export or sync, so they sit in their own
 // modules under `src/dev/`.
 
+import type { TransformRule } from "../domain/transforms.ts";
 import type {
   CustomTheme,
   FontFamilyId,
@@ -92,6 +93,15 @@ export type Settings = {
   // own autocapitalize behaviour. Only the first letter is touched, so an
   // intentional "iPad" later in the title is left alone. Off by default.
   capitalizeItems: boolean;
+  // The display transforms: regex rules that rewrite how item titles and
+  // notes *read* — turning `#134` into an issue link, replacing a piece of
+  // boilerplate, or masking a phone number as `076****123`. Applied at render
+  // time only: the stored document, the clipboard copy, and the editor all
+  // keep the original text, so a rule can be changed or dropped at any point
+  // without data loss. Empty by default. Order matters — rules run top to
+  // bottom, and a run one rule has claimed is left alone by the rest. See
+  // `src/domain/transforms.ts`.
+  transforms: TransformRule[];
   // Whether native deadline reminders are on. When on (the default), the
   // native wrapper schedules a local OS notification for each item with a due
   // date, firing even while the app is closed, and re-arms repeating deadlines

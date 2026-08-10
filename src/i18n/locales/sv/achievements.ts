@@ -416,6 +416,12 @@ const achievements: AchievementsCatalog = {
       name: "Lysande idé",
       condition: "Slå på att inleda varje post med versal.",
     },
+    shapeShifter: {
+      name: "Formskiftaren",
+      condition: "Skriv din första omvandlingsregel.",
+      learnMore:
+        "Inställningar → Omvandla rymmer regler som ändrar hur dina poster läses utan att röra vad de säger. Matcha en bit text med ett reguljärt uttryck och gör varje förekomst till en länk du kan trycka på, till andra ord, eller till en mask som döljer en kod eller ett telefonnummer för den som kastar en blick på skärmen. Reglerna tillämpas när listan ritas upp, så när du öppnar en post för att redigera den ser du alltid den riktiga texten igen.",
+    },
     underTheHood: {
       name: "Under huven",
       condition: "Slå på utvecklarläge.",

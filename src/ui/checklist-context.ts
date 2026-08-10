@@ -5,6 +5,7 @@ import type {
   SaveStatus,
   UseChecklist,
 } from "../app/use-checklist.ts";
+import type { TransformRule } from "../domain/transforms.ts";
 import type { BackendId } from "../storage/backend-preference.ts";
 
 // The checklist surface — the whole `useChecklist` return plus the
@@ -85,6 +86,13 @@ export type ChecklistContextValue = UseChecklist & {
    * synced `Settings`; off by default.
    */
   capitalizeItems: boolean;
+  /**
+   * The user's display transforms (Settings → Transform), already filtered to
+   * the enabled rules whose pattern compiles. Rewrite how an item's title and
+   * note *read* — an issue link, a replacement, a masked secret — without
+   * touching the stored text. Empty unless the user has written a rule.
+   */
+  transforms: readonly TransformRule[];
   /**
    * Whether the checklist view should animate rows sliding into place when
    * the displayed order changes (a checked item sinking to the bottom). True

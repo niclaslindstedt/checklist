@@ -108,6 +108,7 @@ export function makeChecklistValue(
     showItemCount: true,
     includeArchivedInCopy: false,
     capitalizeItems: false,
+    transforms: [],
     animateReorder: false,
     ...over,
   };

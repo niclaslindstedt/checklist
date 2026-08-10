@@ -49,6 +49,7 @@ import {
   PencilGlyph,
   PlusGlyph,
   RefreshGlyph,
+  RegexGlyph,
   RestoreGlyph,
   SaveGlyph,
   ScaleTextGlyph,
@@ -722,6 +723,19 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.settings.capitalizeItems],
       predicate: (prev, next) =>
         !prev.settings.capitalizeItems && next.settings.capitalizeItems,
+    },
+  },
+  {
+    id: "shapeShifter",
+    tier: "expert",
+    glyph: RegexGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.settings.transforms],
+      predicate: (prev, next) =>
+        prev.settings.transforms.length === 0 &&
+        next.settings.transforms.length > 0,
     },
   },
   {

@@ -99,6 +99,7 @@ function ChecklistViewImpl() {
     showItemCount,
     includeArchivedInCopy,
     capitalizeItems,
+    transforms,
     animateReorder,
   } = useChecklistContext();
   const t = useT();
@@ -597,6 +598,7 @@ function ChecklistViewImpl() {
                   onActiveEditorChange={setEditorActive}
                   notesDisabled={disableItemNotes}
                   capitalizeItems={capitalizeItems}
+                  transforms={transforms}
                   depth={depth}
                   hasChildren={hasChildren}
                   collapsed={collapsed.has(item.id)}
@@ -673,6 +675,7 @@ function ChecklistViewImpl() {
         items={archivedForActive}
         onRestore={unarchive}
         onDelete={remove}
+        transforms={transforms}
       />
 
       {deadlineItem && (

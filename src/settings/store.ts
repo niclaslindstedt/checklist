@@ -28,6 +28,12 @@ import {
   ALLOWED_LEAD_DAYS,
   DEFAULT_LEAD_DAYS,
 } from "../domain/notification-schedule.ts";
+import {
+  MASK_STYLES,
+  type MaskStyle,
+  type TransformKind,
+  type TransformRule,
+} from "../domain/transforms.ts";
 import type { AddItemPosition, MenuButtonPosition, Settings } from "./types.ts";
 
 const SETTINGS_KEY = "checklist:settings:v1";
@@ -85,6 +91,18 @@ export const DEFAULT_INCLUDE_ARCHIVED_IN_COPY = false;
 // first letter of each entry as it's typed and when it commits.
 export const DEFAULT_CAPITALIZE_ITEMS = false;
 
+// A new transform rule links by default — the common case is turning a
+// reference (`#134`, an order number) into something you can open.
+export const DEFAULT_TRANSFORM_KIND: TransformKind = "link";
+
+// A `sensitive` rule keeps the first and last three characters by default
+// (`076****123`) — enough to recognise the value without revealing it.
+export const DEFAULT_MASK_STYLE: MaskStyle = "edges";
+
+// How many transform rules are kept. A guard on a corrupt or hand-edited
+// blob rather than a limit a user is expected to hit.
+const MAX_TRANSFORMS = 200;
+
 // Native deadline reminders are on by default. The opt-out (shown only in the
 // native app) cancels every scheduled reminder; the web build never fires OS
 // notifications and hides the setting.
@@ -116,6 +134,7 @@ export function defaultSettings(): Settings {
     countCategories: DEFAULT_COUNT_CATEGORIES,
     includeArchivedInCopy: DEFAULT_INCLUDE_ARCHIVED_IN_COPY,
     capitalizeItems: DEFAULT_CAPITALIZE_ITEMS,
+    transforms: [],
     deadlineReminders: DEFAULT_DEADLINE_REMINDERS,
     reminderLeadDays: [...DEFAULT_REMINDER_LEAD_DAYS],
     disableAchievements: DEFAULT_DISABLE_ACHIEVEMENTS,
@@ -157,6 +176,43 @@ function validLeadDays(v: unknown): number[] {
     if (typeof n === "number" && ALLOWED_LEAD_DAYS.includes(n)) kept.add(n);
   }
   return [...kept].sort((a, b) => a - b);
+}
+
+// Coerce a stored value into the transform-rule list. A rule needs an id and
+// a non-empty pattern to mean anything, so an entry missing either is dropped
+// (as is a duplicate id, which would break the list keys and the edit target);
+// every other field falls back to its default so a hand-edited or older blob
+// still loads. Whether the pattern actually *compiles* isn't checked here —
+// an invalid one is kept, shown as broken in the editor, and skipped when
+// rendering, so a typo doesn't silently delete the user's rule.
+function validTransforms(v: unknown): TransformRule[] {
+  if (!Array.isArray(v)) return [];
+  const out: TransformRule[] = [];
+  const seen = new Set<string>();
+  for (const raw of v) {
+    if (!isRecord(raw)) continue;
+    const { id, pattern } = raw;
+    if (typeof id !== "string" || id === "") continue;
+    if (typeof pattern !== "string" || pattern === "") continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      id,
+      pattern,
+      caseInsensitive: raw.caseInsensitive === true,
+      kind: oneOf<TransformKind>(
+        raw.kind,
+        ["link", "text", "sensitive"],
+        DEFAULT_TRANSFORM_KIND,
+      ),
+      replacement: typeof raw.replacement === "string" ? raw.replacement : "",
+      label: typeof raw.label === "string" ? raw.label : "",
+      mask: oneOf<MaskStyle>(raw.mask, MASK_STYLES, DEFAULT_MASK_STYLE),
+      enabled: raw.enabled !== false,
+    });
+    if (out.length >= MAX_TRANSFORMS) break;
+  }
+  return out;
 }
 
 function validMenuButtonPosition(v: unknown): MenuButtonPosition {
@@ -284,6 +340,7 @@ export function validateSettings(raw: unknown): Settings {
       typeof raw.capitalizeItems === "boolean"
         ? raw.capitalizeItems
         : DEFAULT_CAPITALIZE_ITEMS,
+    transforms: validTransforms(raw.transforms),
     deadlineReminders:
       typeof raw.deadlineReminders === "boolean"
         ? raw.deadlineReminders

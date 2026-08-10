@@ -25,6 +25,7 @@ import {
   DatabaseIcon,
   MenuIcon,
   PaletteIcon,
+  RegexIcon,
   ScrollTextIcon,
   SlidersIcon,
 } from "../icons.tsx";
@@ -35,6 +36,7 @@ import { GeneralTab } from "./tabs/general.tsx";
 import { ListsTab } from "./tabs/lists.tsx";
 import { LogsTab } from "./tabs/logs.tsx";
 import { StorageTab } from "./tabs/storage.tsx";
+import { TransformTab } from "./tabs/transform.tsx";
 
 // Settings dialog. Lands on the General tab; Lists, Theme, and Storage are
 // always present; Developer appears when developer mode is on, and Logs only
@@ -51,13 +53,21 @@ import { StorageTab } from "./tabs/storage.tsx";
 // fake data) and the storage connections apply immediately — they don't live
 // in the persisted `Settings` document the draft snapshots.
 
-type TabId = "general" | "lists" | "theme" | "storage" | "developer" | "logs";
+type TabId =
+  | "general"
+  | "lists"
+  | "transform"
+  | "theme"
+  | "storage"
+  | "developer"
+  | "logs";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
 const TAB_LABEL_KEYS: Record<TabId, MessageKey> = {
   general: "settings.tab.general",
   lists: "settings.tab.lists",
+  transform: "settings.tab.transform",
   theme: "settings.tab.theme",
   storage: "settings.tab.storage",
   developer: "settings.tab.developer",
@@ -69,6 +79,7 @@ const TAB_LABEL_KEYS: Record<TabId, MessageKey> = {
 const TAB_ICONS: Record<TabId, IconComponent> = {
   general: SlidersIcon,
   lists: ChecklistIcon,
+  transform: RegexIcon,
   theme: PaletteIcon,
   storage: DatabaseIcon,
   developer: CodeIcon,
@@ -121,10 +132,11 @@ export function SettingsModal({
   // The Logs tab only appears while developer mode is on *and* log capture
   // is enabled — there's nothing worth showing until logs are being kept.
   const tabs: TabId[] = useMemo(() => {
-    if (!devMode) return ["general", "lists", "theme", "storage"];
+    if (!devMode) return ["general", "lists", "transform", "theme", "storage"];
     const devTabs: TabId[] = [
       "general",
       "lists",
+      "transform",
       "theme",
       "storage",
       "developer",
@@ -226,6 +238,9 @@ export function SettingsModal({
           )}
           {activeTab === "lists" && (
             <ListsTab settings={draft} onUpdate={update} />
+          )}
+          {activeTab === "transform" && (
+            <TransformTab settings={draft} onUpdate={update} />
           )}
           {activeTab === "theme" && (
             <AppearanceTab settings={draft} onUpdate={update} />

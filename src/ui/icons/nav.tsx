@@ -389,6 +389,28 @@ export function DatabaseIcon({ className }: IconProps) {
   );
 }
 
+/** An asterisk over a capture group — the Transform settings tab marker. */
+export function RegexIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable="false"
+      className={className}
+    >
+      <path d="M17 3v10" />
+      <path d="m12.67 5.5 8.66 5" />
+      <path d="m12.67 10.5 8.66-5" />
+      <rect x="3" y="15" width="6" height="6" rx="2" />
+    </svg>
+  );
+}
+
 /** A scroll of text — the Logs tab marker. */
 export function ScrollTextIcon({ className }: IconProps) {
   return (

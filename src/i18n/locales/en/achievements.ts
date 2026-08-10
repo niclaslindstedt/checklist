@@ -421,6 +421,12 @@ const achievements = {
       name: "Capital Idea",
       condition: "Turn on capitalising the first letter of each item.",
     },
+    shapeShifter: {
+      name: "Shape Shifter",
+      condition: "Write your first transform rule.",
+      learnMore:
+        "Settings → Transform holds rules that rewrite how your items read without touching what they say. Match a piece of text with a regular expression and turn every occurrence into a link you can tap, into different words, or into a mask that hides a code or a phone number from anyone glancing at your screen. The rules apply as the list is drawn, so opening an item to edit it always shows you the real text back.",
+    },
     underTheHood: {
       name: "Under the Hood",
       condition: "Turn on developer mode.",

@@ -119,6 +119,16 @@ export function ShowcasePage() {
               opens the page in a new tab instead of the note.
             </li>
             <li>
+              <strong className="text-fg-bright">Rewrite how items read</strong>{" "}
+              — write transform rules (Settings &rarr; Transform) that match
+              text with a regular expression and turn every occurrence into a
+              link you can tap (a ticket reference becoming its issue page,
+              say), into different words, or into a mask like{" "}
+              <code className="text-meta">076****123</code> that hides a code or
+              a number from anyone glancing at your screen. The rules change
+              only what is drawn — your lists keep the original text.
+            </li>
+            <li>
               <strong className="text-fg-bright">Set deadlines</strong> — give
               an item a due date (and an optional repeat like &ldquo;every 2
               weeks&rdquo;); dated items gather at the bottom of the list under

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { TransformRule } from "../domain/transforms.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { APP_VIEWPORT_RECT } from "./appViewportRect.ts";
 import { useEscapeKey } from "./hooks/useEscapeKey.ts";
 import { CloseIcon, RestoreIcon } from "./icons.tsx";
+import { renderTransformed } from "./markdown/renderTransformed.tsx";
 
 // The archived-items drawer — a bottom sheet raised by swiping up at the
 // foot of a checklist (see `useSwipeUpReveal`). It lists just the active
@@ -20,6 +22,9 @@ import { CloseIcon, RestoreIcon } from "./icons.tsx";
 // Downward header travel (px) past which release dismisses the drawer.
 const DISMISS_DISTANCE = 72;
 
+// Stable empty list so the default doesn't allocate on every render.
+const EMPTY_TRANSFORMS: readonly TransformRule[] = [];
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -31,6 +36,11 @@ type Props = {
   onRestore: (id: string) => void;
   /** Permanently delete an archived item. */
   onDelete: (id: string) => void;
+  /**
+   * The user's display transforms, so an archived item reads here exactly as
+   * it did on the list — a masked code stays masked. Defaults to none.
+   */
+  transforms?: readonly TransformRule[];
 };
 
 export function ArchivedDrawer({
@@ -40,6 +50,7 @@ export function ArchivedDrawer({
   items,
   onRestore,
   onDelete,
+  transforms = EMPTY_TRANSFORMS,
 }: Props) {
   const t = useT();
   // `entered` drives the slide-up: false on the first commit so the sheet
@@ -184,7 +195,13 @@ export function ArchivedDrawer({
                       item.checked ? "text-muted line-through" : "text-fg"
                     }`}
                   >
-                    {item.title}
+                    {renderTransformed(item.title, transforms, {
+                      // Same reasoning as the archive view: the drawer is a
+                      // restore surface, so a transformed link reads as its
+                      // label rather than navigating out of the list.
+                      inertLinks: true,
+                      keyBase: item.id,
+                    })}
                   </span>
                   <button
                     type="button"

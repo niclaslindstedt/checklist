@@ -1,5 +1,8 @@
 import { createElement, type ReactNode } from "react";
 
+import type { TransformRule } from "../../domain/transforms.ts";
+import { renderTransformed } from "./renderTransformed.tsx";
+
 // A tiny, dependency-free markdown renderer for checklist item bodies.
 //
 // The app stays dependency-light (it inlines its icons rather than pull in
@@ -59,6 +62,14 @@ function safeHref(href: string): string | null {
 // drill-down); without it such links render as inert literal text.
 export type MarkdownOptions = {
   onOpenFeature?: (slug: string) => void;
+  /**
+   * The user's display transforms (Settings → Transform). Applied to the
+   * plain-text runs left after the markdown grammar has had its say, so a
+   * rule never rewrites markdown syntax, an existing link's target, or a
+   * fenced code block — only the prose. Pass the pre-filtered list from
+   * `activeTransforms`; omit it (the default) and nothing is transformed.
+   */
+  transforms?: readonly TransformRule[];
 };
 
 // The options the parser threads through itself, `MarkdownOptions` plus the
@@ -173,6 +184,17 @@ const INLINE_RULES: InlineRule[] = [
   },
 ];
 
+// A run of prose the markdown grammar found nothing in. This is where the
+// user's display transforms get their look at the text: never at markdown
+// syntax, an existing link's target, or a code span — only at the words.
+function plain(text: string, key: string, opts: ParseOptions): ReactNode {
+  if (!opts.transforms || opts.transforms.length === 0) return text;
+  return renderTransformed(text, opts.transforms, {
+    keyBase: key,
+    inertLinks: opts.insideLink,
+  });
+}
+
 // Turn a run of text into nodes, peeling off the earliest-starting inline
 // token at each step and recursing into its content (except `code`, which
 // is literal). Plain runs fall through as text nodes.
@@ -198,10 +220,13 @@ function parseInline(
       }
     }
     if (!bestRule || !bestMatch) {
-      out.push(rest);
+      // Last run of the walk, so the counter needn't advance past it.
+      out.push(plain(rest, `${keyBase}-${counter}`, opts));
       break;
     }
-    if (bestIdx > 0) out.push(rest.slice(0, bestIdx));
+    if (bestIdx > 0) {
+      out.push(plain(rest.slice(0, bestIdx), `${keyBase}-${counter++}`, opts));
+    }
     out.push(bestRule.make(bestMatch, `${keyBase}-${counter++}`, opts));
     rest = rest.slice(bestIdx + bestMatch[0].length);
   }
