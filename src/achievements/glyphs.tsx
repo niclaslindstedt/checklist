@@ -134,6 +134,17 @@ export function WandGlyph({ className }: IconProps) {
 
 // ── Per-achievement glyphs ─────────────────────────────────────────────────
 
+export function RegexGlyph({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M17 3v10" />
+      <path d="m12.67 5.5 8.66 5" />
+      <path d="m12.67 10.5 8.66-5" />
+      <rect x="3" y="15" width="6" height="6" rx="2" />
+    </Svg>
+  );
+}
+
 export function NoteGlyph({ className }: IconProps) {
   return (
     <Svg className={className}>

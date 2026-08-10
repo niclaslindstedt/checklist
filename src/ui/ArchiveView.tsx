@@ -5,6 +5,7 @@ import { useT } from "../i18n";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
+import { renderTransformed } from "./markdown/renderTransformed.tsx";
 import { useContextMenu } from "./hooks/useContextMenu.ts";
 import { useDesktopPointer } from "./hooks/useMediaQuery.ts";
 import {
@@ -42,6 +43,7 @@ function ArchiveViewImpl() {
     unarchiveChecklist,
     removeChecklist,
     emptyArchive,
+    transforms,
   } = useChecklistContext();
   const t = useT();
   const desktop = useDesktopPointer();
@@ -168,7 +170,15 @@ function ArchiveViewImpl() {
                       {group.items.map((item) => (
                         <ArchiveRow
                           key={item.id}
-                          title={item.title}
+                          // Archived items read under the same display
+                          // transforms as the live list — a masked code
+                          // stays masked here. Links render as their label
+                          // text: an archive row is a restore / delete
+                          // surface, not a place to navigate away from.
+                          title={renderTransformed(item.title, transforms, {
+                            inertLinks: true,
+                            keyBase: item.id,
+                          })}
                           checked={item.checked}
                           restoreLabel={t("nav.restore")}
                           onRestore={() => unarchive(item.id)}
@@ -238,7 +248,7 @@ function ArchiveRow({
   desktop,
   onOpenMenu,
 }: {
-  title: string;
+  title: ReactNode;
   checked?: boolean;
   icon?: ReactNode;
   restoreLabel: string;

@@ -1781,7 +1781,8 @@ here from the General tab), the **Sort checked items to the bottom**
 toggle (`sortCheckedToBottom`), the **Disable item notes** toggle
 (`disableItemNotes`), the **Show item count** toggle
 (`showItemCount`), and the **Count categories** toggle
-(`countCategories`).
+(`countCategories`). Display rewriting lives one tab further on — see the
+[Transform tab](#transform-tab).
 
 ### Sort checked items to the bottom
 
@@ -1939,6 +1940,91 @@ and, through `ChecklistRow`, to the [in-place editor](#edit-item)
 field's `onChange` and at the commit boundary. Imports and pastes are left
 untouched — only typed titles are capitalised. Turning the setting on
 unlocks the **Capital Idea** achievement.
+
+### Transform tab
+
+`src/ui/settings/tabs/transform.tsx` — the user's **display transforms**:
+regex rules that rewrite how an item's title and note *read* without
+changing a character of what is stored. The tab is the rule list, in the
+order the rules run: each row shows the pattern (the rule's name, in the
+monospace face it was typed in), a badge for what it turns a match into,
+and the replacement (or the chosen mask) beneath it, with a checkbox to
+park the rule, arrows to move it, and edit / remove buttons. A rule whose
+pattern no longer compiles is badged **Invalid pattern** rather than
+silently dropped. "Add transform" and the pencil both open the
+[transform rule editor](#transform-rule-editor). The rules are edited on
+the settings draft like every other tab, so nothing lands until the dialog
+is saved. Writing the first rule unlocks the **Shape Shifter**
+achievement.
+
+### Transforms
+
+A **transform rule** (`TransformRule` in `src/domain/transforms.ts`,
+persisted as `Settings.transforms`) is a regular expression plus what each
+match should become:
+
+- **link** — the replacement is a URL template, so `#(\d+)` with
+  `https://…/issues/$1` turns every `#134` in a list into a tappable link
+  to that issue. The anchor's label is the matched text unless the rule
+  sets its own label template.
+- **text** — the replacement is a plain-text template: ordinary
+  find-and-replace, with `$1`, `$2`, `$<name>`, `$&` and `$$` available.
+- **sensitive** — the match is masked so it can't be read over a
+  shoulder. Four styles: keep the first and last three (`076****123`),
+  keep the last four (`******4123`), hide everything at the original
+  length, or a fixed-width mask that hides the length too.
+
+The engine (`applyTransforms`) is pure and DOM-free: it returns a list of
+`TransformSegment`s — plain text, a link, a masked run — and leaves the
+look to the UI. Rules run **top to bottom**, and each rule only sees the
+runs no earlier rule claimed, so one rule's output is never re-matched by
+the next and chains stay predictable. A pattern that can match the empty
+string steps past it instead of spinning, and one rule rewrites at most
+200 matches in a single string. Patterns are compiled through a shared
+cache (`compilePattern`), so the same handful of rules re-applied to every
+visible row costs one compile each. `activeTransforms` filters the list to
+the enabled rules whose pattern compiles — `App` calls it once and puts the
+result on the checklist context, so a parked or broken rule costs nothing
+per row.
+
+Rendering lives in `src/ui/markdown/renderTransformed.tsx`
+(`renderTransformed` / `renderSegment`). A link segment becomes the same
+new-tab, `noopener` anchor the [markdown renderer](#markdown-renderer)
+emits — the target has already been scheme-checked in the domain layer, so
+`javascript:` and `data:` rules render as inert text — and a masked run
+becomes a monospace `hidden`-labelled span. An item **note** is
+transformed through the markdown renderer's `transforms` option, which
+applies the rules to the plain-prose runs only: never to markdown syntax,
+an existing link's target, or a code span. An item **title** is
+transformed by `ChecklistRow` directly; a title that ends up carrying a
+real anchor renders as the same press-to-edit surface the note body uses
+(a tap on the link follows it, a tap anywhere else opens the editor)
+because an `<a>` inside a `<button>` is invalid markup. The
+[archive view](#archive-view) and the [archived drawer](#archived-drawer)
+render their item titles through the same rules — a masked code stays
+masked once the item is archived — but with links inert, since those rows
+are restore / delete surfaces rather than places to navigate away from.
+
+**Nothing is rewritten in the document.** Opening a row for editing shows
+the raw stored text back, the [copy button](#copy-checklist) copies the
+original, and the synced markdown file is untouched — which also means
+masking is over-the-shoulder obfuscation, not encryption. For real
+secrecy, use [at-rest encryption](#at-rest-encryption--unlock).
+
+### Transform rule editor
+
+`src/ui/settings/TransformRuleModal.tsx` — the modal a rule is written in:
+the pattern (with an **Insert** dropdown of regex building blocks — `\d`,
+`+`, `(…)`, `^` — each row showing the token and what it does, spliced in
+at the cursor by `src/ui/settings/RegexHelper.tsx`), an "ignore case"
+checkbox, the **Replace with** choice (Link / Text / Sensitive), the
+per-kind fields (address + optional link text, or the replacement, or the
+mask picker), and then the part that makes a regular expression writable:
+a **sample text** field and, under it, the **result** — the draft rule
+applied to that sample and rendered with exactly the code the checklist
+row uses. An invalid pattern says so inline and blocks Save; a valid rule
+that simply doesn't match says that too, rather than showing an unchanged
+line and leaving the user guessing.
 
 ### Appearance / theme tab
 

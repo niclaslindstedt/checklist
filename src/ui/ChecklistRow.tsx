@@ -9,6 +9,7 @@ import {
 
 import { unlock } from "../achievements/bus.ts";
 import { isHeldBack, type DropMode } from "../domain/checklists.ts";
+import { applyTransforms, type TransformRule } from "../domain/transforms.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
 import { ChecklistRowEditor } from "./ChecklistRowEditor.tsx";
@@ -26,11 +27,16 @@ import {
   TrashIcon,
 } from "./icons.tsx";
 import { renderMarkdown } from "./markdown/renderMarkdown.tsx";
+import { renderSegment } from "./markdown/renderTransformed.tsx";
 
 // Horizontal step per nesting level. A sub-item sits this much further right
 // than its parent, so the tree shape reads at a glance. Exported so the drag
 // ghost preview can indent itself to match the row it'll land beside.
 export const INDENT_PER_LEVEL = 32;
+
+// Stable empty list for a row rendered without display transforms, so the
+// default doesn't hand `memo` a fresh array on every render.
+const EMPTY_TRANSFORMS: readonly TransformRule[] = [];
 
 // One checklist line. Two action layers sit behind a sliding foreground:
 // swiping the foreground right uncovers Archive (and triggers it past the
@@ -142,6 +148,12 @@ type Props = {
   notesDisabled?: boolean;
   /** When set, the editor capitalises the first letter of the item title. */
   capitalizeItems?: boolean;
+  /**
+   * The user's display transforms, already filtered to the enabled, compiling
+   * ones. Applied to the title and the rendered note only — the editor always
+   * shows the raw stored text.
+   */
+  transforms?: readonly TransformRule[];
   /** Nesting depth — indents the row one step per level. */
   depth?: number;
   /** Whether the item has sub-items, so it shows the expand/collapse caret. */
@@ -201,6 +213,7 @@ function ChecklistRowImpl({
   onActiveEditorChange,
   notesDisabled = false,
   capitalizeItems = false,
+  transforms = EMPTY_TRANSFORMS,
   depth = 0,
   hasChildren = false,
   collapsed = false,
@@ -393,6 +406,20 @@ function ChecklistRowImpl({
           item.checked ? "text-muted line-through" : "text-fg"
         }`
   }`;
+
+  // The title as the user's display transforms leave it: the stored string
+  // when no rule matches (the usual case), otherwise the segments a rule
+  // produced. A title carrying a real anchor can't stay a `<button>` — an
+  // `<a>` inside one is invalid markup — so it renders as the same
+  // press-to-edit surface the note body uses, where a tap on the link
+  // follows it and a tap anywhere else opens the editor.
+  const titleSegments =
+    transforms.length > 0 ? applyTransforms(item.title, transforms) : null;
+  const title = titleSegments
+    ? titleSegments.map((seg, i) => renderSegment(seg, `${item.id}-t${i}`))
+    : item.title;
+  const titleHasLink =
+    titleSegments?.some((seg) => seg.kind === "link") ?? false;
 
   if (editing) {
     return (
@@ -606,7 +633,31 @@ function ChecklistRowImpl({
               can't overflow the row and shove the trailing glyphs off-screen.
               A category reads as a slim, muted, upper-case grouping label. */}
           {titleInert ? (
-            <span className={titleClass}>{item.title}</span>
+            <span className={titleClass}>{title}</span>
+          ) : titleHasLink ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("a")) {
+                  unlock("followTheLink");
+                  return;
+                }
+                onTitleTap();
+              }}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onTitleTap();
+                }
+              }}
+              aria-label={titleLabel}
+              aria-expanded={hasBody ? expanded : undefined}
+              className={`${titleClass} cursor-pointer`}
+            >
+              {title}
+            </span>
           ) : (
             <button
               type="button"
@@ -615,7 +666,7 @@ function ChecklistRowImpl({
               aria-expanded={hasBody ? expanded : undefined}
               className={titleClass}
             >
-              {item.title}
+              {title}
             </button>
           )}
           {hasBody && (
@@ -689,7 +740,7 @@ function ChecklistRowImpl({
               nested ? "text-xs" : "text-sm"
             }`}
           >
-            {renderMarkdown(item.notes!)}
+            {renderMarkdown(item.notes!, { transforms })}
           </div>
         )}
       </div>

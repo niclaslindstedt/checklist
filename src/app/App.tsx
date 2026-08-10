@@ -60,6 +60,7 @@ import { useAppNavigation } from "./use-app-navigation.ts";
 import { useWidgetMirror } from "./use-widget-mirror.ts";
 import { useWidgetDeepLink } from "./use-widget-deep-link.ts";
 import { useNotificationScheduler } from "./use-notification-scheduler.ts";
+import { activeTransforms } from "../domain/transforms.ts";
 import type { WidgetAction } from "../domain/widget-snapshot.ts";
 
 // Thin root, in the spirit of budget's `App.tsx`: wire the cross-cutting
@@ -595,6 +596,7 @@ function AppShell() {
       showItemCount: settings.showItemCount,
       includeArchivedInCopy: settings.includeArchivedInCopy,
       capitalizeItems: settings.capitalizeItems,
+      transforms: activeTransforms(settings.transforms),
       animateReorder:
         settings.sortCheckedToBottom && settings.animateSortChecked,
     }),
@@ -606,6 +608,7 @@ function AppShell() {
       settings.showItemCount,
       settings.includeArchivedInCopy,
       settings.capitalizeItems,
+      settings.transforms,
       settings.sortCheckedToBottom,
       settings.animateSortChecked,
     ],

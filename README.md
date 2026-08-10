@@ -38,6 +38,12 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   add items. On a list with categories the copy button offers a scope
   first: the whole list, or just one category's items. *(Sharing a list as a URL whose `#` fragment carries the
   payload: codec in place, UI on the roadmap.)*
+- **Transform rules.** Match text with a regular expression
+  (**Settings → Transform**) and rewrite how it reads: turn `#134` into a
+  link to that issue, swap one phrase for another, or mask a code as
+  `076****123` so it can't be read over your shoulder. Rules change only
+  what's drawn — the stored list, the clipboard copy, and the editor keep
+  the original text.
 - **Local folder + markdown files.** Point the app at a folder on your
   device (**Settings → Storage → Local folder**) and every list is saved
   there as its own markdown file — standard `- [ ]` / `- [x]` task syntax
