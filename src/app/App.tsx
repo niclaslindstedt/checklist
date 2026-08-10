@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock, useAchievementWatcher } from "../achievements/index.ts";
 import { useDevSeed } from "../dev/useDevSeed.ts";
+import type { DisplayOrder } from "../domain/checklists.ts";
 import { useT, type MessageKey } from "../i18n";
 import { LANGUAGE_EVENT } from "../i18n/language-preference.ts";
 import { useStandaloneMobile } from "../pwa/standalone.ts";
@@ -188,11 +189,26 @@ function AppShell() {
     () => (fakeData ? createDevSeedAdapter() : null),
     [fakeData],
   );
+  // The three view sorts, as one value so its identity is stable across the
+  // settings edits that don't touch them (a colour-swatch drag re-renders App
+  // continuously) and the displayed order isn't recomputed for nothing.
+  const displayOrder = useMemo<DisplayOrder>(
+    () => ({
+      sinkChecked: settings.sortCheckedToBottom,
+      datedFirst: settings.sortDatedToTop,
+      heldLast: settings.sortHeldToBottom,
+    }),
+    [
+      settings.sortCheckedToBottom,
+      settings.sortDatedToTop,
+      settings.sortHeldToBottom,
+    ],
+  );
   const checklist = useChecklist(
     seedAdapter ?? storage.adapter,
     settings.addItemPosition,
     notify,
-    settings.sortCheckedToBottom,
+    displayOrder,
     storage.activeNamespace,
     settings.countCategories,
   );
@@ -284,7 +300,7 @@ function AppShell() {
     snapshot: checklist.snapshot,
     activeChecklistId: checklist.activeChecklistId,
     loaded: checklist.loaded,
-    sinkChecked: settings.sortCheckedToBottom,
+    order: displayOrder,
     onAction: applyWidgetAction,
   });
   // Quick-add / open deep links (`checklist://add?list=<id>`) from a widget or

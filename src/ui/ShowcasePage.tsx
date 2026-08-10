@@ -131,17 +131,18 @@ export function ShowcasePage() {
             <li>
               <strong className="text-fg-bright">Set deadlines</strong> — give
               an item a due date (and an optional repeat like &ldquo;every 2
-              weeks&rdquo;); dated items gather at the bottom of the list under
-              a date row that warms from yellow to orange to red as the day
-              nears and passes, and checking off a recurring one rolls it to its
-              next due date.
+              weeks&rdquo;); dated items lead the list, soonest first, under a
+              date row that warms from yellow to orange to red as the day nears
+              and passes, and checking off a recurring one rolls it to its next
+              due date.
             </li>
             <li>
               <strong className="text-fg-bright">Hold work back</strong> — the
               same clock sets a &ldquo;Not before&rdquo; day: the item&rsquo;s
-              checkbox stays shut until that day arrives, with a plain grey line
-              above it saying when it opens up. On the day the line disappears
-              and the item behaves like any other.
+              checkbox stays shut until that day arrives, and it sinks to the
+              bottom of the list under a plain grey date saying when it opens
+              up. On the day the date disappears and the item behaves like any
+              other.
             </li>
             <li>
               <strong className="text-fg-bright">Reuse templates</strong> —

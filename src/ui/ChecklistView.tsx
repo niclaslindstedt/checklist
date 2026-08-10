@@ -576,66 +576,69 @@ function ChecklistViewImpl() {
             ref={reorderCtl.containerRef}
             className="relative m-0 list-none p-0"
           >
-            {rows.flatMap(({ item, depth, hasChildren }, i) => {
-              const rowStyle = reorderCtl.rowStyle(item.id);
-              const row = (
-                <ChecklistRow
-                  key={item.id}
-                  item={item}
-                  onToggle={toggle}
-                  onArchive={archive}
-                  onDelete={remove}
-                  onEdit={editItem}
-                  onEditTiming={openTiming}
-                  onRemoveEmpty={removeEmpty}
-                  onBackspaceEmpty={backspaceEmpty}
-                  onAddAfter={composer.startAfter}
-                  onAddChild={composer.startChild}
-                  autoEditBody={item.id === editBodyOfId}
-                  onAutoEditConsumed={clearEditBody}
-                  autoEditTitle={item.id === editTitleOfId}
-                  onAutoEditTitleConsumed={clearEditTitle}
-                  onActiveEditorChange={setEditorActive}
-                  notesDisabled={disableItemNotes}
-                  capitalizeItems={capitalizeItems}
-                  transforms={transforms}
-                  depth={depth}
-                  hasChildren={hasChildren}
-                  collapsed={collapsed.has(item.id)}
-                  onToggleCollapse={toggleCollapse}
-                  dropMode={
-                    reorderCtl.dropTarget?.id === item.id
-                      ? reorderCtl.dropTarget.mode
-                      : null
-                  }
-                  dragHandleProps={reorderCtl.dragHandleProps(item.id)}
-                  dragging={reorderCtl.draggingId === item.id}
-                  style={
-                    hiddenIds?.has(item.id)
-                      ? { ...rowStyle, display: "none" }
-                      : rowStyle
-                  }
-                  onContextMenu={desktop ? openRowMenu : undefined}
-                  onLongPress={desktop ? undefined : openRowMenuAt}
-                  templateMode={templateMode}
-                />
-              );
-              const out: React.ReactNode[] = [];
-              if (ghost && draggedItem && ghost.index === i) {
-                out.push(
-                  <DragGhostRow
-                    key="__drag_ghost"
-                    item={draggedItem}
-                    depth={ghost.depth}
-                  />,
+            {rows.flatMap(
+              ({ item, depth, hasChildren, sameGateAsPrevious }, i) => {
+                const rowStyle = reorderCtl.rowStyle(item.id);
+                const row = (
+                  <ChecklistRow
+                    key={item.id}
+                    item={item}
+                    onToggle={toggle}
+                    onArchive={archive}
+                    onDelete={remove}
+                    onEdit={editItem}
+                    onEditTiming={openTiming}
+                    onRemoveEmpty={removeEmpty}
+                    onBackspaceEmpty={backspaceEmpty}
+                    onAddAfter={composer.startAfter}
+                    onAddChild={composer.startChild}
+                    autoEditBody={item.id === editBodyOfId}
+                    onAutoEditConsumed={clearEditBody}
+                    autoEditTitle={item.id === editTitleOfId}
+                    onAutoEditTitleConsumed={clearEditTitle}
+                    onActiveEditorChange={setEditorActive}
+                    notesDisabled={disableItemNotes}
+                    capitalizeItems={capitalizeItems}
+                    transforms={transforms}
+                    sameGate={sameGateAsPrevious}
+                    depth={depth}
+                    hasChildren={hasChildren}
+                    collapsed={collapsed.has(item.id)}
+                    onToggleCollapse={toggleCollapse}
+                    dropMode={
+                      reorderCtl.dropTarget?.id === item.id
+                        ? reorderCtl.dropTarget.mode
+                        : null
+                    }
+                    dragHandleProps={reorderCtl.dragHandleProps(item.id)}
+                    dragging={reorderCtl.draggingId === item.id}
+                    style={
+                      hiddenIds?.has(item.id)
+                        ? { ...rowStyle, display: "none" }
+                        : rowStyle
+                    }
+                    onContextMenu={desktop ? openRowMenu : undefined}
+                    onLongPress={desktop ? undefined : openRowMenuAt}
+                    templateMode={templateMode}
+                  />
                 );
-              }
-              out.push(row);
-              // Splice the in-list composer in after the row it sits below.
-              if (inListDraft && i === inListDraft.spliceIndex - 1)
-                out.push(inListDraftRow);
-              return out;
-            })}
+                const out: React.ReactNode[] = [];
+                if (ghost && draggedItem && ghost.index === i) {
+                  out.push(
+                    <DragGhostRow
+                      key="__drag_ghost"
+                      item={draggedItem}
+                      depth={ghost.depth}
+                    />,
+                  );
+                }
+                out.push(row);
+                // Splice the in-list composer in after the row it sits below.
+                if (inListDraft && i === inListDraft.spliceIndex - 1)
+                  out.push(inListDraftRow);
+                return out;
+              },
+            )}
             {ghost && draggedItem && ghost.index === rows.length && (
               <DragGhostRow
                 key="__drag_ghost"

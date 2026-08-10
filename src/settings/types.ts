@@ -43,6 +43,18 @@ export type Settings = {
   // the stored document order is never reordered, so unchecking an item drops
   // it straight back where it sat.
   sortCheckedToBottom: boolean;
+  // Whether items carrying a due date float to the top of the active list,
+  // soonest (and overdue) first, so what's on a clock leads the list. On by
+  // default. A view-only sort like `sortCheckedToBottom` — the stored document
+  // order is never touched, so switching it off drops each item back where it
+  // sat.
+  sortDatedToTop: boolean;
+  // Whether items held back by a `notBefore` day that hasn't arrived sink to
+  // the bottom of the unchecked group — above the checked items — soonest gate
+  // first, so work that can't be started yet stays out of the way. On by
+  // default, and view-only in the same way. An item whose gate has passed is an
+  // ordinary item and doesn't move.
+  sortHeldToBottom: boolean;
   // Whether checked items glide into their new spot when they sort to the
   // bottom, instead of jumping there in one frame. On by default; the opt-out
   // (Appearance) makes the re-sort instant. Only has any visible effect while

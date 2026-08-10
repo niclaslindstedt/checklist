@@ -47,15 +47,15 @@ function seededAdapter(): StorageAdapter {
   };
 }
 
-// `useChecklist(adapter, addItemPosition, notify, sortCheckedToBottom,
-// namespace, countCategories)` — only the first and last matter here.
+// `useChecklist(adapter, addItemPosition, notify, order, namespace,
+// countCategories)` — only the first and last matter here.
 function renderCounts(countCategories: boolean) {
   return renderHook(() =>
     useChecklist(
       seededAdapter(),
       "bottom",
       undefined,
-      false,
+      undefined,
       undefined,
       countCategories,
     ),

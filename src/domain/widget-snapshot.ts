@@ -19,7 +19,12 @@
 
 import { activeItems } from "./archive-ops.ts";
 import { deadlineStatus, nextOccurrence } from "./deadlines.ts";
-import { displayItems, progress } from "./item-display.ts";
+import {
+  displayItems,
+  DOCUMENT_ORDER,
+  progress,
+  type DisplayOrder,
+} from "./item-display.ts";
 import { findItem, flattenItems } from "./item-tree.ts";
 import { toggleItem } from "./item-ops.ts";
 import type { Checklist, Snapshot } from "./types.ts";
@@ -92,8 +97,12 @@ export interface WidgetSnapshotOptions {
   now: string;
   /** How many open items the active projection carries (default {@link DEFAULT_WIDGET_ITEM_LIMIT}). */
   itemLimit?: number;
-  /** Whether the user sinks checked items — matches the app's display order. */
-  sinkChecked?: boolean;
+  /**
+   * The user's view sorts, so the widget's "next few open items" come off the
+   * same order the app shows — dated work first, held-back work last. Defaults
+   * to plain document order.
+   */
+  order?: DisplayOrder;
 }
 
 /**
@@ -153,7 +162,9 @@ export function buildWidgetSnapshot(
   const activeProjection: WidgetActiveList | null = active
     ? {
         ...summarize(active),
-        open: flattenItems(displayItems(active, options.sinkChecked ?? false))
+        open: flattenItems(
+          displayItems(active, options.order ?? DOCUMENT_ORDER, now),
+        )
           .filter((it) => !it.checked)
           .slice(0, itemLimit)
           .map((it) => {

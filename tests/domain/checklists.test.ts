@@ -21,7 +21,9 @@ import {
   findItem,
   flattenForDisplay,
   flattenItems,
-  floatDatedToBottom,
+  floatDatedToTop,
+  sinkHeldToBottom,
+  DOCUMENT_ORDER,
   instantiate,
   isComplete,
   moveDisplayedItem,
@@ -864,6 +866,10 @@ describe("sortCheckedToBottom", () => {
   });
 });
 
+const SINK_CHECKED = { ...DOCUMENT_ORDER, sinkChecked: true };
+const DATED_FIRST = { ...DOCUMENT_ORDER, datedFirst: true };
+const HELD_LAST = { ...DOCUMENT_ORDER, heldLast: true };
+
 describe("displayItems", () => {
   function listOf(...titles: string[]) {
     let c = createChecklist("c1", "List", NOW);
@@ -878,14 +884,18 @@ describe("displayItems", () => {
   it("returns plain active order when the sort is off", () => {
     let c = listOf("A", "B", "C");
     c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z");
-    expect(ids(displayItems(c, false))).toEqual(["i1", "i2", "i3"]);
+    expect(ids(displayItems(c, DOCUMENT_ORDER, NOW))).toEqual([
+      "i1",
+      "i2",
+      "i3",
+    ]);
   });
 
   it("sinks checked items when the sort is on, excluding archived", () => {
     let c = listOf("A", "B", "C");
     c = toggleItem(c, "i1", "2026-01-01T00:00:01.000Z");
     c = setArchived(c, "i2", true, NOW);
-    expect(ids(displayItems(c, true))).toEqual(["i3", "i1"]);
+    expect(ids(displayItems(c, SINK_CHECKED, NOW))).toEqual(["i3", "i1"]);
   });
 });
 
@@ -1199,11 +1209,19 @@ describe("moveDisplayedItem", () => {
 
   const docIds = (c: ReturnType<typeof listOf>) => c.items.map((it) => it.id);
   const viewIds = (c: ReturnType<typeof listOf>) =>
-    displayItems(c, true).map((it) => it.id);
+    displayItems(c, SINK_CHECKED, NOW).map((it) => it.id);
 
-  it("delegates straight to moveItem when the sort is off", () => {
+  it("delegates straight to moveItem when nothing is reordering", () => {
     const c = listOf("A", "B", "C");
-    const moved = moveDisplayedItem(c, "i1", 2, false, LATER);
+    const moved = moveDisplayedItem(c, "i1", 2, DOCUMENT_ORDER, LATER);
+    expect(docIds(moved)).toEqual(["i2", "i3", "i1"]);
+  });
+
+  it("delegates straight to moveItem when a sort is on but moved nothing", () => {
+    // Sink-checked is on, but nothing is checked — the display order equals
+    // the document order, so the drop index needs no translation.
+    const c = listOf("A", "B", "C");
+    const moved = moveDisplayedItem(c, "i1", 2, SINK_CHECKED, LATER);
     expect(docIds(moved)).toEqual(["i2", "i3", "i1"]);
   });
 
@@ -1214,13 +1232,13 @@ describe("moveDisplayedItem", () => {
     expect(viewIds(c)).toEqual(["i1", "i3", "i2"]);
     // Drag A (display 0) to display index 1 — it should land after C in the
     // view, i.e. just before the checked group.
-    const moved = moveDisplayedItem(c, "i1", 1, true, LATER);
+    const moved = moveDisplayedItem(c, "i1", 1, SINK_CHECKED, LATER);
     expect(viewIds(moved)).toEqual(["i3", "i1", "i2"]);
   });
 
   it("returns the checklist unchanged for an unknown item", () => {
     const c = listOf("A", "B");
-    expect(moveDisplayedItem(c, "nope", 0, true, LATER)).toBe(c);
+    expect(moveDisplayedItem(c, "nope", 0, SINK_CHECKED, LATER)).toBe(c);
   });
 });
 
@@ -1451,7 +1469,7 @@ describe("toggleItem with a recurrence", () => {
   });
 });
 
-describe("displayItems with dated items", () => {
+describe("displayItems with dated and held-back items", () => {
   function listOf(...titles: string[]) {
     let c = createChecklist("c1", "List", NOW);
     titles.forEach((t, i) => {
@@ -1460,35 +1478,178 @@ describe("displayItems with dated items", () => {
     return c;
   }
   const ids = (items: { id: string }[]) => items.map((it) => it.id);
+  const due = (deadline: string) => ({
+    notBefore: null,
+    deadline,
+    recurrence: null,
+  });
+  const gate = (notBefore: string) => ({
+    notBefore,
+    deadline: null,
+    recurrence: null,
+  });
+  // Every gate below is far enough out that it is pending whenever the suite
+  // runs, and every "passed" one far enough back that it never isn't.
+  const TODAY = "2026-07-01T09:00:00.000Z";
 
-  it("floats dated unchecked items below undated ones, soonest first", () => {
+  it("floats dated unchecked items above undated ones, soonest first", () => {
     let c = listOf("A", "B", "C", "D");
-    const due = (deadline: string) => ({
-      notBefore: null,
-      deadline,
-      recurrence: null,
-    });
     c = setItemTiming(c, "i1", due("2026-08-01"), NOW); // later
     c = setItemTiming(c, "i3", due("2026-07-20"), NOW); // sooner
-    expect(ids(displayItems(c, false))).toEqual(["i2", "i4", "i3", "i1"]);
+    expect(ids(displayItems(c, DATED_FIRST, TODAY))).toEqual([
+      "i3",
+      "i1",
+      "i2",
+      "i4",
+    ]);
   });
 
-  it("keeps dated unchecked items above the checked group when sinking", () => {
+  it("leaves the dated float off when the setting is off", () => {
     let c = listOf("A", "B", "C");
+    c = setItemTiming(c, "i3", due("2026-07-20"), NOW);
+    expect(ids(displayItems(c, DOCUMENT_ORDER, TODAY))).toEqual([
+      "i1",
+      "i2",
+      "i3",
+    ]);
+  });
+
+  it("keeps a checked dated item out of the float", () => {
+    let c = listOf("A", "B");
+    c = setItemTiming(c, "i2", due("2026-07-20"), NOW);
+    c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z");
+    expect(ids(displayItems(c, DATED_FIRST, TODAY))).toEqual(["i1", "i2"]);
+  });
+
+  it("sinks held-back items to the bottom of the unchecked group, soonest gate first", () => {
+    let c = listOf("A", "B", "C", "D");
+    c = setItemTiming(c, "i1", gate("2099-08-01"), NOW); // later gate
+    c = setItemTiming(c, "i2", gate("2099-07-01"), NOW); // sooner gate
+    c = toggleItem(c, "i4", "2026-01-01T00:00:01.000Z"); // checked
+    // Free item, then the held pair soonest-first, then the checked one.
+    expect(
+      ids(displayItems(c, { ...HELD_LAST, sinkChecked: true }, TODAY)),
+    ).toEqual(["i3", "i2", "i1", "i4"]);
+  });
+
+  it("leaves an item whose gate has already passed where it sits", () => {
+    let c = listOf("A", "B", "C");
+    c = setItemTiming(c, "i1", gate("2000-01-01"), NOW);
+    expect(ids(displayItems(c, HELD_LAST, TODAY))).toEqual(["i1", "i2", "i3"]);
+  });
+
+  it("leaves the held sink off when the setting is off", () => {
+    let c = listOf("A", "B");
+    c = setItemTiming(c, "i1", gate("2099-07-01"), NOW);
+    expect(ids(displayItems(c, DOCUMENT_ORDER, TODAY))).toEqual(["i1", "i2"]);
+  });
+
+  it("sinks an item that is both dated and held back — the gate wins", () => {
+    let c = listOf("A", "B");
     c = setItemTiming(
       c,
       "i1",
-      { notBefore: null, deadline: "2026-07-20", recurrence: null },
+      { notBefore: "2099-07-01", deadline: "2026-07-02", recurrence: null },
       NOW,
-    ); // dated
-    c = toggleItem(c, "i2", "2026-01-01T00:00:01.000Z"); // checked
-    // Undated unchecked (i3), then dated unchecked (i1), then checked (i2).
-    expect(ids(displayItems(c, true))).toEqual(["i3", "i1", "i2"]);
+    );
+    // The due date would float it to the top, but it can't be started at all,
+    // so the sink (which runs last) puts it below the free item.
+    expect(
+      ids(
+        displayItems(
+          c,
+          { ...DATED_FIRST, ...HELD_LAST, heldLast: true },
+          TODAY,
+        ),
+      ),
+    ).toEqual(["i2", "i1"]);
   });
 
-  it("leaves an undated level's order untouched", () => {
+  it("orders a mixed list dated-first, free, then held", () => {
+    let c = listOf("A", "B", "C", "D");
+    c = setItemTiming(c, "i2", due("2026-07-05"), NOW);
+    c = setItemTiming(c, "i4", gate("2099-07-01"), NOW);
+    const order = { sinkChecked: true, datedFirst: true, heldLast: true };
+    expect(ids(displayItems(c, order, TODAY))).toEqual([
+      "i2",
+      "i1",
+      "i3",
+      "i4",
+    ]);
+  });
+
+  it("leaves an undated, ungated level's order untouched", () => {
     const items = listOf("A", "B").items;
-    expect(ids(floatDatedToBottom(items))).toEqual(["i1", "i2"]);
+    expect(ids(floatDatedToTop(items))).toEqual(["i1", "i2"]);
+    expect(ids(sinkHeldToBottom(items, TODAY))).toEqual(["i1", "i2"]);
+  });
+
+  it("applies both sorts inside a sub-list too", () => {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "p1", title: "Parent" }, NOW);
+    for (const [id, title] of [
+      ["c1", "free"],
+      ["c2", "held"],
+      ["c3", "dated"],
+    ] as const) {
+      c = addItem(c, { id, title }, NOW, "bottom", "p1");
+    }
+    c = setItemTiming(c, "c2", gate("2099-07-01"), NOW);
+    c = setItemTiming(c, "c3", due("2026-07-05"), NOW);
+    const kids = displayItems(
+      c,
+      { sinkChecked: false, datedFirst: true, heldLast: true },
+      TODAY,
+    )[0]!.children!;
+    expect(ids(kids)).toEqual(["c3", "c1", "c2"]);
+  });
+});
+
+describe("flattenForDisplay gate grouping", () => {
+  function gated(...gates: (string | undefined)[]) {
+    let c = createChecklist("c1", "List", NOW);
+    gates.forEach((g, i) => {
+      c = addItem(c, { id: `i${i + 1}`, title: `T${i + 1}` }, NOW);
+      if (g) {
+        c = setItemTiming(
+          c,
+          `i${i + 1}`,
+          { notBefore: g, deadline: null, recurrence: null },
+          NOW,
+        );
+      }
+    });
+    return c;
+  }
+  const flags = (c: ReturnType<typeof gated>) =>
+    flattenForDisplay(c.items, new Set()).map(
+      (r) => r.sameGateAsPrevious === true,
+    );
+
+  it("marks every row after the first in a run sharing one gate day", () => {
+    const c = gated("2099-07-01", "2099-07-01", "2099-07-01");
+    expect(flags(c)).toEqual([false, true, true]);
+  });
+
+  it("starts a fresh run when the gate day changes", () => {
+    const c = gated("2099-07-01", "2099-07-01", "2099-08-01");
+    expect(flags(c)).toEqual([false, true, false]);
+  });
+
+  it("breaks a run across an ungated row", () => {
+    const c = gated("2099-07-01", undefined, "2099-07-01");
+    expect(flags(c)).toEqual([false, false, false]);
+  });
+
+  it("never groups across a depth change", () => {
+    let c = createChecklist("c1", "List", NOW);
+    c = addItem(c, { id: "p1", title: "Parent" }, NOW);
+    c = addItem(c, { id: "k1", title: "Kid" }, NOW, "bottom", "p1");
+    const same = { notBefore: "2099-07-01", deadline: null, recurrence: null };
+    c = setItemTiming(c, "p1", same, NOW);
+    c = setItemTiming(c, "k1", same, NOW);
+    // The child sits one level deeper, so it states its own date.
+    expect(flags(c)).toEqual([false, false]);
   });
 });
 

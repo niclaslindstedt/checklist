@@ -18,6 +18,8 @@ import {
   archivedByChecklist,
   countableItems,
   displayItems,
+  DOCUMENT_ORDER,
+  type DisplayOrder,
 } from "../domain/checklists.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -126,7 +128,7 @@ export function useChecklist(
   adapter?: StorageAdapter,
   addItemPosition: AddItemPosition = "bottom",
   notify: Notify = noopNotify,
-  sortCheckedToBottom = false,
+  order: DisplayOrder = DOCUMENT_ORDER,
   namespace: string = DEFAULT_NAMESPACE_SLUG,
   countCategories = true,
 ): UseChecklist {
@@ -226,9 +228,14 @@ export function useChecklist(
     addItemPosition,
   });
 
+  // The rendered order: the user's three view sorts applied over the active
+  // items. `now` only matters to the held-back sink (held-ness is relative to
+  // today), and it is read per render rather than memoised on — a list left
+  // open across midnight re-derives on its next render, which is the same
+  // freshness the date rows themselves have.
   const items = useMemo(
-    () => displayItems(list, sortCheckedToBottom),
-    [list, sortCheckedToBottom],
+    () => displayItems(list, order, new Date().toISOString()),
+    [list, order],
   );
   // The archive spans every checklist, so it derives from the whole document
   // rather than the active list — restoring or deleting reaches into whatever

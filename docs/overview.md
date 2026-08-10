@@ -1295,16 +1295,33 @@ clock / delete buttons.
 Four behaviours hang off an item's timing:
 
 - **Date row.** A timed item shows `TimingRow` (`src/ui/TimingRow.tsx`)
-  above its title — a slim, small-font line carrying whichever dates
-  apply. The **due date** is colour-coded by `deadlineStatus`
+  above its **title** (`ml-16` clears the caret and checkbox columns — the
+  dates belong to the words, not to the box). It carries a glyph and a
+  date and no words at all: `NotBeforeIcon` (`|—◷`, a bound on the left)
+  and `DeadlineIcon` (`◷—|`, a bound on the right) are a mirrored pair in
+  `src/ui/icons/action.tsx`, and the mirror is what says which bound this
+  is. Three signals carry the meaning between them — the **glyph** (which
+  bound), the **colour** (how urgent), and the **checkbox** (whether it
+  can be acted on at all).
+
+  The **due date** is colour-coded by `deadlineStatus`
   (`src/domain/deadlines.ts`): muted while far off, then **yellow**
   (`text-meta`, within a week), **orange** (`text-flag`, within a day),
   and **red** (`text-danger`, overdue). The **not-before** half is
   deliberately colourless — nothing is late, the item just isn't open
   yet — so it stays `text-muted` at every distance, and it is
   *temporary*: it shows only while the day is still ahead and disappears
-  the moment the day arrives. An item carrying both reads
-  `Not before 1 Jul · 20 Jul`, each half in its own colour.
+  the moment the day arrives.
+
+- **Gate grouping.** Because the sink clusters items sharing a gate day
+  together, a run of them would otherwise stack the identical date down
+  the screen once per row. `flattenForDisplay` tags each row with
+  `sameGateAsPrevious` (same day, same depth as the row above) and the
+  view passes it to the row as `sameGate`, which drops the date and lets
+  the row read as a continuation. The **inert checkbox** still marks every
+  row in the run as held, which is why the date is only worth stating
+  once. Due dates are *not* grouped this way: a deadline's row is also its
+  only colour cue, so hiding it would make a dated item read as undated.
 - **The hold.** While its `notBefore` day is still in the future an item
   is **held back**: `isHeldBack` (`src/domain/deadlines.ts`) is the one
   test behind it. The row and the row editor both draw the checkbox
@@ -1315,13 +1332,22 @@ Four behaviours hang off an item's timing:
   uncheck is never gated). The gate is *inclusive*: an item held to today
   is checkable today. Nothing else about the row changes — editing,
   notes, nesting, reordering, archiving and delete all behave normally.
-- **Ordering.** `floatDatedToBottom` (folded into `displayItems`,
-  `src/domain/item-display.ts`) floats the **dated** unchecked items to
-  the bottom of the unchecked group, sorted by due date (soonest first),
-  so every dated task clusters together just above the checked items.
-  This applies whatever the "sort checked to the bottom" setting is. A
-  not-before gate does not move an item — it changes when the work can be
-  done, not where it sits.
+- **Ordering.** Two opt-out settings (Settings → Lists, both **on** by
+  default) arrange the list around the dates. `floatDatedToTop`
+  (`sortDatedToTop`) floats the **dated** unchecked items to the head of
+  the list, soonest — and overdue — first; `sinkHeldToBottom`
+  (`sortHeldToBottom`) sinks the **held-back** ones to the bottom of the
+  unchecked group, soonest gate first, still above anything checked. Both
+  are folded into `displayItems` (`src/domain/item-display.ts`) alongside
+  the older checked sink, and all three ride one `DisplayOrder` value
+  built in `App`. They are pure view transforms — the stored document
+  order is never touched — and they recurse into sub-lists.
+
+  The held sink runs **last**, which is what settles an item that is both
+  dated and held back: it sinks. A due date says when work must be
+  finished, but a gate says it can't be started at all, and there is
+  nothing to do at the top of the list about a task you can't touch. With
+  everything on, a list reads: dated, free, held, finished.
 - **Recurrence.** Checking a recurring item advances its `deadline` by
   `nextOccurrence` (`src/domain/deadlines.ts`) instead of marking it
   checked — the date-math helpers (`addRecurrence`, clamping the day of

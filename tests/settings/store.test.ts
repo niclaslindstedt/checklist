@@ -221,6 +221,30 @@ describe("validateSettings", () => {
     ).toBe(false);
   });
 
+  it("sorts due dates to the top by default and honours an explicit boolean", () => {
+    expect(defaultSettings().sortDatedToTop).toBe(true);
+    expect(validateSettings({}).sortDatedToTop).toBe(true);
+    expect(validateSettings({ sortDatedToTop: false }).sortDatedToTop).toBe(
+      false,
+    );
+    // A stored document written before the setting existed opts in, like a
+    // fresh install — the sorts are the point of having the dates.
+    expect(validateSettings({ sortDatedToTop: "no" }).sortDatedToTop).toBe(
+      true,
+    );
+  });
+
+  it("sinks held-back items by default and honours an explicit boolean", () => {
+    expect(defaultSettings().sortHeldToBottom).toBe(true);
+    expect(validateSettings({}).sortHeldToBottom).toBe(true);
+    expect(validateSettings({ sortHeldToBottom: false }).sortHeldToBottom).toBe(
+      false,
+    );
+    expect(validateSettings({ sortHeldToBottom: 0 }).sortHeldToBottom).toBe(
+      true,
+    );
+  });
+
   it("animates the checked re-sort by default and honours an explicit boolean", () => {
     expect(defaultSettings().animateSortChecked).toBe(true);
     expect(validateSettings({}).animateSortChecked).toBe(true);

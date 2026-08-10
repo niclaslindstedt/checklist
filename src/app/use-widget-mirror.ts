@@ -18,6 +18,7 @@
 
 import { useEffect, useRef } from "react";
 
+import type { DisplayOrder } from "../domain/checklists.ts";
 import {
   buildWidgetSnapshot,
   type WidgetAction,
@@ -42,12 +43,12 @@ export function useWidgetMirror(deps: {
   activeChecklistId: string;
   /** Gate publishing until the first backend load resolves (avoids a flash of empty). */
   loaded: boolean;
-  /** Whether the user sinks checked items — matches the app's open-item order. */
-  sinkChecked: boolean;
+  /** The user's view sorts — keeps the widget's open items in the app's order. */
+  order: DisplayOrder;
   /** Apply one queued widget action (e.g. an interactive check-off). */
   onAction: (action: WidgetAction) => void;
 }): void {
-  const { snapshot, activeChecklistId, loaded, sinkChecked, onAction } = deps;
+  const { snapshot, activeChecklistId, loaded, order, onAction } = deps;
 
   // Nothing to do off-device — resolved once so the web build never pays for
   // the effects below.
@@ -61,12 +62,12 @@ export function useWidgetMirror(deps: {
         buildWidgetSnapshot(snapshot, {
           now: now(),
           activeListId: activeChecklistId,
-          sinkChecked,
+          order,
         }),
       );
     }, PUBLISH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [snapshot, activeChecklistId, loaded, sinkChecked]);
+  }, [snapshot, activeChecklistId, loaded, order]);
 
   // Drain queued widget actions on mount, on foreground, and on a native
   // signal. `onAction` is read through a ref so the subscription and the

@@ -469,7 +469,7 @@ describe("active-list cursor persistence", () => {
   it("scopes the cursor per namespace", async () => {
     const adapter = memoryAdapter();
     const first = renderHook(() =>
-      useChecklist(adapter, "bottom", undefined, false, "default"),
+      useChecklist(adapter, "bottom", undefined, undefined, "default"),
     );
     await act(async () => {});
     act(() => {
@@ -484,7 +484,7 @@ describe("active-list cursor persistence", () => {
     // A different namespace has its own cursor, so it falls back to the first
     // list rather than inheriting the default namespace's selection.
     const other = renderHook(() =>
-      useChecklist(adapter, "bottom", undefined, false, "work"),
+      useChecklist(adapter, "bottom", undefined, undefined, "work"),
     );
     await act(async () => {});
     expect(other.result.current.activeChecklistId).not.toBe(secondId);

@@ -29,7 +29,6 @@ const app = {
   timing: {
     title: "Timing",
     notBefore: "Not before",
-    notBeforeLabel: "Not before {date}",
     dueDate: "Due date",
     pickDate: "Pick a date",
     repeat: "Repeat",

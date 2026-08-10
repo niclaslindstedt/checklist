@@ -59,6 +59,12 @@ const settings: SettingsCatalog = {
     sortCheckedToBottom: "Sortera bockade poster längst ned",
     sortCheckedToBottomHint:
       "Att bocka av en post sänker den under de obockade, med den senast bockade först. Själva listan ordnas inte om – avbockning lägger tillbaka den direkt.",
+    sortDatedToTop: "Sortera förfallodatum överst",
+    sortDatedToTopHint:
+      "Poster med ett förfallodatum hamnar överst, med det närmaste först, så att det som har en klocka på sig läses uppifrån och ned i den ordning det förfaller. Själva listan ordnas inte om.",
+    sortHeldToBottom: "Sortera tillbakahållna poster nederst",
+    sortHeldToBottomHint:
+      "Poster som väntar på ett ”tidigast”-datum sjunker under det övriga obockade arbetet, med det närmaste först. De kommer upp igen den dag spärren släpper.",
     disableItemNotes: "Inaktivera anteckningar",
     disableItemNotesHint:
       "Gör poster till enbart titel – dölj anteckningstexten och redigeraren ”Lägg till anteckning”. Anteckningar du redan skrivit behålls, bara dolda.",
