@@ -41,11 +41,26 @@ export interface CloudTokens {
   /** The Google Drive access token, or null when not connected. */
   gdriveToken: string | null;
   /**
-   * Persist and reflect a Dropbox access token the adapter refreshed silently
-   * mid-session (the selection's `onAccessTokenRefreshed` hook). Kept here so
-   * the refreshed token lands in both localStorage and this hook's state.
+   * Persist a Dropbox access token the adapter refreshed silently mid-session
+   * (the selection's `onAccessTokenRefreshed` hook).
+   *
+   * Deliberately does **not** move `dropboxToken` state. The live adapter
+   * already holds the rotated token — `createAuthedFetch` keeps it in a
+   * closure and swaps it in place — so re-rendering with it would only churn
+   * the adapter's *identity*, and an adapter swap tears down and re-reads the
+   * whole document (see `useChecklistSync`'s load effect). That read races the
+   * save the 401 interrupted: it returns the pre-save bytes, replaces the
+   * on-screen document with them, and the just-typed item vanishes. Rotating
+   * an access token is not a backend change, so it must not look like one.
    */
   onDropboxAccessTokenRefreshed: (token: string) => void;
+  /**
+   * The freshest Dropbox access token — the silently-rotated one when a
+   * refresh has happened this session, else the connection's. Callers that
+   * need a token to *use* (building a store, deleting a namespace's bytes)
+   * read it through here; `dropboxToken` only answers "is Dropbox connected?".
+   */
+  readDropboxToken: () => string | null;
   /** Start the Dropbox OAuth redirect (completion runs in the boot effect). */
   connectDropbox: () => void;
   /** Forget the Dropbox tokens and fall back to the browser store. */
@@ -126,10 +141,22 @@ export function useCloudTokens(
     };
   }, [switchToBackend]);
 
+  // Persisting is the whole job: `setDropboxToken` writes the rotated token to
+  // localStorage, which `readDropboxToken` reads back, so a later adapter
+  // rebuild (namespace switch, reconnect) picks it up without this hook having
+  // to re-render — and without churning the adapter now. See the interface doc.
   const onDropboxAccessTokenRefreshed = useCallback((token: string) => {
     setDropboxToken(token);
-    setDropboxTokenState(token);
   }, []);
+
+  // localStorage is the durable home of the access token and every write path
+  // keeps it current: connect and the silent refresh both persist, disconnect
+  // clears. So it — not the `dropboxToken` render state, which intentionally
+  // sits still across a refresh — is where the freshest value lives.
+  const readDropboxToken = useCallback(
+    () => getDropboxToken() ?? dropboxToken,
+    [dropboxToken],
+  );
 
   const connectDropbox = useCallback(() => {
     // Redirects away; completion (and the `cloudWalker` unlock) runs in the
@@ -163,6 +190,7 @@ export function useCloudTokens(
     dropboxRefresh,
     gdriveToken,
     onDropboxAccessTokenRefreshed,
+    readDropboxToken,
     connectDropbox,
     disconnectDropbox,
     connectGdrive,

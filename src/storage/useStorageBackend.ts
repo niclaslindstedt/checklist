@@ -251,6 +251,7 @@ export function useStorageBackend(): UseStorageBackend {
     dropboxRefresh,
     gdriveToken,
     onDropboxAccessTokenRefreshed,
+    readDropboxToken,
     connectDropbox,
     disconnectDropbox,
     connectGdrive,
@@ -266,7 +267,12 @@ export function useStorageBackend(): UseStorageBackend {
       return {
         kind: "dropbox",
         auth: {
-          accessToken: dropboxToken,
+          // Seed from the freshest token rather than the render state: a
+          // silent refresh rotates the former without moving the latter (it
+          // must not churn the adapter — see `onDropboxAccessTokenRefreshed`),
+          // so a rebuild driven by some *other* dep would otherwise hand the
+          // new stores a token that's already been rotated away.
+          accessToken: readDropboxToken() ?? dropboxToken,
           refreshToken: dropboxRefresh,
           onAccessTokenRefreshed: onDropboxAccessTokenRefreshed,
         },
@@ -294,6 +300,7 @@ export function useStorageBackend(): UseStorageBackend {
     dropboxRefresh,
     gdriveToken,
     onDropboxAccessTokenRefreshed,
+    readDropboxToken,
     folderHandle,
     folderHandleLoaded,
   ]);
@@ -523,7 +530,12 @@ export function useStorageBackend(): UseStorageBackend {
             .removeEntry(slug, { recursive: true })
             .catch(() => {});
         } else if (backend === "dropbox" && dropboxToken) {
-          await deleteDropboxNamespace(dropboxToken, slug);
+          // `readDropboxToken`, not the render state: a silent refresh may have
+          // rotated the token this session without re-rendering.
+          await deleteDropboxNamespace(
+            readDropboxToken() ?? dropboxToken,
+            slug,
+          );
         } else if (backend === "gdrive" && gdriveToken) {
           await deleteGdriveNamespace(gdriveToken, slug);
         } else if (backend === "icloud" && isICloudAvailable()) {
@@ -543,6 +555,7 @@ export function useStorageBackend(): UseStorageBackend {
     [
       backend,
       dropboxToken,
+      readDropboxToken,
       gdriveToken,
       activeNamespace,
       folderHandle,

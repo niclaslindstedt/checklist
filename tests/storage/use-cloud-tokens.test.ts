@@ -156,7 +156,7 @@ describe("useCloudTokens", () => {
     expect(window.location.search).toBe("");
   });
 
-  it("onDropboxAccessTokenRefreshed persists and reflects a refreshed token", () => {
+  it("onDropboxAccessTokenRefreshed persists a refreshed token", () => {
     setDropboxToken("stale-access");
     const { result } = renderHook(() => useCloudTokens(vi.fn()));
 
@@ -164,8 +164,81 @@ describe("useCloudTokens", () => {
       result.current.onDropboxAccessTokenRefreshed("rotated-access");
     });
 
-    expect(result.current.dropboxToken).toBe("rotated-access");
     expect(getDropboxToken()).toBe("rotated-access");
+    expect(result.current.readDropboxToken()).toBe("rotated-access");
+  });
+
+  // Regression: a silent 401 refresh used to move `dropboxToken` state, which
+  // rebuilt the backend selection → factory → adapter. An adapter swap makes
+  // `useChecklistSync` re-read the whole document, and that read raced the save
+  // the 401 had interrupted — it returned the pre-save bytes and replaced the
+  // on-screen document with them, so a just-typed item disappeared. Rotating a
+  // token is not a backend change; `dropboxToken` must sit still across one.
+  it("does not move dropboxToken state when a refresh rotates the token", () => {
+    setDropboxToken("stale-access");
+    setDropboxRefreshToken("dbx-refresh");
+    const { result } = renderHook(() => useCloudTokens(vi.fn()));
+    const before = result.current.dropboxToken;
+
+    act(() => {
+      result.current.onDropboxAccessTokenRefreshed("rotated-access");
+    });
+
+    expect(result.current.dropboxToken).toBe(before);
+    expect(result.current.dropboxToken).toBe("stale-access");
+    // Still connected, and the rotated token is what callers actually use.
+    expect(result.current.readDropboxToken()).toBe("rotated-access");
+  });
+
+  // The other half of the same regression, stated as the invariant that
+  // actually matters: every value `useStorageBackend`'s backend-selection memo
+  // depends on must keep its identity across a silent refresh. If any of them
+  // moves, the memo rebuilds, a fresh adapter is constructed, and the document
+  // re-read that follows is what loses the edit.
+  it("keeps every backend-selection input stable across a silent refresh", () => {
+    setDropboxToken("stale-access");
+    setDropboxRefreshToken("dbx-refresh");
+    const { result } = renderHook(() => useCloudTokens(vi.fn()));
+    const before = {
+      dropboxToken: result.current.dropboxToken,
+      dropboxRefresh: result.current.dropboxRefresh,
+      onDropboxAccessTokenRefreshed:
+        result.current.onDropboxAccessTokenRefreshed,
+      readDropboxToken: result.current.readDropboxToken,
+    };
+
+    act(() => {
+      result.current.onDropboxAccessTokenRefreshed("rotated-access");
+    });
+
+    expect(result.current.dropboxToken).toBe(before.dropboxToken);
+    expect(result.current.dropboxRefresh).toBe(before.dropboxRefresh);
+    expect(result.current.onDropboxAccessTokenRefreshed).toBe(
+      before.onDropboxAccessTokenRefreshed,
+    );
+    expect(result.current.readDropboxToken).toBe(before.readDropboxToken);
+  });
+
+  it("readDropboxToken falls back to the connection token before any refresh", () => {
+    setDropboxToken("dbx-access");
+    const { result } = renderHook(() => useCloudTokens(vi.fn()));
+
+    expect(result.current.readDropboxToken()).toBe("dbx-access");
+  });
+
+  it("readDropboxToken goes null once Dropbox is disconnected", () => {
+    setDropboxToken("dbx-access");
+    setDropboxRefreshToken("dbx-refresh");
+    const { result } = renderHook(() => useCloudTokens(vi.fn()));
+
+    act(() => {
+      result.current.onDropboxAccessTokenRefreshed("rotated-access");
+    });
+    act(() => {
+      result.current.disconnectDropbox();
+    });
+
+    expect(result.current.readDropboxToken()).toBeNull();
   });
 
   it("connectDropbox kicks off the OAuth redirect", async () => {
