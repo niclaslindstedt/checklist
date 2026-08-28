@@ -384,6 +384,20 @@ backend in the picker. `useStorageBackend` selects the
 active adapter from a per-device preference, holds the tokens, and
 completes the Dropbox OAuth redirect on boot.
 
+> **A silent token refresh must not change the adapter's identity.** The
+> adapter instance is the sync engine's document identity: `useChecklistSync`
+> reloads the whole document whenever it changes — bumping the save queue's
+> generation, which drops any in-flight save's result. That is right for a
+> real backend swap and destructive for a swap that isn't one. Dropbox's 401 handler rotates the access token
+> inside `createAuthedFetch`'s closure, so the live adapter is already fixed
+> and there is nothing to rebuild. Feeding the rotated token back through
+> React state used to rebuild it anyway, and the reload that followed raced
+> the very save the 401 had interrupted — it read the pre-save bytes and put
+> them on screen, discarding the edit. So `onDropboxAccessTokenRefreshed` only
+> persists to localStorage; `readDropboxToken()` is how callers that need a
+> token to *use* get the freshest one, while `dropboxToken` state answers just
+> "is Dropbox connected?" and stays put across a refresh.
+
 **Encryption.** `withEncryption` (`src/storage/encrypting/`) wraps any
 adapter and applies an AES-GCM + PBKDF2 envelope (`src/storage/crypto.ts`)
 at the byte boundary, so the same wrapper encrypts whether the bytes end
