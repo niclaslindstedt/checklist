@@ -147,6 +147,12 @@ const achievements = {
       learnMore:
         "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be ticked off. Until that day comes round the item's box stays shut and a plain grey line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
     },
+    clockwork: {
+      name: "Clockwork",
+      condition: "Put a checklist on a reset schedule.",
+      learnMore:
+        "Swipe a list to the right in the sidebar (or right-click it on a computer) and tap the clock to give it a reset schedule: every so many days, weeks, or months, or on the weekdays you pick, at a time of day you choose. When that moment comes round the list unchecks itself, so a routine you run again and again — the things to grab before leaving home, the steps to close up shop — starts fresh without you clearing it by hand. Tick “Pop up after refresh” and the freshly reset list opens in front of you the next time you open the app.",
+    },
     archivist: {
       name: "Archivist",
       condition: "Archive an item.",

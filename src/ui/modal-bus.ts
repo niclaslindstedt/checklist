@@ -22,7 +22,8 @@ export type ModalCommand =
   | { kind: "search" }
   | { kind: "achievements" }
   | { kind: "achievements-unlock" }
-  | { kind: "sync-details" };
+  | { kind: "sync-details" }
+  | { kind: "reset-schedule"; checklistId: string };
 
 export type ModalKind = ModalCommand["kind"];
 

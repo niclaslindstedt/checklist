@@ -28,6 +28,7 @@ import type {
   ItemList,
   Recurrence,
   RecurrenceUnit,
+  ResetSchedule,
   Snapshot,
   Template,
 } from "../../domain/types.ts";
@@ -191,7 +192,100 @@ export function checklistToMarkdown(checklist: Checklist): string {
   // older file round-trips with no appearance.
   if (checklist.glyph) front.glyph = checklist.glyph;
   if (checklist.color) front.color = checklist.color;
+  // The scheduled reset, as a readable phrase (`every 2 days at 08:00`) plus
+  // the two instants that anchor it. Only written when scheduled, so an
+  // unscheduled list's frontmatter stays minimal.
+  if (checklist.resetSchedule) {
+    front.reset = renderResetSchedule(checklist.resetSchedule);
+    front["reset-since"] = checklist.resetSchedule.since;
+    if (checklist.lastResetAt) front["reset-last"] = checklist.lastResetAt;
+  }
   return renderFrontmatter(front) + "\n" + checklistBodyMarkdown(checklist);
+}
+
+// -- Reset schedule frontmatter ----------------------------------------
+//
+// A schedule is written as one human-readable `reset:` line — `every day at
+// 08:00`, `every 2 weeks at 07:30, pop up`, `every mon,wed,fri at 08:00` — so
+// the file still reads sensibly in any editor, with the cadence anchor
+// (`reset-since:`) and the last applied occurrence (`reset-last:`) as plain
+// ISO instants on their own lines. `since` is required to reconstruct a
+// schedule; a file missing it drops the schedule rather than inventing an
+// anchor.
+
+const WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+const RESET_INTERVAL_RE =
+  /^every (?:(\d+) )?(day|week|month)s? at (\d{1,2}):(\d{2})(, pop up)?$/;
+const RESET_WEEKDAY_RE =
+  /^every ((?:sun|mon|tue|wed|thu|fri|sat)(?:,(?:sun|mon|tue|wed|thu|fri|sat))*) at (\d{1,2}):(\d{2})(, pop up)?$/;
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** The `reset:` phrase for a schedule (without its anchor instants). */
+export function renderResetSchedule(schedule: ResetSchedule): string {
+  const time = `${pad2(schedule.hour)}:${pad2(schedule.minute)}`;
+  const popUp = schedule.popUp ? ", pop up" : "";
+  if (schedule.unit === "dayOfWeek") {
+    const days = [...(schedule.daysOfWeek ?? [])]
+      .filter((d) => d >= 0 && d <= 6)
+      .sort((a, b) => a - b)
+      .map((d) => WEEKDAY_NAMES[d])
+      .join(",");
+    return `every ${days} at ${time}${popUp}`;
+  }
+  const cadence =
+    schedule.interval === 1
+      ? schedule.unit
+      : `${schedule.interval} ${schedule.unit}s`;
+  return `every ${cadence} at ${time}${popUp}`;
+}
+
+/**
+ * Parse a `reset:` phrase back into a schedule, given its `since` anchor.
+ * Returns null for anything unrecognised so a hand-edited line can't yield a
+ * schedule that fires at some surprising time.
+ */
+export function parseResetSchedule(
+  phrase: string,
+  since: string,
+): ResetSchedule | null {
+  const text = phrase.trim();
+  const interval = RESET_INTERVAL_RE.exec(text);
+  if (interval) {
+    const hour = Number(interval[3]);
+    const minute = Number(interval[4]);
+    if (hour > 23 || minute > 59) return null;
+    return {
+      unit: interval[2] as "day" | "week" | "month",
+      interval: interval[1] ? Math.max(1, Number(interval[1])) : 1,
+      hour,
+      minute,
+      popUp: Boolean(interval[5]),
+      since,
+    };
+  }
+  const weekday = RESET_WEEKDAY_RE.exec(text);
+  if (weekday) {
+    const hour = Number(weekday[2]);
+    const minute = Number(weekday[3]);
+    if (hour > 23 || minute > 59) return null;
+    const days = [
+      ...new Set(weekday[1]!.split(",").map((n) => WEEKDAY_NAMES.indexOf(n))),
+    ].sort((a, b) => a - b);
+    return {
+      unit: "dayOfWeek",
+      interval: 1,
+      daysOfWeek: days,
+      hour,
+      minute,
+      popUp: Boolean(weekday[4]),
+      since,
+    };
+  }
+  return null;
 }
 
 /** How `checklistBodyMarkdown` renders a list. Every field is optional. */
@@ -438,6 +532,15 @@ export function parseEntry(text: string): ParsedEntry | null {
     // round-trips minimally.
     if (front.glyph) checklist.glyph = front.glyph;
     if (front.color) checklist.color = front.color;
+    // The reset schedule needs both its phrase and its anchor; a file carrying
+    // only one (or an unparseable phrase) round-trips as unscheduled.
+    if (front.reset && front["reset-since"]) {
+      const schedule = parseResetSchedule(front.reset, front["reset-since"]);
+      if (schedule) {
+        checklist.resetSchedule = schedule;
+        if (front["reset-last"]) checklist.lastResetAt = front["reset-last"];
+      }
+    }
     return { kind: "checklist", checklist };
   }
   return null;

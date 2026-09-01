@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock, useAchievementWatcher } from "../achievements/index.ts";
 import { useDevSeed } from "../dev/useDevSeed.ts";
-import type { DisplayOrder } from "../domain/checklists.ts";
+import { displayItems, type DisplayOrder } from "../domain/checklists.ts";
+import { defer } from "../ui/deferred.tsx";
 import { useT, type MessageKey } from "../i18n";
 import { LANGUAGE_EVENT } from "../i18n/language-preference.ts";
 import { useStandaloneMobile } from "../pwa/standalone.ts";
@@ -53,6 +54,7 @@ import { AchievementsModalHost } from "./modals/AchievementsModalHost.tsx";
 import { AchievementsUnlockModalHost } from "./modals/AchievementsUnlockModalHost.tsx";
 import { ChangelogModalHost } from "./modals/ChangelogModalHost.tsx";
 import { NamespacesModalHost } from "./modals/NamespacesModalHost.tsx";
+import { ResetScheduleModalHost } from "./modals/ResetScheduleModalHost.tsx";
 import { SearchModalHost } from "./modals/SearchModalHost.tsx";
 import { SettingsModalHost } from "./modals/SettingsModalHost.tsx";
 import { SyncDetailsModalHost } from "./modals/SyncDetailsModalHost.tsx";
@@ -82,6 +84,12 @@ import type { WidgetAction } from "../domain/widget-snapshot.ts";
 // data" toggle is on, the active backend is swapped for an ephemeral
 // in-memory seed adapter so `useChecklist` reloads a sample document
 // without touching real data.
+
+// The "fresh start" card a scheduled reset raises. Deferred: a user with no
+// scheduled list never loads it.
+const ResetPopupModal = defer(() =>
+  import("../ui/ResetPopupModal.tsx").then((m) => m.ResetPopupModal),
+);
 
 export function App() {
   return (
@@ -323,6 +331,41 @@ function AppShell() {
     leadDays: settings.reminderLeadDays,
     onPermissionGranted: useCallback(() => unlock("deadlineReminders"), []),
   });
+
+  // The "fresh start" pop-up: a list whose scheduled reset just fired with
+  // "Pop up after refresh" on, shown as a card over whatever is on screen.
+  // Resolved from the live document so its boxes reflect every tick; a list
+  // that has since vanished (deleted on another device) is skipped.
+  const { resetPopupListId, dismissResetPopup } = checklist;
+  const resetPopupList = useMemo(
+    () =>
+      resetPopupListId
+        ? (checklist.snapshot.checklists.find(
+            (c) => c.id === resetPopupListId && !c.archived,
+          ) ?? null)
+        : null,
+    [resetPopupListId, checklist.snapshot.checklists],
+  );
+  useEffect(() => {
+    if (resetPopupListId && !resetPopupList) dismissResetPopup();
+  }, [resetPopupListId, resetPopupList, dismissResetPopup]);
+  // The card's rows in display order, stamped with the instant they were
+  // sorted at (which also gates the held-back boxes). Re-derived on a real
+  // change only, like the checklist view's own order — the card is short-lived.
+  const resetPopup = useMemo(() => {
+    const now = new Date().toISOString();
+    return {
+      now,
+      items: resetPopupList
+        ? displayItems(resetPopupList, displayOrder, now)
+        : [],
+    };
+  }, [resetPopupList, displayOrder]);
+  const openResetPopupList = useCallback(() => {
+    if (resetPopupListId) navVerbs.selectChecklist(resetPopupListId);
+    navigate("checklist");
+    dismissResetPopup();
+  }, [resetPopupListId, navVerbs, navigate, dismissResetPopup]);
 
   // Namespace create / delete live in the storage layer (which must not
   // reach into the UI), so the toast is raised here where both the
@@ -734,6 +777,21 @@ function AppShell() {
               />
               <ChangelogModalHost />
               <SearchModalHost />
+              <ResetScheduleModalHost />
+              {resetPopupList && (
+                <ResetPopupModal
+                  active
+                  key={resetPopupList.id}
+                  list={resetPopupList}
+                  items={resetPopup.items}
+                  now={resetPopup.now}
+                  onToggle={(itemId) =>
+                    toggleItemInList(resetPopupList.id, itemId)
+                  }
+                  onOpen={openResetPopupList}
+                  onClose={dismissResetPopup}
+                />
+              )}
               <SyncDetailsModalHost />
               <NamespacesModalHost
                 storage={storage}

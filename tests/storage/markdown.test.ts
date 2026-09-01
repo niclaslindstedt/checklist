@@ -112,6 +112,144 @@ describe("markdown codec", () => {
     }
   });
 
+  describe("reset schedule", () => {
+    const since = "2026-06-01T05:00:00.000Z";
+
+    it("writes an interval schedule as a readable phrase plus its anchors", () => {
+      const md = checklistToMarkdown({
+        ...checklist,
+        resetSchedule: {
+          unit: "week",
+          interval: 2,
+          hour: 7,
+          minute: 30,
+          popUp: true,
+          since,
+        },
+        lastResetAt: "2026-06-08T05:30:00.000Z",
+      });
+      expect(md).toContain("reset: every 2 weeks at 07:30, pop up\n");
+      expect(md).toContain(`reset-since: ${since}\n`);
+      expect(md).toContain("reset-last: 2026-06-08T05:30:00.000Z\n");
+    });
+
+    it("writes a daily schedule without a count, and weekdays by name", () => {
+      const daily = checklistToMarkdown({
+        ...checklist,
+        resetSchedule: {
+          unit: "day",
+          interval: 1,
+          hour: 8,
+          minute: 0,
+          popUp: false,
+          since,
+        },
+      });
+      expect(daily).toContain("reset: every day at 08:00\n");
+      expect(daily).not.toContain("reset-last:");
+      const weekly = checklistToMarkdown({
+        ...checklist,
+        resetSchedule: {
+          unit: "dayOfWeek",
+          interval: 1,
+          daysOfWeek: [5, 1, 0],
+          hour: 18,
+          minute: 5,
+          popUp: false,
+          since,
+        },
+      });
+      expect(weekly).toContain("reset: every sun,mon,fri at 18:05\n");
+    });
+
+    it("round-trips every schedule shape", () => {
+      const shapes = [
+        {
+          unit: "day" as const,
+          interval: 1,
+          hour: 8,
+          minute: 0,
+          popUp: false,
+          since,
+        },
+        {
+          unit: "month" as const,
+          interval: 3,
+          hour: 23,
+          minute: 59,
+          popUp: true,
+          since,
+        },
+        {
+          unit: "dayOfWeek" as const,
+          interval: 1,
+          daysOfWeek: [1, 3, 5],
+          hour: 6,
+          minute: 15,
+          popUp: true,
+          since,
+        },
+      ];
+      for (const resetSchedule of shapes) {
+        const parsed = parseEntry(
+          checklistToMarkdown({
+            ...checklist,
+            resetSchedule,
+            lastResetAt: "2026-06-08T05:30:00.000Z",
+          }),
+        );
+        expect(parsed?.kind).toBe("checklist");
+        if (parsed?.kind === "checklist") {
+          expect(parsed.checklist.resetSchedule).toEqual(resetSchedule);
+          expect(parsed.checklist.lastResetAt).toBe("2026-06-08T05:30:00.000Z");
+        }
+      }
+    });
+
+    it("omits the reset fields for an unscheduled list", () => {
+      const md = checklistToMarkdown(checklist);
+      expect(md).not.toContain("reset");
+      const parsed = parseEntry(md);
+      if (parsed?.kind === "checklist") {
+        expect(parsed.checklist).not.toHaveProperty("resetSchedule");
+        expect(parsed.checklist).not.toHaveProperty("lastResetAt");
+      }
+    });
+
+    it("drops a schedule it cannot read rather than guessing", () => {
+      const file = (reset: string, anchor = `reset-since: ${since}\n`) =>
+        [
+          "---",
+          "type: checklist",
+          "id: cl-cccccc",
+          `reset: ${reset}`,
+          anchor.trimEnd(),
+          "---",
+          "",
+          "# Odd",
+          "",
+          "- [ ] Thing",
+          "",
+        ]
+          .filter((line) => line !== "")
+          .join("\n") + "\n";
+      const garbled = parseEntry(file("every fortnight at noon"));
+      expect(garbled?.kind).toBe("checklist");
+      if (garbled?.kind === "checklist") {
+        expect(garbled.checklist).not.toHaveProperty("resetSchedule");
+      }
+      const outOfRange = parseEntry(file("every day at 25:00"));
+      if (outOfRange?.kind === "checklist") {
+        expect(outOfRange.checklist).not.toHaveProperty("resetSchedule");
+      }
+      // A phrase with no anchor can't reconstruct the cadence.
+      const noAnchor = parseEntry(file("every day at 08:00", ""));
+      if (noAnchor?.kind === "checklist") {
+        expect(noAnchor.checklist).not.toHaveProperty("resetSchedule");
+      }
+    });
+  });
+
   it("still reads a pre-v2 template file (flat plain bullets)", () => {
     // Templates used to render as a flat `- title` list with no checkboxes and
     // no nesting. Those files must keep loading, as unchecked items.

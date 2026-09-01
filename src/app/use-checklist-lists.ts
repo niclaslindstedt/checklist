@@ -35,6 +35,7 @@ import {
   renameTemplate as renameTemplateOp,
   setChecklistAppearance as setChecklistAppearanceOp,
   setChecklistArchived,
+  setResetSchedule as setResetScheduleOp,
 } from "../domain/checklists.ts";
 import {
   addFolder,
@@ -48,6 +49,7 @@ import type {
   Checklist,
   ChecklistAppearance,
   ItemList,
+  ResetSchedulePatch,
   Snapshot,
   Template,
 } from "../domain/types.ts";
@@ -176,6 +178,16 @@ export interface ChecklistLists {
    * other list edit; a no-op change never writes.
    */
   setChecklistAppearance: (id: string, patch: ChecklistAppearance) => void;
+  /**
+   * Put a checklist on a reset schedule (or, with `null`, take it off one) —
+   * the clock on the list's sidebar row. The cadence counts from now; the
+   * scheduled resets themselves are applied by `useScheduledResets`.
+   * Recoverable via undo.
+   */
+  setChecklistResetSchedule: (
+    id: string,
+    schedule: ResetSchedulePatch | null,
+  ) => void;
   /**
    * Remove a checklist from the document. A no-op when it would leave no
    * active list behind (the views always need one to show). Recoverable via
@@ -394,6 +406,33 @@ export function useChecklistLists(deps: {
       commit({ ...prev, checklists }, t("toast.listRestyled"));
     },
     [docRef, commit, t],
+  );
+
+  const setChecklistResetSchedule = useCallback(
+    (id: string, schedule: ResetSchedulePatch | null) => {
+      const prev = docRef.current;
+      const target = prev.checklists.find((c) => c.id === id);
+      if (!target) return;
+      const next = setResetScheduleOp(target, schedule, now());
+      if (next === target) return;
+      const label = t(
+        schedule ? "toast.resetScheduleSet" : "toast.resetScheduleCleared",
+        { name: target.name },
+      );
+      commit(
+        {
+          ...prev,
+          checklists: prev.checklists.map((c) => (c.id === id ? next : c)),
+        },
+        label,
+      );
+      // The sheet closes on save and the row looks no different, so the toast
+      // is the only confirmation the change landed. The "Clockwork" trophy
+      // fires from a derived predicate over the document gaining its first
+      // scheduled list (see the catalog).
+      notify(label, "success");
+    },
+    [docRef, commit, notify, t],
   );
 
   const removeChecklist = useCallback(
@@ -799,6 +838,7 @@ export function useChecklistLists(deps: {
       addChecklist,
       renameChecklist,
       setChecklistAppearance,
+      setChecklistResetSchedule,
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,
@@ -831,6 +871,7 @@ export function useChecklistLists(deps: {
       addChecklist,
       renameChecklist,
       setChecklistAppearance,
+      setChecklistResetSchedule,
       removeChecklist,
       archiveChecklist,
       unarchiveChecklist,

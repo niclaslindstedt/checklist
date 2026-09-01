@@ -572,10 +572,13 @@ A left swipe on a namespace or checklist row in the side menu latches it
 open to uncover a trailing trash button — the navigation-drawer counterpart
 of the checklist row's swipe-to-delete. The gesture is `useSwipeReveal`
 (`src/ui/hooks/useSwipeReveal.ts`), a pared-down sibling of `useRowSwipe`:
-left-only, with no right-swipe outcome, so nothing is destroyed by the
-swipe itself — the revealed trash button is the only way to act. The
-`SwipeToRemove` wrapper in `src/ui/SideMenu.tsx` renders the button behind
-a sliding foreground and owns the confirm policy:
+nothing fires on its own, so nothing is destroyed by the swipe itself — the
+revealed buttons are the only way to act. The hook takes a trailing width
+(the left-swipe strip) and an optional leading width (a right-swipe strip,
+0 by default), latches open past half of either, and reports which `side`
+it rests on; a side with no strip is a hard stop rather than a rubber band.
+The `SwipeToRemove` wrapper in `src/ui/SideMenuRows.tsx` renders the trash
+behind a sliding foreground and owns the confirm policy:
 
 - A **checklist** removes on a single tap of the trash (it is recoverable
   via undo, so no extra confirmation), calling `removeChecklist`.
@@ -587,11 +590,23 @@ a sliding foreground and owns the confirm policy:
 
 The two rows that must always survive never grow the affordance: the
 **default namespace** (can't be removed) and the **last remaining active
-checklist** (the views always need one to show) render as plain rows.
+checklist** (the views always need one to show) render as plain rows —
+though a checklist row still answers the right swipe below.
+
+A **checklist** row uses `ChecklistRowStrip` (same file) instead, which
+carries two strips so the directions read as *destroy* vs *configure*:
+the **left swipe** reveals the trash, and the **right swipe** reveals the
+**configure strip** on the row's leading edge — the **clock** (opens the
+list's [reset schedule](#reset-schedule) sheet through the modal bus, closing
+the drawer behind it) nearest the edge, and the **template capture**
+([Save as template](#save-as-template)) beside it. Each strip is exactly
+as wide as the actions it carries, so the row slides just far enough to
+uncover them.
 
 On a **desktop pointer** the checklist rows drop the swipe gesture
 entirely for the [right-click menu](#right-click-menu) instead, which
-also offers **Archive** alongside Delete (see
+carries the same set — Reset schedule and Save as template, plus
+**Archive** alongside Delete (see
 [Archive a checklist](#archive-a-checklist)). Namespace rows keep the
 swipe (a mouse drag still works).
 
@@ -1188,6 +1203,107 @@ active list and navigating to the checklist view, with the section
 heading's trailing "+" creating a new list. The header **Checklist
 title** is the rename surface for the active list.
 
+### Reset schedule
+
+A checklist can **reset itself on a schedule** — uncheck every active
+item at a chosen time of day, so a routine that is run again and again (a
+"before leaving home" list, closing up shop) starts fresh each time without
+the user clearing it by hand. Two optional fields on `Checklist`
+(`src/domain/types.ts`) carry it: `resetSchedule` (a `ResetSchedule`) and
+`lastResetAt`.
+
+- **The schedule.** `unit` is `day` / `week` / `month` (every `interval`
+  of it, default 1) or `dayOfWeek` (each weekday in `daysOfWeek`,
+  `0` = Sunday … `6` = Saturday; `interval` is ignored); `hour` / `minute`
+  is the local wall-clock time it falls due (default 08:00); `popUp` asks
+  for the [reset pop-up](#reset-pop-up); `since` is the ISO instant the
+  schedule was saved, the anchor the cadence counts from (so "every 2
+  weeks" means every second week *from the week it was set*).
+- **The maths** lives in `src/domain/reset-schedule.ts` and — unlike
+  deadlines, which are timezone-free calendar days — runs in **local
+  time**, since eight in the morning means the user's morning. It is
+  still pure: nothing reads the wall clock, every function takes its
+  `now`. `nextResetAt(schedule, after)` is the first occurrence after an
+  instant (the sheet's "Next reset" line); `dueResetAt(schedule,
+  lastResetAt, now)` is the occurrence a list is due against right now —
+  the latest one at or before `now` that falls after the last one applied
+  (or after `since`, when it has never fired). Several missed occurrences
+  therefore collapse into the latest: a list opened after a week away
+  resets **once**, not seven times. An interval schedule's occurrence
+  index is computed arithmetically from the day / month distance (month
+  arithmetic clamps the day of month, so the 31st becomes the 28th in
+  February); a weekday schedule walks back at most seven days. A weekday
+  schedule with no days never fires, and the sheet refuses to save one.
+- **The verbs.** `setResetSchedule(list, patch | null, now)` sets the
+  schedule (stamping `since` with `now` and dropping any earlier
+  `lastResetAt`, so an edited schedule starts afresh) or clears both
+  fields; `resetChecklist(list, resetAt, now)` applies one reset — the
+  same sweep as the header's "Uncheck all" (`setAllChecked`, so archived
+  subtrees are untouched) plus the `lastResetAt` stamp, which is written
+  even when nothing was checked so the occurrence can't fire again.
+  `dueResets(snapshot, now)` lists every active scheduled list that has
+  come due and `applyResets` applies them; archived lists never reset.
+  `setChecklistResetSchedule` (`src/app/use-checklist-lists.ts`) is the
+  hook verb behind the sheet — it commits through the undo timeline and
+  toasts, since the row looks no different afterwards.
+- **The pass.** `useScheduledResets` (`src/app/use-scheduled-resets.ts`),
+  composed into `useChecklist`, re-checks the document at the moments a
+  reset can happen: once the backend's first load lands (the "opened the
+  app" case, and again after a backend / namespace swap), whenever the tab
+  becomes visible again (the installed PWA is resumed rather than
+  relaunched), and on a one-minute timer while open. Due lists go through
+  the ordinary commit path — visible document, debounced save, an undo
+  entry labelled "Reset …" — and each raises a toast. A per-session memory
+  of applied occurrences is the guard against **undo**: undoing a reset
+  restores the checks *and* the older `lastResetAt`, which would otherwise
+  make the very next check re-apply the occurrence the user just reverted.
+- **The sheet.** `ResetScheduleModal` (`src/ui/ResetScheduleModal.tsx`),
+  opened through the modal bus (`{ kind: "reset-schedule", checklistId }`
+  from the sidebar row's right-swipe clock or the desktop right-click
+  entry; host `src/app/modals/ResetScheduleModalHost.tsx`, deferred). A
+  **Reset every** row pairs a number field with a unit
+  [dropdown](#dropdown--custom-select) (days / weeks / months / days of the
+  week); picking days of the week swaps the number for a **Days**
+  multi-select — a trigger summarising the chosen days and a dropdown of
+  seven `role="checkbox"` rows, Monday first, Monday–Friday preselected. An
+  **At** row takes the hour and minute in two fields (defaults 8 and 00),
+  then a **Pop up after refresh** checkbox (off by default) and a live
+  "Next reset: …" preview. Every number field is digits-only, selects its
+  contents on focus so a tap-and-type replaces the value, and normalises
+  on blur (interval ≥ 1, hour 0–23, minute 0–59 zero-padded). **Remove
+  schedule** clears it. Putting the first list on a schedule unlocks the
+  **Clockwork** [achievement](#achievements).
+- **On disk.** The file/cloud backends write the schedule into the
+  checklist's frontmatter as a readable phrase — `reset: every day at
+  08:00`, `reset: every 2 weeks at 07:30, pop up`, `reset: every
+  mon,wed,fri at 08:00` — with `reset-since:` and `reset-last:` as plain
+  ISO instants (`renderResetSchedule` / `parseResetSchedule` in
+  `src/storage/markdown/codec.ts`). A phrase the parser can't read, or one
+  with no anchor, round-trips as unscheduled rather than guessing. The JSON
+  backend stores the fields as-is; both are optional, so an older document
+  needs no migration.
+
+### Reset pop-up
+
+The **"fresh start" card** a scheduled reset raises when the schedule's
+`popUp` flag is on: the next time the app is opened after the reset
+(strictly, on the same check that applies it — the load, a resume, or the
+timer tick), the freshly reset list is shown as a centred card **hovering
+over whatever list is on screen**, so the routine the schedule exists for
+is in front of the user without a trip through the sidebar. The card is a
+working list, not a notice: it shows the list's glyph and name, its
+visible items in display order (sub-items indented, categories as slim
+headers, held-back boxes inert), and each box ticks through
+`toggleItemInList` — the same list-scoped edit path the widgets use, so it
+works for a list other than the active one. An **X** in the top-right
+corner (or the backdrop, or Escape) dismisses it; **Open list** selects the
+list and closes the card. `useScheduledResets` keeps a queue of list ids
+(`resetPopupListId` at its head, `dismissResetPopup` to advance) so
+several lists resetting together show one after another; App resolves the
+head against the live document (a list deleted meanwhile is skipped) and
+mounts `ResetPopupModal` (`src/ui/ResetPopupModal.tsx`, deferred). It is
+driven by its own state, not the modal bus, like the conflict dialog.
+
 ### Archive a checklist
 
 A whole checklist can be archived as a unit — the list-level counterpart
@@ -1641,9 +1757,10 @@ source: editing either side afterwards never touches the other.
 Driven by `saveChecklistAsTemplate` (`src/app/use-checklist-lists.ts`),
 which suffixes a colliding name the way a new list is suffixed
 (`nextChecklistName`). Reached from the sidebar row's right-click menu on
-desktop and from the swipe-left strip on touch — a long-press there is
-already spoken for by the drag-to-file gesture (see `checklist-drag.tsx`),
-so the strip is where the touch action lives. Offered on the *last*
+desktop and from the **right-swipe** configure strip on touch (beside the
+[reset schedule](#reset-schedule) clock; the left swipe is delete only) — a
+long-press there is already spoken for by the drag-to-file gesture (see
+`checklist-drag.tsx`), so the strip is where the touch action lives. Offered on the *last*
 remaining list too: capturing a list neither removes nor archives it, so
 the "always keep one list on screen" guard doesn't apply. Unlocks the
 **Blueprint** trophy through a derived predicate over the document gaining
@@ -3297,8 +3414,16 @@ from this" (or right-click the template row) → `instantiate`.
 ### Save a list as a template
 
 Right-click a list in the side menu and choose "Save as template"
-(desktop), or swipe it left and tap the template button (touch) →
+(desktop), or swipe it **right** and tap the template button (touch) →
 `extractTemplate`.
+
+### Put a list on a reset schedule
+
+Right-click a list in the side menu and choose "Reset schedule"
+(desktop), or swipe it **right** and tap the clock (touch) →
+`ResetScheduleModal` → `setChecklistResetSchedule`. Pick the cadence, the
+time of day, and whether the reset list should pop up; the list unchecks
+itself when the time comes round (see [Reset schedule](#reset-schedule)).
 
 ## Conventions for editing this file
 

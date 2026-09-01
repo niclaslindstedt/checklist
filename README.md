@@ -28,6 +28,12 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   a theme picker: eleven presets (One Dark/Light, Dracula, Monokai, GitHub
   Dark/Light, Solarized Light, Quiet Light, Excel, System) plus a fully
   custom theme, four fonts, and an adjustable text size.
+- **Scheduled resets.** Swipe a list **right** in the sidebar (or
+  right-click it) and tap the clock to make it uncheck itself on a
+  schedule — every so many days, weeks or months, or on chosen weekdays,
+  at the time of day you pick — so a "before leaving home" routine starts
+  fresh each time. Optionally pop the reset list up when you next open
+  the app.
 - **Reusable templates.** Save any list as a template — sub-items,
   categories, notes, required flags and deadlines all captured, every box
   unchecked — then stamp out as many independent copies as you need. A

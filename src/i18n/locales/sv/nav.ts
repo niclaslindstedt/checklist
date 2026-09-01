@@ -9,6 +9,7 @@ const nav: NavCatalog = {
   templates: "Mallar",
   newChecklist: "Ny checklista",
   removeChecklist: "Ta bort checklista",
+  resetSchedule: "Återställningsschema",
   newFolder: "Ny mapp",
   folderName: "Mappnamn",
   renameFolder: "Byt namn på mapp",

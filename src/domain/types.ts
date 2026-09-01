@@ -177,7 +177,66 @@ export interface Checklist extends ItemList {
    * projection of it.
    */
   folderId?: string;
+  /**
+   * When this list resets itself on a schedule — unchecking every active item
+   * at the chosen time of day, every N days / weeks / months or on chosen
+   * weekdays — so a recurring routine (leaving the house, closing up shop)
+   * starts fresh each time without the user clearing it by hand. Set from the
+   * clock button on the list's sidebar row. Absent (rather than `null`) on an
+   * unscheduled list, so an older document needs no migration.
+   */
+  resetSchedule?: ResetSchedule;
+  /**
+   * The scheduled occurrence most recently applied to this list (ISO-8601) —
+   * the instant the reset was *due*, not when the app got round to it. The
+   * next reset is the first occurrence after it; a list whose schedule has
+   * never fired has none and counts from the schedule's `since` instead.
+   */
+  lastResetAt?: string;
 }
+
+/**
+ * The cadence a checklist's scheduled reset repeats on. `day` / `week` /
+ * `month` fire every `interval` of that unit, anchored on the day the schedule
+ * was set; `dayOfWeek` fires on each weekday listed in `daysOfWeek` and ignores
+ * `interval`.
+ */
+export type ResetScheduleUnit = "day" | "week" | "month" | "dayOfWeek";
+
+/**
+ * When a checklist resets itself — unchecking every active item so it reads
+ * fresh again — the way a "before leaving home" list wants to start over every
+ * morning. Evaluated in the device's local time: `hour` / `minute` are the
+ * wall-clock time of day the reset falls due, and `since` (an ISO-8601 instant,
+ * stamped when the schedule is saved) anchors the cadence so "every 2 weeks"
+ * counts from the week the schedule was set. A missed occurrence (the app was
+ * closed) is applied on the next open, once — see `dueResetAt`.
+ */
+export interface ResetSchedule {
+  unit: ResetScheduleUnit;
+  /** Whole number of `unit`s between resets (>= 1). Ignored for `dayOfWeek`. */
+  interval: number;
+  /** For `dayOfWeek`: the weekdays to reset on, `0` = Sunday … `6` = Saturday. */
+  daysOfWeek?: number[];
+  /** Local hour of day the reset falls due (0–23). */
+  hour: number;
+  /** Local minute of the hour the reset falls due (0–59). */
+  minute: number;
+  /**
+   * When true, a list that has just been reset opens in a pop-up over
+   * whatever list is on screen the next time the app is opened, so the
+   * fresh list is in front of the user without a trip through the sidebar.
+   */
+  popUp: boolean;
+  /** When the schedule was set (ISO-8601) — the anchor the cadence counts from. */
+  since: string;
+}
+
+/**
+ * A schedule as the schedule modal commits it — everything but the `since`
+ * anchor, which the verb stamps with the current instant on save.
+ */
+export type ResetSchedulePatch = Omit<ResetSchedule, "since">;
 
 /**
  * A complete replacement for an item's timing, as the timing modal commits it:

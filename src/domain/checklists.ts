@@ -68,6 +68,20 @@ export {
 } from "./item-ops.ts";
 
 export {
+  applyResets,
+  dueResetAt,
+  dueResets,
+  nextResetAt,
+  resetChecklist,
+  setResetSchedule,
+  DEFAULT_DAYS_OF_WEEK,
+  DEFAULT_RESET_HOUR,
+  DEFAULT_RESET_MINUTE,
+  WEEKDAYS_MONDAY_FIRST,
+} from "./reset-schedule.ts";
+export type { DueReset } from "./reset-schedule.ts";
+
+export {
   addRecurrence,
   daysUntil,
   deadlineStatus,

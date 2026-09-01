@@ -77,6 +77,27 @@ describe("deriveUnlocks", () => {
     ).toContain("archivist");
   });
 
+  it("fires clockwork when a checklist first gains a reset schedule", () => {
+    const prev = state({});
+    const next = state({});
+    next.snapshot.checklists[0]!.resetSchedule = {
+      unit: "day",
+      interval: 1,
+      hour: 8,
+      minute: 0,
+      popUp: false,
+      since: "2026-06-01T05:00:00.000Z",
+    };
+    expect(deriveUnlocks(prev, next, {})).toContain("clockwork");
+    // Editing an existing schedule doesn't re-fire it.
+    const edited = state({});
+    edited.snapshot.checklists[0]!.resetSchedule = {
+      ...next.snapshot.checklists[0]!.resetSchedule!,
+      hour: 9,
+    };
+    expect(deriveUnlocks(next, edited, {})).not.toContain("clockwork");
+  });
+
   it("fires listMaker when a second checklist appears", () => {
     expect(
       deriveUnlocks(state({ lists: 1 }), state({ lists: 2 }), {}),

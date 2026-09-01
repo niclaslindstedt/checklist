@@ -23,13 +23,23 @@ function OpenModalProbe() {
   const settings = useModalState("settings").command !== null;
   const changelog = useModalState("changelog").command !== null;
   const namespaces = useModalState("namespaces").command !== null;
+  const schedule = useModalState("reset-schedule").command;
   const open = [
     settings && "settings",
     changelog && "changelog",
     namespaces && "namespaces",
+    schedule && `reset-schedule:${schedule.checklistId}`,
   ].filter(Boolean);
   return <span data-testid="open-modal">{open.join(",")}</span>;
 }
+
+// jsdom implements no pointer capture; stub it so the swipe strips' gesture
+// (which captures the pointer once it commits to a horizontal drag) can run.
+beforeEach(() => {
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
 
 // jsdom has no PointerEvent constructor, so `fireEvent.pointer*` drops the
 // coordinates the drag hook reads. Dispatch a plain Event with the few
@@ -848,6 +858,97 @@ describe("SideMenu", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "Save as template" }));
       expect(saveChecklistAsTemplate).toHaveBeenCalledWith("c1");
+    });
+
+    it("opens the reset-schedule sheet from the swipe strip's clock", () => {
+      const close = vi.fn();
+      renderMenu({
+        nav: { open: true, close },
+        checklist: {
+          checklists: [{ id: "c1", name: "Groceries", remaining: 0 }],
+          activeChecklistId: "c1",
+        },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Reset schedule" }));
+      // The sheet is a modal, so the drawer closes behind it and the bus
+      // command names the list.
+      expect(screen.getByTestId("open-modal").textContent).toBe(
+        "reset-schedule:c1",
+      );
+      expect(close).toHaveBeenCalledTimes(1);
+    });
+
+    it("reveals the clock and template on a right swipe, the trash on a left", () => {
+      const { container } = renderMenu({
+        nav: { open: true },
+        checklist: {
+          checklists: [
+            { id: "c1", name: "Groceries", remaining: 0 },
+            { id: "c2", name: "Packing", remaining: 0 },
+          ],
+          activeChecklistId: "c1",
+        },
+      });
+      const row = screen
+        .getByRole("menuitem", { name: /Groceries/ })
+        .closest("[data-swipe-row]") as HTMLElement;
+      const strip = row.parentElement!;
+      const leading = screen
+        .getAllByRole("button", { name: "Reset schedule" })[0]!
+        .closest("div")!;
+      const trailing = screen
+        .getAllByRole("button", { name: "Delete checklist" })[0]!
+        .closest("div")!;
+      // Resting: both strips are hidden behind the row.
+      expect(leading.className).toContain("invisible");
+      expect(trailing.className).toContain("invisible");
+      expect(strip.contains(leading)).toBe(true);
+
+      // A right swipe past halfway latches the configure strip open: the
+      // clock sits nearest the edge, the template capture beside it.
+      pointer(row, "pointerdown", { x: 20, y: 100 });
+      pointer(row, "pointermove", { x: 100, y: 100 });
+      pointer(row, "pointerup", { x: 100, y: 100 });
+      expect(row.style.transform).toBe("translateX(96px)");
+      expect(leading.className).not.toContain("invisible");
+      expect(trailing.className).toContain("invisible");
+      const buttons = Array.from(leading.querySelectorAll("button")).map((b) =>
+        b.getAttribute("aria-label"),
+      );
+      expect(buttons).toEqual(["Reset schedule", "Save as template"]);
+
+      // Swiping back past the resting point and on to the left reveals the
+      // trash instead.
+      pointer(row, "pointerdown", { x: 200, y: 100 });
+      pointer(row, "pointermove", { x: 40, y: 100 });
+      pointer(row, "pointerup", { x: 40, y: 100 });
+      expect(row.style.transform).toBe("translateX(-48px)");
+      expect(trailing.className).not.toContain("invisible");
+      expect(leading.className).toContain("invisible");
+      expect(container.querySelectorAll("[data-swipe-row]").length).toBe(2);
+    });
+
+    it("keeps the last remaining checklist from sliding left at all", () => {
+      renderMenu({
+        nav: { open: true },
+        checklist: {
+          checklists: [{ id: "c1", name: "Groceries", remaining: 0 }],
+          activeChecklistId: "c1",
+        },
+      });
+      const row = screen
+        .getByRole("menuitem", { name: /Groceries/ })
+        .closest("[data-swipe-row]") as HTMLElement;
+      // No trash strip — a left swipe is a hard stop and never latches.
+      pointer(row, "pointerdown", { x: 200, y: 100 });
+      pointer(row, "pointermove", { x: 40, y: 100 });
+      pointer(row, "pointerup", { x: 40, y: 100 });
+      expect(row.style.transform).toBe("translateX(0px)");
+      // The configure strip still opens on a right swipe.
+      pointer(row, "pointerdown", { x: 20, y: 100 });
+      pointer(row, "pointermove", { x: 100, y: 100 });
+      pointer(row, "pointerup", { x: 100, y: 100 });
+      expect(row.style.transform).toBe("translateX(96px)");
     });
 
     it("offers Save as template even for the last remaining checklist", () => {
