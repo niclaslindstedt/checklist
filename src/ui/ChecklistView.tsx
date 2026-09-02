@@ -21,6 +21,7 @@ import { SyncStatus } from "./SyncStatus.tsx";
 import { ContextMenu } from "./ContextMenu.tsx";
 import { useChecklistContext } from "./checklist-context.ts";
 import { useFocusItem } from "./focus-item.ts";
+import { useRenameChecklist } from "./rename-checklist.ts";
 import { useReportDragActivity } from "./drag-activity.ts";
 import { ghostPlacement } from "./dragGhostPlacement.ts";
 import { useComposer } from "./hooks/useComposer.ts";
@@ -216,6 +217,16 @@ function ChecklistViewImpl() {
     }
     clearFocus();
   }, [pendingId, rows, clearFocus, focusContainerRef]);
+
+  // A list created from the side menu arrives wanting a name: its header title
+  // mounts straight into the rename field (`autoEdit` below). Drain the
+  // request as soon as this view has seen it — including when it names a list
+  // that isn't the open one, so a request the user navigated away from can't
+  // ambush a later switch by opening that title's field.
+  const { pendingId: pendingRenameId, clearRename } = useRenameChecklist();
+  useEffect(() => {
+    if (pendingRenameId) clearRename();
+  }, [pendingRenameId, clearRename]);
 
   // Desktop swaps each row's swipe-to-reveal gesture for a right-click menu
   // carrying the same archive / delete actions; touch keeps its swipe but adds
@@ -497,8 +508,13 @@ function ChecklistViewImpl() {
                 : setChecklistAppearance(openId, patch)
             }
           />
+          {/* Keyed by the open entry so switching lists mounts a fresh title
+              (a rename left open never carries its stale field over) and so a
+              just-created list can mount already editing its name. */}
           <ChecklistTitle
+            key={openId}
             name={activeName}
+            autoEdit={!templateMode && pendingRenameId === openId}
             onRename={(next) =>
               templateMode
                 ? renameTemplate(openId, next)

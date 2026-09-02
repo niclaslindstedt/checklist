@@ -168,8 +168,12 @@ export interface ChecklistLists {
   archivedChecklists: ChecklistSummary[];
   /** Make a checklist active (the side-menu switcher). */
   selectChecklist: (id: string) => void;
-  /** Append a fresh, default-named checklist and switch to it. */
-  addChecklist: () => void;
+  /**
+   * Append a fresh, default-named checklist and switch to it. Returns the new
+   * list's id so the caller can point the header's rename field at it (see
+   * `ui/rename-checklist.ts`).
+   */
+  addChecklist: () => string;
   /** Rename a checklist (the clickable header title). */
   renameChecklist: (id: string, name: string) => void;
   /**
@@ -223,8 +227,11 @@ export interface ChecklistLists {
   removeFolder: (id: string) => void;
   /** Move a checklist into a folder (or out of any folder when `null`). */
   moveChecklistToFolder: (id: string, folderId: string | null) => void;
-  /** Append a fresh checklist already filed inside `folderId`, and select it. */
-  addChecklistInFolder: (folderId: string) => void;
+  /**
+   * Append a fresh checklist already filed inside `folderId`, and select it.
+   * Returns the new list's id, like `addChecklist`.
+   */
+  addChecklistInFolder: (folderId: string) => string;
   /**
    * Drop a checklist from this namespace's document after its bytes have been
    * written into another namespace (the sidebar drag-to-namespace move — the
@@ -367,6 +374,7 @@ export function useChecklistLists(deps: {
       t("toast.listCreated", { name: created.name }),
     );
     setActiveId(created.id);
+    return created.id;
   }, [docRef, commit, t, setActiveId]);
 
   const renameChecklist = useCallback(
@@ -705,6 +713,7 @@ export function useChecklistLists(deps: {
         t("toast.listCreated", { name: created.name }),
       );
       setActiveId(created.id);
+      return created.id;
     },
     [docRef, commit, t, setActiveId],
   );

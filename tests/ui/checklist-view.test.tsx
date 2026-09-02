@@ -5,6 +5,7 @@ import { ChecklistView } from "../../src/ui/ChecklistView.tsx";
 import type { ChecklistContextValue } from "../../src/ui/checklist-context.ts";
 import type { Checklist, ChecklistItem } from "../../src/domain/types.ts";
 import { renderWithChecklist } from "./context-harness.tsx";
+import { RenameChecklistContext } from "../../src/ui/rename-checklist.ts";
 import { fireDomEvent } from "./fire-dom-event.ts";
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -252,6 +253,47 @@ describe("ChecklistView", () => {
     fireEvent.change(input, { target: { value: "Packing" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(renameChecklist).toHaveBeenCalledWith("list-0", "Packing");
+  });
+
+  // A list created from the side menu arrives wanting a name: the header
+  // title mounts straight into its rename field (focused, so the phone
+  // keyboard comes up with it) and the request is drained on the way past.
+  describe("naming a just-created list", () => {
+    function renderPending(pendingId: string | null, clearRename = vi.fn()) {
+      renderWithChecklist(
+        <RenameChecklistContext.Provider
+          value={{ requestRename: vi.fn(), pendingId, clearRename }}
+        >
+          <ChecklistView />
+        </RenameChecklistContext.Provider>,
+        {
+          items,
+          activeList: namedList("Checklist 2"),
+          activeChecklistId: "list-0",
+        },
+      );
+      return { clearRename };
+    }
+
+    it("opens the header title's field for the pending list", () => {
+      renderPending("list-0");
+      const input = screen.getByLabelText(
+        "Rename checklist",
+      ) as HTMLInputElement;
+      expect(input.value).toBe("Checklist 2");
+      expect(document.activeElement).toBe(input);
+    });
+
+    it("drains the request so it fires only once", () => {
+      const { clearRename } = renderPending("list-0");
+      expect(clearRename).toHaveBeenCalled();
+    });
+
+    it("leaves the title alone for a request naming another list", () => {
+      renderPending("list-other");
+      expect(screen.queryByLabelText("Rename checklist")).toBeNull();
+      expect(screen.getByRole("button", { name: "Checklist 2" })).toBeTruthy();
+    });
   });
 
   describe("erasing items with Backspace", () => {

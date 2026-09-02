@@ -15,6 +15,9 @@ import type { NavContextValue } from "../../src/ui/nav-context.ts";
 import { ToastProvider } from "../../src/ui/toast/Toast.tsx";
 
 const noop = (): void => {};
+// The list-creating verbs hand back the new list's id (the caller points the
+// header's rename field at it); an inert default still has to return one.
+const newId = (): string => "list-new";
 
 const fallbackList = createChecklist(
   "list-0",
@@ -55,7 +58,7 @@ export function makeChecklistValue(
     ],
     archivedChecklists: [],
     selectChecklist: noop,
-    addChecklist: noop,
+    addChecklist: newId,
     renameChecklist: noop,
     setChecklistAppearance: noop,
     setChecklistResetSchedule: noop,
@@ -70,7 +73,7 @@ export function makeChecklistValue(
     renameFolder: noop,
     removeFolder: noop,
     moveChecklistToFolder: noop,
-    addChecklistInFolder: noop,
+    addChecklistInFolder: newId,
     detachChecklistToNamespace: noop,
     detachFolderToNamespace: noop,
     addItem: () => null,

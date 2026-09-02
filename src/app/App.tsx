@@ -29,6 +29,10 @@ import {
 import { PullToRefreshIndicator } from "../ui/PullToRefreshIndicator.tsx";
 import { ChecklistDragProvider } from "../ui/checklist-drag.tsx";
 import { FocusItemContext, type FocusItemBus } from "../ui/focus-item.ts";
+import {
+  RenameChecklistContext,
+  type RenameChecklistBus,
+} from "../ui/rename-checklist.ts";
 import { ReportDragActivityContext } from "../ui/drag-activity.ts";
 import { resolveDragDrop } from "./drag-drop-resolver.ts";
 import { SideMenu } from "../ui/SideMenu.tsx";
@@ -163,6 +167,12 @@ function AppShell() {
   // (null when nothing is pending). The view drains and clears it once it has
   // scrolled, so the highlight fires exactly once. See `focus-item.ts`.
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
+  // The list the side menu just created and wants named (null when nothing is
+  // pending). The checklist view opens that list's title field on arrival and
+  // drains this. See `rename-checklist.ts`.
+  const [renameChecklistId, setRenameChecklistId] = useState<string | null>(
+    null,
+  );
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const openMenu = useCallback(() => setMenuOpen(true), []);
@@ -713,6 +723,16 @@ function AppShell() {
     [focusItemId],
   );
 
+  // The name-a-new-list bus the side menu drives and the checklist view drains.
+  const renameChecklistValue = useMemo<RenameChecklistBus>(
+    () => ({
+      requestRename: setRenameChecklistId,
+      pendingId: renameChecklistId,
+      clearRename: () => setRenameChecklistId(null),
+    }),
+    [renameChecklistId],
+  );
+
   const navValue = useMemo<NavContextValue>(
     () => ({
       open: menuOpen,
@@ -744,76 +764,78 @@ function AppShell() {
       <NavContext.Provider value={navValue}>
         <ChecklistContext.Provider value={checklistValue}>
           <FocusItemContext.Provider value={focusItemValue}>
-            <AchievementsContext.Provider value={achievementsValue}>
-              <PullToRefreshIndicator
-                state={ptr.state}
-                pullDistance={ptr.pullDistance}
-              />
-              {/* A flex row so the pinned sidebar docks beside the content. When
+            <RenameChecklistContext.Provider value={renameChecklistValue}>
+              <AchievementsContext.Provider value={achievementsValue}>
+                <PullToRefreshIndicator
+                  state={ptr.state}
+                  pullDistance={ptr.pullDistance}
+                />
+                {/* A flex row so the pinned sidebar docks beside the content. When
             the menu isn't pinned, SideMenu renders only `position: fixed`
             layers (the floating button and the overlay drawer), which sit
             outside the flex flow — so the view keeps the full width. */}
-              <ChecklistDragProvider
-                onDrop={onChecklistDrop}
-                aborted={checklist.conflict !== null}
-              >
-                <div className="flex h-full">
-                  <SideMenu
-                    namespaces={storage.namespaces}
-                    activeNamespace={storage.activeNamespace}
-                    onSwitchNamespace={nav.switchNamespace}
-                    onRemoveNamespace={removeNamespace}
-                  />
-                  <main className="relative h-full min-w-0 flex-1">
-                    {view === "archive" ? <ArchiveView /> : <ChecklistView />}
-                  </main>
-                </div>
-              </ChecklistDragProvider>
-              <SettingsModalHost
-                settings={settings}
-                onSave={saveSettingsDraft}
-                onPreviewAppearance={setAppearancePreview}
-                storage={storage}
-              />
-              <ChangelogModalHost />
-              <SearchModalHost />
-              <ResetScheduleModalHost />
-              {resetPopupList && (
-                <ResetPopupModal
-                  active
-                  key={resetPopupList.id}
-                  list={resetPopupList}
-                  items={resetPopup.items}
-                  now={resetPopup.now}
-                  onToggle={(itemId) =>
-                    toggleItemInList(resetPopupList.id, itemId)
-                  }
-                  onOpen={openResetPopupList}
-                  onClose={dismissResetPopup}
+                <ChecklistDragProvider
+                  onDrop={onChecklistDrop}
+                  aborted={checklist.conflict !== null}
+                >
+                  <div className="flex h-full">
+                    <SideMenu
+                      namespaces={storage.namespaces}
+                      activeNamespace={storage.activeNamespace}
+                      onSwitchNamespace={nav.switchNamespace}
+                      onRemoveNamespace={removeNamespace}
+                    />
+                    <main className="relative h-full min-w-0 flex-1">
+                      {view === "archive" ? <ArchiveView /> : <ChecklistView />}
+                    </main>
+                  </div>
+                </ChecklistDragProvider>
+                <SettingsModalHost
+                  settings={settings}
+                  onSave={saveSettingsDraft}
+                  onPreviewAppearance={setAppearancePreview}
+                  storage={storage}
                 />
-              )}
-              <SyncDetailsModalHost />
-              <NamespacesModalHost
-                storage={storage}
-                onCreate={createNamespace}
-                onRemove={removeNamespace}
-              />
-              <AchievementsModalHost settings={settings} />
-              <AchievementsUnlockModalHost
-                settings={settings}
-                onClear={clearUnseenAchievements}
-              />
-              <ConflictResolutionModal
-                open={checklist.conflict !== null}
-                local={checklist.snapshot}
-                remote={checklist.conflict?.remote ?? checklist.snapshot}
-                onResolve={(keep) => {
-                  unlock("peacemaker");
-                  checklist.resolveConflict(keep);
-                }}
-              />
-              <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
-            </AchievementsContext.Provider>
+                <ChangelogModalHost />
+                <SearchModalHost />
+                <ResetScheduleModalHost />
+                {resetPopupList && (
+                  <ResetPopupModal
+                    active
+                    key={resetPopupList.id}
+                    list={resetPopupList}
+                    items={resetPopup.items}
+                    now={resetPopup.now}
+                    onToggle={(itemId) =>
+                      toggleItemInList(resetPopupList.id, itemId)
+                    }
+                    onOpen={openResetPopupList}
+                    onClose={dismissResetPopup}
+                  />
+                )}
+                <SyncDetailsModalHost />
+                <NamespacesModalHost
+                  storage={storage}
+                  onCreate={createNamespace}
+                  onRemove={removeNamespace}
+                />
+                <AchievementsModalHost settings={settings} />
+                <AchievementsUnlockModalHost
+                  settings={settings}
+                  onClear={clearUnseenAchievements}
+                />
+                <ConflictResolutionModal
+                  open={checklist.conflict !== null}
+                  local={checklist.snapshot}
+                  remote={checklist.conflict?.remote ?? checklist.snapshot}
+                  onResolve={(keep) => {
+                    unlock("peacemaker");
+                    checklist.resolveConflict(keep);
+                  }}
+                />
+                <UnlockGate open={storage.locked} onUnlock={storage.unlock} />
+              </AchievementsContext.Provider>
+            </RenameChecklistContext.Provider>
           </FocusItemContext.Provider>
         </ChecklistContext.Provider>
       </NavContext.Provider>

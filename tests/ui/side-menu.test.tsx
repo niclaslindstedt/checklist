@@ -11,6 +11,10 @@ import {
   type ChecklistContextValue,
 } from "../../src/ui/checklist-context.ts";
 import { NavContext, type NavContextValue } from "../../src/ui/nav-context.ts";
+import {
+  RenameChecklistContext,
+  type RenameChecklistBus,
+} from "../../src/ui/rename-checklist.ts";
 import type { ChecklistItem } from "../../src/domain/types.ts";
 import { setFooterCollapsed } from "../../src/ui/hooks/useFooterCollapsed.ts";
 import { makeChecklistValue, makeNavValue } from "./context-harness.tsx";
@@ -61,24 +65,40 @@ type Options = {
   nav?: Partial<NavContextValue>;
   checklist?: Partial<ChecklistContextValue>;
   props?: Partial<React.ComponentProps<typeof SideMenu>>;
+  /** The name-a-new-list bus a creating tap dispatches on. */
+  rename?: Partial<RenameChecklistBus>;
 };
 
 // SideMenu reads open/current/position from nav context and undo/redo/
 // archive counts from the checklist context; only the namespace list stays
 // a prop. Each test seeds the slices it asserts on.
-function tree({ nav = {}, checklist = {}, props = {} }: Options): ReactElement {
+function tree({
+  nav = {},
+  checklist = {},
+  props = {},
+  rename = {},
+}: Options): ReactElement {
   return (
     <ModalBusProvider>
       <NavContext.Provider value={makeNavValue(nav)}>
         <ChecklistContext.Provider value={makeChecklistValue(checklist)}>
-          <SideMenu
-            namespaces={[{ slug: "default", name: "Default" }]}
-            activeNamespace="default"
-            onSwitchNamespace={noop}
-            onRemoveNamespace={async () => {}}
-            {...props}
-          />
-          <OpenModalProbe />
+          <RenameChecklistContext.Provider
+            value={{
+              requestRename: noop,
+              pendingId: null,
+              clearRename: noop,
+              ...rename,
+            }}
+          >
+            <SideMenu
+              namespaces={[{ slug: "default", name: "Default" }]}
+              activeNamespace="default"
+              onSwitchNamespace={noop}
+              onRemoveNamespace={async () => {}}
+              {...props}
+            />
+            <OpenModalProbe />
+          </RenameChecklistContext.Provider>
         </ChecklistContext.Provider>
       </NavContext.Provider>
     </ModalBusProvider>
@@ -205,7 +225,7 @@ describe("SideMenu", () => {
   });
 
   it("adds a checklist from the action bar's New list button", () => {
-    const addChecklist = vi.fn();
+    const addChecklist = vi.fn(() => "list-9");
     const navigate = vi.fn();
     renderMenu({
       nav: { open: true, navigate },
@@ -214,6 +234,36 @@ describe("SideMenu", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "New checklist" }));
     expect(addChecklist).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith("checklist");
+  });
+
+  // Coming from the archive there is no checklist view to hold a title field,
+  // so the switch has to land before the request that opens one.
+  it("switches to the checklist view before asking for the name field", () => {
+    const order: string[] = [];
+    renderMenu({
+      nav: {
+        open: true,
+        current: "archive",
+        navigate: () => order.push("navigate"),
+      },
+      checklist: { addChecklist: vi.fn(() => "list-9") },
+      rename: { requestRename: () => order.push("requestRename") },
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "New checklist" }));
+    expect(order).toEqual(["navigate", "requestRename", "navigate"]);
+  });
+
+  // The new list arrives unnamed, so the creating tap also asks the checklist
+  // view to open its title field — that's what puts the keyboard up.
+  it("asks the checklist view to name the list it just created", () => {
+    const requestRename = vi.fn();
+    renderMenu({
+      nav: { open: true },
+      checklist: { addChecklist: vi.fn(() => "list-9") },
+      rename: { requestRename },
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "New checklist" }));
+    expect(requestRename).toHaveBeenCalledWith("list-9");
   });
 
   it("marks the current view as the active page", () => {
@@ -637,13 +687,17 @@ describe("SideMenu", () => {
     });
 
     it("adds a list straight into a folder from its header +", () => {
-      const addChecklistInFolder = vi.fn();
+      const addChecklistInFolder = vi.fn(() => "list-9");
+      const requestRename = vi.fn();
       renderMenu({
         nav: { open: true },
         checklist: { ...foldered, addChecklistInFolder },
+        rename: { requestRename },
       });
       fireEvent.click(screen.getByRole("button", { name: "New checklist" }));
       expect(addChecklistInFolder).toHaveBeenCalledWith("f1");
+      // Filed or not, a new list opens its name field like any other.
+      expect(requestRename).toHaveBeenCalledWith("list-9");
     });
   });
 
