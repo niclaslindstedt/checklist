@@ -65,6 +65,34 @@ describe("useChecklist multi-list verbs", () => {
     expect(parse(adapter.stored()).checklists).toHaveLength(2);
   });
 
+  // The side menu hands the id straight to the rename bus so the new list's
+  // title field opens on it (see `ui/rename-checklist.ts`).
+  it("hands back the id of the list it created", async () => {
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+
+    let created = "";
+    act(() => {
+      created = result.current.addChecklist();
+    });
+    await waitFor(() => expect(result.current.checklists).toHaveLength(2));
+    expect(created).toBe(result.current.activeChecklistId);
+
+    act(() => {
+      result.current.createFolder("Work");
+    });
+    await waitFor(() => expect(result.current.folders).toHaveLength(1));
+    let filed = "";
+    act(() => {
+      filed = result.current.addChecklistInFolder(
+        result.current.folders[0]!.id,
+      );
+    });
+    await waitFor(() => expect(result.current.checklists).toHaveLength(3));
+    expect(filed).toBe(result.current.activeChecklistId);
+  });
+
   it("keeps edits scoped to the active list", async () => {
     const adapter = memoryAdapter();
     const { result } = renderHook(() => useChecklist(adapter));

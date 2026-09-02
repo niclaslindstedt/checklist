@@ -787,14 +787,50 @@ list a glyph or colour unlocks the **List Stylist** achievement.
 
 `src/ui/ChecklistTitle.tsx` — the header wordmark slot beside the
 checklist glyph. It shows the **active checklist's name** and doubles as the
-rename affordance: clicking it swaps the text for an inline input
+rename affordance: pressing it swaps the text for an inline input
 (Enter or blur commits a trimmed, non-empty name via
 `renameChecklist`; Escape cancels). It also carries the PWA
 download-fill treatment (`usePwaUpdate`'s `progress`) the standalone
 wordmark used to own — the name fills with the accent colour from the
 bottom while a new build's service worker downloads. `ChecklistView`
 feeds it the active list's name (resolved from `checklists` +
-`activeChecklistId`) and an `onRename` bound to the active id.
+`activeChecklistId`), an `onRename` bound to the active id, and a `key`
+of the open entry — so switching lists mounts a fresh title rather than
+carrying a half-finished rename across.
+
+**On a phone the focus has to ride the gesture.** iOS raises the soft
+keyboard only for a `focus()` that runs while the press is still being
+handled, and Preact defers passive effects past the paint — so the press
+swaps the field in with `flushSync` and focuses it from a *layout* effect
+inside that same flush. (The side menu's Search button flushes its
+dispatch for the same reason; so does the composer.) Without that the
+field opened but the keyboard stayed down.
+
+**Closing it is the other half.** On iOS a press on something
+non-focusable never blurs a field, so on a list with no rows to take the
+focus the name stayed focused and the keyboard up however often the list
+was pressed. A `pointerdown` anywhere outside the field therefore commits
+and closes it explicitly, alongside the ordinary Enter / Escape / blur
+paths.
+
+### Name a new list
+
+`src/ui/rename-checklist.ts` — a one-shot bus, shaped like the item-focus
+bus: `requestRename(id)` from the side menu, `pendingId` read by
+`ChecklistView`, `clearRename()` to drain it. App owns the pending id as
+state and supplies the value; `ChecklistView` passes `autoEdit` to the
+title when the pending id is the open list, so a **just-created list
+mounts straight into its name field** with the default name selected —
+name it and press Enter, no second tap. The view drains the request as
+soon as it has seen it, including when it names a list that isn't open,
+so a stale request can't ambush a later switch.
+
+Both create paths in `SideMenu` (the action bar's New list and a folder
+row's "+") go through one `createList` helper, which switches to the
+checklist view and then creates + requests inside `flushSync` — the field
+mounts and takes focus while the creating tap is still being handled,
+which is what brings the keyboard up with it. `addChecklist` /
+`addChecklistInFolder` return the new list's id for exactly this.
 
 ### Sync status
 

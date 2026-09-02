@@ -42,6 +42,7 @@ import {
 } from "./icons.tsx";
 import type { ContextMenuItem } from "./hooks/useContextMenu.ts";
 import { useModalDispatch } from "./modal-bus.ts";
+import { useRenameChecklist } from "./rename-checklist.ts";
 import { ChecklistDragItem } from "./checklist-drag.tsx";
 import {
   CHECKLIST_DROP_ARCHIVE,
@@ -171,6 +172,7 @@ export function SideMenu({
     createChecklistFromTemplate,
     removeTemplate,
   } = useChecklistContext();
+  const { requestRename } = useRenameChecklist();
   // Sidebar folder UI state, all device-local: which folders are collapsed
   // (empty = all expanded, the screenshot's default), whether the inline
   // "new folder" name input is showing, and which folder is being renamed.
@@ -241,6 +243,27 @@ export function SideMenu({
   function pick(handler: () => void) {
     close();
     handler();
+  }
+
+  // New list, from the action bar or a folder row's "+": create it, show it,
+  // and open its name field so it can be named on the spot instead of living
+  // as "Checklist 3" until someone thinks to rename it. The create runs inside
+  // `flushSync`, so the field (in `ChecklistView`, keyed by the open list)
+  // mounts and takes focus while this tap is still being handled — the only
+  // context in which iOS raises the soft keyboard for a programmatic focus.
+  // The Search button below flushes its dispatch for the same reason, and for
+  // the same reason closes the drawer only afterwards: the field takes focus
+  // while the tapped button is still mounted. Coming from the archive there is
+  // no checklist view to open a field in, so that switch has to happen (and
+  // flush) first.
+  function createList(folderId: string | null) {
+    if (current !== "checklist") flushSync(() => navigate("checklist"));
+    flushSync(() =>
+      requestRename(
+        folderId === null ? addChecklist() : addChecklistInFolder(folderId),
+      ),
+    );
+    navigate("checklist");
   }
 
   // Dismiss on Escape while open (the backdrop handles pointer dismissal).
@@ -484,10 +507,7 @@ export function SideMenu({
             onToggle={() => toggleFolder(f.id)}
             onRename={() => setRenamingFolderId(f.id)}
             onDelete={() => removeFolder(f.id)}
-            onAdd={() => {
-              addChecklistInFolder(f.id);
-              navigate("checklist");
-            }}
+            onAdd={() => createList(f.id)}
             onDragOver={(e) => allowDropOn(e, f.id)}
             onDragLeave={() => clearDropTarget()}
             onDrop={(e) => commitDrop(e, f.id)}
@@ -669,10 +689,7 @@ export function SideMenu({
             <BarButton
               icon={<PlusIcon className="h-5 w-5" />}
               label={t("nav.newChecklist")}
-              onClick={() => {
-                addChecklist();
-                navigate("checklist");
-              }}
+              onClick={() => createList(null)}
             />
             <BarButton
               icon={<FolderIcon className="h-5 w-5" />}

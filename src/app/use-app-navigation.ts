@@ -40,7 +40,7 @@ export interface NavVerbs {
   selectChecklist: (id: string) => void;
   selectTemplate: (id: string) => void;
   closeTemplate: () => void;
-  addChecklist: () => void;
+  addChecklist: () => string;
   createChecklistFromTemplate: (id: string) => void;
   unarchiveChecklist: (id: string) => void;
 }
@@ -160,7 +160,7 @@ export function useAppNavigation(deps: {
       },
       addChecklist: () => {
         mark();
-        checklist.addChecklist();
+        return checklist.addChecklist();
       },
       createChecklistFromTemplate: (id: string) => {
         mark();
