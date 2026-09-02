@@ -174,8 +174,12 @@ The types live in `src/domain/types.ts`, built on one shared base:
   `ItemList`: it adds nothing.
 - `Checklist` — a checkable list instance. Extends `ItemList` with
   `templateId` (empty for a free-standing list not stamped from a
-  template), an optional `archived` flag for the whole list, and an
-  optional `folderId`.
+  template), an optional `archived` flag for the whole list, an
+  optional `folderId`, and an optional `resetSchedule` (`ResetSchedule`:
+  cadence, local time of day, pop-up flag, and the `since` anchor) with
+  the `lastResetAt` occurrence it was last applied against. Both reset
+  fields are absent on an unscheduled list; on the markdown backends they
+  ride the frontmatter as `reset:` / `reset-since:` / `reset-last:`.
 - `Item` — `{ id, title, notes?, required? }`, the base a `ChecklistItem`
   extends with `checked`, `checkedAt?`, `archived?`, `children?`,
   `notBefore?`, `deadline?`, `recurrence?`, and `category?`.

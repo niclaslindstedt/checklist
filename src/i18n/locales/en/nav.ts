@@ -14,6 +14,7 @@ const nav = {
   templates: "Templates",
   newChecklist: "New checklist",
   removeChecklist: "Delete checklist",
+  resetSchedule: "Reset schedule",
   newFolder: "New folder",
   folderName: "Folder name",
   renameFolder: "Rename folder",

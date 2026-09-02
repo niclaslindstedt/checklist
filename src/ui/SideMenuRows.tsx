@@ -21,6 +21,7 @@ import {
   CaretRightIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ClockIcon,
   PlusIcon,
   TemplateIcon,
   TrashIcon,
@@ -309,9 +310,12 @@ export function MenuLink({
   );
 }
 
-// One checklist row's touch action strip: a left swipe latches open a trailing
-// trash button. Moving a list between folders/namespaces is a drag gesture now
-// (see `checklist-drag.tsx`), so the strip carries only delete. Desktop uses a
+// One checklist row's touch action strips. A left swipe latches open a
+// trailing trash button; a right swipe latches open a leading strip carrying
+// the non-destructive actions — the clock (the list's reset schedule) and the
+// template capture — so the two directions read as "destroy" vs "configure".
+// Moving a list between folders/namespaces is a drag gesture (see
+// `checklist-drag.tsx`), so neither strip carries a move. Desktop uses a
 // right-click menu instead and never renders this.
 const ROW_STRIP_W = 48;
 
@@ -320,18 +324,21 @@ export function ChecklistRowStrip({
   onRemove,
   templateLabel,
   onSaveAsTemplate,
+  scheduleLabel,
+  onSchedule,
   children,
 }: {
   removeLabel: string;
   /**
    * Delete this row's list. Omitted for the last remaining checklist, which
-   * can't be deleted — the strip then reveals only the actions that do apply,
-   * rather than a trash button that would do nothing.
+   * can't be deleted — the trailing strip is then absent and a left swipe
+   * doesn't move the row, rather than revealing a trash button that would do
+   * nothing.
    */
   onRemove?: () => void;
   /**
-   * Label for the optional "save as template" action revealed alongside the
-   * trash. Supplied together with {@link onSaveAsTemplate}.
+   * Label for the optional "save as template" action on the leading strip.
+   * Supplied together with {@link onSaveAsTemplate}.
    */
   templateLabel?: string;
   /**
@@ -341,33 +348,68 @@ export function ChecklistRowStrip({
    * a touchscreen.
    */
   onSaveAsTemplate?: () => void;
+  /**
+   * Label for the optional clock action on the leading strip. Supplied
+   * together with {@link onSchedule}.
+   */
+  scheduleLabel?: string;
+  /** Open the list's reset-schedule sheet — the clock on the leading strip. */
+  onSchedule?: () => void;
   children: ReactNode;
 }) {
-  // The strip widens to fit however many actions it carries, so the row slides
-  // exactly far enough to uncover them — and doesn't slide at all with none.
-  const actionCount = (onSaveAsTemplate ? 1 : 0) + (onRemove ? 1 : 0);
-  const swipe = useSwipeReveal(ROW_STRIP_W * Math.max(actionCount, 1));
+  // Each strip widens to fit however many actions it carries, so the row
+  // slides exactly far enough to uncover them — and a side with no actions
+  // doesn't slide at all.
+  const leadingCount = (onSchedule ? 1 : 0) + (onSaveAsTemplate ? 1 : 0);
+  const swipe = useSwipeReveal(
+    onRemove ? ROW_STRIP_W : 0,
+    ROW_STRIP_W * leadingCount,
+  );
   return (
     <div className="relative overflow-hidden">
+      {/* The leading strip, uncovered by a right swipe: clock first (nearest
+          the edge, the more routine action), template beside it. */}
+      {leadingCount > 0 && (
+        <div
+          className={`absolute inset-0 flex items-center justify-start ${
+            swipe.offset > 0 ? "" : "invisible"
+          }`}
+        >
+          {onSchedule && (
+            <button
+              type="button"
+              onClick={() => {
+                swipe.close();
+                onSchedule();
+              }}
+              aria-label={scheduleLabel}
+              style={{ width: ROW_STRIP_W }}
+              className="flex h-full items-center justify-center bg-accent text-page-bg"
+            >
+              <ClockIcon className="h-5 w-5" />
+            </button>
+          )}
+          {onSaveAsTemplate && (
+            <button
+              type="button"
+              onClick={() => {
+                swipe.close();
+                onSaveAsTemplate();
+              }}
+              aria-label={templateLabel}
+              style={{ width: ROW_STRIP_W }}
+              className="flex h-full items-center justify-center bg-surface-3 text-fg-bright"
+            >
+              <TemplateIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
       <div
         className={`absolute inset-0 flex items-center justify-end ${
           swipe.offset < 0 ? "" : "invisible"
         }`}
       >
-        {onSaveAsTemplate && (
-          <button
-            type="button"
-            onClick={() => {
-              swipe.close();
-              onSaveAsTemplate();
-            }}
-            aria-label={templateLabel}
-            style={{ width: ROW_STRIP_W }}
-            className="flex h-full items-center justify-center bg-accent text-page-bg"
-          >
-            <TemplateIcon className="h-5 w-5" />
-          </button>
-        )}
         {onRemove && (
           <button
             type="button"

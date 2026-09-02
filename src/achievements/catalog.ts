@@ -117,6 +117,8 @@ const hasGatedItem = (snap: Snapshot) =>
     snap,
     (it) => typeof it.notBefore === "string" && it.notBefore !== "",
   );
+const hasScheduledChecklist = (snap: Snapshot) =>
+  snap.checklists.some((c) => c.resetSchedule !== undefined);
 
 // How many namespaces carry transform rules of their own — two is the point
 // at which the user is deliberately keeping one namespace's rules off
@@ -301,6 +303,23 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.snapshot],
       predicate: (prev, next) =>
         !hasGatedItem(prev.snapshot) && hasGatedItem(next.snapshot),
+    },
+  },
+  // A list that wipes its own checkmarks on a schedule — the moment a checklist
+  // becomes a routine rather than a one-off. Derived off the document gaining
+  // its first scheduled list, so it fires from the sidebar strip and the
+  // desktop menu alike.
+  {
+    id: "clockwork",
+    tier: "intermediate",
+    glyph: RefreshGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot.checklists],
+      predicate: (prev, next) =>
+        !hasScheduledChecklist(prev.snapshot) &&
+        hasScheduledChecklist(next.snapshot),
     },
   },
   {

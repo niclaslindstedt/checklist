@@ -24,6 +24,7 @@ import { useSideMenuDrag } from "./hooks/useSideMenuDrag.ts";
 import {
   ArchiveIcon,
   ChecklistIcon,
+  ClockIcon,
   CodeIcon,
   CogIcon,
   FolderIcon,
@@ -106,7 +107,9 @@ const ABOUT_PLACEMENT: FloatingPlacement = {
 // Removing a checklist is one tap and recoverable via undo; removing a
 // namespace destroys a whole document in the active backend, so it asks for
 // a second confirming tap. The default namespace and the last remaining
-// checklist are never removable, so they render as plain rows.
+// checklist are never removable, so they render as plain rows. A checklist
+// row also answers a right swipe with its configure strip — the clock that
+// opens the reset-schedule sheet and the template capture.
 
 const SOURCE_URL = REPO_URL;
 
@@ -291,6 +294,9 @@ export function SideMenu({
     );
     const canRemove = checklists.length > 1;
     const saveAsTemplate = () => saveChecklistAsTemplate(c.id);
+    // The reset-schedule sheet is a modal, so the drawer closes behind it.
+    const openSchedule = () =>
+      pick(() => dispatch({ kind: "reset-schedule", checklistId: c.id }));
     const draggable = (inner: ReactNode): ReactNode => (
       <ChecklistDragItem
         key={c.id}
@@ -311,6 +317,11 @@ export function SideMenu({
     // menu (desktop) / strip (touch), just without the destructive entries.
     if (desktop) {
       const actions: ContextMenuItem[] = [
+        {
+          label: t("nav.resetSchedule"),
+          icon: <ClockIcon className="h-4 w-4" />,
+          onSelect: openSchedule,
+        },
         {
           label: t("app.saveAsTemplate"),
           icon: <TemplateIcon className="h-4 w-4" />,
@@ -337,14 +348,17 @@ export function SideMenu({
       );
     }
     // Touch can't use a long-press here — that gesture already picks the row up
-    // to file it (see `checklist-drag.tsx`) — so the swipe strip carries both
-    // actions instead.
+    // to file it (see `checklist-drag.tsx`) — so the swipe strips carry the
+    // actions instead: delete behind a left swipe, the clock and the template
+    // capture behind a right swipe.
     return draggable(
       <ChecklistRowStrip
         removeLabel={t("nav.removeChecklist")}
         onRemove={canRemove ? () => removeChecklist(c.id) : undefined}
         templateLabel={t("app.saveAsTemplate")}
         onSaveAsTemplate={saveAsTemplate}
+        scheduleLabel={t("nav.resetSchedule")}
+        onSchedule={openSchedule}
       >
         {row}
       </ChecklistRowStrip>,

@@ -140,6 +140,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Samma klocka som sätter ett förfallodatum sätter också ett ”Tidigast”-datum — den tidigaste dagen posten får bockas av. Fram till dess är rutan låst och en enkel grå rad ovanför posten berättar när den öppnar; på dagen försvinner raden och rutan fungerar som vilken annan som helst. Använd det för sådant som helt enkelt inte kan börja än: blanketten som inte kommer förrän den första i månaden, uppföljningssamtalet du inte bör ringa före nästa vecka.",
     },
+    clockwork: {
+      name: "Urverk",
+      condition: "Sätt en checklista på ett återställningsschema.",
+      learnMore:
+        "Svep en lista åt höger i sidomenyn (eller högerklicka på den på en dator) och tryck på klockan för att ge den ett återställningsschema: var så många dagar, veckor eller månader som helst, eller på de veckodagar du väljer, vid ett klockslag du bestämmer. När stunden är inne avmarkerar listan sig själv, så en rutin du kör om och om igen — sakerna att få med sig innan du går hemifrån, stegen för att stänga för dagen — börjar om från början utan att du behöver rensa den för hand. Bocka i ”Visa efter nollställning” så öppnas den nyss nollställda listan framför dig nästa gång du öppnar appen.",
+    },
     archivist: {
       name: "Arkivarien",
       condition: "Arkivera en post.",

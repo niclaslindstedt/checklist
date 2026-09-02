@@ -45,6 +45,10 @@ import {
   useChecklistSync,
 } from "./use-checklist-sync.ts";
 import { useUndoRedo } from "./use-undo-redo.ts";
+import {
+  type ScheduledResets,
+  useScheduledResets,
+} from "./use-scheduled-resets.ts";
 
 // Re-exported from the persistence engine so consumers (SyncStatus, the
 // checklist context, the conflict modal) keep importing the save-state
@@ -57,7 +61,8 @@ export type {
   TemplateSummary,
 };
 
-export interface UseChecklist extends ChecklistEdits, ChecklistLists {
+export interface UseChecklist
+  extends ChecklistEdits, ChecklistLists, ScheduledResets {
   /** The full in-memory document (used by the conflict summary). */
   snapshot: Snapshot;
   /**
@@ -228,6 +233,20 @@ export function useChecklist(
     addItemPosition,
   });
 
+  // Scheduled resets: once the document is loaded (and on resume / a coarse
+  // timer while open), any list whose reset has come due is unchecked through
+  // the same commit path as an edit, and lists that asked for it queue for the
+  // "fresh start" pop-up App renders.
+  const resets = useScheduledResets({
+    docRef,
+    loaded: sync.loaded,
+    setDoc,
+    scheduleSave,
+    record,
+    notify,
+    t,
+  });
+
   // The rendered order: the user's three view sorts applied over the active
   // items. `now` only matters to the held-back sink (held-ness is relative to
   // today), and it is read per render rather than memoised on — a list left
@@ -268,6 +287,8 @@ export function useChecklist(
       checkedCount,
       ...lists,
       ...edits,
+      resetPopupListId: resets.resetPopupListId,
+      dismissResetPopup: resets.dismissResetPopup,
       reload: sync.reload,
       checkConnection: sync.checkConnection,
       conflict: sync.conflict,
@@ -291,6 +312,8 @@ export function useChecklist(
       checkedCount,
       lists,
       edits,
+      resets.resetPopupListId,
+      resets.dismissResetPopup,
       sync.reload,
       sync.checkConnection,
       sync.conflict,

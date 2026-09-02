@@ -147,8 +147,17 @@ export function ShowcasePage() {
               other.
             </li>
             <li>
+              <strong className="text-fg-bright">Reset on a schedule</strong> —
+              swipe a list right (or right-click it) and tap the clock to make
+              it uncheck itself every so many days, weeks or months, or on the
+              weekdays you pick, at the time of day you choose — so a routine
+              like &ldquo;before leaving home&rdquo; starts fresh each time.
+              Optionally have the reset list pop up in front of you the next
+              time you open the app.
+            </li>
+            <li>
               <strong className="text-fg-bright">Reuse templates</strong> —
-              right-click a list (or swipe it left) and save it as a template:
+              right-click a list (or swipe it right) and save it as a template:
               sub-items, categories, notes and deadlines are all captured, every
               box unchecked. Stamp a fresh, independent copy out of it whenever
               you need one — checking things off a copy never changes the
