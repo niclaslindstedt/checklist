@@ -13,9 +13,9 @@ checklist derives its whole PWA icon set from **one source SVG** with
   and regenerating, not hand-exporting PNGs.
 - **The generator config**, `pwa-assets.config.ts` at the repo root. It
   extends `@vite-pwa/assets-generator`'s `minimal2023Preset` and
-  overrides the `apple` / `maskable` padding + background so the dark
-  `theme_color` (`#1f2933`) bleeds edge-to-edge instead of the preset's
-  default white frame.
+  overrides the `apple` / `maskable` padding + background so the icon
+  badge colour (`THEME_BACKGROUND`, `#0c0f13`) bleeds edge-to-edge
+  instead of the preset's default white frame.
 - **The manifest**, declared inline in `vite.config.ts` under
   `VitePWA({ manifest: { icons: [...] } })`. It lists `pwa-64x64.png`,
   `pwa-192x192.png`, `pwa-512x512.png` (`purpose` defaults to `any`) and
@@ -119,32 +119,46 @@ the legacy `apple-touch-icon` web rules: iOS uses the PNG you provide
 at 180×180 verbatim for home-screen install, rounds the corners
 (~22.5% radius "squircle"), and paints **no** background behind alpha.
 That gives you these rules — which the generator's `apple` override
-(padding 0, opaque `#1f2933` background) is tuned to satisfy:
+(padding 0, opaque `#0c0f13` background) is tuned to satisfy:
 
 [hig-app-icons]: https://developer.apple.com/design/human-interface-guidelines/app-icons
 
 | Rule                                                                                  | Why                                                                                                                                                                      |
 | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Opaque, full-bleed background.** The source SVG fills the canvas edge-to-edge.      | iOS paints transparent regions white. checklist's dark `theme_color` (`#1f2933`) is painted by the `<rect>` in `favicon.svg` and the generator's `apple` background.    |
+| **Opaque, full-bleed background.** The source SVG fills the canvas edge-to-edge.      | iOS paints transparent regions white. checklist's near-black badge colour (`#0c0f13`) is painted by the `<rect>` in `favicon.svg` and the generator's `apple` background. |
 | **Foreground fills 60–80% of the canvas.** Centered.                                  | Below 60% reads as a postage stamp; above 80% gets nibbled by the corner rounding. The surrounding icons on a stock home screen sit in this band.                       |
 | **No drop shadows, gloss, or system chrome.** iOS adds rounded corners; that's all.   | Pre-iOS-7 advice (round corners yourself, add gloss) is now wrong — modern iOS double-rounds and double-glosses if you do.                                              |
 | **No transparency in the foreground glyph.** Use solid fills, not strokes-on-nothing. | iOS antialiasing on the rounded mask makes semi-transparent edges look fuzzy at common scales.                                                                          |
 | **Avoid text other than a single logo glyph or wordmark.**                            | Body text becomes unreadable at the 60×60 scale iOS shows in Spotlight and notifications.                                                                               |
 
-Colour coherence: the SVG background and the generator's `apple` /
-`maskable` `background` should match the manifest `theme_color`
-(`#1f2933`) so the install transition (browser tab → home-screen tile →
-splash screen, which `vite-plugin-pwa` derives from `background_color`,
-also `#1f2933`) stays visually continuous. If a future redesign retones
-the app, retone all four literals in the same change: the `<rect>` fill
-in `favicon.svg`, `THEME_BACKGROUND` in `pwa-assets.config.ts`, and
-`theme_color` / `background_color` in `vite.config.ts`.
+Colour coherence: there are **two** dark tones in play, and they are
+deliberately different. Don't "fix" one to match the other.
 
-The current `public/favicon.svg` is a green checkmark on a full-bleed
-`#1f2933` square — a workable template for the apple-touch /
-`purpose: "any"` icon (opaque rect under a single centred glyph). Keep
-the glyph in the 60–80% band: too large kisses the iOS rounded-corner
-radius, too small reads as a postage stamp.
+| Tone | Literal | Lives in | What it paints |
+| --- | --- | --- | --- |
+| **Icon badge** | `#0c0f13` | `<rect>` fill in `public/favicon.svg`; `THEME_BACKGROUND` in `pwa-assets.config.ts`; `FAVICON_BG` in `src/ui/glyphs.ts` | The home-screen / launcher tile and the namespace favicon badge |
+| **App surface** | `#1f2933` | `theme_color` + `background_color` in `vite.config.ts`; the `<meta name="theme-color">` in `index.html`; `NOSCRIPT_STYLE_MAIN` in `src/seo/routes.ts`; `BACKGROUND` in `native/src/App.tsx` and the two literals in `native/app.json` | Browser chrome tint, PWA splash screen, the `<noscript>` page, the native shell |
+
+The badge is near-black so the installed tile reads as part of a dark
+home screen alongside neighbouring app icons; the app's own surface
+stays the lighter slate. The install transition therefore steps from a
+near-black tile to a `#1f2933` splash — intentional, and the same thing
+most dark-icon apps do.
+
+The three **icon badge** literals must move together in one change: a
+mismatch between the SVG `<rect>` and `THEME_BACKGROUND` shows up as a
+ring of the wrong colour in the padded `maskable` output, and a stale
+`FAVICON_BG` makes a re-badged namespace tab icon read as a different
+app. Retoning the **app surface** is a separate, wider change that also
+touches `src/styles/palettes.css` — it does not imply retoning the
+badge.
+
+The current `public/favicon.svg` is a green checkmark
+(`#6ee7b7` → `#34d399` vertical gradient) on a full-bleed `#0c0f13`
+square — a workable template for the apple-touch / `purpose: "any"`
+icon (opaque rect under a single centred glyph). Keep the glyph in the
+60–80% band: too large kisses the iOS rounded-corner radius, too small
+reads as a postage stamp.
 
 ## Maskable icon — what good looks like
 
@@ -154,7 +168,7 @@ with `"purpose": "maskable"` per the
 icon under a shape the OEM / theme picks at runtime (circle, squircle,
 teardrop, rounded square, …), so the icon must survive **any** of
 those masks. The generator's `maskable` override (padding 0.1 → the
-glyph shrinks into the safe zone, opaque `#1f2933` background → it
+glyph shrinks into the safe zone, opaque `#0c0f13` background → it
 bleeds to the edges) is tuned for this; the rules it satisfies:
 
 [maskable-spec]: https://w3c.github.io/manifest/#icon-masks
@@ -205,7 +219,8 @@ Before declaring the icon set "done", walk this list against the
 current files:
 
 - [ ] `apple-touch-icon-180x180.png` has an opaque background that
-      matches the manifest `theme_color` (`#1f2933`).
+      matches the icon badge colour (`#0c0f13`) — **not** the manifest
+      `theme_color`; see "Colour coherence".
 - [ ] The foreground glyph in apple-touch sits between roughly
       `(15%, 15%)` and `(85%, 85%)` of the canvas — visible margin on
       all four sides, no kissing the edges.

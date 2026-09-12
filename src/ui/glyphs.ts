@@ -82,8 +82,9 @@ export function isGlyphName(name: string | undefined): name is string {
 }
 
 // Background matching the bundled `public/favicon.svg` so a namespace
-// favicon reads as the same app, just re-badged.
-const FAVICON_BG = "#1f2933";
+// favicon reads as the same app, just re-badged. Darker than the app's
+// `theme_color` on purpose — see the note in `pwa-assets.config.ts`.
+const FAVICON_BG = "#0c0f13";
 
 /**
  * Serialise a glyph to a self-contained 64×64 SVG string: the app's dark
