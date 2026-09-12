@@ -8,7 +8,7 @@ of you as it approaches.
 
 Swipe an item to the left and, alongside the trash button, you'll find a
 clock. Tap it to open **Timing**: choose a due date, and if the task comes
-back around, how often it repeats — every so many weeks, months, or
+back around, how often it repeats — every so many days, weeks, months, or
 years. Save, and the item is dated. On a computer the same options live
 in the item's right-click menu.
 
@@ -18,8 +18,7 @@ of months, again for a grid of years — so a date years away is a couple of
 taps, not a long scroll.
 
 To clear a date later, open Timing again and use "Clear timing" — that
-empties every field at once, including any repeat you'd set, since a
-repeat needs a date to anchor it.
+empties every field at once, including any repeat you'd set.
 
 ## The date row
 
@@ -118,16 +117,52 @@ it isn't offered — it reappears on the day its hold lifts.
 
 ## Repeating tasks
 
-When an item repeats, checking it off doesn't tick it away — it rolls the
-due date forward to the next occurrence and leaves the item unchecked, so
-the task simply reappears with its new date. Water the plants every two
-weeks, renew a subscription every year, take out the bins every week:
-check it done, and it's already scheduled for next time. If a repeating
-task slipped and is several periods overdue, checking it catches the date
-back up to the next future occurrence on its original cadence.
+When an item repeats **and has a due date**, checking it off doesn't tick
+it away — it rolls the due date forward to the next occurrence and leaves
+the item unchecked, so the task simply reappears with its new date. Water
+the plants every two weeks, renew a subscription every year, take out the
+bins every week: check it done, and it's already scheduled for next time.
+If a repeating task slipped and is several periods overdue, checking it
+catches the date back up to the next future occurrence on its original
+cadence.
 
-Both dates travel with your lists across devices, and on the file and
-cloud backends they're written into the markdown in a plain, readable
-form — `*(not before 2026-07-01)*` and `*(due 2026-07-20, every 2
-weeks)*` — so they're visible even if you open the file in another
-editor.
+## Repeating with no due date
+
+A repeat doesn't need a date to hang on. Leave the due date empty, set
+just a repeat, and the item behaves quite differently: there is nothing
+to be late for, so ticking it off does tick it off — and then, once the
+cadence comes round, it comes **back**, unchecked, at the top of the
+list.
+
+That's the shape a shopping list actually wants. You buy milk every week
+or so; there's no deadline anywhere in that, just a rhythm. Tick milk off
+when you've bought it and the line goes quiet for a week, then reappears
+at the top of the list the next time you're looking at it. Bin day, the
+water filter, the plants, restocking the cupboard — all the same.
+
+The clock starts when you tick the box, not when you set the repeat. Buy
+the milk on Thursday and it's due again a week from Thursday, however
+long it had been sitting there unchecked beforehand. Unticking the box
+yourself ends the wait straight away, so an item you checked by mistake
+comes right back.
+
+A **daily** repeat also picks a time of day — 08:00 unless you change it
+— because "every day" with no hour would otherwise turn over at whatever
+moment you last tapped the box. The slower cadences don't ask: a week or
+a month either way, the hour isn't worth choosing, so they come back at
+the same time of day you checked them.
+
+An item filed under a category comes back to the top of **that**
+category, not the top of the whole list, which is where you'd look for
+it. And a list that's on a [reset schedule](feature:scheduled-resets)
+needs no repeats at all — the reset already unchecks everything on it.
+
+A repeating item shows the cadence in its date row ("every week", "every
+day at 07:00") in plain grey, with no colour and no date: nothing about
+it is urgent, it's just due again.
+
+Both dates and the repeat travel with your lists across devices, and on
+the file and cloud backends they're written into the markdown in a plain,
+readable form — `*(not before 2026-07-01)*`, `*(due 2026-07-20, every 2
+weeks)*`, and `*(every week)*` for a repeat with no date — so they're
+visible even if you open the file in another editor.

@@ -705,7 +705,7 @@ function ChecklistRowImpl({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onAddChild(item.id)}
               aria-label={t("app.addToCategory")}
-              className="flex h-7 w-7 shrink-0 items-center justify-center text-muted hover:text-fg"
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center text-muted hover:text-fg"
             >
               <PlusIcon className="h-4 w-4" />
             </button>

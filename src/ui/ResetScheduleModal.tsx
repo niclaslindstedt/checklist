@@ -18,6 +18,7 @@ import type { Lang } from "../i18n/locale.ts";
 import { FloatingPanel } from "./FloatingPanel.tsx";
 import { Modal } from "./Modal.tsx";
 import { Checkbox } from "./form/Checkbox.tsx";
+import { NumberField } from "./form/NumberField.tsx";
 import { SelectPicker } from "./form/SelectPicker.tsx";
 import type { FloatingPlacement } from "./hooks/useFloatingPosition.ts";
 import { CheckIcon, ChevronDownIcon, ClockIcon } from "./icons.tsx";
@@ -29,11 +30,9 @@ import { CheckIcon, ChevronDownIcon, ClockIcon } from "./icons.tsx";
 // opens. Saving hands a `ResetSchedulePatch` to `setChecklistResetSchedule`,
 // which stamps the cadence anchor; "Remove schedule" clears it.
 //
-// Every number is held as free-form text so mid-edit states — an empty field,
-// a leading zero — don't fight a controlled number input (which coerces "" to
-// 0 and then wedges on "03"), and each field selects its contents on focus so
-// a tap-and-type replaces the value outright. Values normalise on blur and
-// again on save.
+// Every number is held as free-form text (see `NumberField`) so mid-edit
+// states — an empty field, a leading zero — don't fight a controlled number
+// input. Values normalise on blur and again on save.
 
 type Props = {
   list: Checklist;
@@ -61,36 +60,6 @@ function weekdayNames(
     out[d] = fmt.format(new Date(2024, 0, 7 + d, 12));
   }
   return out;
-}
-
-// A digits-only text field: numeric keypad on mobile, contents selected on
-// focus so typing replaces the value, non-digits dropped as they're typed.
-function NumberField({
-  value,
-  onChange,
-  onBlur,
-  ariaLabel,
-  className = "w-16",
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  onBlur: () => void;
-  ariaLabel: string;
-  className?: string;
-}) {
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      pattern="[0-9]*"
-      value={value}
-      aria-label={ariaLabel}
-      onFocus={(e) => e.currentTarget.select()}
-      onChange={(e) => onChange(e.currentTarget.value.replace(/[^0-9]/g, ""))}
-      onBlur={onBlur}
-      className={`${className} rounded border border-line bg-surface-2 px-2 py-1.5 text-center text-sm text-fg-bright focus:border-accent focus:outline-none`}
-    />
-  );
 }
 
 // The weekday multi-select: a trigger summarising the chosen days and a

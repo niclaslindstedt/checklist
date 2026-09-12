@@ -139,6 +139,16 @@ export function ShowcasePage() {
               due date.
             </li>
             <li>
+              <strong className="text-fg-bright">
+                Repeat without a deadline
+              </strong>{" "}
+              — set a repeat on its own and there is nothing to be late for:
+              tick the item off and it comes back unchecked at the top of the
+              list once the cadence comes round, which is what a shopping list
+              wants (&ldquo;buy milk every week or so&rdquo;). A daily repeat
+              also picks the time of day it returns.
+            </li>
+            <li>
               <strong className="text-fg-bright">Hold work back</strong> — the
               same clock sets a &ldquo;Not before&rdquo; day: the item&rsquo;s
               checkbox stays shut until that day arrives, and it sinks to the

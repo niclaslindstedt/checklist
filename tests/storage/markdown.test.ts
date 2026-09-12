@@ -770,6 +770,66 @@ describe("markdown codec", () => {
     });
   });
 
+  describe("refreshes (a repeat with no due date)", () => {
+    const refreshing: Checklist = {
+      ...checklist,
+      items: [
+        {
+          id: "1",
+          title: "Buy milk",
+          checked: false,
+          recurrence: { unit: "week", interval: 1 },
+        },
+        {
+          id: "2",
+          title: "Water the plants",
+          checked: true,
+          recurrence: { unit: "day", interval: 2, at: "07:00" },
+          refreshAt: "2026-07-22T05:00:00.000Z",
+        },
+      ],
+    };
+
+    it("renders a standalone repeat marker, with the pending wait", () => {
+      const md = checklistToMarkdown(refreshing);
+      expect(md).toContain("- [ ] Buy milk *(every week)*");
+      expect(md).toContain(
+        "- [x] Water the plants *(every 2 days at 07:00, back 2026-07-22T05:00:00.000Z)*",
+      );
+    });
+
+    it("round-trips the cadence, its time, and the wait", () => {
+      const parsed = parseEntry(checklistToMarkdown(refreshing));
+      expect(parsed?.kind).toBe("checklist");
+      if (parsed?.kind === "checklist") {
+        const items = parsed.checklist.items;
+        expect(items[0]?.recurrence).toEqual({ unit: "week", interval: 1 });
+        expect(items[0]?.deadline).toBeUndefined();
+        expect(items[0]?.refreshAt).toBeUndefined();
+        expect(items[1]?.recurrence).toEqual({
+          unit: "day",
+          interval: 2,
+          at: "07:00",
+        });
+        expect(items[1]?.refreshAt).toBe("2026-07-22T05:00:00.000Z");
+      }
+    });
+
+    it("leaves the wait off the clipboard shape", () => {
+      const body = checklistBodyMarkdown(refreshing, {
+        categoryMarkers: false,
+      });
+      expect(body).toContain("- [ ] Buy milk *(every week)*");
+      expect(body).not.toContain("back 2026");
+    });
+
+    it("recovers a repeat from a pasted checklist", () => {
+      const items = parseItemsFromMarkdown("- [ ] Buy milk *(every week)*");
+      expect(items[0]?.title).toBe("Buy milk");
+      expect(items[0]?.recurrence).toEqual({ unit: "week", interval: 1 });
+    });
+  });
+
   describe("not-before gates", () => {
     const gated: Checklist = {
       ...checklist,

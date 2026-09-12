@@ -1285,7 +1285,7 @@ describe("setItemTiming", () => {
     });
   });
 
-  it("drops a recurrence supplied without a deadline", () => {
+  it("keeps a recurrence supplied without a deadline — a refresh", () => {
     const c = setItemTiming(
       listOf("A"),
       "i1",
@@ -1293,7 +1293,24 @@ describe("setItemTiming", () => {
       LATER,
     );
     expect(findItem(c.items, "i1")?.deadline).toBeUndefined();
-    expect(findItem(c.items, "i1")?.recurrence).toBeUndefined();
+    expect(findItem(c.items, "i1")?.recurrence).toEqual({
+      unit: "week",
+      interval: 2,
+    });
+  });
+
+  it("keeps a daily repeat's time of day", () => {
+    const c = setItemTiming(
+      listOf("A"),
+      "i1",
+      timing({ recurrence: { unit: "day", interval: 1, at: "07:30" } }),
+      LATER,
+    );
+    expect(findItem(c.items, "i1")?.recurrence).toEqual({
+      unit: "day",
+      interval: 1,
+      at: "07:30",
+    });
   });
 
   it("clears the deadline and any recurrence with it", () => {

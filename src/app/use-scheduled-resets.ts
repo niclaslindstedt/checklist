@@ -1,22 +1,25 @@
-// Applies the checklists' reset schedules. A scheduled reset can only happen
-// while the app is running, so this hook re-checks the document for due
-// resets at the moments that matter — once the backend's first load lands
-// (the "opened the app" case), whenever the tab comes back into view (the
-// installed PWA is resumed rather than relaunched), and on a coarse timer so
-// a list left open across its reset time still turns over. Each due list is
-// unchecked through the same commit path as a user edit (visible document,
-// debounced save, undo timeline), so the reset is recoverable, and a toast
-// says which list turned over.
+// Applies the two scheduled things that put checkmarks back: a checklist's
+// **reset schedule** (the whole list turns over) and an item's **refresh** (a
+// repeat with no due date brings that one item back — see
+// `domain/item-refresh.ts`). Both can only happen while the app is running, so
+// this hook re-checks the document at the moments that matter — once the
+// backend's first load lands (the "opened the app" case), whenever the tab
+// comes back into view (the installed PWA is resumed rather than relaunched),
+// and on a coarse timer so a list left open across its moment still turns
+// over. Everything due goes through the same commit path as a user edit
+// (visible document, debounced save, undo timeline), so it is recoverable,
+// and a toast says what came back.
 //
-// Two guards keep a reset from firing twice:
+// Two guards keep either from firing twice:
 //
-//  - The document records the occurrence each reset was applied against
-//    (`lastResetAt`), so across launches and devices the same occurrence is
-//    never re-applied — the pure `dueResets` reads it.
-//  - A per-session memory of the occurrences applied here covers the one
-//    path the document can't: an undo. Undoing a reset restores the checks
-//    *and* the older `lastResetAt`, which would otherwise make the very next
-//    check re-apply the occurrence the user just reverted.
+//  - The document records what was applied — `lastResetAt` for a list's
+//    occurrence, and for an item the `refreshAt` stamp that the refresh
+//    clears — so across launches and devices the same turn-over is never
+//    re-applied; the pure `dueResets` / `dueRefreshes` read it.
+//  - A per-session memory of what was applied here covers the one path the
+//    document can't: an undo. Undoing restores the checks *and* the older
+//    stamp, which would otherwise make the very next check re-apply the thing
+//    the user just reverted.
 //
 // Lists whose schedule asks for it are queued for the pop-up
 // (`ResetPopupModal`): the freshly reset list shown over whatever list is on
@@ -27,7 +30,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // the same always-populated `{ current: T }` shape `useRef<T>(init)` returns.
 import type { MutableRef } from "preact/hooks";
 
-import { applyResets, dueResets } from "../domain/checklists.ts";
+import {
+  applyRefreshes,
+  applyResets,
+  dueRefreshes,
+  dueResets,
+} from "../domain/checklists.ts";
 import type { Snapshot } from "../domain/types.ts";
 import type { TFunction } from "../i18n";
 import type { Notify } from "./notify.ts";
@@ -69,6 +77,9 @@ export function useScheduledResets(deps: {
   const [popupQueue, setPopupQueue] = useState<string[]>([]);
   // Occurrences applied in this session, by list id — the undo guard.
   const applied = useRef(new Map<string, string>());
+  // Item refreshes applied in this session, as `<listId>:<itemId>:<refreshAt>`
+  // — the same undo guard, at item granularity.
+  const refreshed = useRef(new Set<string>());
 
   // Held in a ref so the effects below can call the latest check without
   // re-subscribing the listeners on every render.
@@ -76,22 +87,55 @@ export function useScheduledResets(deps: {
   checkRef.current = () => {
     const prev = docRef.current;
     const at = now();
-    const due = dueResets(prev, at).filter(
+    const resets = dueResets(prev, at).filter(
       (d) => applied.current.get(d.checklist.id) !== d.resetAt,
     );
-    if (due.length === 0) return;
-    for (const d of due) applied.current.set(d.checklist.id, d.resetAt);
-    const next = applyResets(prev, due, at);
-    // One undo entry per pass, labelled with the first list (the usual case
-    // is a single list turning over); the toast names each.
-    const label = t("toast.listReset", { name: due[0]!.checklist.name });
+    // A list turning over wholesale already unchecks the items due back in
+    // it, so a refresh in the same pass would only fight it — and the list
+    // reset is the coarser, more visible of the two. Let it win.
+    const resetIds = new Set(resets.map((d) => d.checklist.id));
+    const refreshes = dueRefreshes(prev, at)
+      .filter((d) => !resetIds.has(d.checklist.id))
+      .map((d) => ({
+        ...d,
+        items: d.items.filter(
+          (it) =>
+            !refreshed.current.has(
+              `${d.checklist.id}:${it.id}:${it.refreshAt}`,
+            ),
+        ),
+      }))
+      .filter((d) => d.items.length > 0);
+    if (resets.length === 0 && refreshes.length === 0) return;
+    for (const d of resets) applied.current.set(d.checklist.id, d.resetAt);
+    for (const d of refreshes) {
+      for (const it of d.items) {
+        refreshed.current.add(`${d.checklist.id}:${it.id}:${it.refreshAt}`);
+      }
+    }
+    const next = applyRefreshes(applyResets(prev, resets, at), refreshes, at);
+    // One toast per list that turned over, whichever way it did.
+    const messages = [
+      ...resets.map((d) => t("toast.listReset", { name: d.checklist.name })),
+      ...refreshes.map((d) =>
+        d.items.length === 1
+          ? t("toast.itemRefreshed", {
+              title: d.items[0]!.title,
+              name: d.checklist.name,
+            })
+          : t("toast.itemsRefreshed", {
+              count: d.items.length,
+              name: d.checklist.name,
+            }),
+      ),
+    ];
+    // One undo entry per pass, labelled with the first message (the usual
+    // case is a single list turning over).
     setDoc(next);
     scheduleSave(next);
-    record(next, label);
-    for (const d of due) {
-      notify(t("toast.listReset", { name: d.checklist.name }));
-    }
-    const popups = due
+    record(next, messages[0]!);
+    for (const message of messages) notify(message);
+    const popups = resets
       .filter((d) => d.checklist.resetSchedule?.popUp)
       .map((d) => d.checklist.id);
     if (popups.length > 0) {

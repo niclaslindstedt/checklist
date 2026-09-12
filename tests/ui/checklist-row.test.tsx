@@ -263,6 +263,38 @@ describe("ChecklistRow date row", () => {
     renderRow();
     expect(screen.queryByText(/Overdue/)).toBeNull();
   });
+
+  it("shows a repeat on its own for an undated refreshing item", () => {
+    renderRow({
+      item: { ...item, recurrence: { unit: "week", interval: 1 } },
+    });
+    // No due date to colour, no day to name — just the cadence it comes back on.
+    expect(screen.getByTitle("Repeat")).toBeTruthy();
+    expect(screen.getByText("every week")).toBeTruthy();
+    expect(screen.queryByTitle("Due date")).toBeNull();
+  });
+
+  it("spells out a daily repeat's time of day", () => {
+    renderRow({
+      item: { ...item, recurrence: { unit: "day", interval: 1, at: "07:00" } },
+    });
+    expect(screen.getByText("every day at 07:00")).toBeTruthy();
+  });
+});
+
+describe("ChecklistRow category add button", () => {
+  it("takes the click pointer on hover", () => {
+    renderRow({
+      item: { ...item, category: true },
+      onAddChild: noop,
+    });
+    // Tailwind's preflight leaves a bare <button> on the default arrow, so the
+    // affordance has to ask for the pointer explicitly.
+    expect(
+      screen.getByRole("button", { name: "Add item to this category" })
+        .className,
+    ).toContain("cursor-pointer");
+  });
 });
 
 describe("ChecklistRow title wrapping", () => {

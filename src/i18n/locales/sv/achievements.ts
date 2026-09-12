@@ -140,6 +140,12 @@ const achievements: AchievementsCatalog = {
       learnMore:
         "Samma klocka som sätter ett förfallodatum sätter också ett ”Tidigast”-datum — den tidigaste dagen posten får bockas av. Fram till dess är rutan låst och en enkel grå rad ovanför posten berättar när den öppnar; på dagen försvinner raden och rutan fungerar som vilken annan som helst. Använd det för sådant som helt enkelt inte kan börja än: blanketten som inte kommer förrän den första i månaden, uppföljningssamtalet du inte bör ringa före nästa vecka.",
     },
+    onRepeat: {
+      name: "På repeat",
+      condition: "Ställ in en post på att upprepas.",
+      learnMore:
+        "Klockans ”Upprepa” fungerar både med och utan förfallodatum, och de två betyder olika saker. Sätt en upprepning bredvid ett förfallodatum, så flyttas datumet fram ett intervall när du bockar av posten i stället för att den försvinner. Sätt en upprepning helt på egen hand — varje dag, var 3:e dag, varje vecka ungefär — och det finns inget att bli sen till: du bockar av posten, den vilar, och när intervallet har gått kommer den tillbaka omarkerad högst upp i listan, redo att göras igen. Det är den formen en inköpslista vill ha. Mjölk varje vecka, soptunnan varje tisdag, vattna blommorna varannan dag kl. 07:00 — en daglig upprepning väljer sitt eget klockslag, eftersom ”varje dag” utan timme annars skulle vända precis när du råkade bocka av rutan sist.",
+    },
     clockwork: {
       name: "Urverk",
       condition: "Sätt en checklista på ett återställningsschema.",

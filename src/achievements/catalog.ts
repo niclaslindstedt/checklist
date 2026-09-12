@@ -52,6 +52,7 @@ import {
   PlusGlyph,
   RefreshGlyph,
   RegexGlyph,
+  RepeatGlyph,
   RestoreGlyph,
   SaveGlyph,
   ScaleTextGlyph,
@@ -117,6 +118,8 @@ const hasGatedItem = (snap: Snapshot) =>
     snap,
     (it) => typeof it.notBefore === "string" && it.notBefore !== "",
   );
+const hasRepeatingItem = (snap: Snapshot) =>
+  someItem(snap, (it) => it.recurrence !== undefined);
 const hasScheduledChecklist = (snap: Snapshot) =>
   snap.checklists.some((c) => c.resetSchedule !== undefined);
 
@@ -303,6 +306,20 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
       slices: (s) => [s.snapshot],
       predicate: (prev, next) =>
         !hasGatedItem(prev.snapshot) && hasGatedItem(next.snapshot),
+    },
+  },
+  // An item that comes back around — whether it rolls a due date or, with no
+  // due date at all, simply refreshes itself on a cadence.
+  {
+    id: "onRepeat",
+    tier: "intermediate",
+    glyph: RepeatGlyph,
+    hasLearnMore: true,
+    trigger: {
+      kind: "derived",
+      slices: (s) => [s.snapshot],
+      predicate: (prev, next) =>
+        !hasRepeatingItem(prev.snapshot) && hasRepeatingItem(next.snapshot),
     },
   },
   // A list that wipes its own checkmarks on a schedule — the moment a checklist

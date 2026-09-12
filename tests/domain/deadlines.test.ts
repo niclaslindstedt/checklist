@@ -31,6 +31,17 @@ describe("deadlineStatus", () => {
 });
 
 describe("addRecurrence", () => {
+  it("adds whole days", () => {
+    expect(addRecurrence("2026-07-15", { unit: "day", interval: 1 })).toBe(
+      "2026-07-16",
+    );
+    // Across a month boundary, and with the time of day along for the ride
+    // (which the calendar-day maths ignores).
+    expect(
+      addRecurrence("2026-07-30", { unit: "day", interval: 3, at: "07:00" }),
+    ).toBe("2026-08-02");
+  });
+
   it("adds whole weeks as days", () => {
     expect(addRecurrence("2026-07-15", { unit: "week", interval: 1 })).toBe(
       "2026-07-22",

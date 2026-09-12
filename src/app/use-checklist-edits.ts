@@ -129,11 +129,11 @@ export interface ChecklistEdits {
   toggleItemInList: (listId: string, itemId: string) => void;
   /**
    * Set or clear an item's whole timing — the clock affordance on a
-   * swiped-open row. Each field is a `YYYY-MM-DD` day (or `null` to clear
-   * it): `notBefore` is the earliest day the item may be checked off,
-   * `deadline` its due date, and `recurrence` how that due date repeats
-   * (dropped with the deadline, which anchors it). A no-op leaves the list
-   * untouched.
+   * swiped-open row. `notBefore` is the earliest day the item may be checked
+   * off and `deadline` its due date (each a `YYYY-MM-DD` day, or `null` to
+   * clear it); `recurrence` is how the item repeats, either rolling the due
+   * date beside it or, on its own, bringing the item back unchecked on that
+   * cadence. A no-op leaves the list untouched.
    */
   setTiming: (itemId: string, timing: TimingPatch) => void;
   /**
@@ -469,7 +469,7 @@ export function useChecklistEdits(deps: {
       // returns the same list — skip the write and the undo step.
       if (next === found.checklist) return;
       const label =
-        timing.notBefore || timing.deadline
+        timing.notBefore || timing.deadline || timing.recurrence
           ? t("toast.timingSet", { title: found.item.title })
           : t("toast.timingCleared", { title: found.item.title });
       commit(next, label);

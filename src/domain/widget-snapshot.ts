@@ -27,7 +27,7 @@ import {
 } from "./item-display.ts";
 import { findItem, flattenItems } from "./item-tree.ts";
 import { toggleItem } from "./item-ops.ts";
-import type { Checklist, Snapshot } from "./types.ts";
+import type { Checklist, Recurrence, Snapshot } from "./types.ts";
 
 /** The current widget-snapshot format version, bumped on a breaking shape change. */
 export const WIDGET_SNAPSHOT_VERSION = 1 as const;
@@ -114,7 +114,7 @@ export interface WidgetSnapshotOptions {
 export function resolvedDeadline(
   item: {
     deadline?: string;
-    recurrence?: { unit: "week" | "month" | "year"; interval: number };
+    recurrence?: Recurrence;
   },
   now: string,
 ): string | undefined {

@@ -147,6 +147,12 @@ const achievements = {
       learnMore:
         "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be ticked off. Until that day comes round the item's box stays shut and a plain grey line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
     },
+    onRepeat: {
+      name: "On Repeat",
+      condition: "Set an item to repeat.",
+      learnMore:
+        "The clock's “Repeat” picker works with or without a due date, and the two read differently. Set a repeat beside a due date and checking the item rolls that date on one interval instead of ticking it away. Set one on its own — every day, every 3 days, every week or so — and there is nothing to be late for: you tick the item off, it rests, and once the cadence comes round it returns unchecked at the top of the list, ready to do again. That second shape is what a shopping list wants. Milk every week, bin day every Tuesday, water the plants every 2 days at 07:00 — a daily repeat picks its own time of day, since “every day” with no hour would turn over at whatever moment you last ticked the box.",
+    },
     clockwork: {
       name: "Clockwork",
       condition: "Put a checklist on a reset schedule.",
