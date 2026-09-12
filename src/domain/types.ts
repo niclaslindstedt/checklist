@@ -10,19 +10,35 @@ export interface Item {
   required?: boolean;
 }
 
-/** The unit a recurring deadline repeats on. */
-export type RecurrenceUnit = "week" | "month" | "year";
+/** The unit a repeat counts in. */
+export type RecurrenceUnit = "day" | "week" | "month" | "year";
 
 /**
- * How a dated item repeats. `interval` is a whole number of `unit`s (>= 1) —
- * "every 2 weeks" is `{ unit: "week", interval: 2 }`. Only meaningful
- * alongside a `deadline`, which anchors the schedule: checking a recurring
- * item rolls its `deadline` forward one interval (see `toggleItem`) instead
- * of ticking it off, so the task reappears on its next due date.
+ * How an item repeats. `interval` is a whole number of `unit`s (>= 1) —
+ * "every 2 weeks" is `{ unit: "week", interval: 2 }`.
+ *
+ * A repeat stands on its own; it does **not** need a `deadline`. Which of the
+ * two shapes an item takes depends on whether it also carries one:
+ *
+ * - **With a due date** the repeat rolls that date: checking the item
+ *   advances its `deadline` by one interval (see `toggleItem`) instead of
+ *   ticking it off, so the task reappears on its next due date.
+ * - **Without a due date** the repeat is a **refresh**: checking the item
+ *   ticks it off normally and stamps {@link ChecklistItem.refreshAt} with the
+ *   instant it is due back. When that instant passes, the item returns
+ *   unchecked at the top of its list (see `item-refresh.ts`). This is the
+ *   "buy milk every week or so" shape — a cadence with nothing to be late for.
  */
 export interface Recurrence {
   unit: RecurrenceUnit;
   interval: number;
+  /**
+   * The local time of day (`HH:MM`, 24-hour) a refresh falls due, offered by
+   * the timing modal for a daily repeat — "back every morning at 07:00".
+   * Absent means the refresh lands at the same time of day the item was
+   * checked off, which is what a weekly / monthly / yearly cadence wants.
+   */
+  at?: string;
 }
 
 /**
@@ -122,12 +138,21 @@ export interface ChecklistItem extends Item {
    */
   notBefore?: string;
   /**
-   * How this item's {@link deadline} repeats, if at all. Only carried
-   * alongside a `deadline` (recurrence needs an anchor date); checking a
-   * recurring item advances its `deadline` by one interval and leaves it
-   * unchecked rather than ticking it off. Absent on a one-off dated item.
+   * How this item repeats, if at all — independent of {@link deadline}.
+   * Alongside a due date the repeat rolls that date forward each time the
+   * item is checked; on its own it is a **refresh** that brings the item back
+   * unchecked once {@link refreshAt} passes. Absent on a one-off item.
    */
   recurrence?: Recurrence;
+  /**
+   * When a checked **refreshing** item (a {@link recurrence} with no
+   * {@link deadline}) is due back, as an ISO-8601 instant. Stamped by
+   * `toggleItem` on the false→true flip from the item's cadence and cleared
+   * the moment the refresh is applied — or the box is unticked by hand — so
+   * it only ever exists while the item is resting. Persisted so the wait
+   * survives a reload, a device swap, and the markdown backend's round trip.
+   */
+  refreshAt?: string;
   /**
    * When true, this item is a **category** — a header the user promoted from
    * an ordinary item (via the row's long-press / right-click menu, offered
@@ -240,11 +265,11 @@ export type ResetSchedulePatch = Omit<ResetSchedule, "since">;
 
 /**
  * A complete replacement for an item's timing, as the timing modal commits it:
- * the earliest day it may be checked off, its due date, and how that due date
- * repeats. Every field is absolute rather than a patch — `null` clears — so
- * one save can set one date and drop another. `notBefore` and `deadline` are
- * independent; `recurrence` only survives alongside a `deadline`, which
- * anchors it (see `setItemTiming`).
+ * the earliest day it may be checked off, its due date, and how it repeats.
+ * Every field is absolute rather than a patch — `null` clears — so one save
+ * can set one and drop another. All three are independent: an item may repeat
+ * with no due date (a refresh), be dated with no repeat, or carry both (see
+ * `setItemTiming`).
  */
 export interface TimingPatch {
   notBefore: string | null;

@@ -337,4 +337,146 @@ describe("TimingModal", () => {
       recurrence: { unit: "month", interval: 1 },
     });
   });
+
+  describe("a repeat with no due date", () => {
+    it("offers the repeat picker on an undated item and saves a refresh", () => {
+      const onSubmit = vi.fn();
+      render(<TimingModal item={base} onSubmit={onSubmit} onClose={noop} />);
+      const picker = screen.getByRole("combobox", { name: "Repeat" });
+      expect((picker as HTMLButtonElement).disabled).toBe(false);
+      fireEvent.click(picker);
+      fireEvent.click(screen.getByRole("option", { name: "weeks" }));
+      fireEvent.click(screen.getByText("Save"));
+      expect(onSubmit).toHaveBeenCalledWith({
+        notBefore: null,
+        deadline: null,
+        recurrence: { unit: "week", interval: 1 },
+      });
+    });
+
+    it("explains the refresh when the repeat stands alone", () => {
+      render(
+        <TimingModal
+          item={{ ...base, recurrence: { unit: "week", interval: 1 } }}
+          onSubmit={vi.fn()}
+          onClose={noop}
+        />,
+      );
+      expect(screen.queryByText(/comes back unchecked/)).not.toBeNull();
+    });
+
+    it("stays quiet when a due date anchors the repeat", () => {
+      render(
+        <TimingModal
+          item={{
+            ...base,
+            deadline: "2026-08-01",
+            recurrence: { unit: "week", interval: 1 },
+          }}
+          onSubmit={vi.fn()}
+          onClose={noop}
+        />,
+      );
+      expect(screen.queryByText(/comes back unchecked/)).toBeNull();
+    });
+
+    it("offers Clear timing for an item whose only timing is a repeat", () => {
+      const onSubmit = vi.fn();
+      render(
+        <TimingModal
+          item={{ ...base, recurrence: { unit: "week", interval: 1 } }}
+          onSubmit={onSubmit}
+          onClose={noop}
+        />,
+      );
+      fireEvent.click(screen.getByText("Clear timing"));
+      expect(onSubmit).toHaveBeenCalledWith({
+        notBefore: null,
+        deadline: null,
+        recurrence: null,
+      });
+    });
+  });
+
+  describe("a daily repeat", () => {
+    it("reveals the time fields, defaulting to 08:00", () => {
+      render(<TimingModal item={base} onSubmit={vi.fn()} onClose={noop} />);
+      expect(screen.queryByLabelText("Hour")).toBeNull();
+      fireEvent.click(screen.getByRole("combobox", { name: "Repeat" }));
+      fireEvent.click(screen.getByRole("option", { name: "days" }));
+      expect((screen.getByLabelText("Hour") as HTMLInputElement).value).toBe(
+        "8",
+      );
+      expect((screen.getByLabelText("Minute") as HTMLInputElement).value).toBe(
+        "00",
+      );
+    });
+
+    it("saves the chosen time, zero-padded", () => {
+      const onSubmit = vi.fn();
+      render(<TimingModal item={base} onSubmit={onSubmit} onClose={noop} />);
+      fireEvent.click(screen.getByRole("combobox", { name: "Repeat" }));
+      fireEvent.click(screen.getByRole("option", { name: "days" }));
+      fireEvent.change(screen.getByLabelText("Hour"), {
+        target: { value: "7" },
+      });
+      fireEvent.change(screen.getByLabelText("Minute"), {
+        target: { value: "5" },
+      });
+      fireEvent.click(screen.getByText("Save"));
+      expect(onSubmit).toHaveBeenCalledWith({
+        notBefore: null,
+        deadline: null,
+        recurrence: { unit: "day", interval: 1, at: "07:05" },
+      });
+    });
+
+    it("prefills an existing time and clamps an out-of-range one on blur", () => {
+      const onSubmit = vi.fn();
+      render(
+        <TimingModal
+          item={{
+            ...base,
+            recurrence: { unit: "day", interval: 2, at: "06:30" },
+          }}
+          onSubmit={onSubmit}
+          onClose={noop}
+        />,
+      );
+      const hour = screen.getByLabelText("Hour") as HTMLInputElement;
+      expect(hour.value).toBe("6");
+      fireEvent.change(hour, { target: { value: "99" } });
+      fireDomEvent(hour, "focusout");
+      expect(hour.value).toBe("23");
+      fireEvent.click(screen.getByText("Save"));
+      expect(onSubmit).toHaveBeenCalledWith({
+        notBefore: null,
+        deadline: null,
+        recurrence: { unit: "day", interval: 2, at: "23:30" },
+      });
+    });
+
+    it("drops the time when the cadence moves off daily", () => {
+      const onSubmit = vi.fn();
+      render(
+        <TimingModal
+          item={{
+            ...base,
+            recurrence: { unit: "day", interval: 1, at: "06:30" },
+          }}
+          onSubmit={onSubmit}
+          onClose={noop}
+        />,
+      );
+      fireEvent.click(screen.getByRole("combobox", { name: "Repeat" }));
+      fireEvent.click(screen.getByRole("option", { name: "months" }));
+      expect(screen.queryByLabelText("Hour")).toBeNull();
+      fireEvent.click(screen.getByText("Save"));
+      expect(onSubmit).toHaveBeenCalledWith({
+        notBefore: null,
+        deadline: null,
+        recurrence: { unit: "month", interval: 1 },
+      });
+    });
+  });
 });

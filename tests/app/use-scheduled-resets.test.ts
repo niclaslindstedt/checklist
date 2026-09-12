@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-// Coverage for the scheduled-reset pass (use-scheduled-resets.ts) wired
-// through the public `useChecklist` composer: a list whose schedule came due
-// while the app was closed is unchecked once the backend load lands, the
-// occurrence is stamped and persisted, the pop-up queues when asked for, and
-// an undo doesn't re-trigger the same occurrence.
+// Coverage for the scheduled pass (use-scheduled-resets.ts) wired through the
+// public `useChecklist` composer, for both the things it puts back: a list
+// whose reset schedule came due while the app was closed is unchecked once the
+// backend load lands (the occurrence stamped and persisted, the pop-up queued
+// when asked for, and an undo not re-triggering it), and an item whose repeat
+// came round comes back unchecked at the top of its list.
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 
@@ -77,6 +78,26 @@ function scheduledList(schedule: ResetSchedule, id = "routine"): Checklist {
       { id: `${id}-bag`, title: "Bag", checked: true },
     ],
     resetSchedule: schedule,
+  };
+}
+
+/** A list holding a resting refreshing item, due back `hoursAgo` ago. */
+function refreshingList(hoursAgo: number, id = "shopping"): Checklist {
+  const back = new Date();
+  back.setHours(back.getHours() - hoursAgo);
+  return {
+    ...createChecklist(id, "Shopping", "2026-05-01T00:00:00.000Z"),
+    items: [
+      { id: "bread", title: "Bread", checked: false },
+      {
+        id: "milk",
+        title: "Milk",
+        checked: true,
+        checkedAt: "2026-05-01T00:00:00.000Z",
+        refreshAt: back.toISOString(),
+        recurrence: { unit: "week", interval: 1 },
+      },
+    ],
   };
 }
 
@@ -157,6 +178,65 @@ describe("useChecklist scheduled resets", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     expect(result.current.items.every((it) => it.checked)).toBe(true);
+  });
+
+  it("brings a due repeating item back, unchecked and at the top", async () => {
+    const adapter = memoryAdapter({
+      templates: [],
+      checklists: [refreshingList(1)],
+    });
+    const notify = vi.fn();
+    renderHook(() => useChecklist(adapter, "bottom", notify));
+    await act(async () => {});
+
+    await waitFor(() =>
+      expect(parse(adapter.stored()).checklists[0]!.items[0]!.id).toBe("milk"),
+    );
+    const milk = parse(adapter.stored()).checklists[0]!.items[0]!;
+    expect(milk.checked).toBe(false);
+    expect(milk.refreshAt).toBeUndefined();
+    expect(milk.checkedAt).toBeUndefined();
+    // The cadence survives — the item is due again, not done with.
+    expect(milk.recurrence).toEqual({ unit: "week", interval: 1 });
+    expect(notify).toHaveBeenCalledWith("“Milk” is back on “Shopping”");
+  });
+
+  it("leaves a repeating item resting until its moment", async () => {
+    const adapter = memoryAdapter({
+      templates: [],
+      checklists: [refreshingList(-1)],
+    });
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    expect(result.current.items.map((it) => it.id)).toEqual(["bread", "milk"]);
+    expect(parse(adapter.stored()).checklists[0]!.items[1]!.checked).toBe(true);
+  });
+
+  it("does not bring back a repeating item the user has just undone", async () => {
+    const adapter = memoryAdapter({
+      templates: [],
+      checklists: [refreshingList(1)],
+    });
+    const { result } = renderHook(() => useChecklist(adapter));
+    await act(async () => {});
+    await waitFor(() =>
+      expect(parse(adapter.stored()).checklists[0]!.items[0]!.id).toBe("milk"),
+    );
+    act(() => {
+      result.current.undo();
+    });
+    await waitFor(() =>
+      expect(result.current.items.map((it) => it.id)).toEqual([
+        "bread",
+        "milk",
+      ]),
+    );
+    // The undo restores the (already-passed) stamp, which would otherwise make
+    // the very next check bring the item back again.
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(result.current.items.map((it) => it.id)).toEqual(["bread", "milk"]);
   });
 
   it("puts a list on a schedule, stamping the anchor, and takes it off again", async () => {

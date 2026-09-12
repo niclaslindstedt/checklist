@@ -15,6 +15,8 @@ const toast = {
   itemChecked: "Checked “{title}”",
   itemUnchecked: "Unchecked “{title}”",
   itemRescheduled: "Rescheduled “{title}”",
+  itemRefreshed: "“{title}” is back on “{name}”",
+  itemsRefreshed: "{count} items are back on “{name}”",
   timingSet: "Set the timing on “{title}”",
   timingCleared: "Cleared the timing on “{title}”",
   allChecked: "Checked all items",

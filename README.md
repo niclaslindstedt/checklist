@@ -28,6 +28,14 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   a theme picker: eleven presets (One Dark/Light, Dracula, Monokai, GitHub
   Dark/Light, Solarized Light, Quiet Light, Excel, System) plus a fully
   custom theme, four fonts, and an adjustable text size.
+- **Deadlines and repeats.** Swipe a row **left** and tap the clock to
+  give an item a due date, a "not before" day that keeps its box shut
+  until then, or a repeat. A repeat beside a due date rolls that date
+  each time you check the item off; a repeat **on its own** has nothing
+  to be late for — tick the item and it comes back unchecked at the top
+  of the list once the cadence comes round, which is what "buy milk every
+  week or so" actually means. A daily repeat picks the time of day it
+  returns.
 - **Scheduled resets.** Swipe a list **right** in the sidebar (or
   right-click it) and tap the clock to make it uncheck itself on a
   schedule — every so many days, weeks or months, or on chosen weekdays,

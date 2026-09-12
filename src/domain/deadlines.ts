@@ -68,18 +68,23 @@ export function isHeldBack(item: { notBefore?: string }, now: string): boolean {
 }
 
 /**
- * Advance a `YYYY-MM-DD` day by one recurrence interval. Weeks add
- * `interval * 7` days; months and years shift the month / year and clamp the
- * day of month so the 31st + one month lands on the shorter month's last day
- * (and Feb 29 + one year on Feb 28).
+ * Advance a `YYYY-MM-DD` day by one recurrence interval. Days and weeks add
+ * whole days (`interval` and `interval * 7`); months and years shift the
+ * month / year and clamp the day of month so the 31st + one month lands on
+ * the shorter month's last day (and Feb 29 + one year on Feb 28).
+ *
+ * A recurrence's `at` time of day plays no part here — this is calendar-day
+ * arithmetic over a `deadline`. The time only matters to a refresh, whose
+ * instants are worked out in local time by `item-refresh.ts`.
  */
 export function addRecurrence(
   deadline: string,
   recurrence: Recurrence,
 ): string {
   const [y, m, d] = deadline.split("-").map(Number);
-  if (recurrence.unit === "week") {
-    const dt = new Date(Date.UTC(y!, m! - 1, d! + recurrence.interval * 7));
+  if (recurrence.unit === "day" || recurrence.unit === "week") {
+    const step = recurrence.unit === "week" ? 7 : 1;
+    const dt = new Date(Date.UTC(y!, m! - 1, d! + recurrence.interval * step));
     return formatDay(
       dt.getUTCFullYear(),
       dt.getUTCMonth() + 1,

@@ -31,6 +31,12 @@ import { DeadlineIcon, NotBeforeIcon, RepeatIcon } from "./icons.tsx";
 // (`isHeldBack`). Formatting the dates and the recurrence summary is a
 // presentation concern and lives here; the buckets and the hold test are pure
 // domain.
+//
+// A repeat is drawn twice over, in the only two shapes it comes in: riding the
+// due date it rolls, or — with no due date beside it — standing alone as a
+// *refresh*, the cadence on which the item comes back unchecked. The second
+// shape is the whole row for a "buy milk every week or so" line, which is why
+// a recurrence alone is enough to draw one.
 
 // Urgency band → text colour. `later` stays muted; the rest warm up. The
 // tokens map to the theme (see `styles/palettes.css`): `meta` is the yellow
@@ -71,7 +77,7 @@ export function TimingRow({
   const status = deadline ? deadlineStatus(deadline, now) : null;
   const summary = recurrence ? recurrenceSummary(recurrence, t) : null;
 
-  if (!held && !deadline) return null;
+  if (!held && !deadline && !summary) return null;
 
   return (
     <div className="ml-16 flex items-center gap-2 pt-1 pb-0.5 text-[0.7rem] leading-none font-medium tracking-wide">
@@ -103,6 +109,18 @@ export function TimingRow({
           )}
         </span>
       )}
+      {/* A repeat with no due date — a refresh. There is no urgency to paint
+          and no day to name: the item simply comes back on this cadence, so
+          the glyph and the phrase are the whole story. */}
+      {!deadline && summary && (
+        <span
+          className="flex items-center gap-1 truncate text-muted"
+          title={t("app.timing.repeat")}
+        >
+          <RepeatIcon className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{summary}</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -120,13 +138,31 @@ function formatDay(day: string, lang: ReturnType<typeof useLang>): string {
   });
 }
 
-/** Human recurrence summary, e.g. "every 2 weeks" — pluralised per unit. */
+/**
+ * Human recurrence summary, e.g. "every 2 weeks" — pluralised per unit, with
+ * a daily repeat's time of day appended ("every day at 07:00") since that is
+ * the moment the item actually comes back.
+ */
 function recurrenceSummary(
+  recurrence: Recurrence,
+  t: ReturnType<typeof useT>,
+): string {
+  const cadence = cadenceSummary(recurrence, t);
+  return recurrence.at
+    ? t("app.timing.everyAt", { cadence, time: recurrence.at })
+    : cadence;
+}
+
+function cadenceSummary(
   recurrence: Recurrence,
   t: ReturnType<typeof useT>,
 ): string {
   const { unit, interval } = recurrence;
   const one = interval === 1;
+  if (unit === "day")
+    return one
+      ? t("app.timing.everyDayOne")
+      : t("app.timing.everyDayOther", { n: interval });
   if (unit === "week")
     return one
       ? t("app.timing.everyWeekOne")

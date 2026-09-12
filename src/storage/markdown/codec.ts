@@ -57,13 +57,29 @@ const REQUIRED_MARKER = "*(required)*";
 // `ChecklistBodyOptions.categoryMarkers`).
 const CATEGORY_MARKER = "*(category)*";
 
+// How a repeat is spelled inside a marker: `every week`, `every 2 weeks`,
+// `every day at 07:00` — a bare `every <unit>` for an interval of one and
+// `every <n> <unit>s` above, with the `at <time>` tail only on a repeat that
+// carries a time of day (see `Recurrence.at`).
+const EVERY_SRC = String.raw`every (?:(\d+) )?(day|week|month|year)s?(?: at (\d{1,2}:\d{2}))?`;
+
 // Trailing marker that carries an item's due date and (optionally) how it
 // repeats, e.g. `*(due 2026-07-20)*` or `*(due 2026-07-20, every 2 weeks)*`.
 // Rendered as an italic aside by every markdown viewer — human-readable and
-// round-trippable, in the same spirit as REQUIRED_MARKER. Recurrence emits a
-// bare `every <unit>` for an interval of one and `every <n> <unit>s` above.
-const DUE_MARKER_RE =
-  /\s*\*\(due (\d{4}-\d{2}-\d{2})(?:, every (?:(\d+) )?(week|month|year)s?)?\)\*/;
+// round-trippable, in the same spirit as REQUIRED_MARKER.
+const DUE_MARKER_RE = new RegExp(
+  String.raw`\s*\*\(due (\d{4}-\d{2}-\d{2})(?:, ${EVERY_SRC})?\)\*`,
+);
+
+// Trailing marker carrying a **refresh** — a repeat with no due date, which
+// brings the item back unchecked once its cadence comes round (see
+// `domain/item-refresh.ts`). e.g. `*(every week)*` or, while a checked item is
+// resting, `*(every day at 07:00, back 2026-07-21T05:00:00.000Z)*`. The
+// `back …` half is the stamped wait (`refreshAt`); it rides the persistence
+// shape only, like the category marker, since on the clipboard it is noise.
+const REFRESH_MARKER_RE = new RegExp(
+  String.raw`\s*\*\(${EVERY_SRC}(?:, back (\d{4}-\d{2}-\d{2}T[\d:.]+Z))?\)\*`,
+);
 
 // Trailing marker carrying an item's `not before` gate — the earliest day it
 // may be checked off — e.g. `*(not before 2026-07-20)*`. Written and read
@@ -402,20 +418,24 @@ function indentFor(depth: number): string {
   return "  ".repeat(depth);
 }
 
+// `persistenceMarkers` turns on the markers that exist purely so the document
+// survives a round trip through a file — the `*(category)*` flag and a
+// resting item's `back …` stamp. The clipboard renderer passes false: both
+// are noise to a human reading a pasted list.
 function renderChecklistItem(
   item: ChecklistItem,
   depth: number,
-  categoryMarkers: boolean,
+  persistenceMarkers: boolean,
 ): string[] {
   const pad = indentFor(depth);
   const box = item.checked ? "x" : " ";
-  const marker = categoryMarkers ? renderCategoryMarker(item) : "";
+  const marker = persistenceMarkers ? renderCategoryMarker(item) : "";
   const lines = [
-    `${pad}- [${box}] ${renderItemTitle(item)}${marker}${renderNotBeforeMarker(item)}${renderDueMarker(item)}`,
+    `${pad}- [${box}] ${renderItemTitle(item)}${marker}${renderNotBeforeMarker(item)}${renderDueMarker(item, persistenceMarkers)}`,
     ...renderNotes(item.notes, pad),
   ];
   for (const child of item.children ?? []) {
-    lines.push(...renderChecklistItem(child, depth + 1, categoryMarkers));
+    lines.push(...renderChecklistItem(child, depth + 1, persistenceMarkers));
   }
   return lines;
 }
@@ -430,18 +450,31 @@ function renderNotBeforeMarker(item: ChecklistItem): string {
   return item.notBefore ? ` *(not before ${item.notBefore})*` : "";
 }
 
-/** The ` *(due …)*` suffix for a dated item, or "" when it has no deadline. */
-function renderDueMarker(item: ChecklistItem): string {
-  if (!item.deadline) return "";
-  const parts = [`due ${item.deadline}`];
-  if (item.recurrence) parts.push(renderRecurrence(item.recurrence));
+/**
+ * The ` *(due …)*` / ` *(every …)*` suffix carrying an item's due date and /
+ * or its repeat, or "" when it has neither. A repeat rides the due marker
+ * when the item is dated and stands alone — as a refresh — when it is not.
+ * `stamps` carries the persistence-only `back …` half (see
+ * REFRESH_MARKER_RE); the clipboard renderer passes false.
+ */
+function renderDueMarker(item: ChecklistItem, stamps: boolean): string {
+  if (item.deadline) {
+    const parts = [`due ${item.deadline}`];
+    if (item.recurrence) parts.push(renderRecurrence(item.recurrence));
+    return ` *(${parts.join(", ")})*`;
+  }
+  if (!item.recurrence) return "";
+  const parts = [renderRecurrence(item.recurrence)];
+  if (stamps && item.refreshAt) parts.push(`back ${item.refreshAt}`);
   return ` *(${parts.join(", ")})*`;
 }
 
 function renderRecurrence(recurrence: Recurrence): string {
-  return recurrence.interval === 1
-    ? `every ${recurrence.unit}`
-    : `every ${recurrence.interval} ${recurrence.unit}s`;
+  const unit =
+    recurrence.interval === 1
+      ? `every ${recurrence.unit}`
+      : `every ${recurrence.interval} ${recurrence.unit}s`;
+  return recurrence.at ? `${unit} at ${recurrence.at}` : unit;
 }
 
 function renderItemTitle(item: ChecklistItem): string {
@@ -559,7 +592,11 @@ export interface ImportedItem {
   notBefore?: string;
   /** A due date (`YYYY-MM-DD`) recovered from a `*(due …)*` marker. */
   deadline?: string;
-  /** How the deadline repeats, recovered alongside it. Only with a deadline. */
+  /**
+   * How the item repeats, from the `*(due …, every …)*` tail or a standalone
+   * `*(every …)*` marker. Independent of `deadline`: on its own it describes a
+   * refresh (see `domain/item-refresh.ts`).
+   */
   recurrence?: Recurrence;
   /** True when a `*(category)*` marker flagged this as a category header. */
   category?: boolean;
@@ -590,7 +627,7 @@ export function parseItemsFromMarkdown(text: string): ImportedItem[] {
     if (raw.notes) item.notes = raw.notes;
     if (raw.notBefore) item.notBefore = raw.notBefore;
     if (raw.deadline) item.deadline = raw.deadline;
-    if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
+    if (raw.recurrence) item.recurrence = raw.recurrence;
     if (raw.category) item.category = true;
     if (raw.children && raw.children.length > 0) {
       item.children = raw.children.map(toImported);
@@ -609,6 +646,7 @@ type RawItem = {
   notBefore?: string;
   deadline?: string;
   recurrence?: Recurrence;
+  refreshAt?: string;
   category?: boolean;
   children?: RawItem[];
 };
@@ -620,7 +658,12 @@ function toChecklistItem(raw: RawItem, id: string): ChecklistItem {
   if (raw.archived) item.archived = true;
   if (raw.notBefore) item.notBefore = raw.notBefore;
   if (raw.deadline) item.deadline = raw.deadline;
-  if (raw.deadline && raw.recurrence) item.recurrence = raw.recurrence;
+  if (raw.recurrence) item.recurrence = raw.recurrence;
+  // The stamped wait only means anything on a checked refresh; anything else
+  // carrying one came from a hand-edited file.
+  if (raw.refreshAt && raw.checked && raw.recurrence && !raw.deadline) {
+    item.refreshAt = raw.refreshAt;
+  }
   if (raw.category) item.category = true;
   if (raw.children && raw.children.length > 0) {
     // Ids are regenerated deterministically from the path so a load with no
@@ -744,20 +787,41 @@ function parseItemLine(line: string): { indent: number; item: RawItem } | null {
       required: meta.required,
       ...(meta.notBefore ? { notBefore: meta.notBefore } : {}),
       ...(meta.deadline ? { deadline: meta.deadline } : {}),
-      ...(meta.deadline && meta.recurrence
-        ? { recurrence: meta.recurrence }
-        : {}),
+      ...(meta.recurrence ? { recurrence: meta.recurrence } : {}),
+      ...(meta.refreshAt ? { refreshAt: meta.refreshAt } : {}),
       ...(meta.category ? { category: true } : {}),
     },
   };
 }
 
+/**
+ * Build a `Recurrence` from an `every …` marker's three capture groups —
+ * the optional interval, the unit, and the optional `at` time. Shared by the
+ * due marker and the standalone refresh marker, which spell a repeat the same
+ * way.
+ */
+function recurrenceFrom(
+  interval: string | undefined,
+  unit: string,
+  at: string | undefined,
+): Recurrence {
+  const rec: Recurrence = {
+    unit: unit as RecurrenceUnit,
+    interval: interval ? Number(interval) : 1,
+  };
+  if (at) rec.at = at;
+  return rec;
+}
+
 // Peel the trailing `*(required)*` / `*(category)*` / `*(not before …)*` /
-// `*(due …)*` markers off an item's text, returning the clean title plus
-// whatever the markers carried. The two date markers may sit anywhere in the
-// string (each is spliced out in place); the tail then reads
+// `*(due …)*` / `*(every …)*` markers off an item's text, returning the clean
+// title plus whatever the markers carried. The date and repeat markers may sit
+// anywhere in the string (each is spliced out in place); the tail then reads
 // `title *(required)* *(category)*` (the order they render), so category is
 // peeled first and required last.
+//
+// The due marker is tried before the standalone repeat marker: an item can
+// carry only one repeat, and a dated one spells it inside `*(due …, every …)*`.
 function parseItemMeta(raw: string): {
   title: string;
   required: boolean;
@@ -765,20 +829,26 @@ function parseItemMeta(raw: string): {
   notBefore?: string;
   deadline?: string;
   recurrence?: Recurrence;
+  refreshAt?: string;
 } {
   let text = raw;
   let deadline: string | undefined;
   let recurrence: Recurrence | undefined;
+  let refreshAt: string | undefined;
   const due = DUE_MARKER_RE.exec(text);
   if (due) {
     deadline = due[1];
-    if (due[3]) {
-      recurrence = {
-        unit: due[3] as RecurrenceUnit,
-        interval: due[2] ? Number(due[2]) : 1,
-      };
-    }
+    if (due[3]) recurrence = recurrenceFrom(due[2], due[3], due[4]);
     text = text.slice(0, due.index) + text.slice(due.index + due[0].length);
+  } else {
+    const refresh = REFRESH_MARKER_RE.exec(text);
+    if (refresh?.[2]) {
+      recurrence = recurrenceFrom(refresh[1], refresh[2], refresh[3]);
+      refreshAt = refresh[4];
+      text =
+        text.slice(0, refresh.index) +
+        text.slice(refresh.index + refresh[0].length);
+    }
   }
   let notBefore: string | undefined;
   const gate = NOT_BEFORE_MARKER_RE.exec(text);
@@ -788,7 +858,15 @@ function parseItemMeta(raw: string): {
   }
   const { title: withoutCategory, category } = stripCategory(text);
   const { title, required } = stripRequired(withoutCategory);
-  return { title, required, category, notBefore, deadline, recurrence };
+  return {
+    title,
+    required,
+    category,
+    notBefore,
+    deadline,
+    recurrence,
+    refreshAt,
+  };
 }
 
 function stripRequired(raw: string): { title: string; required: boolean } {

@@ -8,6 +8,8 @@ const toast: ToastCatalog = {
   itemChecked: "Bockade av ”{title}”",
   itemUnchecked: "Bockade ur ”{title}”",
   itemRescheduled: "Schemalade om ”{title}”",
+  itemRefreshed: "”{title}” är tillbaka i ”{name}”",
+  itemsRefreshed: "{count} rader är tillbaka i ”{name}”",
   timingSet: "Satte tidsplanen för ”{title}”",
   timingCleared: "Tog bort tidsplanen från ”{title}”",
   allChecked: "Bockade av alla poster",

@@ -10,6 +10,8 @@
 // - `archive-ops.ts`   — archive/restore items and the archived-items queries.
 // - `item-ops.ts`      — add / edit / delete / toggle / bulk-check items.
 // - `item-display.ts`  — move / reorder and the display-order view transforms.
+// - `item-refresh.ts`  — repeats with no due date: when a checked item is due
+//                        back, and bringing it back to the top of its list.
 // - `templates.ts`     — template CRUD and extraction from a checklist.
 //
 // The item-level modules are generic over `ItemList` (the shape a `Checklist`
@@ -66,6 +68,16 @@ export {
   setItemTiming,
   toggleItem,
 } from "./item-ops.ts";
+
+export {
+  applyRefreshes,
+  dueRefreshes,
+  isRefreshing,
+  nextRefreshAt,
+  refreshItems,
+  DEFAULT_REFRESH_TIME,
+} from "./item-refresh.ts";
+export type { DueRefresh } from "./item-refresh.ts";
 
 export {
   applyResets,

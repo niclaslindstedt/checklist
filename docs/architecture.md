@@ -182,7 +182,14 @@ The types live in `src/domain/types.ts`, built on one shared base:
   ride the frontmatter as `reset:` / `reset-since:` / `reset-last:`.
 - `Item` — `{ id, title, notes?, required? }`, the base a `ChecklistItem`
   extends with `checked`, `checkedAt?`, `archived?`, `children?`,
-  `notBefore?`, `deadline?`, `recurrence?`, and `category?`.
+  `notBefore?`, `deadline?`, `recurrence?`, `refreshAt?`, and
+  `category?`. `recurrence` is `{ unit: "day" | "week" | "month" |
+  "year", interval, at? }` and stands on its own: with a `deadline` it
+  rolls that date, without one it is a *refresh*, and `refreshAt` is the
+  ISO-8601 instant a checked refreshing item is due back (absent while it
+  is unchecked). On the markdown backends a repeat with no due date rides
+  its own `*(every week)*` / `*(every day at 07:00, back <instant>)*`
+  marker on the item line.
 
 **Templates carry the checklist item model.** `Template.items` is
 `ChecklistItem[]`, the same array type a checklist holds, so a template

@@ -1434,8 +1434,8 @@ whole-document snapshot.
 A checklist item can carry a **timing**: a **not-before** day
 (`notBefore`), a **deadline** (`deadline`) — both optional
 `YYYY-MM-DD` days on `ChecklistItem` — and a **recurrence**
-(`recurrence`: `{ unit: "week" | "month" | "year", interval }`, only
-alongside a deadline). All three are set from one sheet: the **clock**
+(`recurrence`: `{ unit: "day" | "week" | "month" | "year", interval, at? }`).
+All three are set from one sheet: the **clock**
 button revealed on a left swipe (or the desktop right-click menu) opens
 `TimingModal` (`src/ui/TimingModal.tsx`) — a **not before** date picker,
 a **due date** picker, and a repeat picker, in that order — and commits
@@ -1447,9 +1447,9 @@ gate describes work that must be finished before it may be started. The
 due-date picker is handed the chosen gate as its `min` (see
 [date picker](#date-picker)) so those days are never offered, and pushing
 the gate past an already-chosen due date **clears** that date in front of
-the user rather than saving an impossible pair. Only the recurrence is
-bound to the deadline that anchors it, so clearing the date drops the
-repeat with it. **Clear
+the user rather than saving an impossible pair. The repeat is independent
+of both — see [Refresh](#refresh-a-repeat-with-no-due-date) for what it
+means on its own. **Clear
 timing** drops all three. The date fields are the custom
 [date picker](#date-picker), not a native `<input type="date">`. Tapping
 the clock also slides the swiped-open row shut (`useRowSwipe`'s `close`),
@@ -1523,19 +1523,74 @@ Four behaviours hang off an item's timing:
   dated-soonest-first and then the undated ones. That is the order you'd
   want, but it is emergent — `tests/domain/checklists.test.ts` pins it so
   reordering the transforms can't change it silently.
-- **Recurrence.** Checking a recurring item advances its `deadline` by
-  `nextOccurrence` (`src/domain/deadlines.ts`) instead of marking it
-  checked — the date-math helpers (`addRecurrence`, clamping the day of
-  month) live there. Giving any item a deadline unlocks the **On the
-  Clock** [achievement](#achievements); holding one back unlocks
-  **Not Yet**.
+- **Recurrence.** Checking a recurring item that also has a **due date**
+  advances that `deadline` by `nextOccurrence`
+  (`src/domain/deadlines.ts`) instead of marking it checked — the
+  date-math helpers (`addRecurrence`, clamping the day of month) live
+  there. A repeat with **no** due date is a
+  [refresh](#refresh-a-repeat-with-no-due-date) instead. Giving any item a
+  deadline unlocks the **On the Clock** [achievement](#achievements);
+  holding one back unlocks **Not Yet**; setting any repeat unlocks
+  **On Repeat**.
 
 On the file / cloud backends both dates round-trip through the markdown
 codec as italic markers on the item line
 (`src/storage/markdown/codec.ts`) — `*(not before 2026-07-01)*` and
 `*(due 2026-07-20, every 2 weeks)*`, written in that order and parsed
 independently — the same human-readable, tool-friendly convention as
-`*(required)*`.
+`*(required)*`. A repeat with no due date writes its own marker,
+`*(every week)*`.
+
+### Refresh (a repeat with no due date)
+
+A **refresh** is what a `recurrence` means when the item carries no
+`deadline` beside it: a cadence with nothing to be late for. You tick the
+item off like any other, it rests, and once the cadence comes round it
+returns **unchecked at the top of its list**, ready to be done again.
+That is the shape a shopping list wants — "buy milk every week or so" has
+a rhythm but no due date, and the old rule that a repeat needed one only
+ever invented a date the user didn't mean.
+
+The maths and the verbs live in `src/domain/item-refresh.ts`:
+
+- **The wait is stamped, not derived.** Checking a refreshing item makes
+  `toggleItem` compute `nextRefreshAt(recurrence, now)` and store it on
+  the item as `refreshAt` (an ISO-8601 instant). Everything afterwards is
+  a comparison against that stamp, so the recurrence maths runs once, and
+  the wait survives a reload, a device swap, and the markdown round trip
+  because it is part of the document. Unchecking by hand clears it; so
+  does any change to the repeat itself (a new cadence, a removed repeat,
+  or a due date pinned to it), since the stamp was measured against
+  timing the item no longer has.
+- **Counted from the check, in local time.** `nextRefreshAt` steps one
+  whole interval on from the **local** day the box was ticked — buying
+  milk on Thursday buys a week from Thursday, not a week from whenever
+  the repeat was first set. A **daily** repeat also carries a time of day
+  (`Recurrence.at`, `HH:MM`, default `08:00`, offered by the modal only
+  for the daily cadence) and lands at that hour; the coarser cadences
+  come back at whatever time of day the item was checked. Month and year
+  steps clamp the day of the month, exactly like `addRecurrence`.
+- **Applying it.** `dueRefreshes(snapshot, now)` finds every checked item
+  whose stamp has run out — sub-items included, archived items and
+  archived lists excluded — and `applyRefreshes` / `refreshItems`
+  uncheck them, drop `checkedAt` and `refreshAt`, and **hoist** each to
+  the head of its own level: the top of the list for a top-level item,
+  the top of its category for one filed under a header, which is where it
+  will be looked for. The cadence itself survives, so the item is due
+  again rather than done with.
+- **When it runs.** The same pass as the
+  [reset schedule](#reset-schedule) — `useScheduledResets`
+  (`src/app/use-scheduled-resets.ts`) checks on first load, on
+  `visibilitychange`, and on a one-minute timer, commits through the
+  ordinary edit path (visible document, debounced save, undo timeline),
+  and raises a toast naming what came back. A list whose *whole* reset is
+  due in the same pass wins: it already unchecks everything in it, so a
+  per-item refresh would only fight it.
+
+In the list, a refreshing item shows the same slim
+[date row](#timing-deadlines-and-not-before) as a dated one, carrying
+only the `RepeatIcon` and the cadence ("every week", "every day at
+07:00") — there is no urgency to paint and no day to name.
 
 ### Archive / unarchive item
 

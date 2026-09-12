@@ -141,10 +141,10 @@ export function removeItem(
  *
  * Everything that describes *what the list is* survives the copy: the title,
  * the note body, the required flag, category headers, sub-item nesting, and
- * the item's timing — its `notBefore` gate and any deadline with its
- * recurrence. Everything that describes *progress
- * through one run of it* is dropped — `checked`, `checkedAt`, and `archived` —
- * so the copy always starts clean. Ids are minted per node by `newId` (the
+ * the item's timing — its `notBefore` gate, any deadline, and how it repeats.
+ * Everything that describes *progress through one run of it* is dropped —
+ * `checked`, `checkedAt`, `refreshAt`, and `archived` — so the copy always
+ * starts clean (a repeating item comes out of the copy due now, not resting). Ids are minted per node by `newId` (the
  * domain layer never generates them itself), which is what keeps the two
  * copies fully independent: editing one never reaches into the other.
  */
@@ -163,7 +163,7 @@ export function cloneItemsUnchecked(
     if (it.category) next.category = true;
     if (it.notBefore) next.notBefore = it.notBefore;
     if (it.deadline) next.deadline = it.deadline;
-    if (it.deadline && it.recurrence) next.recurrence = it.recurrence;
+    if (it.recurrence) next.recurrence = it.recurrence;
     if (it.children && it.children.length > 0) {
       next.children = cloneItemsUnchecked(it.children, newId);
     }

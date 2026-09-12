@@ -8,6 +8,7 @@
 
 import { activeItems } from "./archive-ops.ts";
 import { isHeldBack, nextOccurrence } from "./deadlines.ts";
+import { isRefreshing, nextRefreshAt } from "./item-refresh.ts";
 import {
   findItem,
   flattenItems,
@@ -23,10 +24,29 @@ import type {
   TimingPatch,
 } from "./types.ts";
 
+/**
+ * Record — or clear — when a **refreshing** item (a repeat with no due date,
+ * see `item-refresh.ts`) is due back, in place on a freshly built node.
+ * Checking one puts it to rest until its cadence comes round; unchecking it by
+ * hand ends the wait early, and an item that doesn't refresh never carries the
+ * stamp at all.
+ */
+function stampRefresh(
+  item: ChecklistItem,
+  checked: boolean,
+  now: string,
+): void {
+  if (checked && isRefreshing(item)) {
+    item.refreshAt = nextRefreshAt(item.recurrence!, now);
+  } else if (item.refreshAt !== undefined) {
+    delete item.refreshAt;
+  }
+}
+
 /** True when two recurrences describe the same cadence. */
 function sameRecurrence(a?: Recurrence, b?: Recurrence): boolean {
   if (!a || !b) return a === b;
-  return a.unit === b.unit && a.interval === b.interval;
+  return a.unit === b.unit && a.interval === b.interval && a.at === b.at;
 }
 
 /**
@@ -220,15 +240,19 @@ export function editItem<L extends ItemList>(
 
 /**
  * Set (or clear) an item's whole timing: the earliest day it may be checked
- * off, its due date, and how that due date repeats. Every field is a
- * `YYYY-MM-DD` day (or `null` to clear it) except `recurrence`, which
- * describes the repeat cadence or is `null` for a one-off.
+ * off, its due date, and how it repeats. Every field is a `YYYY-MM-DD` day
+ * (or `null` to clear it) except `recurrence`, which describes the repeat
+ * cadence or is `null` for a one-off.
  *
- * The two dates are independent — an item may be gated by `notBefore` with no
- * deadline, or dated with no gate. Recurrence, though, only rides alongside a
- * live deadline: clearing the deadline drops it, and one supplied without a
- * deadline is ignored, since a repeat needs an anchor date. A no-op (nothing
- * actually changed) returns the same checklist untouched, so it never bumps
+ * All three are independent. An item may be gated by `notBefore` with no
+ * deadline, dated with no gate, or repeat with no date at all — that last one
+ * is a **refresh** (see `item-refresh.ts`): it has a cadence but nothing to be
+ * late for, which is what a "buy milk every week or so" line wants.
+ *
+ * Any change to the repeat — dropping it, re-cadencing it, or pinning a due
+ * date to it — clears a pending `refreshAt`, since the wait it recorded was
+ * measured against timing that no longer applies. A no-op (nothing actually
+ * changed) returns the same checklist untouched, so it never bumps
  * `updatedAt` or triggers a write.
  */
 export function setItemTiming<L extends ItemList>(
@@ -259,15 +283,22 @@ export function setItemTiming<L extends ItemList>(
       delete next.deadline;
       changed = true;
     }
-    // Recurrence only rides alongside a live deadline.
-    const rec = deadline ? recurrence : null;
-    if (rec) {
-      if (!sameRecurrence(it.recurrence, rec)) {
-        next.recurrence = rec;
+    if (recurrence) {
+      if (!sameRecurrence(it.recurrence, recurrence)) {
+        next.recurrence = recurrence;
         changed = true;
       }
     } else if (it.recurrence !== undefined) {
       delete next.recurrence;
+      changed = true;
+    }
+    // A pending refresh survives only while the cadence it was measured
+    // against still stands: re-cadence the repeat, drop it, or pin a due date
+    // to it and the stamped wait describes timing the item no longer has.
+    const keepsRefresh =
+      isRefreshing(next) && sameRecurrence(it.recurrence, next.recurrence);
+    if (next.refreshAt !== undefined && !keepsRefresh) {
+      delete next.refreshAt;
       changed = true;
     }
     return changed ? next : it;
@@ -341,9 +372,9 @@ export function toggleItem<L extends ItemList>(
   // parent below) can tick it early. Unchecking always works, so an item
   // gated *after* it was already checked can still be undone.
   if (check && isHeldBack(target, now)) return checklist;
-  // A recurring item isn't ticked off — checking it rolls its deadline
-  // forward to the next occurrence and leaves it unchecked, so the task
-  // reappears on its next due date instead of vanishing into the checked
+  // A repeat with a due date isn't ticked off — checking it rolls its
+  // deadline forward to the next occurrence and leaves it unchecked, so the
+  // task reappears on its next due date instead of vanishing into the checked
   // group. One-off dated items and plain items fall through to the toggle.
   if (check && target.recurrence && target.deadline) {
     const items = updateItem(checklist.items, itemId, (it) => ({
@@ -368,6 +399,7 @@ export function toggleItem<L extends ItemList>(
         ? { ...it, checked: true, checkedAt: now }
         : { ...it, checked: false };
     if (!check) delete next.checkedAt;
+    stampRefresh(next, check && !skip, now);
     if (it.children) next.children = it.children.map(apply);
     return next;
   };
@@ -413,6 +445,7 @@ export function setAllChecked<L extends ItemList>(
         ? { ...it, checked: true, checkedAt: now }
         : { ...it, checked: false };
       if (!checked) delete next.checkedAt;
+      stampRefresh(next, checked, now);
     }
     if (next.children) {
       next = withChildren(next, next.children.map(apply));
