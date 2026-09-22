@@ -14,10 +14,6 @@ import type {
 import type { BackendId } from "../storage/backend-preference.ts";
 import { useDevMode } from "../dev/useDevMode.ts";
 import { DROPBOX_APP_FOLDER, dropboxWebUrl } from "../storage/dropbox/index.ts";
-import {
-  GDRIVE_APP_FOLDER_NAME,
-  gdriveWebUrl,
-} from "../storage/gdrive/index.ts";
 import { namespaceCloudFolder } from "../storage/namespaces.ts";
 import { Button } from "./form";
 import {
@@ -94,14 +90,6 @@ function providerView(backend: BackendId, namespace: string): ProviderView {
     return {
       path: `Apps/${DROPBOX_APP_FOLDER}/${folder}`,
       url: dropboxWebUrl(namespace),
-    };
-  }
-  if (backend === "gdrive") {
-    return {
-      path: `My Drive/${GDRIVE_APP_FOLDER_NAME}/${folder}`,
-      // Drive home — the file id isn't threaded here, so the user scrolls
-      // to the folder from My Drive.
-      url: gdriveWebUrl(null),
     };
   }
   if (backend === "icloud") {
@@ -277,7 +265,7 @@ export function SyncDetailsModal({
 
   const view = providerView(backend, namespace);
   // The "Open in …" link names the destination service itself — Dropbox,
-  // Google Drive — not the at-rest encryption state. `providerName` is the
+  // the provider — not the at-rest encryption state. `providerName` is the
   // adapter label, which the encryption wrapper suffixes with " (encrypted)";
   // strip that so the button reads "Open in Dropbox", not
   // "Open in Dropbox (encrypted)".

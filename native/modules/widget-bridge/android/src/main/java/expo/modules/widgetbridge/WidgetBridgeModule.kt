@@ -23,7 +23,7 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 /** The preferences file both halves open. Mirrors the iOS App Group. */
-private const val SHARED_PREFS = "group.se.niclaslindstedt.checklist"
+private const val SHARED_PREFS = "group.se.agilator.checklist"
 
 /** The snapshot JSON the app publishes. */
 private const val SNAPSHOT_KEY = "widget_snapshot"
@@ -32,7 +32,7 @@ private const val SNAPSHOT_KEY = "widget_snapshot"
 private const val ACTIONS_KEY = "widget_actions"
 
 /** The provider the plugin registers; see ../../../plugins/withWidgets.js. */
-private const val RECEIVER = "se.niclaslindstedt.checklist.widget.ChecklistWidgetReceiver"
+private const val RECEIVER = "se.agilator.checklist.widget.ChecklistWidgetReceiver"
 
 class WidgetBridgeModule : Module() {
   override fun definition() = ModuleDefinition {

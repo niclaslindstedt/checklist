@@ -1,6 +1,6 @@
 # checklist
 
-> A local-first PWA checklist app with template support and optional Google Drive / Dropbox sync.
+> A local-first PWA checklist app with template support and optional Dropbox sync.
 
 ## Synopsis
 

@@ -104,7 +104,7 @@ export function App() {
 }
 
 function AppShell() {
-  // The active backend (this device / Dropbox / Google Drive). Wired before
+  // The active backend (this device / Dropbox). Wired before
   // settings because it provides the root settings store the appearance
   // settings reconcile against (`settings.json` at the app-folder root).
   const storage = useStorageBackend();
@@ -549,7 +549,7 @@ function AppShell() {
   }, [faviconSrc]);
 
   // The sync glyph shows for any async file-backed session (local folder,
-  // Dropbox, Google Drive) so the user gets save status, a "save now"
+  // Dropbox) so the user gets save status, a "save now"
   // affordance, and the conflict surface — not for the browser backend
   // (nothing to sync) nor while fake data overrides the adapter (the
   // status wouldn't reflect the user's actual backend).
@@ -557,7 +557,6 @@ function AppShell() {
     !fakeData &&
     (storage.backend === "folder" ||
       storage.backend === "dropbox" ||
-      storage.backend === "gdrive" ||
       storage.backend === "icloud");
   // Memoised so the published `ChecklistContext` value stays stable across
   // renders that don't touch the sync state (it is the stable `null` for a
@@ -565,14 +564,13 @@ function AppShell() {
   // Re-issue OAuth for the active cloud backend — wired to the details
   // modal's "Reconnect" button when a session lapses. The folder backend
   // has no OAuth gesture (it reconnects from settings), so it's null.
-  const { connectDropbox, connectGdrive } = storage;
+  const { connectDropbox } = storage;
   const onReconnect = useMemo<(() => Promise<void>) | null>(() => {
     if (storage.backend === "dropbox") {
       return async () => connectDropbox();
     }
-    if (storage.backend === "gdrive") return connectGdrive;
     return null;
-  }, [storage.backend, connectDropbox, connectGdrive]);
+  }, [storage.backend, connectDropbox]);
 
   const sync = useMemo<SyncInfo | null>(
     () =>
@@ -583,11 +581,9 @@ function AppShell() {
             providerName:
               storage.backend === "dropbox"
                 ? "Dropbox"
-                : storage.backend === "gdrive"
-                  ? "Google Drive"
-                  : storage.backend === "icloud"
-                    ? "iCloud"
-                    : "Local folder",
+                : storage.backend === "icloud"
+                  ? "iCloud"
+                  : "Local folder",
             status: checklist.status,
             statusDetail: checklist.statusDetail,
             dirty: checklist.dirty,

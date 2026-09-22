@@ -167,7 +167,7 @@ actually does:
 - **Ship or remove a user-facing feature** → add or drop the matching
   bullet in the "What you can do with it" list in `ShowcasePage.tsx`.
 - **Change what data the app accesses, which provider, or the OAuth
-  scope** (Google Drive / Dropbox, app-folder vs. broader) → update the
+  scope** (Dropbox, app-folder vs. broader) → update the
   "Why the app asks for access to your data" section so the stated purpose
   and scope stay exact. This copy and the privacy policy must agree.
 - **Rename the app, change the hosted domain, or restructure storage** →
@@ -223,7 +223,7 @@ trigger, and adds the test. Progress lives in the synced
 ## Parity / cross-cutting rules
 
 - **No third-party network calls.** The app may talk to (a) its own
-  origin on GitHub Pages, and (b) the Google Drive / Dropbox APIs
+  origin on GitHub Pages, and (b) the Dropbox API
   **only when the user has explicitly chosen that backend**. No
   analytics, no font CDNs, no error-reporting SaaS. New dependencies
   that phone home are blocked.

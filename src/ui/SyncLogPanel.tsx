@@ -15,7 +15,6 @@ import {
 const SYNC_LOG_SCOPES: ReadonlySet<string> = new Set([
   "checklist",
   "dropbox",
-  "gdrive",
   "folder",
   "folder-handle",
   "cache",

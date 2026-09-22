@@ -12,10 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getDropboxRefreshToken,
   getDropboxToken,
-  getGdriveToken,
   setDropboxRefreshToken,
   setDropboxToken,
-  setGdriveToken,
 } from "../../src/storage/backend-preference.ts";
 
 // Shared mock state, hoisted so the `vi.mock` factories below can close over it.
@@ -26,17 +24,12 @@ const h = vi.hoisted(() => ({
     >(),
   hasPendingDropboxAuth: vi.fn<() => boolean>(),
   startDropboxAuth: vi.fn<() => void>(),
-  startGdriveAuth: vi.fn<() => Promise<string>>(),
 }));
 
 vi.mock("../../src/storage/dropbox/index.ts", () => ({
   completeDropboxAuth: h.completeDropboxAuth,
   hasPendingDropboxAuth: h.hasPendingDropboxAuth,
   startDropboxAuth: h.startDropboxAuth,
-}));
-
-vi.mock("../../src/storage/gdrive/gis-oauth.ts", () => ({
-  startGdriveAuth: h.startGdriveAuth,
 }));
 
 import { useCloudTokens } from "../../src/storage/useCloudTokens.ts";
@@ -53,7 +46,6 @@ beforeEach(() => {
   h.completeDropboxAuth.mockReset();
   h.hasPendingDropboxAuth.mockReset().mockReturnValue(false);
   h.startDropboxAuth.mockReset();
-  h.startGdriveAuth.mockReset();
 });
 
 afterEach(() => {
@@ -66,17 +58,14 @@ describe("useCloudTokens", () => {
     const { result } = renderHook(() => useCloudTokens(vi.fn()));
     expect(result.current.dropboxToken).toBeNull();
     expect(result.current.dropboxRefresh).toBeNull();
-    expect(result.current.gdriveToken).toBeNull();
   });
 
   it("rehydrates persisted tokens on boot", () => {
     setDropboxToken("dbx-access");
     setDropboxRefreshToken("dbx-refresh");
-    setGdriveToken("gd-access");
     const { result } = renderHook(() => useCloudTokens(vi.fn()));
     expect(result.current.dropboxToken).toBe("dbx-access");
     expect(result.current.dropboxRefresh).toBe("dbx-refresh");
-    expect(result.current.gdriveToken).toBe("gd-access");
   });
 
   it("completes a Dropbox OAuth redirect on boot and switches to it", async () => {
@@ -267,31 +256,4 @@ describe("useCloudTokens", () => {
     expect(switchToBackend).toHaveBeenCalledWith("browser");
   });
 
-  it("connectGdrive stores the popup token and switches to it", async () => {
-    h.startGdriveAuth.mockResolvedValue("gd-fresh");
-    const switchToBackend = vi.fn();
-    const { result } = renderHook(() => useCloudTokens(switchToBackend));
-
-    await act(async () => {
-      await result.current.connectGdrive();
-    });
-
-    expect(result.current.gdriveToken).toBe("gd-fresh");
-    expect(getGdriveToken()).toBe("gd-fresh");
-    expect(switchToBackend).toHaveBeenCalledWith("gdrive");
-  });
-
-  it("disconnectGdrive clears the token and falls back to the browser", () => {
-    setGdriveToken("gd-access");
-    const switchToBackend = vi.fn();
-    const { result } = renderHook(() => useCloudTokens(switchToBackend));
-
-    act(() => {
-      result.current.disconnectGdrive();
-    });
-
-    expect(result.current.gdriveToken).toBeNull();
-    expect(getGdriveToken()).toBeNull();
-    expect(switchToBackend).toHaveBeenCalledWith("browser");
-  });
 });

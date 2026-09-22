@@ -25,11 +25,6 @@ import {
   createDropboxNamespaceStore,
   createDropboxSettingsStore,
 } from "./dropbox/index.ts";
-import {
-  createGdriveAdapter,
-  createGdriveNamespaceStore,
-  createGdriveSettingsStore,
-} from "./gdrive/index.ts";
 import { BrowserLocalStorageAdapter } from "./local/index.ts";
 import { createICloudAdapter } from "./icloud/index.ts";
 import {
@@ -50,7 +45,6 @@ import type { NamespaceRegistryStore } from "./namespace-store.ts";
  */
 export type BackendSelection =
   | { kind: "dropbox"; auth: DropboxAuth }
-  | { kind: "gdrive"; token: string }
   | { kind: "folder"; handle: FileSystemDirectoryHandle }
   | { kind: "icloud" }
   | { kind: "browser" };
@@ -106,18 +100,6 @@ export function createBackendFactory(
           }),
         settingsStore: createDropboxSettingsStore(auth, fetchImpl),
         namespaceStore: createDropboxNamespaceStore(auth, fetchImpl),
-      };
-    }
-    case "gdrive": {
-      const { token } = selection;
-      return {
-        makeInner: (slug) =>
-          withLocalCache(createGdriveAdapter(token, fetchImpl, slug), {
-            storage,
-            key: localCacheKey("gdrive", slug),
-          }),
-        settingsStore: createGdriveSettingsStore(token, fetchImpl),
-        namespaceStore: createGdriveNamespaceStore(token, fetchImpl),
       };
     }
     case "folder": {

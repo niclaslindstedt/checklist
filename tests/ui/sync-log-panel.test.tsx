@@ -82,7 +82,7 @@ describe("SyncLogPanel", () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     createLogger("oauth").info("token refreshed");
-    createLogger("gdrive").warn("retrying upload");
+    createLogger("dropbox").warn("retrying upload");
 
     render(<SyncLogPanel t={t} />);
     fireEvent.click(screen.getByRole("button", { name: "sync.copyLog" }));

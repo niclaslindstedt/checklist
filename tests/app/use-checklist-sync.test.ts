@@ -111,7 +111,7 @@ describe("useChecklist save / undo / reload cycle", () => {
     });
     let saved: string | null = null;
     const adapter: StorageAdapter = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(["loadSync"]),
       loadSync: () => ({ text: seed, revision: "r1" }),
@@ -162,7 +162,7 @@ describe("useChecklist save / undo / reload cycle", () => {
       conflicts: () => number;
       stored: () => string;
     } = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(),
       load: async (): Promise<StoredSnapshot | null> => ({
@@ -257,7 +257,7 @@ describe("useChecklist save / undo / reload cycle", () => {
     let serverText = serialize(emptySnapshot());
     let serverRev = "r1";
     const conflictAdapter: StorageAdapter = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(),
       load: async (): Promise<StoredSnapshot | null> => ({
@@ -333,7 +333,7 @@ describe("useChecklist offline / reconnect", () => {
     let serverRev = 1;
     let healthy = false;
     const adapter: StorageAdapter = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(),
       load: async (): Promise<StoredSnapshot | null> => ({
@@ -455,7 +455,7 @@ describe("useChecklist throttle / transient-retry recovery", () => {
     // a hard error.
     let attempts = 0;
     const adapter: StorageAdapter = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(),
       load: async (): Promise<StoredSnapshot | null> => null,
@@ -495,7 +495,7 @@ describe("useChecklist throttle / transient-retry recovery", () => {
     let serverRev = 1;
     let healthy = false;
     const adapter: StorageAdapter = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(),
       load: async (): Promise<StoredSnapshot | null> => ({
@@ -672,7 +672,7 @@ describe("useChecklist save guard (PWA update flush)", () => {
     let serverText: string | null = null;
     let serverRev = 0;
     const adapter: StorageAdapter & { stored: () => string | null } = {
-      id: "gdrive",
+      id: "dropbox",
       label: "mem-cloud",
       capabilities: new Set(),
       load: async (): Promise<StoredSnapshot | null> =>

@@ -52,7 +52,7 @@ export type StorageAdapter = {
   // the iOS-only iCloud key-value backend in the React Native app — it has
   // no web counterpart, but the id lives in the shared union so the native
   // adapter satisfies the same contract without a cast.
-  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev" | "icloud";
+  readonly id: "browser" | "folder" | "dropbox" | "dev" | "icloud";
 
   // Human-readable label for a future settings UI.
   readonly label: string;

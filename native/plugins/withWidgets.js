@@ -25,13 +25,70 @@ const {
   withStringsXml,
 } = require("expo/config-plugins");
 
-const APP_GROUP = "group.se.niclaslindstedt.checklist";
-const ANDROID_PKG = "se.niclaslindstedt.checklist.widget";
+// Both derived in ../identifiers.js, the only place the bundle id enters this
+// repository. Changing the group after release orphans every installed
+// widget's data.
+//
+// Swift cannot read a build variable, so the files that address the container
+// still spell it out — and `assertSwiftAgrees` below fails the prebuild when
+// they disagree with this. A mismatched App Group is the worst failure this
+// feature has: it compiles, it signs, it installs, and the widget is empty
+// forever.
+const {
+  APP_GROUP,
+  ANDROID_WIDGET_PKG: ANDROID_PKG,
+  BUNDLE_ID,
+} = require("../identifiers.js");
 const RECEIVER = `${ANDROID_PKG}.ChecklistWidgetReceiver`;
 
 function copyFile(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(from, to);
+}
+
+/**
+ * Copy a Kotlin source, pointing its `R` import at THIS build's application
+ * id. The generated resources live in the app's own package, which is the
+ * bundle id — a build variable, so the import cannot be a literal in a file
+ * that is committed. The committed line names the development id; this
+ * rewrites it, and adds one when a file uses `R` without importing it.
+ */
+function copyKotlin(from, to, applicationId) {
+  let source = fs.readFileSync(from, "utf8");
+  const wanted = `import ${applicationId}.R`;
+  if (/^import [\w.]+\.R$/m.test(source)) {
+    source = source.replace(/^import [\w.]+\.R$/m, wanted);
+  } else if (/\bR\.[a-z]/.test(source)) {
+    source = source.replace(/^(package .+)$/m, `$1\n\n${wanted}`);
+  }
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.writeFileSync(to, source);
+}
+
+/**
+ * Fail the prebuild if a Swift file addresses a different container than the
+ * entitlements grant. Reads the literal rather than rewriting it: a generated
+ * constant would be one more thing to get wrong, and the check is the part
+ * that has value.
+ */
+function assertSwiftAgrees(projectRoot) {
+  const sources = [
+    path.join(projectRoot, "targets", "widget", "ChecklistModels.swift"),
+    path.join(
+      projectRoot, "modules", "widget-bridge", "ios", "WidgetBridgeModule.swift",
+    ),
+  ];
+  for (const file of sources) {
+    if (!fs.existsSync(file)) continue;
+    const found = fs.readFileSync(file, "utf8").match(/"(group\.[^"]+)"/);
+    if (found && found[1] !== APP_GROUP) {
+      throw new Error(
+        `${path.basename(file)} addresses ${found[1]}, but this build's App ` +
+          `Group is ${APP_GROUP}. A widget reading the wrong container builds ` +
+          `clean and shows nothing — fix the literal, or the APP_BUNDLE_ID.`,
+      );
+    }
+  }
 }
 
 /** Copy a directory recursively, if it is there at all. */
@@ -46,6 +103,8 @@ function copyTree(from, to) {
 }
 
 module.exports = function withWidgets(config) {
+  assertSwiftAgrees(__dirname.replace(/\/plugins$/, ""));
+
   // iOS: the main app joins the App Group so it can write the container the
   // widget extension reads. (The extension declares the same group itself.)
   config = withEntitlementsPlist(config, (c) => {
@@ -70,7 +129,11 @@ module.exports = function withWidgets(config) {
       const javaDir = path.join(appRoot, "java", ...ANDROID_PKG.split("."));
       for (const file of fs.readdirSync(src)) {
         if (file.endsWith(".kt")) {
-          copyFile(path.join(src, file), path.join(javaDir, file));
+          copyKotlin(
+            path.join(src, file),
+            path.join(javaDir, file),
+            c.android?.package ?? BUNDLE_ID,
+          );
         }
       }
       copyFile(

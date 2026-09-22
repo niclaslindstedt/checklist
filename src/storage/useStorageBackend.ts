@@ -35,7 +35,6 @@ import {
   deleteDropboxNamespace,
   isDropboxConfigured,
 } from "./dropbox/index.ts";
-import { deleteGdriveNamespace, isGdriveConfigured } from "./gdrive/index.ts";
 import { deleteICloudNamespace, isICloudAvailable } from "./icloud/index.ts";
 import { deleteLocalNamespace } from "./local/index.ts";
 import { writeMovedDocument } from "./namespace-moves.ts";
@@ -79,10 +78,8 @@ export interface UseStorageBackend {
   backend: BackendId;
   /** Whether each cloud backend's app key / client id is built in. */
   dropboxConfigured: boolean;
-  gdriveConfigured: boolean;
   /** Whether each cloud backend currently holds a usable token. */
   dropboxConnected: boolean;
-  gdriveConnected: boolean;
   /**
    * Whether the iCloud backend can be offered — true only inside the iOS
    * native wrapper, feature-detected from the injected bridge. The web build
@@ -116,8 +113,6 @@ export interface UseStorageBackend {
   disconnectFolder: () => Promise<void>;
   connectDropbox: () => void;
   disconnectDropbox: () => void;
-  connectGdrive: () => Promise<void>;
-  disconnectGdrive: () => void;
   /**
    * Turn encryption on with a fresh passphrase, re-wrapping stored bytes.
    * `onProgress` (optional) fires once per phase so the UI can show progress.
@@ -242,20 +237,17 @@ export function useStorageBackend(): UseStorageBackend {
   } = useFolderHandle(switchToBackend, folderRuntime);
 
   // The cloud-credential lifecycle: owns the Dropbox access / refresh tokens
-  // and the Google Drive access token, completes the Dropbox OAuth redirect on
+  // completes the Dropbox OAuth redirect on
   // boot, and carries both backends' connect / disconnect verbs. The selection
   // memo reads the three tokens (and the Dropbox access-token refresh hook);
   // the connect verbs route through `switchToBackend`.
   const {
     dropboxToken,
     dropboxRefresh,
-    gdriveToken,
     onDropboxAccessTokenRefreshed,
     readDropboxToken,
     connectDropbox,
     disconnectDropbox,
-    connectGdrive,
-    disconnectGdrive,
   } = useCloudTokens(switchToBackend);
 
   // Resolve the active backend once. Both builders below switch on this
@@ -278,9 +270,6 @@ export function useStorageBackend(): UseStorageBackend {
         },
       };
     }
-    if (backend === "gdrive" && gdriveToken) {
-      return { kind: "gdrive", token: gdriveToken };
-    }
     // iCloud backend: only inside the native wrapper where the bridge is
     // injected. Fall through to the browser store on the web build (or a
     // wrapper where the bridge went missing) so editing keeps working.
@@ -298,7 +287,6 @@ export function useStorageBackend(): UseStorageBackend {
     backend,
     dropboxToken,
     dropboxRefresh,
-    gdriveToken,
     onDropboxAccessTokenRefreshed,
     readDropboxToken,
     folderHandle,
@@ -536,8 +524,6 @@ export function useStorageBackend(): UseStorageBackend {
             readDropboxToken() ?? dropboxToken,
             slug,
           );
-        } else if (backend === "gdrive" && gdriveToken) {
-          await deleteGdriveNamespace(gdriveToken, slug);
         } else if (backend === "icloud" && isICloudAvailable()) {
           // Drop the namespace's KVS entry so its bytes don't linger in the
           // shared store (and on the user's other devices) after removal.
@@ -556,7 +542,6 @@ export function useStorageBackend(): UseStorageBackend {
       backend,
       dropboxToken,
       readDropboxToken,
-      gdriveToken,
       activeNamespace,
       folderHandle,
       removeNamespaceEntry,
@@ -568,9 +553,7 @@ export function useStorageBackend(): UseStorageBackend {
     settingsStore,
     backend,
     dropboxConfigured: isDropboxConfigured(),
-    gdriveConfigured: isGdriveConfigured(),
     dropboxConnected: dropboxToken !== null,
-    gdriveConnected: gdriveToken !== null,
     icloudAvailable: isICloudAvailable(),
     icloudConnected: backend === "icloud" && isICloudAvailable(),
     folderAvailable: isFolderBackendAvailable(),
@@ -585,8 +568,6 @@ export function useStorageBackend(): UseStorageBackend {
     disconnectFolder,
     connectDropbox,
     disconnectDropbox,
-    connectGdrive,
-    disconnectGdrive,
     enableEncryption,
     disableEncryption,
     unlock,

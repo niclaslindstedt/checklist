@@ -49,7 +49,7 @@ in WebKit, and the app depends on APIs that are gated behind one:
 - `crypto.randomUUID()` (`../src/app/side-effects.ts`) — used for every id the
   app mints. Undefined on `file://`, so **adding an item throws**.
 - `crypto.subtle` (`../src/storage/crypto.ts`, `../src/storage/oauth-pkce.ts`)
-  — at-rest encryption and the Dropbox / Google Drive OAuth PKCE exchange.
+  — at-rest encryption and the Dropbox OAuth PKCE exchange.
 
 WKWebView also treats `file://` as an opaque origin, which breaks
 `localStorage` — where every checklist lives. Serving from `http://localhost`
@@ -132,7 +132,7 @@ The same bridge carries the Home Screen / Lock Screen widgets. Because a widget
 runs in a separate OS process that can't reach the WebView's `localStorage`,
 the app mirrors a compact **snapshot** of the active list, its open items, and
 what's due today into a shared container the widget reads — an **App Group**
-(`group.se.niclaslindstedt.checklist`) on iOS, a shared `SharedPreferences`
+(`group.se.agilator.checklist`) on iOS, a shared `SharedPreferences`
 file on Android — and reloads the widget timelines on every change. The snapshot
 is derived and read-optimised; the WebView storage stays the source of truth.
 

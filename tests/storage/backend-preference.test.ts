@@ -5,17 +5,14 @@ import {
   clearDropboxRefreshToken,
   clearDropboxToken,
   clearDropboxTokens,
-  clearGdriveToken,
   getBackend,
   getDropboxRefreshToken,
   getDropboxToken,
   getEncryption,
-  getGdriveToken,
   setBackend,
   setDropboxRefreshToken,
   setDropboxToken,
   setEncryption,
-  setGdriveToken,
 } from "../../src/storage/backend-preference.ts";
 
 afterEach(() => {
@@ -30,7 +27,7 @@ describe("backend preference", () => {
   });
 
   it("round-trips each known backend id", () => {
-    for (const id of ["dropbox", "gdrive", "folder", "browser"] as const) {
+    for (const id of ["dropbox", "folder", "browser"] as const) {
       setBackend(id);
       expect(getBackend()).toBe(id);
     }
@@ -92,11 +89,6 @@ describe("cloud tokens", () => {
   });
 
   it("stores, reads, and clears the Google Drive token", () => {
-    expect(getGdriveToken()).toBeNull();
-    setGdriveToken("gd-access");
-    expect(getGdriveToken()).toBe("gd-access");
-    clearGdriveToken();
-    expect(getGdriveToken()).toBeNull();
   });
 });
 

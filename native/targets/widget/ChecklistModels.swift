@@ -9,10 +9,10 @@ import Foundation
 import WidgetKit
 
 // Must match the app module, the entitlements, and `APP_GROUP` in JS.
-let appGroup = "group.se.niclaslindstedt.checklist"
+let appGroup = "group.se.agilator.checklist"
 let snapshotKey = "widget_snapshot"
 let actionsKey = "widget_actions"
-let darwinActionName = "se.niclaslindstedt.checklist.widgetAction"
+let darwinActionName = "se.agilator.checklist.widgetAction"
 
 struct WidgetItemView: Codable, Hashable {
   let id: String

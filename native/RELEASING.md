@@ -10,8 +10,11 @@ served offline from the app binary — see [`README.md`](README.md).
 
 Both store identities are already wired in [`app.json`](app.json):
 
-- iOS `ios.bundleIdentifier` — `se.niclaslindstedt.checklist`
-- Android `android.package` — `se.niclaslindstedt.checklist`
+- iOS `ios.bundleIdentifier` and Android `android.package` — both come from
+  `APP_BUNDLE_ID`, a repository secret and an EAS environment variable. Unset,
+  a build runs as `dev.local.checklist`; a `production` profile without it
+  fails rather than uploading under the development id. See
+  `native/identifiers.js`.
 
 Build/submit profiles live in [`eas.json`](eas.json). Icons and the splash
 image live in [`assets/`](assets), rendered at 1024×1024 from the web app's
@@ -135,7 +138,7 @@ needs the credentials wired into `eas.json` → `submit.production` (steps 4–5
 4. Complete the Play Console listing: short + full description, 512×512 icon,
    1024×500 feature graphic, ≥2 phone screenshots, content-rating
    questionnaire, and the **Data safety** form. Declare: no data collected by
-   us; cloud sync only when the user opts into a backend (Google Drive or
+   us; cloud sync only when the user opts into a backend (Dropbox or
    Dropbox).
    Point the privacy-policy URL at `https://checklist.niclaslindstedt.se/privacy`.
 

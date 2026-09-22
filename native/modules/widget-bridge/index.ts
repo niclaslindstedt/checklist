@@ -12,6 +12,7 @@
 // (or a platform where it failed to load) degrades to "no widgets" rather than
 // throwing; `native/src/widgets.ts` owns that guard.
 
+import Constants from "expo-constants";
 import {
   NativeModule,
   requireNativeModule,
@@ -21,7 +22,9 @@ import {
 // The App Group / shared-prefs identifier both the app and the widget
 // extension address. Changing it after release orphans every installed
 // widget's data, so it is pinned here and in the native targets / entitlements.
-export const APP_GROUP = "group.se.niclaslindstedt.checklist";
+export const APP_GROUP: string =
+  (Constants.expoConfig?.extra?.appGroup as string | undefined) ??
+  "group.se.agilator.checklist";
 
 // The events the native module emits. `onWidgetAction` fires (iOS only) when
 // the extension queues a check-off action while the app is running.

@@ -123,16 +123,6 @@ describe("createBackendFactory", () => {
     expect(factory.makeInner("work").id).toBe("dropbox");
   });
 
-  it("builds a Google Drive backend with both root stores", () => {
-    const factory = createBackendFactory(
-      { kind: "gdrive", token: "tok" },
-      deps(),
-    );
-    expect(factory.settingsStore).not.toBeNull();
-    expect(factory.namespaceStore).not.toBeNull();
-    expect(factory.makeInner("work").id).toBe("gdrive");
-  });
-
   it("builds a folder backend, threading the permission callback through", () => {
     const onFolderPermissionLost = vi.fn();
     const handle = {} as FileSystemDirectoryHandle;

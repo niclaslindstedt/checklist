@@ -17,7 +17,7 @@ import {
 import { Section } from "../shared.tsx";
 
 // Storage settings: pick the backend that persists the document (this
-// device / Dropbox / Google Drive) and toggle at-rest encryption.
+// device / Dropbox) and toggle at-rest encryption.
 // Modelled on the budget project's storage tab, pared to the checklist's
 // account-less, single-document model.
 
@@ -30,9 +30,7 @@ export function StorageTab({ storage }: Props) {
   const {
     backend,
     dropboxConfigured,
-    gdriveConfigured,
     dropboxConnected,
-    gdriveConnected,
     icloudAvailable,
     icloudConnected,
     folderAvailable,
@@ -46,13 +44,9 @@ export function StorageTab({ storage }: Props) {
     disconnectFolder,
     connectDropbox,
     disconnectDropbox,
-    connectGdrive,
-    disconnectGdrive,
     enableEncryption,
     disableEncryption,
   } = storage;
-
-  const [gdriveError, setGdriveError] = useState<string | null>(null);
 
   const backendOptions: {
     value: BackendId;
@@ -80,30 +74,14 @@ export function StorageTab({ storage }: Props) {
       label: t("settings.storage.backendDropbox"),
       disabled: !dropboxConfigured,
     },
-    {
-      value: "gdrive",
-      label: t("settings.storage.backendGoogleDrive"),
-      disabled: !gdriveConfigured,
-    },
   ];
 
   const onPickBackend = (next: BackendId) => {
-    setGdriveError(null);
     if (next === backend) return;
     if (next === "browser") selectBrowser();
     else if (next === "icloud") selectICloud();
     else if (next === "folder") void connectFolder();
-    else if (next === "dropbox") connectDropbox();
-    else void connectGdriveWithCapture();
-  };
-
-  const connectGdriveWithCapture = async () => {
-    setGdriveError(null);
-    try {
-      await connectGdrive();
-    } catch (err) {
-      setGdriveError(err instanceof Error ? err.message : String(err));
-    }
+    else connectDropbox();
   };
 
   return (
@@ -216,41 +194,6 @@ export function StorageTab({ storage }: Props) {
               <Button variant="primary" onClick={connectDropbox}>
                 {t("settings.storage.connect")}
               </Button>
-            )}
-          </div>
-        )}
-
-        {backend === "gdrive" && (
-          <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted">
-              {gdriveConnected
-                ? t("settings.storage.gdriveConnected")
-                : t("settings.storage.gdriveUnconnected")}
-            </p>
-            {gdriveConnected ? (
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" onClick={disconnectGdrive}>
-                  {t("settings.storage.disconnect")}
-                </Button>
-                <span className="text-xs text-success">
-                  {t("settings.storage.connected")}
-                </span>
-              </div>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={() => void connectGdriveWithCapture()}
-              >
-                {t("settings.storage.connect")}
-              </Button>
-            )}
-            {gdriveError && (
-              <p
-                role="alert"
-                className="rounded border border-danger/50 px-2 py-1.5 text-xs break-words text-danger"
-              >
-                {gdriveError}
-              </p>
             )}
           </div>
         )}

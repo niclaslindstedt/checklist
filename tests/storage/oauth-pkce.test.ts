@@ -43,70 +43,11 @@ describe("redirectUri", () => {
 });
 
 describe("pickOauthProvider", () => {
-  it("uses gdrive verifier when only gdrive is pending", () => {
-    expect(
-      pickOauthProvider({
-        state: null,
-        gdrivePending: true,
-        dropboxPending: false,
-      }),
-    ).toBe("gdrive");
+  it("names dropbox when its verifier is pending", () => {
+    expect(pickOauthProvider({ dropboxPending: true })).toBe("dropbox");
   });
 
-  it("uses dropbox verifier when only dropbox is pending", () => {
-    expect(
-      pickOauthProvider({
-        state: null,
-        gdrivePending: false,
-        dropboxPending: true,
-      }),
-    ).toBe("dropbox");
-  });
-
-  it("ignores wrong state when only one verifier is pending", () => {
-    expect(
-      pickOauthProvider({
-        state: "dropbox",
-        gdrivePending: true,
-        dropboxPending: false,
-      }),
-    ).toBe("gdrive");
-  });
-
-  it("breaks ambiguous ties with state", () => {
-    expect(
-      pickOauthProvider({
-        state: "gdrive",
-        gdrivePending: true,
-        dropboxPending: true,
-      }),
-    ).toBe("gdrive");
-    expect(
-      pickOauthProvider({
-        state: "dropbox",
-        gdrivePending: true,
-        dropboxPending: true,
-      }),
-    ).toBe("dropbox");
-  });
-
-  it("returns null when both pending and state is missing", () => {
-    expect(
-      pickOauthProvider({
-        state: null,
-        gdrivePending: true,
-        dropboxPending: true,
-      }),
-    ).toBeNull();
-  });
-
-  it("returns null when neither verifier is present", () => {
-    expect(
-      pickOauthProvider({
-        state: "gdrive",
-        gdrivePending: false,
-        dropboxPending: false,
-      }),
-    ).toBeNull();
+  it("refuses rather than guessing when nothing is pending", () => {
+    expect(pickOauthProvider({ dropboxPending: false })).toBeNull();
   });
 });

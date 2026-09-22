@@ -3,7 +3,7 @@
 A local-first PWA checklist app built with Preact, TypeScript, and
 Tailwind. Keep a quiet, monospaced checklist — add items, check them
 off, swipe to archive or delete — copy a list to share it, and — if
-you want — sync them to **your own** Google Drive or Dropbox. Hosted on
+you want — sync them to **your own** Dropbox. Hosted on
 GitHub Pages; talks to no other servers.
 
 [![CI](https://github.com/niclaslindstedt/checklist/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/checklist/actions/workflows/ci.yml)
@@ -19,7 +19,7 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   an account.
 - **No telemetry, no backend.** The only network calls the app ever
   makes are (a) loading itself from GitHub Pages and (b) — if and only
-  if you opt in — talking directly to Google Drive or Dropbox.
+  if you opt in — talking directly to Dropbox.
 - **Quick capture.** Type an item and hit Enter to add it; tap to check
   it off. Swipe a row **left** to uncover Delete, **right** to archive
   (archived items are hidden, not destroyed).
@@ -63,12 +63,12 @@ Try it: **<https://checklist.niclaslindstedt.se>**
   device (**Settings → Storage → Local folder**) and every list is saved
   there as its own markdown file — standard `- [ ]` / `- [x]` task syntax
   — so you can open, edit, diff, or back them up with any other tool.
-  Dropbox and Google Drive store the same per-list markdown files; only
+  Dropbox stores per-list markdown files; only
   **This device** keeps a single JSON document. (The folder picker needs
   a Chromium-based browser.)
-- **Optional cloud sync.** Plug in Google Drive or Dropbox as a storage
-  backend from **Settings → Storage**. The app uses each provider's
-  app-folder scope, so it can only see files it created itself, and a
+- **Optional cloud sync.** Plug in Dropbox as a storage
+  backend from **Settings → Storage**. The app uses Dropbox's app-folder
+  scope, so it can only see files it created itself, and a
   conflict prompt resolves edits made on two devices at once.
 - **Namespaces.** Keep separate checklists in named namespaces, each in
   its own folder, so you can share one namespace's cloud folder (say, a
@@ -144,7 +144,7 @@ native module): `cd native && npm install && npm run ios`. See
    **left** to reveal Delete, or **right** to archive it (archived items
    are hidden but kept).
 
-3. **Sync across devices (optional).** Connect Google Drive or Dropbox
+3. **Sync across devices (optional).** Connect Dropbox
    from **Settings → Storage**, or point the app at a local folder; your
    lists then travel with you. See
    [Configuration](docs/configuration.md).

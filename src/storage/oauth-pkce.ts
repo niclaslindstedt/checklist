@@ -1,5 +1,5 @@
 // Shared OAuth 2.0 PKCE helpers used by every cloud storage adapter
-// that signs in through the browser (Dropbox, Google Drive, …). The
+// that signs in through the browser (Dropbox). The
 // helpers are pure and stateless; each adapter owns its own
 // `sessionStorage` key for the verifier so parallel auth flows don't
 // race each other. Ported from the budget project's `oauth-pkce.ts`.
@@ -28,12 +28,12 @@ export async function challengeFor(verifier: string): Promise<string> {
 // The OAuth app registration must list this exact URI. We derive it
 // from the current page's origin + pathname so production at `/` and
 // preview at `/preview/` round-trip back to themselves — without the
-// pathname, the redirect from Google or Dropbox lands the preview build
+// pathname, the redirect from Dropbox lands the preview build
 // on production, where the PKCE verifier (stashed under the preview's
 // sessionStorage key) is invisible and auth completion bails with
 // "Missing PKCE verifier" or "cannot determine provider".
 //
-// The trailing slash is trimmed: Google's OAuth client config rejects
+// The trailing slash is trimmed: an OAuth client config rejects
 // redirect URIs that end in `/`, and Dropbox accepts either form, so
 // the slash-less spelling is the only one that satisfies both.
 // `/` maps to the bare origin, `/preview/` maps to `<origin>/preview`.
@@ -43,28 +43,18 @@ export function redirectUri(): string {
 }
 
 // Pick which cloud provider issued an inbound OAuth `?code=`. The
-// authoritative signal is the PKCE verifier we stashed in
-// `sessionStorage` before redirecting to the provider's consent screen —
-// exactly one is live during a redirect, so its presence alone
-// identifies the flow. The URL's `state` query param is used only to
-// disambiguate when both happen to be present (an aborted prior flow
-// left a stale verifier behind). Returns `null` when nothing identifies
-// the flow — caller should log and bail rather than fall through to a
-// hardcoded provider.
+// authoritative signal is the PKCE verifier we stashed in `sessionStorage`
+// before redirecting to the provider's consent screen: its presence alone
+// identifies the flow. Returns `null` when nothing identifies it — the caller
+// logs and bails rather than falling through to a hardcoded provider.
+//
+// Dropbox is the only cloud provider now, so there is nothing to disambiguate
+// between; the shape is kept because the caller's job (decide, or refuse) does
+// not change when a second one is added back.
 export function pickOauthProvider(args: {
-  state: string | null;
-  gdrivePending: boolean;
   dropboxPending: boolean;
-}): "gdrive" | "dropbox" | null {
-  const { state, gdrivePending, dropboxPending } = args;
-  if (gdrivePending && !dropboxPending) return "gdrive";
-  if (dropboxPending && !gdrivePending) return "dropbox";
-  if (gdrivePending && dropboxPending) {
-    if (state === "gdrive") return "gdrive";
-    if (state === "dropbox") return "dropbox";
-    return null;
-  }
-  return null;
+}): "dropbox" | null {
+  return args.dropboxPending ? "dropbox" : null;
 }
 
 export type FetchImpl = typeof fetch;

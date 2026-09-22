@@ -11,7 +11,10 @@
 // ../../targets/widget/ChecklistIntents.swift); tapping here opens the app on
 // the list instead, which needs no write path and no queue to drain.
 
-package se.niclaslindstedt.checklist.widget
+package se.agilator.checklist.widget
+
+// Rewritten to this build's application id by ../../plugins/withWidgets.js.
+import dev.local.checklist.R
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -23,7 +26,7 @@ import android.widget.RemoteViews
 import org.json.JSONObject
 
 /** The preferences file the app publishes into; mirrors the iOS App Group. */
-private const val SHARED_PREFS = "group.se.niclaslindstedt.checklist"
+private const val SHARED_PREFS = "group.se.agilator.checklist"
 private const val SNAPSHOT_KEY = "widget_snapshot"
 
 /** How many open items fit before the widget stops listing them. */

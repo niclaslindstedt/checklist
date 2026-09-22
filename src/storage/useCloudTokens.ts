@@ -1,12 +1,10 @@
 // Cloud-credential lifecycle as a hook: owns the Dropbox access /
-// refresh tokens and the Google Drive access token, completes the Dropbox
-// OAuth redirect on boot, and carries the connect / disconnect verbs for both
-// cloud backends. Peeled out of `useStorageBackend` so the credential flow is
+// refresh tokens, completes the Dropbox OAuth redirect on boot, and carries
+// the connect / disconnect verbs for the cloud backend. Peeled out of `useStorageBackend` so the credential flow is
 // unit-testable against the persisted token store instead of a live OAuth
 // grant, mirroring how `useEncryption`, `useNamespaceRegistry`, and
 // `useFolderHandle` were extracted.
 //
-// Google Drive uses a popup whose token resolves inline in `connectGdrive`;
 // Dropbox redirects away and lands back on boot with a `?code=`, which the
 // boot effect here exchanges for tokens. Both connect paths persist the
 // token, flip the in-memory backend selection via the passed-in
@@ -20,16 +18,12 @@ import { createLogger } from "../dev/logger.ts";
 import {
   type BackendId,
   clearDropboxTokens,
-  clearGdriveToken,
   getDropboxRefreshToken,
   getDropboxToken,
-  getGdriveToken,
   setDropboxRefreshToken,
   setDropboxToken,
-  setGdriveToken,
 } from "./backend-preference.ts";
 import { completeDropboxAuth, hasPendingDropboxAuth } from "./dropbox/index.ts";
-import { startGdriveAuth } from "./gdrive/gis-oauth.ts";
 
 const log = createLogger("storage");
 
@@ -38,8 +32,6 @@ export interface CloudTokens {
   dropboxToken: string | null;
   /** The Dropbox refresh token, or null when not connected / not issued. */
   dropboxRefresh: string | null;
-  /** The Google Drive access token, or null when not connected. */
-  gdriveToken: string | null;
   /**
    * Persist a Dropbox access token the adapter refreshed silently mid-session
    * (the selection's `onAccessTokenRefreshed` hook).
@@ -65,10 +57,6 @@ export interface CloudTokens {
   connectDropbox: () => void;
   /** Forget the Dropbox tokens and fall back to the browser store. */
   disconnectDropbox: () => void;
-  /** Open the Google Drive auth popup, store the token, and switch to it. */
-  connectGdrive: () => Promise<void>;
-  /** Forget the Google Drive token and fall back to the browser store. */
-  disconnectGdrive: () => void;
 }
 
 // Strip the OAuth redirect's query params (`code`, `state`, `scope`) from
@@ -105,13 +93,9 @@ export function useCloudTokens(
   const [dropboxRefresh, setDropboxRefreshState] = useState<string | null>(
     getDropboxRefreshToken,
   );
-  const [gdriveToken, setGdriveTokenState] = useState<string | null>(
-    getGdriveToken,
-  );
 
-  // Complete a Dropbox OAuth redirect on boot. Google Drive uses a popup
-  // (resolved inline in `connectGdrive`), so only Dropbox lands back here
-  // with a `?code=`.
+  // Complete a Dropbox OAuth redirect on boot: it lands back here with a
+  // `?code=`.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
@@ -171,29 +155,12 @@ export function useCloudTokens(
     switchToBackend("browser");
   }, [switchToBackend]);
 
-  const connectGdrive = useCallback(async () => {
-    const token = await startGdriveAuth();
-    setGdriveToken(token);
-    setGdriveTokenState(token);
-    switchToBackend("gdrive");
-    unlockAchievement("cloudWalker");
-  }, [switchToBackend]);
-
-  const disconnectGdrive = useCallback(() => {
-    clearGdriveToken();
-    setGdriveTokenState(null);
-    switchToBackend("browser");
-  }, [switchToBackend]);
-
   return {
     dropboxToken,
     dropboxRefresh,
-    gdriveToken,
     onDropboxAccessTokenRefreshed,
     readDropboxToken,
     connectDropbox,
     disconnectDropbox,
-    connectGdrive,
-    disconnectGdrive,
   };
 }

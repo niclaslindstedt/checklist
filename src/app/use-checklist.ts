@@ -90,7 +90,7 @@ export interface UseChecklist
    * Re-read the document from the active backend, replacing what's on
    * screen — the pull-to-refresh action. A no-op-ish round trip for
    * localStorage, but the honest "pick up another device's edit" pull
-   * for the cloud backends (Google Drive / Dropbox).
+   * for the cloud backend (Dropbox).
    */
   reload: () => Promise<void>;
   /**

@@ -32,7 +32,6 @@ describe("ShowcasePage", () => {
         name: /why the app asks for access/i,
       }),
     ).toBeTruthy();
-    expect(screen.getAllByText(/Google Drive/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Dropbox/).length).toBeGreaterThan(0);
     expect(screen.getByText(/app-specific folder/i)).toBeTruthy();
     expect(

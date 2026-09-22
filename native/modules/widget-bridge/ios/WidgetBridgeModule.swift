@@ -24,7 +24,7 @@ import WidgetKit
 /// `app.config.js`, `plugins/withWidgets.js`, the widget target's
 /// entitlements and `targets/widget/ChecklistModels.swift` — changing it after
 /// release orphans every installed widget's data.
-private let APP_GROUP = "group.se.niclaslindstedt.checklist"
+private let APP_GROUP = "group.se.agilator.checklist"
 
 /// The snapshot JSON the app publishes.
 private let SNAPSHOT_KEY = "widget_snapshot"
@@ -33,7 +33,7 @@ private let SNAPSHOT_KEY = "widget_snapshot"
 private let ACTIONS_KEY = "widget_actions"
 
 /// The Darwin notification the extension posts after queueing one.
-private let DARWIN_ACTION_NAME = "se.niclaslindstedt.checklist.widgetAction"
+private let DARWIN_ACTION_NAME = "se.agilator.checklist.widgetAction"
 
 public final class WidgetBridgeModule: Module {
   public func definition() -> ModuleDefinition {
