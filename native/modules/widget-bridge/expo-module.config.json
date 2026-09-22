@@ -4,6 +4,6 @@
     "modules": ["WidgetBridgeModule"]
   },
   "android": {
-    "modules": ["se.niclaslindstedt.checklist.widgetbridge.WidgetBridgeModule"]
+    "modules": ["expo.modules.widgetbridge.WidgetBridgeModule"]
   }
 }

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget's whole surface. Kept to TextViews a RemoteViews update can
+     address by id: a widget is drawn by the launcher's process, so only the
+     handful of views RemoteViews supports are available here. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/widget_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical"
+  android:padding="12dp"
+  android:background="#1F2933">
+
+  <TextView
+    android:id="@+id/widget_list_name"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#F8FAFC"
+    android:textSize="15sp"
+    android:textStyle="bold"
+    android:maxLines="1"
+    android:ellipsize="end" />
+
+  <TextView
+    android:id="@+id/widget_progress"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#9AA5B1"
+    android:textSize="12sp"
+    android:paddingBottom="4dp"
+    android:maxLines="1"
+    android:ellipsize="end" />
+
+  <TextView
+    android:id="@+id/widget_item_1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#E4E7EB"
+    android:textSize="13sp"
+    android:maxLines="1"
+    android:ellipsize="end" />
+
+  <TextView
+    android:id="@+id/widget_item_2"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#E4E7EB"
+    android:textSize="13sp"
+    android:maxLines="1"
+    android:ellipsize="end" />
+
+  <TextView
+    android:id="@+id/widget_item_3"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textColor="#E4E7EB"
+    android:textSize="13sp"
+    android:maxLines="1"
+    android:ellipsize="end" />
+</LinearLayout>

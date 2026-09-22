@@ -1,0 +1,33 @@
+// The local Expo module behind the Home Screen widgets, Android side (see
+// ../index.ts). Autolinked from ../expo-module.config.json; there is no npm
+// package and nothing to publish — `expo prebuild` wires it into the generated
+// Gradle project.
+//
+// The package name carries no app identifier on purpose: this module moves a
+// JSON string through a shared preferences file, which is not a fact about
+// Checklist, and nothing here has to change when the app's bundle id does.
+
+apply plugin: 'com.android.library'
+
+group = 'expo.modules.widgetbridge'
+version = '1.0.0'
+
+def expoModulesCorePlugin = new File(
+  project(":expo-modules-core").projectDir.absolutePath,
+  "ExpoModulesCorePlugin.gradle"
+)
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+
+android {
+  namespace "expo.modules.widgetbridge"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}

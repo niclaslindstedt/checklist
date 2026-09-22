@@ -39,7 +39,7 @@ same app as the web, running entirely offline from inside the app binary.
 | iCloud key-value store (iOS only) | `src/icloud.ts` |
 | Widget shared-container host | `src/widgets.ts`, `modules/widget-bridge/` |
 | WidgetKit extension (iOS) | `targets/widget/` (`@bacons/apple-targets`) |
-| Glance widget (Android) | `widgets/android/`, `plugins/withWidgets.js` |
+| Home Screen widget (Android) | `widgets/android/`, `plugins/withWidgets.js` |
 
 ### Why a local HTTP server and not `file://`
 
@@ -143,7 +143,7 @@ is derived and read-optimised; the WebView storage stays the source of truth.
 - The **iOS** WidgetKit extension is generated from `targets/widget/` by
   `@bacons/apple-targets` during prebuild (progress ring, due-today,
   interactive check-off with App Intents, quick-add + an iOS 18 control).
-- The **Android** Glance widget lives in `widgets/android/` and is wired into
+- The **Android** widget lives in `widgets/android/` and is wired into
   the app project (sources, provider XML, manifest receiver) by
   `plugins/withWidgets.js`, which also adds the App Group entitlement to the
   main iOS app.

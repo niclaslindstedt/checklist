@@ -6,11 +6,14 @@
 // to the **main app** so it can share a container with that extension. The
 // widget's own App Group is declared in its `expo-target.config.js`.
 //
-// Android: Glance widgets are plain app-widget providers, so this plugin copies
-// the Kotlin sources and the provider XML into the app module and registers the
-// `<receiver>` in the manifest. Anything under `src/main` is packed into the
-// APK automatically, so no Gradle change is needed. The `checklist://` deep
-// link the widgets open is already registered from `app.json`'s `scheme`.
+// Android: the widget is a plain `AppWidgetProvider` drawing `RemoteViews`, so
+// this plugin copies the Kotlin sources and the widget's resources into the app
+// module and registers the `<receiver>` in the manifest. Anything under
+// `src/main` is packed into the APK automatically, so no Gradle change is
+// needed — which is also why the widget is not a Glance one: Glance would add a
+// Compose dependency to a generated Gradle project for four strings and a
+// count. The `checklist://` deep link the widget opens is already registered
+// from `app.json`'s `scheme`.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -24,11 +27,22 @@ const {
 
 const APP_GROUP = "group.se.niclaslindstedt.checklist";
 const ANDROID_PKG = "se.niclaslindstedt.checklist.widget";
-const RECEIVER = `${ANDROID_PKG}.ChecklistGlanceWidgetReceiver`;
+const RECEIVER = `${ANDROID_PKG}.ChecklistWidgetReceiver`;
 
 function copyFile(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(from, to);
+}
+
+/** Copy a directory recursively, if it is there at all. */
+function copyTree(from, to) {
+  if (!fs.existsSync(from)) return;
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    const source = path.join(from, entry.name);
+    const target = path.join(to, entry.name);
+    if (entry.isDirectory()) copyTree(source, target);
+    else copyFile(source, target);
+  }
 }
 
 module.exports = function withWidgets(config) {
@@ -42,7 +56,7 @@ module.exports = function withWidgets(config) {
     return c;
   });
 
-  // Android: copy the Glance widget sources + provider XML into the app module.
+  // Android: copy the widget's sources and resources into the app module.
   config = withDangerousMod(config, [
     "android",
     (c) => {
@@ -63,6 +77,11 @@ module.exports = function withWidgets(config) {
         path.join(src, "checklist_widget_info.xml"),
         path.join(appRoot, "res", "xml", "checklist_widget_info.xml"),
       );
+      // Everything under `widgets/android/res` lands in the app's resource
+      // tree at the same relative path — the provider XML above predates this
+      // and keeps its own line. A resource the widget needs is added by
+      // dropping it in, not by editing this plugin.
+      copyTree(path.join(src, "res"), path.join(appRoot, "res"));
       return c;
     },
   ]);
