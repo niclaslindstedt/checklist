@@ -126,7 +126,6 @@ src/
   storage/    # pluggable persistence adapters
     local/        # localStorage adapter (default, single JSON document)
     folder/       # File System Access API adapter (markdown files on disk)
-    gdrive/       # Google Drive app-folder adapter (markdown files)
     dropbox/      # Dropbox app-folder adapter (markdown files)
     markdown/     # Snapshot <-> per-list markdown codec
     directory-adapter.ts # shared markdown file store over a FileStore
@@ -382,16 +381,13 @@ and namespaces are subfolders of it. It's offered only where
 option is hidden. A revoked grant surfaces a Reconnect cue and falls back
 to the browser store.
 
-**Cloud backends.** `createDropboxAdapter` and `createGdriveAdapter` each
-implement a `FileStore` over a per-app folder in the user's own Dropbox
-or Google Drive, talking to the providers' HTTP APIs directly (no SDK in
-the bundle). Both authenticate through the shared OAuth PKCE helpers
-(`src/storage/oauth-pkce.ts`) — Dropbox via a redirect with silent
-refresh-token rotation — and
-set a one-second `saveDebounceMs` so a burst of edits coalesces into one
-network write. Each is gated on a build-time app key / client id
-(`VITE_DROPBOX_APP_KEY`); an unset key hides the
-backend in the picker. `useStorageBackend` selects the
+**Cloud backend.** `createDropboxAdapter` implements a `FileStore` over a
+per-app folder in the user's own Dropbox, talking to its HTTP API directly (no
+SDK in the bundle). It authenticates through the shared OAuth PKCE helpers
+(`src/storage/oauth-pkce.ts`) — a redirect with silent refresh-token rotation —
+and sets a one-second `saveDebounceMs` so a burst of edits coalesces into one
+network write. It is gated on a build-time app key (`VITE_DROPBOX_APP_KEY`); an
+unset key hides the backend in the picker. `useStorageBackend` selects the
 active adapter from a per-device preference, holds the tokens, and
 completes the Dropbox OAuth redirect on boot.
 
