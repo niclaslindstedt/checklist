@@ -2,7 +2,7 @@
 // password-based encryption at the byte boundary. The underlying
 // adapter still sees opaque bytes, so the same wrapper works whether
 // the bytes ultimately live in localStorage, a Dropbox app folder, or a
-// Google Drive file. Ported from the budget project's
+// Dropbox file. Ported from the budget project's
 // `encrypting-adapter.ts`, pared to the checklist's smaller adapter
 // surface (no backups, receipts, or `markSynced`).
 //

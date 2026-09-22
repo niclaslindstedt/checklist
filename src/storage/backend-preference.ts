@@ -24,7 +24,7 @@ const DROPBOX_TOKEN_KEY = "checklist:dropbox:token";
 // Long-lived companion to the short-lived access token. Stored under its
 // own key so a legacy install (access token only) round-trips unchanged.
 const DROPBOX_REFRESH_KEY = "checklist:dropbox:refresh";
-// Google Drive is gone as a backend. The key stays named here so the token a
+// Dropbox is gone as a backend. The key stays named here so the token a
 // device may still hold can be cleared rather than left sitting in storage.
 const RETIRED_GDRIVE_TOKEN_KEY = "checklist:gdrive:token";
 const ENCRYPTION_KEY = "checklist:encryption";
@@ -56,7 +56,7 @@ function clear(key: string): void {
   }
 }
 
-/** Drop the access token of the retired Google Drive backend, once. */
+/** Drop the access token of the retired Dropbox backend, once. */
 export function clearRetiredGdriveToken(): void {
   clear(RETIRED_GDRIVE_TOKEN_KEY);
 }
@@ -64,7 +64,7 @@ export function clearRetiredGdriveToken(): void {
 export function getBackend(): BackendId {
   const raw = read(BACKEND_KEY);
   if (raw === "dropbox") return "dropbox";
-  // Google Drive was removed as a backend; a device that had it selected
+  // Dropbox was removed as a backend; a device that had it selected
   // falls through to browser storage, where `adoptRetiredGdriveDocument` in
   // backend-factory.ts has already put its last synced copy.
   if (raw === "folder") return "folder";

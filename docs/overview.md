@@ -845,7 +845,7 @@ live. The glyph never doubles as a save button and is never disabled, so
 it's one predictable way in (the old tap-to-save-when-dirty / disabled-
 while-saving behaviour was the "why won't it tap?" trap). Rendered only
 when a real cloud backend is active — `App` passes a non-null `SyncInfo`
-only for Dropbox / Google Drive / the local folder, never for the browser
+only for Dropbox / the local folder, never for the browser
 backend or while fake data overrides the adapter.
 
 ### Cloud sync modal
@@ -864,7 +864,7 @@ checklist's original, it lays out, top to bottom:
   save is no longer a silent red icon. Alongside the status card sits a
   compact **Reload** glyph (`SyncInfo.onReload`, re-reads the backend
   whatever the state). Below it: a Reconnect button on `auth-error`
-  (`SyncInfo.onReconnect`, re-issues OAuth for Dropbox / Google Drive), a
+  (`SyncInfo.onReconnect`, re-issues OAuth for Dropbox), a
   Save now / Try again button, and — while `offline` — a **Check
   connection** button (`SyncInfo.onCheckConnection`, see
   [Check connection](#check-connection)) that re-probes the backend and
@@ -2649,7 +2649,7 @@ namespace logo — that slot now belongs to the per-list checklist glyph.)
 ### Storage tab
 
 `src/ui/settings/tabs/storage.tsx` — the UI for picking the backend
-(This device / Dropbox / Google Drive), connecting / disconnecting a
+(This device / Dropbox), connecting / disconnecting a
 cloud provider, and turning on at-rest encryption with a passphrase
 (with the too-short / mismatch validation). Deep-linked from the sync
 glyph. Turning encryption on or off is the heaviest thing the tab does
@@ -2711,7 +2711,7 @@ lifecycle (pick + seed, re-grant, mirror-back-to-browser).
 
 `src/storage/directory-adapter.ts` (`createDirectoryAdapter`) is the
 shared engine the three file-based backends (local folder, Dropbox,
-Google Drive) run on. It wraps a small `FileStore`
+run on. It wraps a small `FileStore`
 (`src/storage/file-store.ts` — `list` / `read` / `write` / `remove` over
 relative paths) into a full `StorageAdapter`, so the markdown
 representation, the conflict logic, and the encrypted/legacy fallback are
@@ -2748,23 +2748,6 @@ build-time app key. `DROPBOX_APP_FOLDER` names the scoped folder itself
 relative to that folder, so the name never reaches an API path — it is
 display-only, feeding the `Apps/<app folder>/<namespace>` file location in
 the sync-details modal and the `dropboxWebUrl` "Open in Dropbox" link.
-
-### Google Drive backend
-
-`src/storage/gdrive/index.ts` — the Google Drive adapter, using the
-Drive v3 REST API with the GIS token client (popup flow, no client
-secret, `drive.file` scope, so it only sees files it created). It
-implements a `FileStore` over `checklist/<namespace>/` — resolving and
-caching the nested folder ids Drive needs — and hands it to the markdown
-file store, so each list is a markdown file under
-`checklist/<namespace>/checklists/` (`deleteGdriveNamespace` removes the
-folder). The GIS script is lazy-loaded only when the user connects.
-`isGdriveConfigured()` gates the connect button. A 401 surfaces as
-`AuthError`; a rate limit — which Drive signals mostly as **403** with a
-`userRateLimitExceeded` / `rateLimitExceeded` reason (and sometimes a bare
-429), not Dropbox's clean 429 — surfaces as `RateLimitError` so the same
-throttle-and-resume path engages. A genuine 403 permission error stays a
-plain error.
 
 ### Native wrapper
 
@@ -2953,7 +2936,7 @@ finalizing`) so the unlock gate can flash its status line.
 ### Offline cache / local copy
 
 `src/storage/cache/index.ts` (`withLocalCache`) wraps the cloud adapters
-(Dropbox, Google Drive) so the document can be unlocked, read, and edited
+(Dropbox) so the document can be unlocked, read, and edited
 with no connection — on a plane, in a tunnel. It mirrors every successful
 load / save into this device's `localStorage` (keyed by
 `localCacheKey(backend, namespace)`), and on a raw network failure serves
@@ -3314,7 +3297,7 @@ rather than a dead end.
 `src/ui/PrivacyPage.tsx` — the standalone privacy policy served at
 `/privacy`, stating the app is local-first with no backend of its own,
 accounts, analytics, or tracking. It also documents the optional storage
-backends: a local folder, Dropbox, and Google Drive send list data to a
+backends: a local folder and Dropbox send list data to a
 provider only when the user explicitly connects one, and the AES-GCM
 encryption option keeps the cloud copy ciphertext-only. Deliberately
 short and English-only (a legal page, not chrome). The SEO description
@@ -3327,7 +3310,7 @@ as a real document without running the bundle — see "Prerendered routes".
 `src/ui/ShowcasePage.tsx` — the standalone showcase / homepage served at
 `/home` (and `/preview/home`, `/branch/home`). It is a no-login marketing
 page that identifies the app, describes what it does, explains why the app
-requests Google Drive / Dropbox access (the narrow app-folder scope, only
+requests Dropbox access (the narrow app-folder scope, only
 when the user turns on cloud sync), and links to the privacy policy — the
 page linked as the "app homepage" on the Google OAuth consent screen, which
 Google requires to describe the app's functionality and data use without a
@@ -3479,7 +3462,7 @@ Storage tab).
 
 ### Switch storage backend
 
-Settings → Storage → pick This device / Dropbox / Google Drive, then
+Settings → Storage → pick This device / Dropbox, then
 connect the cloud provider via OAuth.
 
 ### Turn on encryption

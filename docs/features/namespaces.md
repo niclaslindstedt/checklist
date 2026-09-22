@@ -7,7 +7,7 @@ family set side by side without one bleeding into the other. There is always a
 default namespace, and you can add more whenever you want to wall off a new
 area of your life.
 
-When you sync to Dropbox or Google Drive (see [cloud-sync](feature:cloud-sync)),
+When you sync to Dropbox (see [cloud-sync](feature:cloud-sync)),
 **each namespace gets its own folder**. That isolation is the point: you can
 share one namespace's folder — say, the `family` one — with the people who need
 it, without handing them anything in the rest of your namespaces.

@@ -88,7 +88,7 @@ describe("cloud tokens", () => {
     expect(getDropboxRefreshToken()).toBeNull();
   });
 
-  it("stores, reads, and clears the Google Drive token", () => {
+  it("stores, reads, and clears the Dropbox token", () => {
   });
 });
 

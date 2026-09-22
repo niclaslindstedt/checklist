@@ -3,7 +3,7 @@
 `checklist` is a single-page TypeScript PWA served as static files from
 GitHub Pages. There is no server-side component. Every byte of user
 data either lives in the browser or — if the user opts in — in the
-user's own Google Drive or Dropbox account.
+user's own Dropbox account.
 
 ## Module layout
 
@@ -387,10 +387,10 @@ implement a `FileStore` over a per-app folder in the user's own Dropbox
 or Google Drive, talking to the providers' HTTP APIs directly (no SDK in
 the bundle). Both authenticate through the shared OAuth PKCE helpers
 (`src/storage/oauth-pkce.ts`) — Dropbox via a redirect with silent
-refresh-token rotation, Google Drive via the GIS popup token client — and
+refresh-token rotation — and
 set a one-second `saveDebounceMs` so a burst of edits coalesces into one
 network write. Each is gated on a build-time app key / client id
-(`VITE_DROPBOX_APP_KEY`, `VITE_GOOGLE_CLIENT_ID`); unset keys hide the
+(`VITE_DROPBOX_APP_KEY`); an unset key hides the
 backend in the picker. `useStorageBackend` selects the
 active adapter from a per-device preference, holds the tokens, and
 completes the Dropbox OAuth redirect on boot.
@@ -418,7 +418,7 @@ user re-enters it (the `UnlockGate`). Receipts of plaintext-at-rest pass
 through untouched so toggling encryption never strands a document.
 
 **Offline cache.** `withLocalCache` (`src/storage/cache/`) wraps the cloud
-adapters (Dropbox, Google Drive) and mirrors every successful load / save
+adapters (Dropbox) and mirrors every successful load / save
 into this device's `localStorage`, keyed per backend and namespace. When a
 request fails with a raw network error (airplane mode, a dead tunnel) it
 serves the cached bytes instead, flagged `offline: true` on the

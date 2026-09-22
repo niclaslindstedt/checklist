@@ -20,7 +20,7 @@ export const SITE_LOCALE = "en";
 
 export const SITE_KEYWORDS =
   "checklist, todo, to-do list, task list, PWA, offline, local-first, " +
-  "templates, markdown, shareable list, Google Drive sync, Dropbox sync, " +
+  "templates, markdown, shareable list, Dropbox sync, Dropbox sync, " +
   "encrypted, no account, free";
 
 export const AUTHOR = {

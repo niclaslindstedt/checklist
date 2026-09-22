@@ -3,7 +3,7 @@
 // Dropbox OAuth boot-redirect completion, the access/refresh token state, and
 // both cloud backends' connect / disconnect verbs are testable against the
 // persisted token store instead of a live OAuth grant — which Vitest can't
-// reach. The Dropbox and Google Drive auth modules are mocked at their module
+// reach. The Dropbox auth modules are mocked at their module
 // boundary; the tokens persist through the real `backend-preference` store, so
 // each test clears localStorage and asserts against its getters.
 import { act, renderHook, waitFor } from "@testing-library/preact";

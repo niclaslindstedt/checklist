@@ -188,7 +188,7 @@ export const HOME_ROUTE: RouteSeo = {
         "Namespaces for separate sets of checklists",
         "Markdown import and export",
         "Shareable lists via client-side URL fragments",
-        "Optional end-to-end-encrypted Google Drive or Dropbox sync",
+        "Optional end-to-end-encrypted Dropbox sync",
         "Undo/redo timeline",
         "Themes, fonts, and adjustable text size",
       ],
@@ -201,12 +201,12 @@ export const PRIVACY_ROUTE: RouteSeo = {
   title: `Privacy — ${SITE_NAME}`,
   description:
     "checklist privacy: local-first by default — no account, no cookies, no " +
-    "analytics, no tracking. Optional Dropbox / Google Drive sync only when " +
+    "analytics, no tracking. Optional Dropbox sync only when " +
     "you connect it.",
   ogType: "article",
   sitemap: { changefreq: "monthly", priority: 0.5 },
   noscriptBody: noscript("Privacy policy — checklist", [
-    "checklist is a local-first checklist app served as a static site. It runs entirely in your browser: there is no backend of our own, no account, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. You can optionally connect a cloud backend (Dropbox or Google Drive) to sync them across your own devices — only then are your lists sent to that one provider, at your explicit request. The project authors never receive them.",
+    "checklist is a local-first checklist app served as a static site. It runs entirely in your browser: there is no backend of our own, no account, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. You can optionally connect a cloud backend (Dropbox) to sync them across your own devices — only then are your lists sent to that one provider, at your explicit request. The project authors never receive them.",
     "The full privacy policy needs JavaScript to render. Enable JavaScript and reload, or read the source on GitHub.",
   ]),
   jsonLd: [
@@ -244,7 +244,7 @@ export const PRIVACY_ROUTE: RouteSeo = {
 };
 
 // The `/home` showcase: a no-login marketing page that identifies the app,
-// describes what it does, and explains why it requests Google Drive / Dropbox
+// describes what it does, and explains why it requests Dropbox / Dropbox
 // access — the page linked as the "app homepage" on the OAuth consent screen.
 // Served from `dist/home/index.html` by the `emit-showcase-alias` plugin in
 // `vite.config.ts`; `main.tsx` mounts `ShowcasePage` for the `/home` path.
@@ -257,7 +257,7 @@ export const SHOWCASE_ROUTE: RouteSeo = {
   ogType: "website",
   sitemap: { changefreq: "monthly", priority: 0.8 },
   noscriptBody: noscript("checklist — a local-first checklist PWA", [
-    "checklist is a fast, local-first checklist and template app that runs entirely in your browser, works offline, and needs no account. By default your lists are stored only on your device and never leave it. You can optionally turn on cloud sync, at which point — and only then — the app asks for access to an app-specific folder in your Google Drive or Dropbox, purely to save and load your own lists across your devices.",
+    "checklist is a fast, local-first checklist and template app that runs entirely in your browser, works offline, and needs no account. By default your lists are stored only on your device and never leave it. You can optionally turn on cloud sync, at which point — and only then — the app asks for access to an app-specific folder in your Dropbox, purely to save and load your own lists across your devices.",
     "This page needs JavaScript to render fully. Enable JavaScript and reload.",
   ]),
   jsonLd: [
@@ -268,7 +268,7 @@ export const SHOWCASE_ROUTE: RouteSeo = {
       url: absoluteUrl("/home/"),
       name: `About ${SITE_NAME}`,
       description:
-        "What checklist does, where your data lives, and why it requests Google Drive or Dropbox access only when you enable optional cloud sync.",
+        "What checklist does, where your data lives, and why it requests Dropbox access only when you enable optional cloud sync.",
       inLanguage: SITE_LANGUAGE,
       isPartOf: { "@id": `${SITE_URL}/#website` },
       about: { "@id": `${SITE_URL}/#app` },

@@ -13,7 +13,7 @@ surfaces, new storage backends, and new share / template features stay easy
 to add. The dependency direction is `ui → domain`, `ui → storage`,
 `storage → domain`; nothing in `src/domain/` may import from `ui/`,
 `storage/`, `window`, `document`, or `fetch` (lint-enforced). The three
-storage backends (LocalStorage, Google Drive, Dropbox) sit behind one
+storage backends (LocalStorage, Dropbox) sit behind one
 `StorageBackend` interface and must stay interchangeable — anything added to
 one works for all, or is a capability the UI can feature-detect.
 

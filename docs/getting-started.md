@@ -1,7 +1,7 @@
 # Getting started with checklist
 
 A local-first PWA for checklists with reusable templates and optional
-Google Drive / Dropbox sync.
+Dropbox sync.
 
 ## As a user
 
@@ -15,7 +15,7 @@ Google Drive / Dropbox sync.
 5. Use **Share** to send a checklist as a URL. The payload lives in
    the URL fragment, so it is never sent to any server; whoever opens
    the link gets a fresh local copy.
-6. (Optional) Open **Settings → Storage** and connect Google Drive or
+6. (Optional) Open **Settings → Storage** and connect
    Dropbox if you want your data synced across devices. The app uses
    each provider's app-folder scope; it can only see files it created.
 

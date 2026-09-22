@@ -200,7 +200,7 @@ const settings: SettingsCatalog = {
     backendICloud: "iCloud",
     backendFolder: "Lokal mapp",
     backendDropbox: "Dropbox",
-    backendGoogleDrive: "Google Drive",
+    backendGoogleDrive: "Dropbox",
     browserHint:
       "Dina listor finns i den här webbläsarens lagring. Inget lämnar den här enheten.",
     icloudConnected:
@@ -218,9 +218,9 @@ const settings: SettingsCatalog = {
     dropboxUnconnected:
       "Anslut din Dropbox för att synka dina listor till en privat appmapp.",
     gdriveConnected:
-      "Ansluten. Dina listor synkas till en mapp i din Google Drive.",
+      "Ansluten. Dina listor synkas till en mapp i din Dropbox.",
     gdriveUnconnected:
-      "Anslut din Google Drive för att synka dina listor till en mapp du styr över.",
+      "Anslut din Dropbox för att synka dina listor till en mapp du styr över.",
     connect: "Anslut",
     disconnect: "Koppla från",
     connected: "Ansluten",

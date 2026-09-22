@@ -87,7 +87,7 @@ export async function openShareDialog(page) {
   await page.getByRole("dialog").waitFor();
 }
 
-// Open the settings / storage panel (the LocalStorage / Google Drive /
+// Open the settings / storage panel (the LocalStorage /
 // Dropbox backend picker). Settings live behind the side navigation
 // drawer: open the drawer ("Open navigation"), then pick "Settings"
 // from the burger menu pinned at its foot.

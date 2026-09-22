@@ -3,7 +3,7 @@
 `checklist` has no config files. All user-facing settings are reached
 through **Settings** inside the app. They always persist to `localStorage`
 (the synchronous first-paint cache); on a file-based backend (Local folder,
-Dropbox, Google Drive) they are **also** written to a `settings.json` file
+Dropbox) they are **also** written to a `settings.json` file
 at the app-folder root so they travel with the synced/shared folder — see
 [App settings on a file-based backend](#app-settings-on-a-file-based-backend).
 
@@ -14,7 +14,6 @@ at the app-folder root so they travel with the synced/shared folder — see
 | `checklist:backend`              | `"browser" \| "folder" \| "dropbox" \| "gdrive" \| "icloud"`  | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends (except the local-folder connect, which seeds an empty folder from the current document). `"icloud"` is only honoured inside the iOS native wrapper (feature-detected); a stored `"icloud"` downgrades to `"browser"` on the web build. |
 | `checklist:dropbox:token`        | string                                | (unset)       | Dropbox OAuth access token. Short-lived; silently refreshed via the refresh token. |
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
-| `checklist:gdrive:token`         | string                                | (unset)       | Google Drive access token from the GIS popup. Short-lived (~1h); the user reconnects when it expires. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
 | `checklist:settings:v1`          | JSON `Settings` blob                  | (defaults)    | Settings written by the **Settings → Theme** and **Settings → General** tabs: appearance (`theme`, `fontFamily`, `fontScale`, and the `customTheme` overrides — 18 colours + radius / density / border-width / reduce-motion) plus `addItemPosition` (`"top" \| "bottom"`, default `"bottom"`) `disableToasts` (default `false`), `disableAchievements` (default `false`), and `transforms` (the display-transform rules per namespace, empty by default — see **Transform** below). Read on boot and validated field-by-field — a corrupt or partial blob falls back to defaults. Appearance is applied live by the theme engine (`src/theme/useTheme.ts`); `system` follows `prefers-color-scheme`. On a file-based backend this same blob is mirrored to `settings.json` at the app-folder root (below). |
 | `checklist:settings:autoArchive` | `boolean`                             | `false`       | When `true`, fully-completed checklists are moved to **Archive** the next time the app opens. |
@@ -114,7 +113,7 @@ The **Settings → Storage** tab chooses where your lists are saved and
 whether they're encrypted:
 
 - **Backend** — **This device** (localStorage, the default), **iCloud**,
-  **Local folder**, **Dropbox**, or **Google Drive**. The cloud options
+  **Local folder** or **Dropbox**. The cloud option
   appear only when the build was given the matching app key / client id (see
   _Build-time configuration_); **Local folder** appears only in browsers
   that support the File System Access API directory picker (Chromium-based
@@ -127,7 +126,7 @@ whether they're encrypted:
   needs no connect step at all: it rides your signed-in Apple account, so
   selecting it just switches to it.
 
-  The **Local folder**, **Dropbox**, and **Google Drive** backends store
+  The **Local folder** and **Dropbox** backends store
   each list as its own **markdown file** (standard `- [ ]` / `- [x]` task
   syntax, with the list name as the heading), so you can open, edit, diff,
   or back up your lists with any other tool. Turning on encryption replaces
@@ -152,7 +151,7 @@ the **Default** namespace; the section at the top of the side menu lets
 you switch namespaces, and the **New namespace** entry opens a dialog to
 create, rename, or delete them.
 
-On a file-based backend (Local folder, Dropbox, Google Drive) your **list
+On a file-based backend (Local folder, Dropbox) your **list
 of namespaces travels with the backend**, the same way your settings do: it
 is stored in a `namespaces.json` file at the app-folder root (below). When
 you connect that backend on a **new device**, the device adopts the
@@ -163,7 +162,7 @@ cursor. On **This device** (no cloud) the list simply lives in this
 browser's `localStorage`.
 
 Each namespace lives in its own folder on the file-based backends
-(`<name>/` under your picked folder, Dropbox, or Google Drive), so you can
+(`<name>/` under your picked folder, Dropbox,), so you can
 share one namespace's folder — a grocery list with the household — without
 sharing the rest. On **This device** each namespace is simply a separate
 localStorage entry.
@@ -255,10 +254,10 @@ reload always returns to your real lists.
 
 ## OAuth credentials
 
-The Google Drive and Dropbox backends use **public client IDs**
+The Dropbox backend uses a **public client ID**
 embedded in the bundle. No client secret is involved — these providers'
 PKCE / GIS-token flows are designed for static apps. They're read from
-build-time env vars (`VITE_DROPBOX_APP_KEY`, `VITE_GOOGLE_CLIENT_ID`); an
+a build-time env var (`VITE_DROPBOX_APP_KEY`); an
 unset key disables that backend in the picker. If you fork the repo,
 register your own apps (see the setup notes in `src/storage/dropbox/` and
 `src/storage/gdrive/`), set the env vars, and add your deployment origin
@@ -272,10 +271,9 @@ to each provider's allowed JavaScript origins / redirect URIs.
 | `VITE_DONATE_URL` | `src/ui/SideMenu.tsx` | _unset_ | When set to a URL, the side menu shows a **Donate** entry linking to it. Unset or blank hides the entry. See [`.env.example`](../.env.example). |
 | `VITE_DROPBOX_APP_KEY` | `src/storage/dropbox/` | _unset_ | Dropbox app key (PKCE public client). Unset hides the Dropbox backend in the picker. |
 | `VITE_DROPBOX_APP_FOLDER` | `src/storage/dropbox/` | `free-checklist` | Name of the Dropbox **App folder** the registered app owns. Display-only — it is the file location shown in the sync-details dialog and the target of the "Open in Dropbox" link; API paths are already relative to the app folder. Set it if your fork's Dropbox app uses a different folder name. |
-| `VITE_GOOGLE_CLIENT_ID` | `src/storage/gdrive/` | _unset_ | Google OAuth client id (GIS token client). Unset hides the Google Drive backend in the picker. |
 
 For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
-`VITE_GOOGLE_CLIENT_ID` are stored as GitHub Actions **repository
+is stored as a GitHub Actions **repository
 secrets** and threaded into every build slot (production, `/preview/`,
 and `/branch/`) by `.github/workflows/pages.yml`. A fork enables the
 cloud backends by adding the same-named secrets to its own repository.

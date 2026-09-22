@@ -10,7 +10,7 @@
 - **Fix:** If you had a sync backend configured, reconnect to it from
   **Settings → Storage**; data restores automatically. Otherwise the
   data is gone — there is no server copy by design.
-- **Prevention:** Enable Google Drive or Dropbox sync, or **Install**
+- **Prevention:** Enable Dropbox sync, or **Install**
   the app as a PWA (installed PWAs are usually treated as persistent
   by browsers).
 
@@ -24,7 +24,7 @@
   backend (which stores in IndexedDB locally with a much larger
   quota).
 
-## Google Drive / Dropbox login window is blocked
+## Dropbox login window is blocked
 
 - **Symptom:** Clicking **Connect Drive** does nothing.
 - **Cause:** A popup blocker rejected the OAuth window because the

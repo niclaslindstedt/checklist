@@ -1,13 +1,13 @@
 // Storage backend contract, adapted from the budget project's adapter
 // pattern. The app talks to a `StorageAdapter` instead of touching
-// `localStorage` directly so cloud backends (Dropbox, Google Drive)
+// `localStorage` directly so the cloud backend (Dropbox)
 // can slot in later without the UI or app-state layer changing.
 //
 // Adapters speak bytes, not domain values: serialize / parse / migrate
 // live in `./serialize.ts` and run on every load and save regardless of
 // which backend is active. That keeps each adapter small and stops a
 // backend from bypassing the parse pipeline. Only `BrowserLocalStorage`
-// is implemented today; Dropbox / Google Drive will fill in the same
+// is implemented today; Dropbox will fill in the same
 // interface.
 
 /** A document's bytes plus the metadata a backend needs to stay coherent. */
@@ -120,7 +120,7 @@ export class ConflictError extends Error {
 
 // Thrown by cloud adapters when an HTTP 401 surfaces after any silent
 // refresh has already been attempted (Dropbox) or when the access token
-// has expired with no refresh path (Google Drive — GIS popup tokens are
+// has expired with no refresh path (Dropbox — GIS popup tokens are
 // short-lived and don't ship a refresh token). The UI turns this into a
 // "Reconnect" affordance instead of a generic "Try again" that would
 // fail the same way.

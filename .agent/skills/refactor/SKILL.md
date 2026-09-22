@@ -11,7 +11,7 @@ this codebase considers a code smell worth fixing. It carries:
 - a strategic-context section explaining why the smells matter — the
   goal is to keep the codebase clean and the layering honest so new
   UI surfaces, new storage backends (the `StorageBackend` interface
-  must stay interchangeable across LocalStorage / Google Drive /
+  must stay interchangeable across LocalStorage /
   Dropbox), and new share / template features stay easy to add;
 - a **severity rubric** (1–10, with **3** as the fix threshold and
   an "easy wins" carve-out for mechanical zero-risk transforms);
@@ -109,7 +109,7 @@ session can plausibly land in one PR. Tie-break:
    touching the file for other reasons.
 
 If you can't pick one — e.g. every remaining 9-band item requires
-smoke-testing a cloud backend (Google Drive / Dropbox OAuth) you
+smoke-testing a cloud backend (Dropbox OAuth) you
 can't reach in this environment — tell the user, surface the
 constraint, and ask whether to drop to a lower band or do an
 Explore-mode sweep instead.
@@ -204,7 +204,7 @@ Refactor rules:
   under the tests that were pinning it — is a regression, not a
   cleanup.
 - **Smoke-test the storage hot path manually for storage-layer
-  refactors.** The OAuth / cloud flows (Google Drive, Dropbox) have
+  refactors.** The OAuth / cloud flow (Dropbox) has
   **no automated coverage**, so any refactor touching the
   `StorageBackend` adapters must be exercised by hand against the
   LocalStorage default plus whichever cloud backend the change
@@ -290,7 +290,7 @@ to it:
     `src/domain/`.
   - `src/storage/` — **interchangeability.** Anything added to one
     backend must work for all three (LocalStorage default in
-    `src/storage/local/`, Google Drive, Dropbox) or be expressed as
+    `src/storage/local/`, Dropbox) or be expressed as
     a capability the UI can feature-detect. Logic that lives in one
     adapter but should be shared, or a `StorageBackend` contract
     that one adapter quietly diverges from, is a smell.
@@ -315,7 +315,7 @@ as\|@ts-ignore\|@ts-expect-error" src/` — each hit is at least
 - **AGENTS.md rule sweep.** Pick one cross-cutting rule and grep
   for violations: domain/ purity; storage interchangeability;
   share payloads fragment-only; **no third-party network calls**
-  beyond the app's own origin and the opt-in Google Drive / Dropbox
+  beyond the app's own origin and the opt-in Dropbox
   APIs (grep for `fetch(` / URLs and confirm every call is to an
   allowed origin and gated on the user choosing that backend); the
   1000-line cap.

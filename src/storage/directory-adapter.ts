@@ -1,7 +1,7 @@
 // Wraps any `FileStore` into a `StorageAdapter`, storing a namespace as a
 // folder of individual markdown files (one per checklist, one per
 // template). This is the single place the file-based backends — local
-// folder, Dropbox, Google Drive — share, so the markdown representation,
+// folder and Dropbox — share, so the markdown representation,
 // the legacy/encrypted single-file fallback, and conflict detection are
 // implemented once rather than per backend.
 //

@@ -343,7 +343,7 @@ const achievements = {
       name: "Cloud Walker",
       condition: "Connect a cloud backend.",
       learnMore:
-        "Dropbox or Google Drive keeps your lists in sync across devices. No account here — you connect your own cloud, and the app talks only to it.",
+        "Dropbox keeps your lists in sync across devices. No account here — you connect your own cloud, and the app talks only to it.",
     },
     icloudSync: {
       name: "Head in the iCloud",

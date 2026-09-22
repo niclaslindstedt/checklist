@@ -337,7 +337,7 @@ const achievements: AchievementsCatalog = {
       name: "Molnvandraren",
       condition: "Anslut en molnlagring.",
       learnMore:
-        "Dropbox eller Google Drive håller dina listor synkade mellan enheter. Inget konto här — du ansluter ditt eget moln, och appen pratar bara med det.",
+        "Dropbox eller Dropbox håller dina listor synkade mellan enheter. Inget konto här — du ansluter ditt eget moln, och appen pratar bara med det.",
     },
     icloudSync: {
       name: "Huvudet i iCloud",

@@ -1,5 +1,5 @@
 // Small HTTP helpers shared by the cloud storage adapters (Dropbox,
-// Google Drive) and the OAuth PKCE flow. Keeping them in one place stops
+// Dropbox) and the OAuth PKCE flow. Keeping them in one place stops
 // each adapter from re-implementing the same defensive response handling
 // — and means a fix (a new fallback, a header quirk) lands once for every
 // backend.
@@ -87,7 +87,7 @@ export type RequestLog = {
 
 /**
  * Per-request sync diagnostics shared by the cloud adapters' logged-fetch
- * wrappers (Google Drive's `loggedFetch`, Dropbox's `authedFetch`). It
+ * wrappers (Dropbox's `loggedFetch`, Dropbox's `authedFetch`). It
  * records which endpoint / file ran (never the access token or the file
  * contents — see {@link requestLabel}), how long it ran, and how it ended.
  * That trio is what tells sync failures apart on a flaky link: a request

@@ -204,7 +204,7 @@ const settings = {
     backendICloud: "iCloud",
     backendFolder: "Local folder",
     backendDropbox: "Dropbox",
-    backendGoogleDrive: "Google Drive",
+    backendGoogleDrive: "Dropbox",
     browserHint:
       "Your lists live in this browser's storage. Nothing leaves this device.",
     icloudConnected:
@@ -222,9 +222,9 @@ const settings = {
     dropboxUnconnected:
       "Connect your Dropbox to sync your lists to a private app folder.",
     gdriveConnected:
-      "Connected. Your lists sync to a folder in your Google Drive.",
+      "Connected. Your lists sync to a folder in your Dropbox.",
     gdriveUnconnected:
-      "Connect your Google Drive to sync your lists to a folder you control.",
+      "Connect your Dropbox to sync your lists to a folder you control.",
     connect: "Connect",
     disconnect: "Disconnect",
     connected: "Connected",
