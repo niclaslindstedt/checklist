@@ -273,16 +273,18 @@ to each provider's allowed JavaScript origins / redirect URIs.
 | `VITE_DROPBOX_APP_FOLDER` | `src/storage/dropbox/` | `free-checklist` | Name of the Dropbox **App folder** the registered app owns. Display-only — it is the file location shown in the sync-details dialog and the target of the "Open in Dropbox" link; API paths are already relative to the app folder. Set it if your fork's Dropbox app uses a different folder name. |
 
 For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
-is stored as a GitHub Actions **repository
+`VITE_DROPBOX_APP_FOLDER` are stored as GitHub Actions **repository
 secrets** and threaded into every build slot (production, `/preview/`,
 and `/branch/`) by `.github/workflows/pages.yml`. A fork enables the
 cloud backends by adding the same-named secrets to its own repository.
 
-`VITE_DROPBOX_APP_FOLDER` is a GitHub Actions **repository variable**
-instead — the folder name is public either way (every Dropbox user of the
-app sees it in their `Apps/` directory), and a variable is readable in the
-repository settings, so the deployed value can be checked against the
-Dropbox app registration without guessing.
+Every setting the workflows read is a secret — the repo keeps no Actions
+variables, so there is one place to look, even for a value that is public
+anyway, like the Dropbox folder name every user sees in their `Apps/`
+directory. That includes the git mirror's `MIRROR_URL` (with `MIRROR_TOKEN`
+and the optional `MIRROR_USER`, read by `.github/workflows/mirror.yml`, which
+does nothing while it is unset), and the six macOS signing secrets listed in
+[`tauri/README.md`](../tauri/README.md).
 
 ## Things that are deliberately not configurable
 

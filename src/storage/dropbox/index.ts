@@ -78,9 +78,9 @@ export function isDropboxConfigured(): boolean {
 // and a dead link, not a failed sync.
 //
 // Read from a build-time env var (`VITE_DROPBOX_APP_FOLDER`, a GitHub
-// Actions *repository variable* rather than a secret — the name is public
-// either way, and a variable is visible in the repo settings) so a fork
-// whose own Dropbox app uses a different folder name only has to set it.
+// Actions repository secret like every other setting, though the name is
+// public either way) so a fork whose own Dropbox app uses a different folder
+// name only has to set it.
 // Unset or blank falls back to the upstream app's folder.
 export const DROPBOX_APP_FOLDER =
   import.meta.env.VITE_DROPBOX_APP_FOLDER || "free-checklist";
