@@ -54,7 +54,7 @@ if (process.env.EAS_BUILD_PROFILE === "production") {
       throw new Error(
         `${name} is not set. A production build needs it — set it as an EAS ` +
           `environment variable on the EAS project (and as a repository ` +
-          `variable for the build workflow). See RELEASING.md.`,
+          `secret for the build workflow). See RELEASING.md.`,
       );
     }
   }
