@@ -26,34 +26,34 @@ module.exports = () => ({
     scheme: "checklist",
     icon: "./assets/icon.png",
     splash: {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f1115"
+      image: "./assets/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#0f1115",
     },
     plugins: [
       [
         "expo-build-properties",
         {
-          "android": {
-            "minSdkVersion": 28,
-            "usesCleartextTraffic": true
-          }
-        }
+          android: {
+            minSdkVersion: 28,
+            usesCleartextTraffic: true,
+          },
+        },
       ],
       "./plugins/withWebroot",
       "./plugins/withWidgets",
       [
         "expo-notifications",
         {
-          "color": "#1f2933"
-        }
+          color: "#1f2933",
+        },
       ],
       [
         "@bacons/apple-targets",
         {
-          "appleTeamId": "$(TeamIdentifierPrefix)"
-        }
-      ]
+          appleTeamId: "$(TeamIdentifierPrefix)",
+        },
+      ],
     ],
     ios: {
       supportsTablet: true,
@@ -65,24 +65,24 @@ module.exports = () => ({
         "com.apple.security.application-groups": [APP_GROUP],
       },
       infoPlist: {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": false,
-          "NSAllowsLocalNetworking": true,
-          "NSAllowsArbitraryLoadsInWebContent": true,
-          "NSExceptionDomains": {
-            "localhost": {
-              "NSExceptionAllowsInsecureHTTPLoads": true,
-              "NSIncludesSubdomains": false
-            }
-          }
-        }
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: false,
+          NSAllowsLocalNetworking: true,
+          NSAllowsArbitraryLoadsInWebContent: true,
+          NSExceptionDomains: {
+            localhost: {
+              NSExceptionAllowsInsecureHTTPLoads: true,
+              NSIncludesSubdomains: false,
+            },
+          },
+        },
       },
     },
     android: {
       package: BUNDLE_ID,
       adaptiveIcon: {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1f2933"
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#1f2933",
       },
     },
     extra: {

@@ -88,8 +88,7 @@ describe("cloud tokens", () => {
     expect(getDropboxRefreshToken()).toBeNull();
   });
 
-  it("stores, reads, and clears the Dropbox token", () => {
-  });
+  it("stores, reads, and clears the Dropbox token", () => {});
 });
 
 describe("encryption mode", () => {

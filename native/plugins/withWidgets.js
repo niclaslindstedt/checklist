@@ -75,7 +75,11 @@ function assertSwiftAgrees(projectRoot) {
   const sources = [
     path.join(projectRoot, "targets", "widget", "ChecklistModels.swift"),
     path.join(
-      projectRoot, "modules", "widget-bridge", "ios", "WidgetBridgeModule.swift",
+      projectRoot,
+      "modules",
+      "widget-bridge",
+      "ios",
+      "WidgetBridgeModule.swift",
     ),
   ];
   for (const file of sources) {

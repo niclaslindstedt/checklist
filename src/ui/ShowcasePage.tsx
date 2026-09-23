@@ -302,8 +302,8 @@ export function ShowcasePage() {
           <p>
             The app uses the narrowest scope that allows this — an{" "}
             <strong className="text-fg-bright">app-specific folder</strong>{" "}
-            (Dropbox&apos;s app folder). It can read and write only the files
-            it created for you. It{" "}
+            (Dropbox&apos;s app folder). It can read and write only the files it
+            created for you. It{" "}
             <strong className="text-fg-bright">
               cannot see the rest of your Dropbox
             </strong>

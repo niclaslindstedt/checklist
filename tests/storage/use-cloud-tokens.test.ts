@@ -255,5 +255,4 @@ describe("useCloudTokens", () => {
     expect(getDropboxRefreshToken()).toBeNull();
     expect(switchToBackend).toHaveBeenCalledWith("browser");
   });
-
 });

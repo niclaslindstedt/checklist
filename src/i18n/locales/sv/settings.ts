@@ -217,8 +217,7 @@ const settings: SettingsCatalog = {
       "Ansluten. Dina listor synkas till en privat appmapp i din Dropbox.",
     dropboxUnconnected:
       "Anslut din Dropbox för att synka dina listor till en privat appmapp.",
-    gdriveConnected:
-      "Ansluten. Dina listor synkas till en mapp i din Dropbox.",
+    gdriveConnected: "Ansluten. Dina listor synkas till en mapp i din Dropbox.",
     gdriveUnconnected:
       "Anslut din Dropbox för att synka dina listor till en mapp du styr över.",
     connect: "Anslut",

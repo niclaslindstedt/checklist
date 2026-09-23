@@ -221,8 +221,7 @@ const settings = {
       "Connected. Your lists sync to a private app folder in your Dropbox.",
     dropboxUnconnected:
       "Connect your Dropbox to sync your lists to a private app folder.",
-    gdriveConnected:
-      "Connected. Your lists sync to a folder in your Dropbox.",
+    gdriveConnected: "Connected. Your lists sync to a folder in your Dropbox.",
     gdriveUnconnected:
       "Connect your Dropbox to sync your lists to a folder you control.",
     connect: "Connect",
