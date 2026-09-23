@@ -15,3 +15,6 @@ native/android
 **/*.md
 .agent
 .github
+# The desktop shell's build output and the site copied into it.
+tauri/target/
+tauri/webroot/

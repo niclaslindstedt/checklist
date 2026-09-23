@@ -37,6 +37,15 @@ const base = process.env.VITE_BASE ?? "/";
 // the SW registration too, via the `__NATIVE__` define below.
 const isNative = process.env.VITE_NATIVE === "1";
 
+// The desktop shell (`tauri/`) embeds this bundle too, served from a private
+// scheme on the machine. Set by `tauri/scripts/bundle-web.mjs`. It drops the
+// service worker for the same reason the native build does — a new version
+// arrives as a new binary, so a worker would only stand a staler cache in
+// front of files already on local disk — and nothing else: unlike the phone
+// build it keeps the crawler files and the showcase page, which cost nothing
+// in a desktop bundle. `__SHELL_BUILD__` carries the fact into the app.
+const isShell = process.env.VITE_SHELL_BUILD === "on";
+
 const pkg = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
 ) as { version: string };
@@ -435,6 +444,7 @@ export default defineConfig({
     // The PWA layer is web-only — see `isNative` above. `.filter(Boolean)`
     // at the end of the array drops this slot when it yields `false`.
     !isNative &&
+      !isShell &&
       VitePWA({
         // `UpdateToast` registers the SW itself via `workbox-window` (so it
         // can pass `updateViaCache: "none"`) and the new build parks in the
@@ -546,7 +556,7 @@ export default defineConfig({
     // Reports the bytes the service worker will precache; nothing precaches
     // in a native build, so the manifest would describe a cache that never
     // exists.
-    !isNative && emitPrecacheManifest(),
+    !isNative && !isShell && emitPrecacheManifest(),
   ].filter(Boolean),
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -554,6 +564,8 @@ export default defineConfig({
     // Lets the app skip browser-only surfaces that make no sense inside the
     // wrapper — service-worker registration and the update prompt.
     __NATIVE__: JSON.stringify(isNative),
+    // The desktop shell's build — no worker, so no registration or prompt.
+    __SHELL_BUILD__: JSON.stringify(isShell),
   },
   test: {
     // Domain/storage/share tests run in node. UI tests opt into jsdom with a

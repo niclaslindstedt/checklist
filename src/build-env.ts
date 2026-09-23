@@ -22,3 +22,8 @@ export const BUILD_LABEL: string = __BUILD_LABEL__;
 // the update prompt, and the install prompt — that have no meaning when
 // updates arrive through the App Store instead.
 export const IS_NATIVE: boolean = __NATIVE__;
+
+// True only in the bundle embedded in the desktop shell (`tauri/`), which
+// ships without a service worker for the same reason: a new version arrives as
+// a new binary. Gates SW registration and the update prompt.
+export const IS_SHELL: boolean = __SHELL_BUILD__;

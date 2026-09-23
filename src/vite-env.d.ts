@@ -13,6 +13,9 @@
 declare const __APP_VERSION__: string;
 declare const __BUILD_LABEL__: string;
 declare const __NATIVE__: boolean;
+// `__SHELL_BUILD__` is true only for the bundle embedded in the desktop shell
+// (tauri/) — no service worker was emitted. See `vite.config.ts`.
+declare const __SHELL_BUILD__: boolean;
 
 // Optional build-time env: the URL the header menu's "Donate" entry
 // links to. Unset (or blank) hides the entry entirely. Set it at build
