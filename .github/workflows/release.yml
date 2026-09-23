@@ -127,8 +127,36 @@ jobs:
       - name: Collate changelog
         run: node scripts/release/collate-changelog.mjs "${{ steps.bump.outputs.version }}"
 
+      # The notes are the changelog section plus a line about the macOS
+      # download, because what opening it takes depends on the signing:
+      # without a Developer ID certificate the app is signed ad hoc and not
+      # notarized (see tauri/README.md), and Gatekeeper refuses the first
+      # launch. NOTARIZED is the same condition the `desktop` job's signing
+      # turns on.
       - name: Extract release-notes body
-        run: node scripts/release/extract-section.mjs "${{ steps.bump.outputs.version }}" > .release-notes.md
+        env:
+          NOTARIZED: ${{ secrets.MAC_CSC_LINK != '' && secrets.APPLE_ID != '' }}
+        run: |
+          node scripts/release/extract-section.mjs "${{ steps.bump.outputs.version }}" > .release-notes.md
+          if [ "$NOTARIZED" = "true" ]; then
+            cat >> .release-notes.md <<'NOTES'
+
+          ---
+
+          **macOS:** the `.dmg` is signed and notarized by Apple — it opens
+          like any other app.
+          NOTES
+          else
+            cat >> .release-notes.md <<'NOTES'
+
+          ---
+
+          **macOS:** the `.dmg` is signed but not notarized, so the first
+          launch is refused. Open **System Settings → Privacy & Security**,
+          scroll to the message about the app and choose **Open Anyway**.
+          macOS remembers after that.
+          NOTES
+          fi
 
       - name: Sanity build
         run: npm run build
@@ -216,14 +244,6 @@ jobs:
       packages: read
     env:
       TAG: ${{ needs.release.outputs.tag }}
-      # macOS SIGNING — optional, but the build is never left unsigned.
-      #
-      # Apple Silicon refuses to execute unsigned arm64 code and reports it to
-      # the user as "the app is damaged", so an unsigned arm64 download is not
-      # a download at all. Tauri therefore signs AD HOC when this is empty: the
-      # app runs natively and the user answers one Gatekeeper prompt. Set the
-      # secret and the same job signs for real.
-      APPLE_SIGNING_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -235,6 +255,20 @@ jobs:
           display-name: ${{ secrets.APP_DISPLAY_NAME }}
           bundle-id: ${{ secrets.APP_BUNDLE_ID }}
           release: "true"
+          # macOS SIGNING — optional, but the build is never left unsigned.
+          #
+          # Apple Silicon refuses to execute unsigned arm64 code and reports it
+          # to the user as "the app is damaged", so an unsigned arm64 download
+          # is not a download at all. Tauri therefore signs AD HOC with no
+          # certificate: the app runs natively and the user answers one
+          # Gatekeeper prompt. Set the six secrets (tauri/README.md) and the
+          # same job signs with the Developer ID and notarizes.
+          mac-certificate: ${{ secrets.MAC_CSC_LINK }}
+          mac-certificate-password: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          mac-sign-identity: ${{ secrets.MAC_SIGN_IDENTITY }}
+          apple-id: ${{ secrets.APPLE_ID }}
+          apple-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          apple-team-id: ${{ secrets.APPLE_TEAM_ID }}
           # Without the key the packaged app has no Dropbox app to sign in
           # to. The desktop signs in through the shell's loopback listener, so
           # that Dropbox app must also allow http://127.0.0.1:53682/ … :53684/.
