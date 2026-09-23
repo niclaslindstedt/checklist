@@ -11,7 +11,7 @@ import { ArrowLeftIcon } from "./icons.tsx";
 // Last meaningful change to the policy text below. Bump this whenever the
 // wording is edited — it renders verbatim at the top of the page and is
 // the only line readers have to look at to see how fresh the policy is.
-const LAST_UPDATED = "2026-06-17";
+const LAST_UPDATED = "2026-09-23";
 
 export function PrivacyPage() {
   return (
@@ -148,7 +148,7 @@ export function PrivacyPage() {
 
         <Section title="Server logs">
           <p>
-            The static bundle is served by{" "}
+            The website is served by{" "}
             <strong className="text-fg-bright">GitHub Pages</strong>. GitHub may
             collect standard request metadata (IP address, user agent, request
             path) for operating the service. This is covered by{" "}
@@ -158,7 +158,10 @@ export function PrivacyPage() {
             >
               GitHub&apos;s privacy statement
             </a>
-            . The project authors do not run an additional logging service.
+            . The app from the App Store or Google Play carries its own copy of
+            the site and serves it on the device, so opening it sends no such
+            request. The project authors do not run an additional logging
+            service.
           </p>
         </Section>
 
@@ -176,6 +179,16 @@ export function PrivacyPage() {
             page reflects the most recent edit. Should a future version add
             another optional feature that sends data anywhere, this policy will
             be updated to describe it before that feature ships enabled.
+          </p>
+          <p>
+            The store listings link to{" "}
+            <a
+              href="https://apps.agilator.se/checklist/privacy/"
+              className="text-link hover:underline"
+            >
+              apps.agilator.se/checklist/privacy
+            </a>
+            , which describes the same app and is kept in step with this page.
           </p>
         </Section>
 
