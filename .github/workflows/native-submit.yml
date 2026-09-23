@@ -67,6 +67,9 @@ jobs:
       - name: Submit via EAS
         working-directory: native
         env:
+          APP_DISPLAY_NAME: ${{ vars.APP_DISPLAY_NAME }}
+          APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID }}
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
           PLATFORM: ${{ inputs.platform }}
           PROFILE: ${{ inputs.profile }}
           BUILD_ID: ${{ inputs.build_id }}

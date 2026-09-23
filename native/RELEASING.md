@@ -11,7 +11,7 @@ served offline from the app binary — see [`README.md`](README.md).
 Both store identities are already wired in [`app.json`](app.json):
 
 - iOS `ios.bundleIdentifier` and Android `android.package` — both come from
-  `APP_BUNDLE_ID`, a repository secret and an EAS environment variable. Unset,
+  `APP_BUNDLE_ID`, a repository variable and an EAS environment variable. Unset,
   a build runs as `dev.local.checklist`; a `production` profile without it
   fails rather than uploading under the development id. See
   `native/identifiers.js`.
