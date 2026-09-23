@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check
+.PHONY: build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check store-preflight store-metadata
 
 
 build:
@@ -68,3 +68,20 @@ icons-check:
 
 docs:
 	@echo "see docs/"
+
+# ---------------------------------------------------------------------------
+# SHIPPING TO THE STORE (native/store/)
+# ---------------------------------------------------------------------------
+# One authored listing compiles into the files the upload tools read. The
+# RULES are committed; the WORDS are not — see native/store/README.md.
+
+# "Is this checkout wired up to ship?" — every gate between here and a
+# submission, what is missing and where to get it.
+store-preflight:
+	@node --experimental-strip-types --disable-warning=ExperimentalWarning \
+		scripts/store-preflight.mjs $(ARGS)
+
+# Compile the listing. `ARGS="--check"` validates without writing.
+store-metadata:
+	node --experimental-strip-types --disable-warning=ExperimentalWarning \
+		scripts/generate-store-metadata.mjs $(ARGS)
