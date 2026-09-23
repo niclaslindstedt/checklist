@@ -23,7 +23,12 @@ import {
   setDropboxRefreshToken,
   setDropboxToken,
 } from "./backend-preference.ts";
-import { completeDropboxAuth, hasPendingDropboxAuth } from "./dropbox/index.ts";
+import { isDesktopShellOrigin } from "./desktop-loopback.ts";
+import {
+  completeDropboxAuth,
+  type DropboxAuthResult,
+  hasPendingDropboxAuth,
+} from "./dropbox/index.ts";
 
 const log = createLogger("storage");
 
@@ -53,7 +58,8 @@ export interface CloudTokens {
    * read it through here; `dropboxToken` only answers "is Dropbox connected?".
    */
   readDropboxToken: () => string | null;
-  /** Start the Dropbox OAuth redirect (completion runs in the boot effect). */
+  /** Connect Dropbox: the OAuth redirect on the web (completion runs in the
+   *  boot effect), the loopback sign-in in the desktop app (finished in place). */
   connectDropbox: () => void;
   /** Forget the Dropbox tokens and fall back to the browser store. */
   disconnectDropbox: () => void;
@@ -96,6 +102,22 @@ export function useCloudTokens(
 
   // Complete a Dropbox OAuth redirect on boot: it lands back here with a
   // `?code=`.
+  // Persist a finished sign-in's tokens and adopt the backend — the one ending
+  // both connect flows share (the boot-time redirect's and the desktop's).
+  const adoptDropbox = useCallback(
+    (result: DropboxAuthResult) => {
+      setDropboxToken(result.accessToken);
+      setDropboxTokenState(result.accessToken);
+      if (result.refreshToken) {
+        setDropboxRefreshToken(result.refreshToken);
+        setDropboxRefreshState(result.refreshToken);
+      }
+      switchToBackend("dropbox");
+      unlockAchievement("cloudWalker");
+    },
+    [switchToBackend],
+  );
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
@@ -106,14 +128,7 @@ export function useCloudTokens(
         log.info("boot: completing Dropbox OAuth redirect");
         const result = await completeDropboxAuth(code);
         if (cancelled) return;
-        setDropboxToken(result.accessToken);
-        setDropboxTokenState(result.accessToken);
-        if (result.refreshToken) {
-          setDropboxRefreshToken(result.refreshToken);
-          setDropboxRefreshState(result.refreshToken);
-        }
-        switchToBackend("dropbox");
-        unlockAchievement("cloudWalker");
+        adoptDropbox(result);
       } catch (err) {
         log.error("boot: Dropbox OAuth completion failed", err);
       } finally {
@@ -123,7 +138,7 @@ export function useCloudTokens(
     return () => {
       cancelled = true;
     };
-  }, [switchToBackend]);
+  }, [adoptDropbox]);
 
   // Persisting is the whole job: `setDropboxToken` writes the rotated token to
   // localStorage, which `readDropboxToken` reads back, so a later adapter
@@ -143,10 +158,22 @@ export function useCloudTokens(
   );
 
   const connectDropbox = useCallback(() => {
+    // In the desktop app the redirect has nowhere to land (its origin is a
+    // private scheme), so the sign-in runs in the user's browser and the
+    // shell's loopback listener hands the result back — finished here, in
+    // place.
+    if (isDesktopShellOrigin()) {
+      void import("./dropbox/index.ts")
+        .then((m) => m.connectDropboxLoopback())
+        .then(adoptDropbox, (err: unknown) =>
+          log.error("Dropbox desktop sign-in failed", err),
+        );
+      return;
+    }
     // Redirects away; completion (and the `cloudWalker` unlock) runs in the
     // boot effect above — a unlock queued here wouldn't survive the redirect.
     void import("./dropbox/index.ts").then((m) => m.startDropboxAuth());
-  }, []);
+  }, [adoptDropbox]);
 
   const disconnectDropbox = useCallback(() => {
     clearDropboxTokens();

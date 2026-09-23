@@ -41,6 +41,7 @@ import {
   completeAuth,
   refreshAccessToken,
   startAuth,
+  runLoopbackAuth,
 } from "../oauth-pkce.ts";
 
 const log = createLogger("dropbox");
@@ -463,6 +464,16 @@ export function startDropboxAuth(): Promise<void> {
 // Dropbox has not yet been consumed by `completeDropboxAuth`.
 export function hasPendingDropboxAuth(): boolean {
   return sessionStorage.getItem(PKCE_VERIFIER_KEY) !== null;
+}
+
+// The whole connect flow for the desktop app, where the redirect cannot land:
+// consent in the user's browser, the redirect caught on the shell's loopback
+// listener, tokens back in one promise. The Dropbox app's redirect allowlist
+// must carry `http://127.0.0.1:53682/`, `:53683/` and `:53684/`.
+export function connectDropboxLoopback(
+  fetchImpl: FetchImpl = fetch,
+): Promise<DropboxAuthResult> {
+  return runLoopbackAuth(DROPBOX_OAUTH, fetchImpl);
 }
 
 export function completeDropboxAuth(
