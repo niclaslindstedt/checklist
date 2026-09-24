@@ -163,7 +163,7 @@ and `pkg-config` on the build host (`brew install cmake pkg-config`).
 
 ```sh
 cd native
-npm install
+npm ci            # installs exactly what native/package-lock.json pins
 npm run ios       # builds the web bundle, then expo run:ios
 npm run android
 ```

@@ -17,7 +17,10 @@
 // orphans. The stable per-reminder id from the schedule is used as the
 // notification identifier so a no-op republish re-creates the same set.
 
-import type { EventSubscription } from "expo-modules-core";
+/** What a native listener hands back — `expo-modules-core`'s shape, spelled
+ *  out so this file does not import a package the app should reach through
+ *  `expo`. */
+type EventSubscription = { remove(): void };
 
 /** The permission states the web bridge speaks, mapped from the OS's. */
 export type NotificationPermission = "undetermined" | "granted" | "denied";

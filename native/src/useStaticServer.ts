@@ -159,7 +159,7 @@ export function useStaticServer(): UseStaticServer {
           void start();
           break;
         case "resync":
-          serverRef.current = running;
+          serverRef.current = running ?? null;
           if (aliveRef.current && live.origin)
             setState({ status: "ready", origin: live.origin });
           break;

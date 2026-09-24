@@ -7,6 +7,6 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true
   },
-  "include": ["index.js", "src/**/*.ts", "src/**/*.tsx"],
+  "include": ["index.js", "src/**/*.ts", "src/**/*.tsx", "modules/**/*.ts"],
   "exclude": ["node_modules", "webroot", "ios", "android"]
 }

@@ -10,7 +10,10 @@
 // throwing. Widgets exist on both iOS (WidgetKit) and Android (Glance), so
 // unlike iCloud there is no platform gate here.
 
-import type { EventSubscription } from "expo-modules-core";
+/** What a native listener hands back — `expo-modules-core`'s shape, spelled
+ *  out so this file does not import a package the app should reach through
+ *  `expo`. */
+type EventSubscription = { remove(): void };
 
 /** The minimal widget surface the bridge drives. */
 export interface WidgetHost {

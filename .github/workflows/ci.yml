@@ -31,6 +31,25 @@ jobs:
       # `make icons` and committing the regenerated PNG/ICO set.
       - run: make icons-check
 
+  # The native wrapper (native/) is a separate Expo app with its own
+  # dependency tree, so nothing in the `test` job above touches it. This job
+  # is the guard that it still installs from its lockfile and that its
+  # sources still compile — cheap, because it never builds a native binary;
+  # that only happens on manual dispatch (see native-build.yml).
+  native:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
 
   # Lint workflow YAML with actionlint and shell scripts with
   # shellcheck (OSS_SPEC §16.1). shellcheck is preinstalled on

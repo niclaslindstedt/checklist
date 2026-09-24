@@ -13,11 +13,10 @@
 // throwing; `native/src/widgets.ts` owns that guard.
 
 import Constants from "expo-constants";
-import {
-  NativeModule,
-  requireNativeModule,
-  type EventSubscription,
-} from "expo-modules-core";
+import { NativeModule, requireNativeModule } from "expo";
+
+/** What a native listener hands back (`expo-modules-core`'s shape). */
+export type EventSubscription = { remove(): void };
 
 // The App Group / shared-prefs identifier both the app and the widget
 // extension address. Changing it after release orphans every installed
