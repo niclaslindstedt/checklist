@@ -41,8 +41,10 @@ import {
   completeAuth,
   refreshAccessToken,
   startAuth,
+  runAuthSessionAuth,
   runLoopbackAuth,
 } from "../oauth-pkce.ts";
+import type { AuthSessionHost } from "../auth-session.ts";
 
 const log = createLogger("dropbox");
 
@@ -60,7 +62,9 @@ const log = createLogger("dropbox");
 // Its redirect URIs must include `https://checklist.niclaslindstedt.se`
 // (prod) and `http://localhost:5173` (dev), no trailing slash —
 // `startDropboxAuth` derives the URI from `window.location.origin` and
-// Dropbox requires an exact match.
+// Dropbox requires an exact match — plus the desktop app's loopback URIs
+// (`connectDropboxLoopback`) and the phone app's `se.agilator.checklist://oauth`
+// (`connectDropboxAuthSession`).
 export const DROPBOX_APP_KEY = import.meta.env.VITE_DROPBOX_APP_KEY ?? "";
 
 export function isDropboxConfigured(): boolean {
@@ -474,6 +478,18 @@ export function connectDropboxLoopback(
   fetchImpl: FetchImpl = fetch,
 ): Promise<DropboxAuthResult> {
   return runLoopbackAuth(DROPBOX_OAUTH, fetchImpl);
+}
+
+// The whole connect flow for the phone app: consent in an authentication
+// session the wrapper opens over the app, the redirect handed back when the
+// sheet closes, tokens back in one promise. The Dropbox app's redirect
+// allowlist must carry the host's URI — `se.agilator.checklist://oauth` for the
+// store build (the scheme is the bundle id; see native/app.config.js).
+export function connectDropboxAuthSession(
+  host: AuthSessionHost,
+  fetchImpl: FetchImpl = fetch,
+): Promise<DropboxAuthResult> {
+  return runAuthSessionAuth(DROPBOX_OAUTH, host, fetchImpl);
 }
 
 export function completeDropboxAuth(

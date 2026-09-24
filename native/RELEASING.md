@@ -40,9 +40,24 @@ Link this project to an EAS project (writes `extra.eas.projectId` and
 
 ```sh
 cd native
-npm install
+npm ci
 eas init
 ```
+
+**Dropbox redirect URI.** The phone app signs in to Dropbox through an
+authentication session that returns on `<bundle id>://oauth`. In the Dropbox
+App Console (the app whose key is `VITE_DROPBOX_APP_KEY`) → **Settings → OAuth 2
+→ Redirect URIs**, add:
+
+```
+se.agilator.checklist://oauth
+```
+
+(and `dev.local.checklist://oauth` to sign in from a local dev build). Without
+it Dropbox shows an "invalid redirect_uri" page inside the sheet. The native
+build bakes the Dropbox key into the embedded web bundle from the
+`VITE_DROPBOX_APP_KEY` / `VITE_DROPBOX_APP_FOLDER` repository secrets; a build
+without them offers no Dropbox at all.
 
 ## 1. Set the marketing version
 

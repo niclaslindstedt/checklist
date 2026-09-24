@@ -6,6 +6,7 @@
 
 import { createLogger } from "../dev/logger.ts";
 import { toBase64Url } from "../encoding/base64url.ts";
+import { AuthCancelledError, type AuthSessionHost } from "./auth-session.ts";
 import {
   awaitLoopbackRedirect,
   beginLoopbackRedirect,
@@ -155,31 +156,111 @@ export async function runLoopbackAuth(
       "noopener",
     );
     const back = await awaitLoopbackRedirect();
-    const error = back.get("error");
-    if (error) {
-      throw new Error(
-        `${config.providerName} declined the connection: ${
-          back.get("error_description") ?? error
-        }`,
-      );
-    }
-    // Checked before the code is spent: a `state` that is not ours means the
-    // redirect belongs to some other flow, and the code is not ours to trade.
-    if (back.get("state") !== config.state) {
-      throw new Error(
-        `${config.providerName} redirect carried an unexpected state`,
-      );
-    }
-    const code = back.get("code");
-    if (!code) {
-      throw new Error(`${config.providerName} redirect carried no code`);
-    }
-    return await completeAuth(config, code, fetchImpl, redirect);
+    return await finishRedirect(config, back, redirect, fetchImpl);
   } catch (err) {
     sessionStorage.removeItem(config.verifierKey);
     log.error(`${config.providerName}: loopback auth failed`, err);
     throw err;
   }
+}
+
+// The PHONE sign-in, start to tokens, in one promise — for the phone app,
+// whose loopback origin no provider redirects to (see `./auth-session.ts`).
+// The consent screen opens in an authentication session the host provides; the
+// sheet closes on the host's redirect URI (`<bundle id>://oauth`) and hands the
+// URL back here, where the `state` check and the token exchange happen with
+// the verifier this page still holds. The host never sees a token.
+//
+// A sheet the reader closes rejects with `AuthCancelledError`, which the caller
+// reports quietly (`isAuthCancelled`); every other failure is an error. The
+// verifier is dropped on all of them, as in `runLoopbackAuth`.
+export async function runAuthSessionAuth(
+  config: OAuthConfig,
+  host: AuthSessionHost,
+  fetchImpl: FetchImpl = fetch,
+): Promise<TokenResult> {
+  const redirect = host.redirectUri;
+  log.info(`${config.providerName}: auth session (redirect=${redirect})`);
+  const verifier = randomVerifier();
+  sessionStorage.setItem(config.verifierKey, verifier);
+  try {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      response_type: "code",
+      redirect_uri: redirect,
+      code_challenge: await challengeFor(verifier),
+      code_challenge_method: "S256",
+      state: config.state,
+      ...(config.extraAuthParams ?? {}),
+    });
+    const landed = await host.open(`${config.authBase}?${params.toString()}`);
+    if (landed === null) throw new AuthCancelledError(config.providerName);
+    return await finishRedirect(
+      config,
+      callbackParams(config, landed, redirect),
+      redirect,
+      fetchImpl,
+    );
+  } catch (err) {
+    sessionStorage.removeItem(config.verifierKey);
+    if (err instanceof AuthCancelledError) {
+      log.info(`${config.providerName}: auth session cancelled`);
+    } else {
+      log.error(`${config.providerName}: auth session failed`, err);
+    }
+    throw err;
+  }
+}
+
+// The query of the URL a session ended on — refused unless it is the redirect
+// URI the provider was given, so a sheet that ended anywhere else never has a
+// `code` read out of it.
+function callbackParams(
+  config: OAuthConfig,
+  landed: string,
+  redirect: string,
+): URLSearchParams {
+  const hash = landed.indexOf("#");
+  const bare = hash >= 0 ? landed.slice(0, hash) : landed;
+  const mark = bare.indexOf("?");
+  const base = mark >= 0 ? bare.slice(0, mark) : bare;
+  const trim = (uri: string) => uri.replace(/\/+$/, "");
+  if (trim(base) !== trim(redirect)) {
+    throw new Error(
+      `${config.providerName} sign-in ended somewhere other than the redirect URI`,
+    );
+  }
+  return new URLSearchParams(mark >= 0 ? bare.slice(mark + 1) : "");
+}
+
+// What the provider's redirect said, turned into tokens — or into the error it
+// carried. Shared by the loopback and the auth-session flows.
+async function finishRedirect(
+  config: OAuthConfig,
+  back: URLSearchParams,
+  redirect: string,
+  fetchImpl: FetchImpl,
+): Promise<TokenResult> {
+  const error = back.get("error");
+  if (error) {
+    throw new Error(
+      `${config.providerName} declined the connection: ${
+        back.get("error_description") ?? error
+      }`,
+    );
+  }
+  // Checked before the code is spent: a `state` that is not ours means the
+  // redirect belongs to some other flow, and the code is not ours to trade.
+  if (back.get("state") !== config.state) {
+    throw new Error(
+      `${config.providerName} redirect carried an unexpected state`,
+    );
+  }
+  const code = back.get("code");
+  if (!code) {
+    throw new Error(`${config.providerName} redirect carried no code`);
+  }
+  return await completeAuth(config, code, fetchImpl, redirect);
 }
 
 // Trades the code from the redirect for an access (and, where the
@@ -189,7 +270,7 @@ export async function runLoopbackAuth(
 //
 // `redirect` must be the SAME URI the authorization request carried — the
 // provider checks it again at the token endpoint. It defaults to this page's;
-// `runLoopbackAuth` passes the listener's.
+// `runLoopbackAuth` passes the listener's, `runAuthSessionAuth` the host's.
 export async function completeAuth(
   config: OAuthConfig,
   code: string,

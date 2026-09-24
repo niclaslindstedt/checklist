@@ -54,6 +54,15 @@ updates by being replaced. The package's name and identifier come from
 (`tauri/scripts/package.mjs`), like the phone app's. See
 [`tauri/README.md`](tauri/README.md).
 
+The phone app (`native/`) signs in to Dropbox the third way: it OFFERS the
+page an authentication session at `window.__ossAuthSession`
+(`native/src/authSessionBridge.ts`), and the page's connect asks
+`getAuthSessionHost()` (`src/storage/auth-session.ts`) first, then
+`isDesktopShellOrigin()`, then redirects. The sheet returns on
+`<bundle id>://oauth` — the phone app's URL scheme is its bundle id, never a
+literal — so the Dropbox app lists `se.agilator.checklist://oauth`. See
+[`native/README.md`](native/README.md#signing-in-to-dropbox).
+
 ## Commit and PR conventions
 
 - All commits follow [Conventional Commits](https://www.conventionalcommits.org/).

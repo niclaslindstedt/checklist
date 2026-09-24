@@ -119,8 +119,9 @@ whether they're encrypted:
   that support the File System Access API directory picker (Chromium-based
   today); **iCloud** appears only inside the iOS native app (it needs the
   native bridge, so the web build never shows it). Picking a cloud backend
-  connects it: Dropbox redirects to its consent screen and returns; Google
-  Drive opens a popup. **Local folder** prompts you to pick a directory on
+  connects it: Dropbox redirects to its consent screen and returns (in the
+  phone app it opens in a sign-in sheet over the app instead, and in the
+  desktop app in your browser); Google Drive opens a popup. **Local folder** prompts you to pick a directory on
   this device — its grant is remembered in IndexedDB, and if the browser
   later asks again a **Reconnect folder** button re-grants it. **iCloud**
   needs no connect step at all: it rides your signed-in Apple account, so
@@ -263,6 +264,12 @@ register your own apps (see the setup notes in `src/storage/dropbox/` and
 `src/storage/gdrive/`), set the env vars, and add your deployment origin
 to each provider's allowed JavaScript origins / redirect URIs.
 
+The phone app signs in through an authentication session that returns on
+`<bundle id>://oauth` — the URL scheme is the app's bundle id — so the Dropbox
+app must also list **`se.agilator.checklist://oauth`** (and
+`dev.local.checklist://oauth` for local dev builds). See
+[`native/README.md`](../native/README.md#signing-in-to-dropbox).
+
 ## Build-time configuration
 
 | Env var           | Read by             | Default | Effect |
@@ -275,7 +282,9 @@ to each provider's allowed JavaScript origins / redirect URIs.
 For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
 `VITE_DROPBOX_APP_FOLDER` are stored as GitHub Actions **repository
 secrets** and threaded into every build slot (production, `/preview/`,
-and `/branch/`) by `.github/workflows/pages.yml`. A fork enables the
+and `/branch/`) by `.github/workflows/pages.yml` — and the two Dropbox ones
+into the phone app's embedded bundle by `.github/workflows/native-build.yml`.
+A fork enables the
 cloud backends by adding the same-named secrets to its own repository.
 
 Every setting the workflows read is a secret — the repo keeps no Actions

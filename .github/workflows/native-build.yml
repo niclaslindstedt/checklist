@@ -65,7 +65,12 @@ jobs:
       # what carries `native/webroot` to the EAS worker where `expo prebuild`
       # runs. `native/.easignore` is what keeps the artifact in the upload
       # despite being gitignored.
+      # The Dropbox key is baked into the bundle like on the website; without
+      # it the phone app offers no Dropbox at all.
       - name: Build the embedded web bundle
+        env:
+          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
+          VITE_DROPBOX_APP_FOLDER: ${{ secrets.VITE_DROPBOX_APP_FOLDER }}
         run: |
           npm ci
           npm run build:native

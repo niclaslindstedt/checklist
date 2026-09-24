@@ -23,6 +23,7 @@ import {
   setDropboxRefreshToken,
   setDropboxToken,
 } from "./backend-preference.ts";
+import { getAuthSessionHost, isAuthCancelled } from "./auth-session.ts";
 import { isDesktopShellOrigin } from "./desktop-loopback.ts";
 import {
   completeDropboxAuth,
@@ -158,6 +159,25 @@ export function useCloudTokens(
   );
 
   const connectDropbox = useCallback(() => {
+    // In the phone app the redirect has nowhere to land either (a loopback
+    // origin no provider registers), but the wrapper OFFERS an authentication
+    // session: consent opens in a sheet over the app, and the sheet hands the
+    // redirect back — finished here, in place. Asked for as a capability, not
+    // a platform. A closed sheet is the reader changing their mind, not an
+    // error.
+    const authSession = getAuthSessionHost();
+    if (authSession) {
+      void import("./dropbox/index.ts")
+        .then((m) => m.connectDropboxAuthSession(authSession))
+        .then(adoptDropbox, (err: unknown) => {
+          if (isAuthCancelled(err)) {
+            log.info("Dropbox sign-in cancelled");
+            return;
+          }
+          log.error("Dropbox phone sign-in failed", err);
+        });
+      return;
+    }
     // In the desktop app the redirect has nowhere to land (its origin is a
     // private scheme), so the sign-in runs in the user's browser and the
     // shell's loopback listener hands the result back — finished here, in

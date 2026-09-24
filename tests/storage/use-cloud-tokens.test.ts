@@ -22,17 +22,26 @@ const h = vi.hoisted(() => ({
     vi.fn<
       (code: string) => Promise<{ accessToken: string; refreshToken?: string }>
     >(),
+  connectDropboxAuthSession:
+    vi.fn<
+      (host: unknown) => Promise<{ accessToken: string; refreshToken?: string }>
+    >(),
   hasPendingDropboxAuth: vi.fn<() => boolean>(),
   startDropboxAuth: vi.fn<() => void>(),
 }));
 
 vi.mock("../../src/storage/dropbox/index.ts", () => ({
   completeDropboxAuth: h.completeDropboxAuth,
+  connectDropboxAuthSession: h.connectDropboxAuthSession,
   hasPendingDropboxAuth: h.hasPendingDropboxAuth,
   startDropboxAuth: h.startDropboxAuth,
 }));
 
 import { useCloudTokens } from "../../src/storage/useCloudTokens.ts";
+import {
+  AUTH_SESSION_HOST_PROPERTY,
+  AuthCancelledError,
+} from "../../src/storage/auth-session.ts";
 
 // Point the address bar at `search` so the boot effect reads a `?code=` (or
 // not). Reset to a clean path between tests so a stale code doesn't leak.
@@ -46,12 +55,28 @@ beforeEach(() => {
   h.completeDropboxAuth.mockReset();
   h.hasPendingDropboxAuth.mockReset().mockReturnValue(false);
   h.startDropboxAuth.mockReset();
+  h.connectDropboxAuthSession.mockReset();
 });
 
 afterEach(() => {
   localStorage.clear();
   setSearch("");
+  delete (window as unknown as Record<string, unknown>)[
+    AUTH_SESSION_HOST_PROPERTY
+  ];
 });
+
+/** What the phone wrapper installs: a host that can open a sign-in sheet. */
+function installAuthSessionHost() {
+  const host = {
+    version: 1,
+    redirectUri: "se.agilator.checklist://oauth",
+    open: vi.fn(),
+  };
+  (window as unknown as Record<string, unknown>)[AUTH_SESSION_HOST_PROPERTY] =
+    host;
+  return host;
+}
 
 describe("useCloudTokens", () => {
   it("boots disconnected when nothing is persisted", () => {
@@ -237,6 +262,48 @@ describe("useCloudTokens", () => {
     });
     // The redirect starter is loaded via a dynamic import; let it resolve.
     await waitFor(() => expect(h.startDropboxAuth).toHaveBeenCalled());
+  });
+
+  it("connectDropbox signs in through the phone's session host, in place", async () => {
+    const host = installAuthSessionHost();
+    h.connectDropboxAuthSession.mockResolvedValue({
+      accessToken: "phone-access",
+      refreshToken: "phone-refresh",
+    });
+    const switchToBackend = vi.fn();
+    const { result } = renderHook(() => useCloudTokens(switchToBackend));
+
+    act(() => {
+      result.current.connectDropbox();
+    });
+
+    await waitFor(() =>
+      expect(result.current.dropboxToken).toBe("phone-access"),
+    );
+    expect(h.connectDropboxAuthSession).toHaveBeenCalledWith(host);
+    // No redirect: the page never navigates away from itself on the phone.
+    expect(h.startDropboxAuth).not.toHaveBeenCalled();
+    expect(switchToBackend).toHaveBeenCalledWith("dropbox");
+    expect(getDropboxRefreshToken()).toBe("phone-refresh");
+  });
+
+  it("a closed sign-in sheet leaves the app where it was", async () => {
+    installAuthSessionHost();
+    h.connectDropboxAuthSession.mockRejectedValue(
+      new AuthCancelledError("Dropbox"),
+    );
+    const switchToBackend = vi.fn();
+    const { result } = renderHook(() => useCloudTokens(switchToBackend));
+
+    act(() => {
+      result.current.connectDropbox();
+    });
+
+    await waitFor(() => expect(h.connectDropboxAuthSession).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(result.current.dropboxToken).toBeNull();
+    expect(switchToBackend).not.toHaveBeenCalled();
+    expect(h.startDropboxAuth).not.toHaveBeenCalled();
   });
 
   it("disconnectDropbox clears the tokens and falls back to the browser", () => {

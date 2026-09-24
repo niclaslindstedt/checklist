@@ -161,6 +161,36 @@ writes it into the extension's Info.plist as `ChecklistURLScheme` at prebuild
 and `DeepLink` in `targets/widget/Theme.swift` reads it from there. That
 Info.plist is generated and gitignored.
 
+## Signing in to Dropbox
+
+The page's usual Dropbox sign-in is a redirect back to its own origin, and on
+the phone that origin is `http://localhost:<port>` inside the app — Dropbox
+will not redirect there, and consent in Safari would come back to Safari, not
+to the app. So the wrapper offers the page an **authentication session**
+(`ASWebAuthenticationSession` on iOS, a Custom Tab on Android, through
+`expo-web-browser`): a sheet over the app that closes when Dropbox redirects to
+the app's own URL and hands that URL back.
+
+- `src/authSessionBridge.ts` injects the provider at `window.__ossAuthSession`;
+  the page's `getAuthSessionHost()` (`../src/storage/auth-session.ts`) finds it
+  and `connectDropboxAuthSession` runs the whole PKCE flow in one promise. The
+  page asks for the capability, never for the platform — the website keeps its
+  redirect and the desktop app its loopback listener.
+- `src/authSession.ts` opens the sheet and reports where it ended. It opens only
+  `https:` URLs and never sees a token: the `state` check and the token exchange
+  happen in the page, with the verifier it still holds. A closed sheet is a
+  quiet "cancelled", not an error.
+- The **redirect URI is `<bundle id>://oauth`** — `se.agilator.checklist://oauth`
+  for the store build, `dev.local.checklist://oauth` for a local dev build. It
+  must be listed under **Redirect URIs** on the Dropbox app (see
+  `RELEASING.md`), or Dropbox refuses the sign-in.
+- Dropbox appears in the app only when the embedded bundle was built with
+  `VITE_DROPBOX_APP_KEY`; `native-build.yml` passes it (and
+  `VITE_DROPBOX_APP_FOLDER`) to the bundle step from the repository secrets.
+
+`tests/native/auth-session-bridge.test.ts` runs the injected script against the
+page's own host validation, so the two halves cannot drift apart silently.
+
 ## Running it
 
 **Expo Go will not work.** The static server is a custom native TurboModule
@@ -188,11 +218,6 @@ The old native app had an **iCloud key-value storage backend** (accountless
 cross-device sync). It is not in the wrapper: reaching a native module from
 inside the WebView needs a `postMessage` bridge, plus a new backend wired
 through the web app's storage layer — tracked in #262.
-
-**Cloud sign-in is likely broken here.** The Drive / Dropbox OAuth redirect
-targets the web app's own origin, which only exists inside the app process, so
-the round trip cannot complete — see #274 before offering those backends on
-mobile.
 
 Deadline notifications (#268) and the rest of the native backlog are tracked
 in the issue tracker.

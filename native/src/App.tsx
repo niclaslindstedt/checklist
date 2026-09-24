@@ -20,6 +20,12 @@ import {
 import { useStaticServer } from "./useStaticServer";
 import { useNativeBridge } from "./nativeBridge";
 import { useNativeTheme } from "./nativeTheme";
+import {
+  authSessionResolveScript,
+  authSessionScript,
+  isAuthSessionRequest,
+} from "./authSessionBridge";
+import { answerAuthSession, authRedirectUri } from "./authSession";
 
 // Fallback chrome shown before the page reports its theme (startup, over-scroll,
 // the server-failed screen). Matches the dark preset so nothing flashes white;
@@ -38,6 +44,15 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 // user on the splash forever.
 const SPLASH_TIMEOUT_MS = 10000;
 
+// The redirect URI a Dropbox sign-in comes back on (`<bundle id>://oauth`), and
+// the provider the page finds it through (see `authSessionBridge.ts`). Null in
+// a build with no URL scheme, which offers no provider and leaves the page on
+// its redirect flow.
+const AUTH_REDIRECT_URI = authRedirectUri();
+const AUTH_SESSION_SCRIPT = AUTH_REDIRECT_URI
+  ? authSessionScript(AUTH_REDIRECT_URI)
+  : "";
+
 export default function App() {
   const { state: server, retry } = useStaticServer();
   const webViewRef = useRef<WebView>(null);
@@ -55,14 +70,34 @@ export default function App() {
   // constant above. `theme` is null until the page reports one.
   const { injectedJavaScript, theme, onThemeMessage } = useNativeTheme();
 
-  // One `onMessage` feeds both channels: theme reports are consumed here, and
-  // everything else (the `window.__native` bridge traffic) falls through.
+  // One sign-in. The sheet is modal and the page waits on it; what comes back
+  // is the provider's redirect URL, handed straight to the page, which holds
+  // the PKCE verifier and makes the token exchange itself.
+  const signIn = useCallback(async (id: string, url: string) => {
+    if (!AUTH_REDIRECT_URI) return;
+    const result = await answerAuthSession(url, AUTH_REDIRECT_URI);
+    webViewRef.current?.injectJavaScript(authSessionResolveScript(id, result));
+  }, []);
+
+  // One `onMessage` feeds every channel: theme reports and sign-in requests
+  // are consumed here, and everything else (the `window.__native` bridge
+  // traffic) falls through.
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
       if (onThemeMessage(event)) return;
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(event.nativeEvent.data);
+      } catch {
+        // not JSON — not a sign-in request
+      }
+      if (isAuthSessionRequest(parsed)) {
+        void signIn(parsed.id, parsed.url);
+        return;
+      }
       onBridgeMessage(event);
     },
-    [onThemeMessage, onBridgeMessage],
+    [onThemeMessage, onBridgeMessage, signIn],
   );
 
   const background = theme?.background ?? BACKGROUND;
@@ -109,10 +144,13 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
-  // Keep the WebView on the embedded app. Anything else — a Drive or Dropbox
-  // OAuth page, a link in an item note — belongs in the system browser, both
-  // because OAuth inside an embedded WebView is blocked by the providers and
-  // because App Review expects external links to open externally.
+  // Keep the WebView on the embedded app. Anything else — a link in an item
+  // note, the privacy page's own links — belongs in the system browser,
+  // because App Review expects external links to open externally. Dropbox's
+  // consent page is not navigated to at all: the page asks for an
+  // authentication session instead (see `authSessionBridge.ts`), since a
+  // consent page in Safari redirects back to Safari, not to the app. This
+  // stays the fallback for a page that finds no session provider.
   const onShouldStartLoadWithRequest = useCallback(
     (request: WebViewNavigation) => {
       if (!origin) return false;
@@ -172,9 +210,11 @@ export default function App() {
             injectedJavaScriptBeforeContentLoaded={
               injectedJavaScriptBeforeContentLoaded
             }
-            // Report the resolved theme (page background + status-bar style)
-            // to native after the page paints, and on every live theme switch.
-            injectedJavaScript={injectedJavaScript}
+            // Two scripts, one prop: the theme reporter (page background +
+            // status-bar style, after the page paints and on every live theme
+            // switch) and the auth-session provider the Dropbox sign-in looks
+            // for. Both are guarded against a second injection.
+            injectedJavaScript={`${injectedJavaScript}\n${AUTH_SESSION_SCRIPT}`}
             onMessage={onMessage}
             // First paint of the embedded app: the one moment the splash can
             // hide onto real content.
