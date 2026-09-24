@@ -57,23 +57,14 @@ node .agent/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
 node .agent/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
 ```
 
-The siblings push-mirror themselves to an external git host (each repo's
-`.github/workflows/mirror.yml`), and that mirror is reachable over plain `git`
-even in the scoped sandbox where github.com egress is blocked (403). So the
-helper clones the mirror directly — `<sibling>.git` appended to `MIRROR_BASE` —
+The siblings are public repositories under github.com/niclaslindstedt, so the
+helper clones `https://github.com/niclaslindstedt/<sibling>.git` directly,
 giving a real checkout *with full history*. **Don't hand-clone or hand-curl
 around it; the helper is the one supported path.**
 
-> **Config (provider-agnostic, via env).** `MIRROR_BASE` = the mirror
-> host+namespace, no scheme / no repo (e.g. `gitlab.com/niclaslindstedt` or
-> `codeberg.org/team`) — **required**. `MIRROR_TOKEN` = the PAT, needed for a
-> private mirror (omit for a public one). `MIRROR_USER` optional (default
-> `oauth2`; `x-token-auth` for Bitbucket, your username for Gitea / Codeberg).
-
-If `MIRROR_BASE` isn't set, or the clone fails (no mirror for that sibling yet,
-or no network), the helper stops with a clear error. Fix the config / create
-the sibling's mirror — or, if you truly can't reach it, ask the user to paste
-the relevant files. Don't guess from memory, and don't fall back to the
+If the clone fails (no network, or an environment that cannot reach GitHub),
+the helper stops with a clear error — ask the user to paste the relevant
+files. Don't guess from memory, and don't fall back to the
 scope-locked GitHub tools.
 
 The script clears its destination first, so you always study current truth, and
@@ -136,7 +127,7 @@ git show <hash>
 
 When the user names a specific commit or PR ("the redesigned action bar from
 #112"), `git show` that commit and read its message, changeset, and docs diff
-before porting the code. The mirror clone carries full history, so `git log` /
+before porting the code. The clone carries full history, so `git log` /
 `git show` work directly; pass the ref as the helper's 3rd arg if the commit
 lives on another branch.
 
@@ -259,10 +250,9 @@ The port is done when:
 
 ## Common pitfalls
 
-1. **Hand-cloning instead of using the Step-0 helper.** `git clone` of
-   github.com 403s in a scoped session, and the git proxy / GitHub MCP are
-   locked to this repo — don't retry them or hand-curl around them. Run
-   `clone-sibling.mjs`, which clones the sibling's mirror (`MIRROR_BASE`).
+1. **Hand-cloning instead of using the Step-0 helper.** Run
+   `clone-sibling.mjs`, which clones the sibling from GitHub into a clean
+   destination every time, so you never study a stale copy.
 2. **Pasting budget's domain nouns.** The single biggest tell of a lazy port.
    Translate every `account`/`sheet`/`row`/`transaction`/`loan` to a checklist
    concept via `docs/dictionary.md`.
@@ -311,8 +301,7 @@ After a port:
 2. If you discovered a reusable sub-port (a foundation you had to bring over
    before the real feature), add it to "Shared foundations already here" so the
    next run reuses it.
-3. If how the sibling source is reached changed (mirror host, auth, scope,
-   proxy rules), update `clone-sibling.mjs` and the Step 0 summary — keep the
-   `MIRROR_BASE` mirror-clone logic current.
+3. If how the sibling source is reached changed (host, auth, scope, proxy
+   rules), update `clone-sibling.mjs` and the Step 0 summary.
 4. Commit the SKILL.md edit alongside the ported feature, and refresh
    `.last-updated` with today's date.

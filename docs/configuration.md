@@ -284,15 +284,13 @@ For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
 secrets** and threaded into every build slot (production, `/preview/`,
 and `/branch/`) by `.github/workflows/pages.yml` — and the two Dropbox ones
 into the phone app's embedded bundle by `.github/workflows/native-build.yml`.
-A fork enables the
-cloud backends by adding the same-named secrets to its own repository.
+A fork enables the cloud backends by adding the same-named secrets to its own
+repository.
 
 Every setting the workflows read is a secret — the repo keeps no Actions
 variables, so there is one place to look, even for a value that is public
 anyway, like the Dropbox folder name every user sees in their `Apps/`
-directory. That includes the git mirror's `MIRROR_URL` (with `MIRROR_TOKEN`
-and the optional `MIRROR_USER`, read by `.github/workflows/mirror.yml`, which
-does nothing while it is unset), and the six macOS signing secrets listed in
+directory. That includes the six macOS signing secrets listed in
 [`tauri/README.md`](../tauri/README.md).
 
 ## Things that are deliberately not configurable
