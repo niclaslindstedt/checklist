@@ -88,7 +88,7 @@ sync.
 
 > **Build the embedded web bundle first.** The wrapper has no UI of its own —
 > it serves `native/webroot`, produced by `npm run build:native` at the repo
-> root. That directory is gitignored, so `native/.easignore` is what keeps it
+> root. That directory is gitignored, so the root `.easignore` is what keeps it
 > in the EAS upload; without the build step the `withWebroot` config plugin
 > fails the build with a clear error rather than shipping an empty app.
 >
