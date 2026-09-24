@@ -4,8 +4,16 @@
 // for the three variables and the guard that fails a production build without
 // them.
 //
-// `slug` and `scheme` stay literal — they are the project's own name rather
-// than listing coordinates, and EAS resolves the project by slug.
+// `slug` stays literal — it is the project's own name rather than a listing
+// coordinate, and EAS resolves the project by slug.
+//
+// The URL SCHEME is the bundle id (reverse-DNS, as RFC 8252 §7.1 asks of a
+// native app's redirect scheme): `se.agilator.checklist` in the store build,
+// `dev.local.checklist` in a plain checkout. So a Dropbox sign-in comes back
+// on `<bundle id>://oauth` and a widget opens `<bundle id>://add?list=…`, and
+// no two builds of the app claim the same scheme. It is never committed; the
+// widget extension, which cannot read the environment, gets it from the
+// Info.plist `plugins/withWidgets.js` writes.
 
 const {
   DISPLAY_NAME,
@@ -23,7 +31,7 @@ module.exports = () => ({
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
-    scheme: "checklist",
+    scheme: BUNDLE_ID,
     icon: "./assets/icon.png",
     splash: {
       image: "./assets/splash.png",

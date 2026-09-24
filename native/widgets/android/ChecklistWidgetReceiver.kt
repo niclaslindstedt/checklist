@@ -97,9 +97,10 @@ class ChecklistWidgetReceiver : AppWidgetProvider() {
   }
 
   private fun openApp(context: Context): PendingIntent {
-    // The `checklist://` scheme is registered from app.json.
+    // The app's URL scheme is its bundle id (app.config.js's `scheme`), which
+    // on Android is the package name — so it is asked for, never spelled.
     val intent =
-      Intent(Intent.ACTION_VIEW, Uri.parse("checklist://")).apply {
+      Intent(Intent.ACTION_VIEW, Uri.parse("${context.packageName}://")).apply {
         setPackage(context.packageName)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }

@@ -2824,7 +2824,8 @@ container the widget process can read (an App Group on iOS, a shared
   `applyWidgetAction`), so the write goes through the same save / conflict
   handling as a tap in the app — never a second store path.
 - **Deep links** — the quick-add widget and the iOS 18 Control Center control
-  open `checklist://add?list=<id>`; the wrapper routes it to
+  open `<bundle id>://add?list=<id>` (the app's URL scheme is its bundle id,
+  `se.agilator.checklist` in the store build); the wrapper routes it to
   `window.__checklistDeepLink`, which `useWidgetDeepLink`
   (`src/app/use-widget-deep-link.ts`) turns into "switch to that list and focus
   the composer".
@@ -2864,7 +2865,7 @@ to the native side and the wrapper arms `expo-notifications` from it.
 - **Permission** — requested the first time the document gains a deadline (not
   on launch), via the same hook. A grant unlocks the **Right on Time**
   achievement.
-- **Deep links** — tapping a reminder routes `checklist://open?list=<id>`
+- **Deep links** — tapping a reminder routes `<bundle id>://open?list=<id>`
   through `window.__checklistDeepLink` (the same global the widgets use), so the
   app opens on the item's list.
 - **Opt-out** — the global `deadlineReminders` setting (native-only in the UI)

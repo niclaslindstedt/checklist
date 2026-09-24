@@ -14,3 +14,8 @@ webroot/
 /android/
 
 *.log
+
+# @bacons/apple-targets writes the widget extension's Info.plist on the first
+# prebuild, and plugins/withWidgets.js writes this build's URL scheme (the
+# bundle id) into it — a deployment coordinate, so never committed.
+/targets/widget/Info.plist

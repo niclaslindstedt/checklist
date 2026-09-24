@@ -325,7 +325,7 @@ function AppShell() {
     order: displayOrder,
     onAction: applyWidgetAction,
   });
-  // Quick-add / open deep links (`checklist://add?list=<id>`) from a widget or
+  // Quick-add / open deep links (`<bundle id>://add?list=<id>`) from a widget or
   // Control Center: switch to the target list and, for `add`, focus the
   // composer. Bridged in by the native wrapper; a no-op in a plain browser.
   useWidgetDeepLink({ selectChecklist: navVerbs.selectChecklist });

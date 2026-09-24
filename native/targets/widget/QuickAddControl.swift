@@ -1,6 +1,6 @@
 // An iOS 18 Control Center / Lock Screen / Action Button control that jumps
 // straight into the composer for the active list — the platform-polish pairing
-// for the Quick Add widget. Very cheap once the `checklist://add` deep link
+// for the Quick Add widget. Very cheap once the `<bundle id>://add` deep link
 // exists: the control just opens that URL.
 
 import AppIntents
@@ -21,7 +21,7 @@ struct QuickAddControl: ControlWidget {
 }
 
 /// Opens the app on the active list's composer. Resolves the active list from
-/// the shared snapshot, falling back to a bare `checklist://add` the wrapper
+/// the shared snapshot, falling back to a bare `<bundle id>://add` the wrapper
 /// still routes to the current list.
 @available(iOS 18.0, *)
 struct OpenChecklistComposerIntent: AppIntent {
@@ -30,7 +30,7 @@ struct OpenChecklistComposerIntent: AppIntent {
 
   func perform() async throws -> some IntentResult & OpensIntent {
     let id = SharedStore.read().active?.id
-    let url = id.map { DeepLink.add($0) } ?? URL(string: "checklist://add")!
+    let url = id.map { DeepLink.add($0) } ?? DeepLink.addToActive
     return .result(opensIntent: OpenURLIntent(url))
   }
 }

@@ -4,7 +4,7 @@
 // share one string without `ui/` having to import from `app/`.
 
 /**
- * Fired when a "quick add" deep link (`checklist://add?list=<id>`) from a
+ * Fired when a "quick add" deep link (`<bundle id>://add?list=<id>`) from a
  * widget or Control Center wants the active list's composer opened and
  * focused. The active list has already been switched by the dispatcher.
  */

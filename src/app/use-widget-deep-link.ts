@@ -1,8 +1,9 @@
-// Handles the `checklist://` deep links a widget, a Lock Screen / Control
-// Center control, or a notification can fire at the app:
+// Handles the deep links a widget, a Lock Screen / Control Center control, or
+// a notification can fire at the app. The scheme is the app's bundle id
+// (`se.agilator.checklist` in the store build — see native/app.config.js):
 //
-//   checklist://open?list=<id>   — bring a specific list to the front
-//   checklist://add?list=<id>    — open that list and focus the composer
+//   <bundle id>://open?list=<id>   — bring a specific list to the front
+//   <bundle id>://add?list=<id>    — open that list and focus the composer
 //
 // The native wrapper maps the incoming URL onto a call to the global this hook
 // installs (`window.__checklistDeepLink(action, listId)`), injected into the

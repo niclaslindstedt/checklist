@@ -25,11 +25,30 @@ extension Color {
 
 /// The deep link that opens (or focuses the composer of) a given list — the
 /// scheme the native wrapper maps back onto the web app (`useWidgetDeepLink`).
+///
+/// The scheme is the app's bundle id, which differs per build (the store
+/// build, a dev build), so it is never spelled here: `plugins/withWidgets.js`
+/// writes it into this extension's Info.plist as `ChecklistURLScheme` at
+/// prebuild. Should that key ever be missing, the extension's own bundle id
+/// minus its last component (`<app>.widget` → `<app>`) is the same string.
 enum DeepLink {
+  static let scheme: String = {
+    if let value = Bundle.main.object(forInfoDictionaryKey: "ChecklistURLScheme") as? String,
+       !value.isEmpty {
+      return value
+    }
+    let own = Bundle.main.bundleIdentifier ?? ""
+    return own.split(separator: ".").dropLast().joined(separator: ".")
+  }()
+
   static func open(_ listId: String) -> URL {
-    URL(string: "checklist://open?list=\(listId)")!
+    URL(string: "\(scheme)://open?list=\(listId)")!
   }
   static func add(_ listId: String) -> URL {
-    URL(string: "checklist://add?list=\(listId)")!
+    URL(string: "\(scheme)://add?list=\(listId)")!
+  }
+  /// The active list's composer, whichever list that is.
+  static var addToActive: URL {
+    URL(string: "\(scheme)://add")!
   }
 }

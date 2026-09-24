@@ -151,9 +151,15 @@ is derived and read-optimised; the WebView storage stays the source of truth.
   tap **queues** a toggle the app applies through its normal edit path on the
   next foreground — never a second write path.
 
-Widgets open the app via the `checklist://add?list=<id>` / `checklist://open`
-deep links, routed into the web app by the wrapper (the `checklist` scheme is
-registered from `app.json`).
+Widgets open the app via the `<bundle id>://add?list=<id>` /
+`<bundle id>://open` deep links. The app's URL scheme is its **bundle id** —
+`se.agilator.checklist` in the store build, `dev.local.checklist` in a plain
+checkout — set as `scheme` in `app.config.js` from `identifiers.js`, never
+committed as a literal. The Android widget asks for it (`context.packageName`);
+the Swift extension cannot read the environment, so `plugins/withWidgets.js`
+writes it into the extension's Info.plist as `ChecklistURLScheme` at prebuild
+and `DeepLink` in `targets/widget/Theme.swift` reads it from there. That
+Info.plist is generated and gitignored.
 
 ## Running it
 

@@ -1,5 +1,5 @@
 // "Quick add" — a small widget (and Lock Screen rectangular) that deep-links
-// straight into the composer for the active list via `checklist://add?list=…`.
+// straight into the composer for the active list via `<bundle id>://add?list=…`.
 // Cheap once the deep link exists; paired with an iOS 18 Control Center control
 // in `QuickAddControl.swift`.
 

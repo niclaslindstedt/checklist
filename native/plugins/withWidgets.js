@@ -12,8 +12,16 @@
 // `src/main` is packed into the APK automatically, so no Gradle change is
 // needed — which is also why the widget is not a Glance one: Glance would add a
 // Compose dependency to a generated Gradle project for four strings and a
-// count. The `checklist://` deep link the widget opens is already registered
-// from `app.json`'s `scheme`.
+// count.
+//
+// The deep links the widgets open use the app's URL SCHEME, which is its bundle
+// id (`app.config.js`'s `scheme`) — a build variable, so no committed file may
+// spell it. Kotlin asks the platform (`context.packageName` is the bundle id);
+// the Swift extension cannot, so this plugin writes the scheme into the
+// extension's Info.plist as `ChecklistURLScheme`, and `DeepLink` in
+// `targets/widget/Theme.swift` reads it from there. That Info.plist is
+// `@bacons/apple-targets`' file, created on the first prebuild and gitignored
+// here, since after this plugin runs it names a deployment.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -40,6 +48,34 @@ const {
   BUNDLE_ID,
 } = require("../identifiers.js");
 const RECEIVER = `${ANDROID_PKG}.ChecklistWidgetReceiver`;
+
+/** The extension Info.plist key `DeepLink` in `Theme.swift` reads. */
+const SCHEME_KEY = "ChecklistURLScheme";
+
+/**
+ * Write this build's URL scheme into the widget extension's Info.plist.
+ *
+ * The file belongs to `@bacons/apple-targets`, which writes its base once when
+ * it is missing. Whichever of the two mods runs first, the file ends up whole:
+ * this one starts from that same base when it finds nothing, and the target
+ * plugin never overwrites a file that exists.
+ */
+function writeWidgetScheme(projectRoot, scheme) {
+  // Both through the target plugin, which is this project's own dependency and
+  // declares the plist library it writes the file with.
+  const targets = require.resolve("@bacons/apple-targets");
+  const plist = require(
+    require.resolve("@expo/plist", { paths: [path.dirname(targets)] }),
+  ).default;
+  const file = path.join(projectRoot, "targets", "widget", "Info.plist");
+  const base = fs.existsSync(file)
+    ? plist.parse(fs.readFileSync(file, "utf8"))
+    : require("@bacons/apple-targets/build/target").getTargetInfoPlistForType(
+        "widget",
+      );
+  base[SCHEME_KEY] = scheme;
+  fs.writeFileSync(file, plist.build(base));
+}
 
 function copyFile(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
@@ -118,6 +154,24 @@ module.exports = function withWidgets(config) {
     c.modResults[key] = [...groups];
     return c;
   });
+
+  // iOS: tell the widget extension which scheme its deep links use.
+  const scheme = Array.isArray(config.scheme)
+    ? config.scheme[0]
+    : config.scheme;
+  if (typeof scheme !== "string" || scheme === "") {
+    throw new Error(
+      "[withWidgets] app.config.js sets no `scheme`; the widgets' deep links " +
+        "have nothing to open.",
+    );
+  }
+  config = withDangerousMod(config, [
+    "ios",
+    (c) => {
+      writeWidgetScheme(c.modRequest.projectRoot, scheme);
+      return c;
+    },
+  ]);
 
   // Android: copy the widget's sources and resources into the app module.
   config = withDangerousMod(config, [
