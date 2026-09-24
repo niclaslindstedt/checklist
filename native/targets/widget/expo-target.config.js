@@ -13,8 +13,10 @@ module.exports = {
   entitlements: {
     "com.apple.security.application-groups": [APP_GROUP],
   },
-  // Interactive widgets (App Intents) need iOS 17; the read-only widgets work
-  // lower, but one deployment target is simpler and 15.1 matches the app.
-  deploymentTarget: "15.1",
+  // iOS 17: the widgets use `containerBackground` and the interactive
+  // check-off runs App Intents, both iOS 17 APIs, unguarded. The extension may
+  // require more than the app (Expo 57's 16.4) — on iOS 16 the app runs and
+  // simply offers no widgets. The iOS 18 control is `@available`-guarded.
+  deploymentTarget: "17.0",
   frameworks: ["WidgetKit", "SwiftUI", "AppIntents"],
 };
