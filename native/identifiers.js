@@ -23,8 +23,9 @@ const DEV_BUNDLE_ID = "dev.local.checklist";
 
 const DISPLAY_NAME = process.env.APP_DISPLAY_NAME?.trim() || PROJECT_NAME;
 const BUNDLE_ID = process.env.APP_BUNDLE_ID?.trim() || DEV_BUNDLE_ID;
-const EAS_PROJECT_ID =
-  process.env.EAS_PROJECT_ID?.trim() || "ba72b2a4-c8ba-456a-96fb-9107ccb35893";
+// No committed fallback: an id pinned here outlives the project it names and
+// makes `eas init` link to it instead of reporting the one it should.
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID?.trim() ?? "";
 
 // THE APP GROUP IS NOT THE BUNDLE ID, and deriving it from one would be a
 // mistake. It names a container, registered once in the developer portal and
