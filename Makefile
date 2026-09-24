@@ -37,7 +37,7 @@ install:
 # release pipeline is pure Node, so there may be no `.sh` files at all —
 # tolerate that instead of failing on an unexpanded glob.
 shellcheck:
-	@files=$$(find . -path ./node_modules -prune -o -name '*.sh' -print); \
+	@files=$$(find . -name node_modules -prune -o -name '*.sh' -print); \
 	if [ -n "$$files" ]; then shellcheck $$files; else echo "no shell scripts to check"; fi
 
 actionlint:
