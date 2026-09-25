@@ -12,7 +12,7 @@
 // single build working on both platforms while offering iCloud only where it
 // can exist.
 
-import { Platform } from "react-native";
+import { NativeEventEmitter, NativeModule, Platform } from "react-native";
 
 /** The minimal iCloud key-value surface the bridge drives. */
 export interface ICloudKVS {
@@ -32,13 +32,15 @@ export interface ICloudKVS {
 // `undefined` means "not resolved yet"; `null` means "resolved to unavailable".
 let cached: ICloudKVS | null | undefined;
 
-interface NativeICloudModule {
+// The module is an `RCTEventEmitter`: besides the AsyncStorage-shaped
+// methods it has no subscribe method of its own, and a remote change arrives
+// as this event, through a `NativeEventEmitter` wrapped around the module.
+const STORE_CHANGED_EVENT = "iCloudStoreDidChangeRemotely";
+
+interface NativeICloudModule extends NativeModule {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
-  onStoreDidChange(cb: (event?: { changedKeys?: string[] }) => void): {
-    remove(): void;
-  };
 }
 
 /**
@@ -52,15 +54,20 @@ export function getICloudKVS(): ICloudKVS | null {
     // Lazy require so Android never evaluates the iOS-only native module.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require("react-native-icloudstore");
-    const store = (mod.default ?? mod) as NativeICloudModule;
+    const store = (mod.default ?? mod) as NativeICloudModule | undefined;
+    if (!store) throw new Error("RNICloudStorage is not linked");
+    const events = new NativeEventEmitter(store);
     cached = {
       getItem: (key) => store.getItem(key),
       setItem: (key, value) => store.setItem(key, value),
       removeItem: (key) => store.removeItem(key),
       onChange: (listener) => {
-        const sub = store.onStoreDidChange((event) => {
-          listener(event?.changedKeys ?? null);
-        });
+        const sub = events.addListener(
+          STORE_CHANGED_EVENT,
+          (event?: { changedKeys?: string[] }) => {
+            listener(event?.changedKeys ?? null);
+          },
+        );
         return () => sub.remove();
       },
     };
