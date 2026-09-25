@@ -27,27 +27,73 @@ type Viewport = {
   offsetTop: number;
 };
 
+type Insets = { top: number; right: number; bottom: number; left: number };
+
+const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+// The page runs edge to edge (`viewport-fit=cover`) in the installed PWA and
+// the iOS app alike, so the screen corners belong to the status bar / Dynamic
+// Island and the home indicator. `env()` is only readable through a computed
+// style, hence the throwaway probe; its padding resolves to the four insets
+// (0 where there are none, and in engines without `env()`). Cached, since a
+// drag reads the viewport on every pointer move; a resize (rotation, the
+// keyboard) drops the cache.
+let cachedInsets: Insets | null = null;
+
+function readSafeAreaInsets(): Insets {
+  if (cachedInsets) return cachedInsets;
+  if (typeof document === "undefined" || !document.body) return NO_INSETS;
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;" +
+    "padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)";
+  document.body.appendChild(probe);
+  const style = getComputedStyle(probe);
+  const px = (v: string) => {
+    const n = Number.parseFloat(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const insets = {
+    top: px(style.paddingTop),
+    right: px(style.paddingRight),
+    bottom: px(style.paddingBottom),
+    left: px(style.paddingLeft),
+  };
+  probe.remove();
+  cachedInsets = insets;
+  return insets;
+}
+
 // Prefer the visual viewport: on iOS the software keyboard shrinks (and can
 // offset) it while leaving `window.innerWidth/innerHeight` at the full layout
 // size. Since the button is `position: fixed` — laid out against this same
 // client space — reading the visual viewport keeps the resting spot inside
 // the area left above the keyboard and the drag clamp reachable. Falls back
 // to the window box where the API is missing (older engines, jsdom).
+//
+// The box is then shrunk by the safe-area insets, so the button can neither
+// rest nor be dragged under the notch or the home indicator.
 function readViewport(): Viewport {
   const vv = typeof window !== "undefined" ? window.visualViewport : null;
-  if (vv) {
-    return {
-      vw: vv.width,
-      vh: vv.height,
-      offsetLeft: vv.offsetLeft,
-      offsetTop: vv.offsetTop,
-    };
-  }
+  const box = vv
+    ? {
+        vw: vv.width,
+        vh: vv.height,
+        offsetLeft: vv.offsetLeft,
+        offsetTop: vv.offsetTop,
+      }
+    : {
+        vw: window.innerWidth,
+        vh: window.innerHeight,
+        offsetLeft: 0,
+        offsetTop: 0,
+      };
+  const inset = readSafeAreaInsets();
   return {
-    vw: window.innerWidth,
-    vh: window.innerHeight,
-    offsetLeft: 0,
-    offsetTop: 0,
+    vw: Math.max(0, box.vw - inset.left - inset.right),
+    vh: Math.max(0, box.vh - inset.top - inset.bottom),
+    offsetLeft: box.offsetLeft + inset.left,
+    offsetTop: box.offsetTop + inset.top,
   };
 }
 
@@ -79,7 +125,10 @@ export function useDraggableMenuButton(
       : readViewport(),
   );
   useEffect(() => {
-    const onResize = () => setViewport(readViewport());
+    const onResize = () => {
+      cachedInsets = null;
+      setViewport(readViewport());
+    };
     window.addEventListener("resize", onResize);
     // The visual viewport fires its own resize / scroll as the keyboard
     // opens and closes (and on pinch-zoom); `window` resize alone misses
