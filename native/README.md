@@ -5,6 +5,11 @@ own: it embeds the built web bundle, serves it from a loopback HTTP origin,
 and shows it in a full-screen WebView. What you get on iOS and Android is the
 same app as the web, running entirely offline from inside the app binary.
 
+On iOS the WebView runs edge to edge and the page pads itself around the notch
+and the home indicator with `env(safe-area-inset-*)`, exactly as the installed
+PWA does. On Android the frame keeps the page inside the safe area and paints
+the bands in the page's own background (see `FRAME_EDGES` in `src/App.tsx`).
+
 > This replaced an earlier React Native re-implementation that rebuilt the
 > checklist UI in native views. That app only ever covered a fraction of the
 > web feature set and drifted from it; the wrapper is feature-complete by
@@ -35,7 +40,7 @@ same app as the web, running entirely offline from inside the app binary.
 | Start / stop the loopback server | `src/useStaticServer.ts` |
 | The WebView and its navigation rules | `src/App.tsx` |
 | Native ↔ web bridge (`window.__native`) | `src/nativeBridge.ts` |
-| Theme → native chrome (status bar, safe-area bands) | `src/nativeTheme.ts` |
+| Theme → native chrome (status bar; the safe-area bands on Android) | `src/nativeTheme.ts` |
 | iCloud key-value store (iOS only) | `src/icloud.ts` |
 | Widget shared-container host | `src/widgets.ts`, `modules/widget-bridge/` |
 | WidgetKit extension (iOS) | `targets/widget/` (`@bacons/apple-targets`) |

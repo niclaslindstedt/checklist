@@ -53,6 +53,22 @@ const AUTH_SESSION_SCRIPT = AUTH_REDIRECT_URI
   ? authSessionScript(AUTH_REDIRECT_URI)
   : "";
 
+// Which screen edges the native frame keeps clear of the system bars.
+//
+// iOS: none. The page is built to run edge to edge — `viewport-fit=cover`,
+// and every surface that meets an edge (the list header, the side menu, the
+// add button, the modals and toasts) pads itself with `env(safe-area-inset-*)`
+// — which is how the installed PWA looks. Framing the WebView inside the safe
+// area instead zeroes those insets and leaves two flat bands above and below
+// the page, so the side menu stops short of the status bar and the home
+// indicator.
+//
+// Android: top and bottom. The WebView's safe-area insets are not reliably
+// reported there, so the frame keeps the page clear of the system bars and
+// paints the bands in the page's own background instead.
+const FRAME_EDGES =
+  Platform.OS === "ios" ? ([] as const) : (["top", "bottom"] as const);
+
 export default function App() {
   const { state: server, retry } = useStaticServer();
   const webViewRef = useRef<WebView>(null);
@@ -188,7 +204,7 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView
         style={[styles.fill, { backgroundColor: background }]}
-        edges={["top", "bottom"]}
+        edges={FRAME_EDGES}
       >
         <StatusBar style={barStyle} />
         {origin ? (
@@ -227,6 +243,11 @@ export default function App() {
             // itself exposes the native background behind the layout.
             bounces={false}
             overScrollMode="never"
+            // iOS runs full-bleed (see `FRAME_EDGES`), so the scroll view must
+            // not pad itself back down by the safe area: the page does that,
+            // through `env(safe-area-inset-*)`, exactly as the installed PWA.
+            contentInsetAdjustmentBehavior="never"
+            automaticallyAdjustContentInsets={false}
           />
         ) : (
           <View style={styles.center}>
