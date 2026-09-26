@@ -7,6 +7,10 @@
 // for offline first paint; per the local-first invariant, no font is
 // fetched from a CDN at runtime.
 
+// First, for its side effect: under `VITE_SEED=demo` it puts the in-memory
+// demo store in localStorage's place before any other module reads from it
+// (see `dev/demo.ts`). Folds away in every other build.
+import "../dev/demo-boot.ts";
 import { StrictMode, type ReactNode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 

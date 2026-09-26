@@ -3189,6 +3189,27 @@ When it's on, `App` swaps in an ephemeral seed adapter
 sample checklist — so `useChecklist` reloads sample data without
 touching real data. Toggles live in the Developer settings tab.
 
+### Presentation demo
+
+`make demo` (or any build with `VITE_SEED=demo`) boots the app onto one
+person's lists — `buildDemo` in `src/dev/demoData.ts`: a Home and a Work
+namespace, folders, templates, a weekly reset that fires (with its pop-up)
+the moment the app opens, timed items, markdown notes, two transform rules
+and some earned achievements — written for the App Store screenshots. Unlike
+the fake-data toggle it replaces the store before the app starts:
+`src/dev/demo-boot.ts`, `main.tsx`'s first import, calls `bootDemo`
+(`src/dev/demo.ts`), which puts an in-memory `Storage` in
+`window.localStorage`'s place before any other module reads it, carrying over
+only the device's look (the settings blob less its rules and achievements,
+the language, the folded footer). The whole app then runs over the demo, and
+nothing is read from or written to the device's lists; the native bridge
+reports no host (`getNativeBridge`), so no widget, reminder or iCloud write
+reaches the device, and connecting a backend is refused
+(`useStorageBackend`). Every date is relative to the moment it opens. The flag
+folds to `false` in every other build, so none of it ships.
+`tests/dev/demo.test.ts` holds it to the app's formats and to each store
+frame's premise. Dev tooling: no UI surface, no changeset.
+
 ### Logger / log capture
 
 `src/dev/logger.ts` — the in-app logger: a bounded ring buffer (500

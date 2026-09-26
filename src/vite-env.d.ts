@@ -32,4 +32,7 @@ interface ImportMetaEnv {
   // "Open in Dropbox" link. Display-only. Unset or blank falls back to
   // the upstream app's folder. See `src/storage/dropbox/index.ts`.
   readonly VITE_DROPBOX_APP_FOLDER?: string;
+  // `demo` boots the presentation demo, held in memory (`make demo`; see
+  // `src/dev/demo.ts`). Never set for a build that ships.
+  readonly VITE_SEED?: string;
 }

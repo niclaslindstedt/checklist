@@ -1,8 +1,14 @@
-.PHONY: build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check store-preflight store-metadata tauri tauri-bundle tauri-clean tauri-fast tauri-fmt tauri-fmt-check tauri-install tauri-lint tauri-package tauri-package-debug tauri-test
+.PHONY: demo build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check store-preflight store-metadata tauri tauri-bundle tauri-clean tauri-fast tauri-fmt tauri-fmt-check tauri-install tauri-lint tauri-package tauri-package-debug tauri-test
 
 
 build:
 	npm run build
+
+# Dev server on the presentation demo (VITE_SEED=demo): one person's lists,
+# held in memory — nothing is read from or written to this browser's lists.
+# It is what the App Store screenshots are taken of. See src/dev/demo.ts.
+demo:
+	npm run dev:demo
 
 test:
 	npm test

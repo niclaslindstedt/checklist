@@ -144,6 +144,10 @@ declare global {
  * `typeof` guard and shape check live in one place.
  */
 export function getNativeBridge(): NativeBridge | null {
+  // The presentation demo (`VITE_SEED=demo`, `dev/demo.ts`) runs on lists held
+  // in memory: with the bridge closed, no widget snapshot, reminder or iCloud
+  // write carries them onto the device. Folds away in every other build.
+  if (import.meta.env.VITE_SEED === "demo") return null;
   try {
     const bridge = globalThis.__native;
     if (bridge && typeof bridge === "object") return bridge;

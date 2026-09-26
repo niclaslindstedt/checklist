@@ -232,6 +232,7 @@ names. Honour these when naming a new file, key, or string.
 | Term                                   | Refers to                                                                          |
 | -------------------------------------- | --------------------------------------------------------------------------------- |
 | **Dev mode** / **fake data**           | `useDevMode` (`src/dev/useDevMode.ts`), `useDevSeed` (`src/dev/useDevSeed.ts`), `createDevSeedAdapter` (`src/storage/dev-seed/index.ts`), `buildSeedSnapshot` (`src/dev/seed.ts`); `src/ui/settings/tabs/developer.tsx`. [→](overview.md#dev-mode--fake-data) |
+| **Demo** / **store demo** / `make demo` | `bootDemo` (`src/dev/demo.ts`), `buildDemo` (`src/dev/demoData.ts`), `src/dev/demo-boot.ts`; `VITE_SEED=demo`. [→](overview.md#presentation-demo) |
 | **Logger** / **log capture** / **logs tab** | `src/dev/logger.ts`; `src/ui/settings/tabs/logs.tsx`. [→](overview.md#logger--log-capture) |
 
 ## i18n

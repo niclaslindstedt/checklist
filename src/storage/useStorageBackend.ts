@@ -548,6 +548,20 @@ export function useStorageBackend(): UseStorageBackend {
     ],
   );
 
+  // The presentation demo (`VITE_SEED=demo`, see `dev/demo.ts`) runs on lists
+  // held in memory. Connecting a backend from it would sync them into the
+  // reader's real folder or cloud, so every connect is refused. The check
+  // folds to `false` in any other build, and the wrappers with it.
+  const refuseInDemo = <A extends unknown[], R>(
+    verb: (...args: A) => R,
+  ): ((...args: A) => R) =>
+    import.meta.env.VITE_SEED === "demo"
+      ? () => {
+          log.warn("connect refused — the demo keeps its lists in memory");
+          throw new Error("The demo keeps its lists in memory.");
+        }
+      : verb;
+
   return {
     adapter,
     settingsStore,
@@ -562,11 +576,11 @@ export function useStorageBackend(): UseStorageBackend {
     encryption,
     locked,
     selectBrowser,
-    selectICloud,
-    connectFolder,
-    reconnectFolder,
+    selectICloud: refuseInDemo(selectICloud),
+    connectFolder: refuseInDemo(connectFolder),
+    reconnectFolder: refuseInDemo(reconnectFolder),
     disconnectFolder,
-    connectDropbox,
+    connectDropbox: refuseInDemo(connectDropbox),
     disconnectDropbox,
     enableEncryption,
     disableEncryption,

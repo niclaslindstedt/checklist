@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:demo": "VITE_SEED=demo vite",
     "build": "vite build",
     "build:native": "VITE_NATIVE=1 vite build --outDir native/webroot --emptyOutDir",
     "preview": "vite preview",
