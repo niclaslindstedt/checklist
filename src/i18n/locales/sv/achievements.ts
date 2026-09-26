@@ -278,7 +278,7 @@ const achievements: AchievementsCatalog = {
       name: "Andrum",
       condition: "Fäll ihop sidmenyns sidfot.",
       learnMore:
-        "Den tunna chevronen ovanför sidfoten fäller ihop den — Donera, pokalen, Om och Inställningar — och ger det frigjorda utrymmet till din checklista. Tryck igen för att fälla ut sidfoten. Valet sparas på den här enheten.",
+        "Den tunna chevronen ovanför sidfoten fäller ihop den — pokalen, Om, Inställningar och resten — och ger det frigjorda utrymmet till din checklista. Tryck igen för att fälla ut sidfoten. Valet sparas på den här enheten.",
     },
 
     blueprint: {

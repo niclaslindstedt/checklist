@@ -48,8 +48,10 @@ listener that lets Dropbox sign in (`tauri/shell/src/oauth.rs`,
 needs no GUI toolkit; `tauri/src-tauri/` holds every effect. One seam reaches
 back into this tree, `VITE_SHELL_BUILD`, set by the shell's site build, which
 leaves the service worker out of the build and — through `__SHELL_BUILD__` —
-keeps the page from registering one or offering an update. A desktop build
-updates by being replaced. The package's name and identifier come from
+keeps the page from registering one or offering an update, and leaves out the
+Donate entry (as the phone build's `__NATIVE__` does — no build but the website
+may carry a payment link outside Apple's; `DONATE_URL` in `src/build-env.ts`).
+A desktop build updates by being replaced. The package's name and identifier come from
 `APP_DISPLAY_NAME` and `APP_BUNDLE_ID` at packaging time
 (`tauri/scripts/package.mjs`), like the phone app's. See
 [`tauri/README.md`](tauri/README.md).

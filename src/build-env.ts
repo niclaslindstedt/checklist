@@ -27,3 +27,17 @@ export const IS_NATIVE: boolean = __NATIVE__;
 // ships without a service worker for the same reason: a new version arrives as
 // a new binary. Gates SW registration and the update prompt.
 export const IS_SHELL: boolean = __SHELL_BUILD__;
+
+// Where the side menu's Donate entry links — the website's alone, and only
+// when `VITE_DONATE_URL` is set (blank hides it rather than linking nowhere).
+// The phone app and the desktop app ship without it: a payment link outside
+// Apple's is an App Store rejection (guideline 3.1.1), and the listings promise
+// nothing is sold. It tests the raw `__NATIVE__` / `__SHELL_BUILD__` defines
+// rather than the constants above so that in those builds the expression is a
+// literal `undefined` the minifier folds, together with the entry that tests
+// it — the URL never reaches the bundle. Hiding it at runtime would still ship
+// the link.
+export const DONATE_URL: string | undefined =
+  __NATIVE__ || __SHELL_BUILD__
+    ? undefined
+    : import.meta.env.VITE_DONATE_URL?.trim() || undefined;

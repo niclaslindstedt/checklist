@@ -104,6 +104,11 @@ second, staler cache in front of them, and updates arrive through the App
 Store rather than through a "reload to apply" toast. `IS_NATIVE`
 (`../src/build-env.ts`) gates the runtime side.
 
+It also has no **Donate** entry in the side menu — the entry and its URL are
+compiled out (`DONATE_URL` in `../src/build-env.ts`), because a payment link
+outside Apple's is an App Store rejection (guideline 3.1.1). The website keeps
+it.
+
 The crawler-facing files (`robots.txt`, `sitemap.xml`, `llms.txt`) and the
 `/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —
 the side menu links to it as a real in-app navigation.

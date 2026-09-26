@@ -17,9 +17,10 @@ declare const __NATIVE__: boolean;
 // (tauri/) — no service worker was emitted. See `vite.config.ts`.
 declare const __SHELL_BUILD__: boolean;
 
-// Optional build-time env: the URL the header menu's "Donate" entry
-// links to. Unset (or blank) hides the entry entirely. Set it at build
-// time, e.g. in `.env` or the CI environment.
+// Optional build-time env: the URL the side menu's "Donate" entry links to,
+// on the website only — the phone and desktop builds compile the entry out
+// (`DONATE_URL` in `src/build-env.ts`). Unset (or blank) hides the entry
+// entirely. Set it at build time, e.g. in `.env` or the CI environment.
 interface ImportMetaEnv {
   readonly VITE_DONATE_URL?: string;
   // Dropbox app key (PKCE public client). Unset disables the Dropbox

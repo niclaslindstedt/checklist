@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 
-import { BUILD_LABEL } from "../build-env.ts";
+import { BUILD_LABEL, DONATE_URL } from "../build-env.ts";
 import type {
   ChecklistSummary,
   FolderSummary,
@@ -232,9 +232,6 @@ export function SideMenu({
     setDragging(drag.dragging);
   }, [drag.dragging, setDragging]);
 
-  // Build-time env (string | undefined). A blank value disables the donate
-  // entry entirely rather than linking nowhere.
-  const donateUrl = import.meta.env.VITE_DONATE_URL?.trim();
   // BASE_URL carries the trailing slash, so this is `/privacy`,
   // `/preview/privacy`, … depending on the deploy slot.
   const privacyUrl = `${import.meta.env.BASE_URL}privacy`;
@@ -753,7 +750,8 @@ export function SideMenu({
         onClick={() => setFooterCollapsed(!footerCollapsed)}
       />
 
-      {/* The relocated burger menu, fixed at the foot of the drawer: Donate,
+      {/* The relocated burger menu, fixed at the foot of the drawer: Donate
+          (the website only — `DONATE_URL` in build-env.ts),
           the trophy, an "About" dropdown that folds away the project links
           (source / privacy / what's new), and Settings pinned last under the
           thumb. Folded away via the rail above. Now the PWA renders
@@ -763,11 +761,11 @@ export function SideMenu({
           comfortable reach for the thumb. */}
       {!footerCollapsed && (
         <div className="flex shrink-0 flex-col border-t border-line [padding-top:calc(1.25rem_-_var(--density-row-py))] [padding-bottom:calc(1.25rem_-_var(--density-row-py)_+_10px)]">
-          {donateUrl && (
+          {DONATE_URL && (
             <MenuLink
               icon={<HeartIcon className="h-5 w-5 text-danger" />}
               label={t("menu.donate")}
-              href={donateUrl}
+              href={DONATE_URL}
               external
               onClick={close}
             />

@@ -172,9 +172,9 @@ The build is configured via `vite.config.ts`. Build-time inputs:
 - `VITE_BASE` — the base path, set automatically per slot by the
   `pages.yml` workflow (`/` for production, `/preview/` for `main`,
   `/branch/` for the optional feature-branch preview).
-- `VITE_DONATE_URL` — optional. When set, the header menu shows a
-  **Donate** link pointing at it; leave it unset to hide the entry. See
-  [`.env.example`](.env.example).
+- `VITE_DONATE_URL` — optional, website only. When set, the side menu shows
+  a **Donate** link pointing at it; leave it unset to hide the entry. The
+  phone and desktop builds never have one. See [`.env.example`](.env.example).
 
 The header menu (top-right) also links to the
 [privacy policy](https://checklist.niclaslindstedt.se/privacy), the

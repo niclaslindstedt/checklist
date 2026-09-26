@@ -275,7 +275,7 @@ app must also list **`se.agilator.checklist://oauth`** (and
 | Env var           | Read by             | Default | Effect |
 |-------------------|---------------------|---------|--------|
 | `VITE_BASE`       | `vite.config.ts`    | `/`     | Public path the bundle is served from. The Pages workflow sets it per slot: `/` for the released production build, `/preview/` for `main`, `/branch/` for the optional feature-branch preview. |
-| `VITE_DONATE_URL` | `src/ui/SideMenu.tsx` | _unset_ | When set to a URL, the side menu shows a **Donate** entry linking to it. Unset or blank hides the entry. See [`.env.example`](../.env.example). |
+| `VITE_DONATE_URL` | `src/build-env.ts` | _unset_ | **Website only.** When set to a URL, the side menu shows a **Donate** entry linking to it. Unset or blank hides the entry. The phone build (`VITE_NATIVE=1`) and the desktop build (`VITE_SHELL_BUILD=on`) compile the entry and its URL out whatever this says — a payment link outside Apple's is an App Store rejection (guideline 3.1.1). See [`.env.example`](../.env.example). |
 | `VITE_DROPBOX_APP_KEY` | `src/storage/dropbox/` | _unset_ | Dropbox app key (PKCE public client). Unset hides the Dropbox backend in the picker. |
 | `VITE_DROPBOX_APP_FOLDER` | `src/storage/dropbox/` | `free-checklist` | Name of the Dropbox **App folder** the registered app owns. Display-only — it is the file location shown in the sync-details dialog and the target of the "Open in Dropbox" link; API paths are already relative to the app folder. Set it if your fork's Dropbox app uses a different folder name. |
 

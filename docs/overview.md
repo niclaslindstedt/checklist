@@ -540,7 +540,8 @@ bottom inset matches its left/right inset, so it sits flush as a fixed
 island that the checklist list scrolls behind rather than pushing away. It highlights the
 active list and current view. A shared `SectionHeader` renders each heading
 with its optional action. Pinned to the foot are the relocated burger-menu
-rows — an optional donate link, the trophy, an **About** dropdown, and
+rows — an optional donate link (website only; the phone and desktop builds
+compile it out), the trophy, an **About** dropdown, and
 settings (last, under the thumb). The About row — a plain footer row with
 no chevron — toggles the project links — "what's new", the source on
 GitHub (with the app version as a subtitle), and privacy — in a
@@ -755,8 +756,8 @@ is what the share payload is for).
 `src/ui/HeaderMenu.tsx` — the top-right burger menu. Opens a
 self-anchored dropdown with Settings and Changelog ("What's new")
 shortcuts, plus links to the privacy policy, the source on GitHub (with
-a build label), and — only when `VITE_DONATE_URL` is set — a Donate
-link. Dismisses on outside click or Escape.
+a build label), and — only when `VITE_DONATE_URL` is set, and only on the
+website — a Donate link. Dismisses on outside click or Escape.
 
 ### Checklist glyph
 
@@ -2768,7 +2769,9 @@ a per-launch random port would present a fresh, empty origin on every start.
 
 The native build drops the PWA layer (no service worker, no update or install
 prompt): the assets already ship in the binary and updates arrive through the
-app stores. `IS_NATIVE` in `src/build-env.ts` gates the runtime half.
+app stores. `IS_NATIVE` in `src/build-env.ts` gates the runtime half. The
+side menu's Donate entry is compiled out of it (and of the desktop build), so
+no build but the website carries a payment link outside Apple's.
 
 An earlier `native/` rebuilt the checklist UI in React Native views over the
 shared core, including an **iOS-only iCloud key-value backend**. It covered
