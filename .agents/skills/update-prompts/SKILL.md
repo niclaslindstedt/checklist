@@ -11,14 +11,14 @@ Every LLM-driven step in checklist is defined by a versioned prompt under `promp
 
 ## Tracking mechanism
 
-`.agent/skills/update-prompts/.last-updated` contains the git commit hash from the last successful run. Empty means "never run" — fall back to the initial commit.
+`.agents/skills/update-prompts/.last-updated` contains the git commit hash from the last successful run. Empty means "never run" — fall back to the initial commit.
 
 ## Discovery process
 
 1. Read the baseline:
 
    ```sh
-   BASELINE=$(cat .agent/skills/update-prompts/.last-updated)
+   BASELINE=$(cat .agents/skills/update-prompts/.last-updated)
    ```
 
 2. Enumerate every prompt file and note its current version:
@@ -59,7 +59,7 @@ Extend this table every time you discover a new drift path.
 - [ ] Run `make fmt`, `make lint`, `make test`
 - [ ] Write the new baseline:
 
-      git rev-parse HEAD > .agent/skills/update-prompts/.last-updated
+      git rev-parse HEAD > .agents/skills/update-prompts/.last-updated
 
 ## Verification
 

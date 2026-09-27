@@ -31,12 +31,12 @@ achievements list silently lies about what the app can do.
 
 ## Tracking mechanism
 
-`.agent/skills/update-achievements/.last-updated` contains the git commit
+`.agents/skills/update-achievements/.last-updated` contains the git commit
 hash from the last successful run. Empty means "never run" — fall back to
 the repository's initial commit.
 
 ```sh
-BASELINE=$(cat .agent/skills/update-achievements/.last-updated)
+BASELINE=$(cat .agents/skills/update-achievements/.last-updated)
 [ -z "$BASELINE" ] && BASELINE=$(git rev-list --max-parents=0 HEAD | tail -1)
 ```
 
@@ -174,7 +174,7 @@ already exposes an encryption `unlock` verb — both spellings count.)
 - [ ] Run `make fmt`, `make lint`, `make test`, `make build`.
 - [ ] Write the new baseline:
 
-      git rev-parse HEAD > .agent/skills/update-achievements/.last-updated
+      git rev-parse HEAD > .agents/skills/update-achievements/.last-updated
 
 ## Verification
 

@@ -68,7 +68,7 @@ would surface a non-event in the changelog).
    for any in-flight features:
 
    ```sh
-   .agent/skills/write-changeset/list-fragments.sh
+   .agents/skills/write-changeset/list-fragments.sh
    ```
 
    The script prints every `.changes/unreleased/*.md` file with its
@@ -94,7 +94,7 @@ Walk these in order; stop at the first match.
 
 1. **Does the diff hit only paths in the skip-list (`SKIP_PATTERNS` in
    `scripts/release/check-changeset.mjs`)?** (tests, `.github/`,
-   `.agent/`, `.claude/`, `.changes/`, `docs/`, `scripts/`, `prompts/`,
+   `.agents/`, `.claude/`, `.changes/`, `docs/`, `scripts/`, `prompts/`,
    `man/`, `examples/`, `Makefile`, any `*.md`, the dotfiles,
    `eslint.config.js`, `vite.config.ts`, `tsconfig*.json`,
    `package-lock.json`.) — **No fragment.** CI accepts this without the

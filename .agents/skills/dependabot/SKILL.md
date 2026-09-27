@@ -158,7 +158,7 @@ reformat **preexisting** files you never touched and turn `fmt:check`
 red. When that happens it's a real prettier move, not scope creep — run
 `prettier --write <the flagged files>` and commit them (a small
 `style:` commit is fine). This `SKILL.md` itself is prettier-ignored
-(lives under `.agent`/`.claude`), so it never shows up.)
+(lives under `.agents`/`.claude`), so it never shows up.)
 
 **`make icons-check` _is_ gated** and regenerates every icon from
 `public/favicon.svg` via `@vite-pwa/assets-generator`. Bumping that
@@ -201,7 +201,7 @@ package-lock.json` before trusting the trace.
   `prettier` within its caret (3.8→3.9 reflows short unions / arrow-return
   objects), reformatting preexisting files → `prettier --write` the
   flagged files and commit them (`style:`). This `SKILL.md` is itself
-  prettier-ignored (lives under `.agent`/`.claude`).
+  prettier-ignored (lives under `.agents`/`.claude`).
 - Don't merge the PRs individually — consolidate into one.
 
 ## Improve this skill every run

@@ -14,7 +14,7 @@ the spacing" fast — without it, the loop is "edit, reload, switch to
 phone, scroll, sigh, swap back" and an hour disappears.
 
 This skill ships a small harness at
-`.agent/skills/design/screenshot.mjs` that:
+`.agents/skills/design/screenshot.mjs` that:
 
 - Connects to whatever app server is already running (`npm run dev` on
   port 5173 preferred; falls back to the vite preview server on 4173).
@@ -71,7 +71,7 @@ your code edit
    │
    ▼  vite HMR (already running via `npm run dev`)
    │
-   ▼  node .agent/skills/design/screenshot.mjs
+   ▼  node .agents/skills/design/screenshot.mjs
    │       ├─ resolves base URL (dev → preview fallback)
    │       ├─ for each --viewports entry:
    │       │     ├─ open Chromium context with that viewport
@@ -101,7 +101,7 @@ above is reusable plumbing.
    If `npm run dev` is already running, skip this step.
 
 2. **Edit the recipe** at the bottom of
-   `.agent/skills/design/screenshot.mjs`. The default recipe is a
+   `.agents/skills/design/screenshot.mjs`. The default recipe is a
    placeholder — replace it with the flow that lands on the state
    you want to see. Use the exported helpers (`openApp`,
    `openShareDialog`, `openSettings`, …) instead of re-clicking
@@ -114,7 +114,7 @@ above is reusable plumbing.
 4. **Run the harness.**
 
    ```sh
-   node .agent/skills/design/screenshot.mjs --viewports desktop,mobile
+   node .agents/skills/design/screenshot.mjs --viewports desktop,mobile
    ```
 
    Vite HMR has already shipped the edit to the running tab; the

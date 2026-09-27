@@ -1,7 +1,7 @@
 # Refactoring roadmap
 
 The single source of truth for what this codebase considers a code smell
-worth fixing. Worked via the `refactor` skill (`.agent/skills/refactor/`):
+worth fixing. Worked via the `refactor` skill (`.agents/skills/refactor/`):
 **Work mode** lands the highest-leverage pending item one PR at a time;
 **Explore mode** surveys for new smells and appends them here without
 touching code.

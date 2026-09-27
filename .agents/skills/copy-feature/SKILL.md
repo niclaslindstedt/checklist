@@ -51,10 +51,10 @@ Run the helper script — it puts the sibling's working tree under `/tmp` and
 prints the path:
 
 ```sh
-node .agent/skills/copy-feature/clone-sibling.mjs notes    # -> /tmp/notes
-node .agent/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
+node .agents/skills/copy-feature/clone-sibling.mjs notes    # -> /tmp/notes
+node .agents/skills/copy-feature/clone-sibling.mjs budget   # -> /tmp/budget
 # optional 2nd/3rd args: a destination and a ref
-node .agent/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
+node .agents/skills/copy-feature/clone-sibling.mjs notes /tmp/notes some-branch
 ```
 
 The siblings are public repositories under github.com/niclaslindstedt, so the

@@ -11,7 +11,7 @@ description: "Use when checklist may have drifted from OSS_SPEC.md. Fetches the 
 
 ## Tracking mechanism
 
-`.agent/skills/sync-oss-spec/.last-updated` contains the git commit hash of the last successful run. Empty means "never run" — use the repo's initial commit (`git rev-list --max-parents=0 HEAD`) as the baseline.
+`.agents/skills/sync-oss-spec/.last-updated` contains the git commit hash of the last successful run. Empty means "never run" — use the repo's initial commit (`git rev-list --max-parents=0 HEAD`) as the baseline.
 
 ## Fetch the canonical spec
 
@@ -47,7 +47,7 @@ fi
 1. Read the baseline and list every commit that may have introduced drift since then:
 
    ```sh
-   BASELINE=$(cat .agent/skills/sync-oss-spec/.last-updated)
+   BASELINE=$(cat .agents/skills/sync-oss-spec/.last-updated)
    git log --oneline "$BASELINE"..HEAD
    git diff --name-only "$BASELINE"..HEAD
    ```
@@ -118,10 +118,10 @@ fi
    fi
 
    # §21 — agent skills tree
-   [ -d .agent/skills ] || echo "MISSING-DIR: .agent/skills"
-   [ "$(readlink .claude/skills)" = "../.agent/skills" ] \
-     || echo "BAD-SYMLINK: .claude/skills -> ../.agent/skills"
-   for d in .agent/skills/*/; do
+   [ -d .agents/skills ] || echo "MISSING-DIR: .agents/skills"
+   [ "$(readlink .claude/skills)" = "../.agents/skills" ] \
+     || echo "BAD-SYMLINK: .claude/skills -> ../.agents/skills"
+   for d in .agents/skills/*/; do
      [ -f "$d/SKILL.md" ]      || echo "MISSING: $d/SKILL.md"
      [ -f "$d/.last-updated" ] || echo "MISSING: $d/.last-updated"
    done
@@ -162,10 +162,10 @@ fi
 | §19.4 missing central output module | Add `src/output.<ext>` (or `lib/output.<ext>`) with semantic helpers (`status`, `info`, `warn`, `error`, `header`) and route existing prints through it |
 | §20.2 test file stem does not end with `_test(s)` / `Test(s)` | Rename the file so the stem matches the regex `_?[Tt]ests?$` |
 | §20.5 source file exceeds 1000 lines | **Preferred:** split the file by concern into sibling modules / helpers. **Common easy case:** if the file also has a §20 inline-test violation, extracting the test block to `tests/<stem>_test.<ext>` usually resolves both at once. **Escape hatch:** add `oss-spec:allow-large-file: <reason>` in a comment within the first 20 lines — the reason must be non-empty and genuinely justify the size (generated code, cohesive state machine, third-party snapshot, inherent rule-catalogue density). |
-| §21.2 `.claude/skills` is not a symlink | Replace it with `ln -s ../.agent/skills .claude/skills` |
+| §21.2 `.claude/skills` is not a symlink | Replace it with `ln -s ../.agents/skills .claude/skills` |
 | §21.3 SKILL.md missing front matter fields | Add `name:` / `description:` to the front matter |
-| §21.4 missing `.last-updated` | `git rev-parse HEAD > .agent/skills/<skill>/.last-updated` |
-| §21.5 missing required `update-*` skill | Create `.agent/skills/<skill>/SKILL.md` (+ `.last-updated`); register it in `maintenance/SKILL.md` |
+| §21.4 missing `.last-updated` | `git rev-parse HEAD > .agents/skills/<skill>/.last-updated` |
+| §21.5 missing required `update-*` skill | Create `.agents/skills/<skill>/SKILL.md` (+ `.last-updated`); register it in `maintenance/SKILL.md` |
 | §21.6 `maintenance` skill registry row missing | Add the row in `maintenance/SKILL.md`, alphabetical, with a run-order slot |
 
 ## Update checklist
@@ -179,7 +179,7 @@ fi
 - [ ] Run `make fmt`, `make lint`, `make test`
 - [ ] Write the new baseline:
 
-      git rev-parse HEAD > .agent/skills/sync-oss-spec/.last-updated
+      git rev-parse HEAD > .agents/skills/sync-oss-spec/.last-updated
 
 ## Verification
 

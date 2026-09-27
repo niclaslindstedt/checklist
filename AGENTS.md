@@ -475,7 +475,7 @@ untouched. Reconciling `main` afterwards is the maintainer's job.
 
 ## Maintenance skills
 
-Per §21 of `OSS_SPEC.md`, this repo ships agent skills for keeping drift-prone artifacts in sync with their sources of truth. Skills live under `.agent/skills/<name>/` and are also accessible via the `.claude/skills` symlink.
+Per §21 of `OSS_SPEC.md`, this repo ships agent skills for keeping drift-prone artifacts in sync with their sources of truth. Skills live under `.agents/skills/<name>/` and are also accessible via the `.claude/skills` symlink.
 
 | Skill | When to run |
 |---|---|
@@ -490,7 +490,7 @@ Each skill has a `SKILL.md` (the playbook) and a `.last-updated` file (the basel
 
 ## Task skills
 
-Alongside the drift-sync skills above, the repo ships manual playbooks for recurring engineering tasks. These are **not** part of the `maintenance` umbrella — invoke them directly when the situation calls for it. They live under the same `.agent/skills/<name>/` tree.
+Alongside the drift-sync skills above, the repo ships manual playbooks for recurring engineering tasks. These are **not** part of the `maintenance` umbrella — invoke them directly when the situation calls for it. They live under the same `.agents/skills/<name>/` tree.
 
 | Skill | When to run |
 |---|---|

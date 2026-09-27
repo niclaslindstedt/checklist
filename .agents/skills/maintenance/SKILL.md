@@ -17,7 +17,7 @@ Do **not** use this skill for a targeted fix — if you know exactly which artif
 
 ## Registry
 
-The registry is the single source of truth for which sync skills exist in this repo. Every `update-*` directory under `.agent/skills/` must appear here exactly once. New projects start with the entries below; add rows whenever you create a new sync skill.
+The registry is the single source of truth for which sync skills exist in this repo. Every `update-*` directory under `.agents/skills/` must appear here exactly once. New projects start with the entries below; add rows whenever you create a new sync skill.
 
 | Skill | Fixes | Spec sections | Run order |
 |---|---|---|---|
@@ -39,7 +39,7 @@ For each skill in the registry, decide whether it needs to run:
 1. Read the skill's `.last-updated` file:
 
    ```sh
-   BASELINE=$(cat .agent/skills/<skill>/.last-updated)
+   BASELINE=$(cat .agents/skills/<skill>/.last-updated)
    ```
 
    An empty or missing file means "never run" — schedule it.
@@ -58,7 +58,7 @@ For each skill in the registry, decide whether it needs to run:
 
 For each scheduled skill, in order:
 
-1. Load `.agent/skills/<skill>/SKILL.md`.
+1. Load `.agents/skills/<skill>/SKILL.md`.
 2. Follow its discovery process, mapping table, and update checklist exactly.
 3. Verify the skill's own verification section passes.
 4. Record the commit hash the skill wrote to its `.last-updated`.
@@ -75,9 +75,9 @@ Between skills, do **not** commit — aggregate all edits into a single working 
     - [ ] `make test`
 - [ ] Stage every touched file (including each updated `.last-updated`)
 - [ ] Commit with a conventional-commit message describing the sweep
-- [ ] Update `.agent/skills/maintenance/.last-updated`:
+- [ ] Update `.agents/skills/maintenance/.last-updated`:
 
-      git rev-parse HEAD > .agent/skills/maintenance/.last-updated
+      git rev-parse HEAD > .agents/skills/maintenance/.last-updated
 
 ## Verification
 
