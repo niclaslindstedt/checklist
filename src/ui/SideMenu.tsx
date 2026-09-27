@@ -8,7 +8,7 @@ import type {
   TemplateSummary,
 } from "../app/use-checklist-lists.ts";
 import { useT } from "../i18n";
-import { REPO_URL } from "../seo/siteConfig.ts";
+import { REPO_URL } from "../site/siteConfig.ts";
 import {
   DEFAULT_NAMESPACE_SLUG,
   type Namespace,

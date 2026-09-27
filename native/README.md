@@ -113,8 +113,7 @@ catalog, its strings and its "What's new" feature page out, and the website
 keeps them. `npm run build:native` ends with `scripts/website-only.mjs`, which
 refuses a webroot that still carries either.
 
-The crawler-facing files (`robots.txt`, `sitemap.xml`, `llms.txt`) and the
-`/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —
+`robots.txt` and the `/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —
 the side menu links to it as a real in-app navigation.
 
 ### The native ↔ web bridge (iCloud)

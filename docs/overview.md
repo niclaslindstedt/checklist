@@ -3346,8 +3346,8 @@ accounts, analytics, or tracking. It also documents the optional storage
 backends: a local folder and Dropbox send list data to a
 provider only when the user explicitly connects one, and the AES-GCM
 encryption option keeps the cloud copy ciphertext-only. Deliberately
-short and English-only (a legal page, not chrome). The SEO description
-in `src/seo/routes.ts` (`PRIVACY_ROUTE`) mirrors the same wording. The
+short and English-only (a legal page, not chrome). The meta description
+in `src/site/routes.ts` (`PRIVACY_ROUTE`) mirrors the same wording. The
 build **prerenders** this page into `dist/privacy/index.html`, so it reads
 as a real document without running the bundle — see "Prerendered routes".
 
@@ -3362,8 +3362,8 @@ page linked as the "app homepage" on the Google OAuth consent screen, which
 Google requires to describe the app's functionality and data use without a
 login. Built exactly like the privacy page: mounted by `staticRouteFor` in
 `src/app/main.tsx`, emitted to `dist/home/index.html` by the
-`emit-showcase-alias` plugin in `vite.config.ts`, with SEO copy and sitemap
-entry in `SHOWCASE_ROUTE` (`src/seo/routes.ts`), and **prerendered** so the
+`emit-showcase-alias` plugin in `vite.config.ts`, with its title and
+description in `SHOWCASE_ROUTE` (`src/site/routes.ts`), and **prerendered** so the
 Google reviewer reads the page itself rather than a fallback summary — see
 "Prerendered routes". English-only by design. **Keep its feature list and data-use copy in sync
 with the app** whenever a feature or a data-access path changes — see "The
@@ -3393,8 +3393,8 @@ first paint, which is what keeps the open synchronous. See "Code splitting" in
 
 The two standalone pages above — `/home` and `/privacy` — ship as real HTML
 documents. `src/app/prerender.tsx` renders each one at build time and the
-alias plugins splice the markup into `<div id="app">`, so a crawler, a link
-unfurler, or the Google OAuth reviewer reads the page without running the
+alias plugins splice the markup into `<div id="app">`, so a link unfurler,
+a no-JS reader, or the Google OAuth reviewer reads the page without running the
 bundle, and a browser paints it before the bundle has parsed. On load
 `main.tsx` **hydrates** that markup instead of rebuilding it.
 

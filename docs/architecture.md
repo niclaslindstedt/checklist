@@ -106,9 +106,9 @@ reason. `main.tsx` hydrates the result when the container's
 scratch otherwise (the dev server, or a stale cached shell).
 
 The app route (`/`) is **not** prerendered: its content is the user's own
-lists, so there is nothing to index and an empty prerendered shell would
+lists, so there is nothing to show and an empty prerendered shell would
 only flash before the real data arrived. It keeps the `<noscript>`
-fallback in `src/seo/routes.ts`.
+fallback in `src/site/routes.ts`.
 
 `src/app/static-routes.ts` (which URL is which page) and
 `StaticRouteView.tsx` (what each page renders) are shared by the client

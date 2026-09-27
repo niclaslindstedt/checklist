@@ -148,7 +148,7 @@ and budget's `data/` is our `domain/`. Port into the matching concern:
 | `src/storage/<x>.ts`                    | `src/storage/<x>.ts`                   |
 | `src/i18n/locales/{en,sv}/<x>.ts`       | `src/i18n/locales/{en,sv}/<x>.ts`      |
 | `src/styles/*`, `src/styles.css`        | `src/styles/*`, `src/styles.css`; theme tokens in `src/theme/` |
-| `src/seo/routes.ts`                     | `src/seo/routes.ts`                    |
+| `src/seo/routes.ts`                     | `src/site/routes.ts` (title, description, OG only — no SEO) |
 | `src/components/HomePage.tsx` (showcase) | `src/ui/ShowcasePage.tsx`             |
 | `.changes/unreleased/*.md`              | `.changes/unreleased/*.md`             |
 | `tests/*` (mirrors `src/`)              | `tests/*` (mirrors `src/`)             |

@@ -30,16 +30,17 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="author" content="Niclas Lindstedt" />
     <meta name="application-name" content="checklist" />
+    <!-- The website is not meant to be found — people should reach the App
+         Store page and apps.agilator.se — so every page and every deploy
+         slot asks search engines not to index it (owner decision: no SEO).
+         The route aliases (home/, privacy/) are built from this file, so
+         they carry it too. -->
+    <meta name="robots" content="noindex" />
     <!-- Route-invariant social tags; the per-route og/twitter values live in
-         the HEAD_SEO block below. -->
+         the HEAD_ROUTE block below. -->
     <meta property="og:site_name" content="checklist" />
     <meta property="og:locale" content="en" />
 
-    <link
-      rel="sitemap"
-      type="application/xml"
-      href="https://checklist.niclaslindstedt.se/sitemap.xml"
-    />
     <link rel="icon" type="image/svg+xml" href="/favicon-mark.svg" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
 
@@ -53,15 +54,15 @@
       content="black-translucent"
     />
 
-    <!-- HEAD_SEO_START
-         The per-route SEO payload (<title>, description, canonical, robots,
-         OG/Twitter cards, JSON-LD) is injected here at build time from
-         `src/seo/routes.ts` — `HOME_ROUTE` for `dist/index.html`, and the
-         `emit-privacy-alias` plugin re-splices `PRIVACY_ROUTE` into
+    <!-- HEAD_ROUTE_START
+         The per-route head (<title>, description, OG/Twitter cards) is
+         injected here at build time from `src/site/routes.ts` — `HOME_ROUTE`
+         for `dist/index.html`, and the alias plugins re-splice
+         `SHOWCASE_ROUTE` / `PRIVACY_ROUTE` into `dist/home/index.html` and
          `dist/privacy/index.html`. Keep these markers verbatim or the
          injector in `vite.config.ts` can't find the block to fill.
     -->
-    <!-- HEAD_SEO_END -->
+    <!-- HEAD_ROUTE_END -->
   </head>
   <body>
     <div id="app">
@@ -69,7 +70,7 @@
         <!-- NOSCRIPT_START
              Pre-hydration fallback for clients that don't run the SPA bundle
              (crawlers, link unfurlers, no-JS readers). The build injects the
-             route's body from `src/seo/routes.ts` between these markers;
+             route's body from `src/site/routes.ts` between these markers;
              `main.tsx`'s createRoot() replaces #app the moment the bundle
              runs, so normal visitors never see it. Keep the markers verbatim.
         -->

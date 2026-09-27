@@ -176,7 +176,7 @@ user-facing settings            | `docs/configuration.md`, `README.md` Configura
 the build / deploy pipeline     | `README.md` Install/Quick start, `.github/workflows/pages.yml`
 a user-facing concept, component, or term (added, renamed, or a new word the user uses) | `docs/dictionary.md` (the term → file row) **and** `docs/overview.md` (the term's description) — both in the same PR. See "Resolving user vocabulary".
 a user-facing feature / workflow / surface (shipped or removed) | **Add (or retire) a matching achievement** in the same PR — see "Achievements". Every feature is also an unlockable trophy.
-a user-facing feature, capability, or data-access behaviour | The **`/home` showcase page** (`src/ui/ShowcasePage.tsx`) and `SHOWCASE_ROUTE` in `src/seo/routes.ts` — keep its feature list and data-use copy accurate in the same PR. See "The `/home` showcase page".
+a user-facing feature, capability, or data-access behaviour | The **`/home` showcase page** (`src/ui/ShowcasePage.tsx`) and `SHOWCASE_ROUTE` in `src/site/routes.ts` — keep its feature list and data-use copy accurate in the same PR. See "The `/home` showcase page".
 a **large** user-facing feature (the changelog bullet links `[Learn more]`) | `docs/features/<slug>.md` in the same PR — keep it accurate to current behaviour. See "Releases and changelog" → "Feature docs and Learn more".
 
 ## The `/home` showcase page
@@ -193,9 +193,9 @@ app state, English-only), mounted by `staticRouteFor` in `src/app/main.tsx`
 and emitted to `dist/home/index.html` by the `emit-showcase-alias` plugin
 in `vite.config.ts`. It is **prerendered** — `src/app/prerender.tsx` renders
 it at build time so the page is readable without running the bundle, which
-is what Google's reviewer (and any crawler) actually fetches. Keep it
-renderable in Node: no app state, no hooks that touch `window`. Its `<head>` SEO, sitemap entry, and `<noscript>`
-fallback come from `SHOWCASE_ROUTE` in `src/seo/routes.ts`.
+is what Google's reviewer actually fetches. Keep it
+renderable in Node: no app state, no hooks that touch `window`. Its `<head>` title, description and `<noscript>`
+fallback come from `SHOWCASE_ROUTE` in `src/site/routes.ts`.
 
 **Keep it in sync with the product.** Because Google holds us to "fully
 describe your app's functionality" and "explain the purpose for which your
@@ -209,8 +209,7 @@ actually does:
   "Why the app asks for access to your data" section so the stated purpose
   and scope stay exact. This copy and the privacy policy must agree.
 - **Rename the app, change the hosted domain, or restructure storage** →
-  reflect it in both the page body and `SHOWCASE_ROUTE`'s title/description
-  (the SEO test caps the title at 70 and the description at 160 chars).
+  reflect it in both the page body and `SHOWCASE_ROUTE`'s title/description.
 
 Treat the showcase page as part of the same change that touches a feature
 or a data-access path, never as a follow-up.
@@ -310,6 +309,9 @@ three slots into one Pages artifact:
 
 The base path each slot is built with comes from `VITE_BASE` (`/`,
 `/preview/`, or `/branch/`), read by `vite.config.ts`.
+
+There is no SEO and no size budget, by owner decision: every page in every
+slot carries `noindex` (from `index.html`) and is not meant to be found.
 
 > **Storage caveat.** All three slots share one origin, and
 > `localStorage` / `IndexedDB` are per-origin (not per-path), so

@@ -9,21 +9,17 @@ import type { StaticRoute } from "./src/app/static-routes.ts";
 import {
   HOME_ROUTE,
   PRIVACY_ROUTE,
-  ROUTES,
   SHOWCASE_ROUTE,
-  type RouteSeo,
-  renderHeadSeo,
-  renderLlmsTxt,
-  renderRobotsTxt,
-  renderSitemap,
+  type RouteHead,
+  renderHead,
   resolveNoscriptBody,
   spliceAppShell,
-} from "./src/seo/routes.ts";
+} from "./src/site/routes.ts";
 import {
   SITE_DESCRIPTION,
   SITE_LANGUAGE,
   SITE_NAME,
-} from "./src/seo/siteConfig.ts";
+} from "./src/site/siteConfig.ts";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.
@@ -42,7 +38,7 @@ const isNative = process.env.VITE_NATIVE === "1";
 // service worker for the same reason the native build does — a new version
 // arrives as a new binary, so a worker would only stand a staler cache in
 // front of files already on local disk — and nothing else: unlike the phone
-// build it keeps the crawler files and the showcase page, which cost nothing
+// build it keeps robots.txt and the showcase page, which cost nothing
 // in a desktop bundle. `__SHELL_BUILD__` carries the fact into the app.
 const isShell = process.env.VITE_SHELL_BUILD === "on";
 
@@ -144,51 +140,51 @@ function emitVersionJson(): Plugin {
   };
 }
 
-// Splice a route's SEO into the HEAD_SEO / NOSCRIPT marker blocks of an
+// Splice a route's head into the HEAD_ROUTE / NOSCRIPT marker blocks of an
 // `index.html` string and re-emit the markers so a later pass (the privacy
 // alias) can splice again. The single source of truth for the copy is
-// `src/seo/routes.ts`. Throws loudly if the markers were dropped from
-// `index.html` rather than silently shipping a route with no <head> SEO.
-const HEAD_SEO_RE =
-  /<!-- HEAD_SEO_START[\s\S]*?-->[\s\S]*?<!-- HEAD_SEO_END -->/;
+// `src/site/routes.ts`. Throws loudly if the markers were dropped from
+// `index.html` rather than silently shipping a route with no <title>.
+const HEAD_ROUTE_RE =
+  /<!-- HEAD_ROUTE_START[\s\S]*?-->[\s\S]*?<!-- HEAD_ROUTE_END -->/;
 const NOSCRIPT_RE =
   /<!-- NOSCRIPT_START[\s\S]*?-->[\s\S]*?<!-- NOSCRIPT_END -->/;
 
-function spliceRouteSeo(html: string, route: RouteSeo): string {
-  if (!HEAD_SEO_RE.test(html)) {
+function spliceRouteHead(html: string, route: RouteHead): string {
+  if (!HEAD_ROUTE_RE.test(html)) {
     throw new Error(
-      "checklist-seo: HEAD_SEO markers missing from index.html — cannot " +
-        "inject per-route <head> SEO. Did index.html drop the " +
-        "<!-- HEAD_SEO_START --> / <!-- HEAD_SEO_END --> pair?",
+      "checklist-head: HEAD_ROUTE markers missing from index.html — cannot " +
+        "inject the per-route <head>. Did index.html drop the " +
+        "<!-- HEAD_ROUTE_START --> / <!-- HEAD_ROUTE_END --> pair?",
     );
   }
   if (!NOSCRIPT_RE.test(html)) {
     throw new Error(
-      "checklist-seo: NOSCRIPT markers missing from index.html — cannot " +
+      "checklist-head: NOSCRIPT markers missing from index.html — cannot " +
         "inject the per-route fallback body.",
     );
   }
   const head =
-    `<!-- HEAD_SEO_START (${route.path}) -->\n    ` +
-    renderHeadSeo(route) +
-    `\n    <!-- HEAD_SEO_END -->`;
+    `<!-- HEAD_ROUTE_START (${route.path}) -->\n    ` +
+    renderHead(route) +
+    `\n    <!-- HEAD_ROUTE_END -->`;
   const noscript =
     `<!-- NOSCRIPT_START (${route.path}) -->\n        ` +
     resolveNoscriptBody(route) +
     `\n        <!-- NOSCRIPT_END -->`;
-  return html.replace(HEAD_SEO_RE, head).replace(NOSCRIPT_RE, noscript);
+  return html.replace(HEAD_ROUTE_RE, head).replace(NOSCRIPT_RE, noscript);
 }
 
-// Fill the homepage's HEAD_SEO / NOSCRIPT blocks from `HOME_ROUTE`. Runs in
+// Fill the homepage's HEAD_ROUTE / NOSCRIPT blocks from `HOME_ROUTE`. Runs in
 // `transformIndexHtml` so the meta is present in both the dev server and the
 // production build — `index.html` itself carries only empty markers, so the
-// SEO copy never duplicates across `index.html` and `src/seo/`.
-function injectHomeSeo(): Plugin {
+// copy never duplicates across `index.html` and `src/site/`.
+function injectHomeHead(): Plugin {
   return {
-    name: "inject-home-seo",
+    name: "inject-home-head",
     transformIndexHtml: {
       order: "pre",
-      handler: (html) => spliceRouteSeo(html, HOME_ROUTE),
+      handler: (html) => spliceRouteHead(html, HOME_ROUTE),
     },
   };
 }
@@ -198,11 +194,11 @@ function injectHomeSeo(): Plugin {
 // Both are self-contained, English-only pages with no app state, so the build
 // can render them ahead of time and splice the markup into `<div id="app">`.
 // That is what makes them readable without running the bundle — the point of
-// the exercise, since `/home` is the page Google's OAuth reviewer reads and
-// both are the only routes a crawler has any reason to index.
+// the exercise, since `/home` is the page Google's OAuth reviewer reads, and
+// link previews and no-JS readers get the page rather than a blank shell.
 //
 // The app route (`/`) is deliberately NOT prerendered. Its content is the
-// user's own lists, read from storage at runtime: there is nothing to index,
+// user's own lists, read from storage at runtime: there is nothing to show,
 // and a baked-in empty shell would mean every returning user watches "Nothing
 // here yet" get replaced by their data. It keeps the <noscript> fallback,
 // which is the right answer for a route whose real content is private.
@@ -250,24 +246,24 @@ function prerenderStaticRoutes(): Plugin {
   };
 }
 
-// Build one route alias document from the shared `index.html`: its own <head>
-// SEO, then its prerendered body in place of the generic shell.
+// Build one route alias document from the shared `index.html`: its own
+// <head>, then its prerendered body in place of the generic shell.
 async function renderRouteAlias(
   html: string,
-  route: RouteSeo,
+  route: RouteHead,
   staticRoute: StaticRoute,
 ): Promise<string> {
   const markup = (await renderStaticRoutes())[staticRoute];
-  return spliceAppShell(spliceRouteSeo(html, route), staticRoute, markup);
+  return spliceAppShell(spliceRouteHead(html, route), staticRoute, markup);
 }
 
 // Mirror the built `index.html` to `privacy/index.html` so GitHub Pages
 // serves the SPA from the clean URL `/privacy/` (and `/preview/privacy/`,
 // …). The app's `main.tsx` reads `location.pathname` and mounts the
 // privacy page there; the copied HTML loads the same hashed asset URLs
-// (they are origin-absolute), so no rewrite is needed. The HEAD_SEO block
-// (filled with the homepage payload by `injectHomeSeo`) is re-spliced with
-// `PRIVACY_ROUTE` so the alias gets its own title and canonical instead of
+// (they are origin-absolute), so no rewrite is needed. The HEAD_ROUTE block
+// (filled with the homepage payload by `injectHomeHead`) is re-spliced with
+// `PRIVACY_ROUTE` so the alias gets its own title and og:url instead of
 // inheriting the homepage's, and the shell is replaced with the prerendered
 // page. Runs late so the PWA plugin's manifest-link injection is already
 // baked into the source.
@@ -297,8 +293,8 @@ function emitPrivacyAlias(): Plugin {
 // the SPA from the clean URL `/home/` (and `/preview/home/`, …). The app's
 // `main.tsx` reads `location.pathname` and mounts the showcase page there;
 // the copied HTML loads the same origin-absolute hashed asset URLs, so no
-// rewrite is needed. The HEAD_SEO block is re-spliced with `SHOWCASE_ROUTE` so
-// the alias gets its own title and canonical instead of inheriting the
+// rewrite is needed. The HEAD_ROUTE block is re-spliced with `SHOWCASE_ROUTE`
+// so the alias gets its own title and og:url instead of inheriting the
 // homepage's, and the shell is replaced with the prerendered page. Runs late so
 // the PWA plugin's manifest-link injection is already baked into the source.
 function emitShowcaseAlias(): Plugin {
@@ -323,30 +319,18 @@ function emitShowcaseAlias(): Plugin {
   };
 }
 
-// Emit the site-wide discovery files (§11.3.6) from the same `src/seo/`
-// source of truth as the head injector: sitemap.xml + llms.txt list every
-// route, robots.txt advertises the sitemap and keeps the non-canonical
-// deploy slots out of the index. Emitted via the bundle so they land in the
-// slot root alongside `index.html`.
-function emitSeoDiscoveryFiles(): Plugin {
+// Emit a robots.txt that allows crawling, so a crawler can fetch a page and
+// see its `noindex` robots meta (index.html). There is no sitemap, llms.txt
+// or per-slot Disallow: every slot is noindex alike, by owner decision.
+function emitRobotsTxt(): Plugin {
   return {
-    name: "emit-seo-discovery-files",
+    name: "emit-robots-txt",
     apply: "build",
     generateBundle() {
       this.emitFile({
         type: "asset",
-        fileName: "sitemap.xml",
-        source: renderSitemap(ROUTES),
-      });
-      this.emitFile({
-        type: "asset",
         fileName: "robots.txt",
-        source: renderRobotsTxt(),
-      });
-      this.emitFile({
-        type: "asset",
-        fileName: "llms.txt",
-        source: renderLlmsTxt(ROUTES),
+        source: "User-agent: *\nAllow: /\n",
       });
     },
   };
@@ -432,6 +416,10 @@ function emitPrecacheManifest(): Plugin {
 
 export default defineConfig({
   base,
+  build: {
+    // No size budgets, by owner decision — high enough that Vite never warns.
+    chunkSizeWarningLimit: 100_000,
+  },
   plugins: [
     // The app renders with Preact, not React. `@preact/preset-vite` compiles
     // JSX against `preact/jsx-runtime` and installs the compat aliases that
@@ -537,7 +525,7 @@ export default defineConfig({
           runtimeCaching: [],
         },
       }),
-    injectHomeSeo(),
+    injectHomeHead(),
     emitVersionJson(),
     // Renders the standalone routes to HTML before the alias plugins below
     // splice them in. Runs for the native build too: that build drops the
@@ -549,10 +537,9 @@ export default defineConfig({
     // real in-app navigation.
     !isNative && emitShowcaseAlias(),
     emitPrivacyAlias(),
-    // robots.txt / sitemap.xml / llms.txt address crawlers of the hosted
-    // site; inside an app binary they are dead weight pointing at a URL the
-    // WebView never visits.
-    !isNative && emitSeoDiscoveryFiles(),
+    // robots.txt addresses crawlers of the hosted site; inside an app binary
+    // it is dead weight pointing at a URL the WebView never visits.
+    !isNative && emitRobotsTxt(),
     // Reports the bytes the service worker will precache; nothing precaches
     // in a native build, so the manifest would describe a cache that never
     // exists.

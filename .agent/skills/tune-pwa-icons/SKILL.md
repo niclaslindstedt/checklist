@@ -137,7 +137,7 @@ deliberately different. Don't "fix" one to match the other.
 | Tone | Literal | Lives in | What it paints |
 | --- | --- | --- | --- |
 | **Icon badge** | `#0c0f13` | `<rect>` fill in `public/favicon.svg`; `THEME_BACKGROUND` in `pwa-assets.config.ts`; `FAVICON_BG` in `src/ui/glyphs.ts` | The home-screen / launcher tile and the namespace favicon badge |
-| **App surface** | `#1f2933` | `theme_color` + `background_color` in `vite.config.ts`; the `<meta name="theme-color">` in `index.html`; `NOSCRIPT_STYLE_MAIN` in `src/seo/routes.ts`; `BACKGROUND` in `native/src/App.tsx` and the two literals in `native/app.json` | Browser chrome tint, PWA splash screen, the `<noscript>` page, the native shell |
+| **App surface** | `#1f2933` | `theme_color` + `background_color` in `vite.config.ts`; the `<meta name="theme-color">` in `index.html`; `NOSCRIPT_STYLE_MAIN` in `src/site/routes.ts`; `BACKGROUND` in `native/src/App.tsx` and the two literals in `native/app.json` | Browser chrome tint, PWA splash screen, the `<noscript>` page, the native shell |
 
 The badge is near-black so the installed tile reads as part of a dark
 home screen alongside neighbouring app icons; the app's own surface
