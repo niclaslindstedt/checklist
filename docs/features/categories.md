@@ -2,9 +2,9 @@
 
 A long list reads better with a few headers to break it up. Turn any item that
 already has sub-items into a **category** — a slim, muted heading that groups
-the items beneath it. Store names in a shopping list are the classic case:
-**ICA**, **Coop**, and a handful of items under each, so you shop aisle by aisle
-and refill the same headers next week.
+the items beneath it. Stores in a shopping list are the classic case: **the
+grocery store**, **the pharmacy**, and a handful of items under each, so you
+shop one stop at a time and refill the same headers next week.
 
 ## How it works
 
