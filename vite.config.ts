@@ -5,7 +5,7 @@ import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig, type Plugin } from "vitest/config";
-import type { StaticRoute } from "./src/app/static-routes";
+import type { StaticRoute } from "./src/app/static-routes.ts";
 import {
   HOME_ROUTE,
   PRIVACY_ROUTE,
@@ -18,12 +18,12 @@ import {
   renderSitemap,
   resolveNoscriptBody,
   spliceAppShell,
-} from "./src/seo/routes";
+} from "./src/seo/routes.ts";
 import {
   SITE_DESCRIPTION,
   SITE_LANGUAGE,
   SITE_NAME,
-} from "./src/seo/siteConfig";
+} from "./src/seo/siteConfig.ts";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.

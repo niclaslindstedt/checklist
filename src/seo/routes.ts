@@ -23,7 +23,7 @@ import {
   SITEMAP_PATH,
   TWITTER_CARD,
   absoluteUrl,
-} from "./siteConfig";
+} from "./siteConfig.ts";
 
 export type OgType = "website" | "article";
 
