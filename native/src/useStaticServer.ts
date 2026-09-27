@@ -16,6 +16,12 @@ import { foregroundServerAction } from "./serverRecovery";
 // The ladder exists only for the rare case where something else already
 // holds the port. Falling back to a *deterministic* neighbour keeps the
 // origin stable in the common case; falling back to port 0 would not.
+//
+// Every wrapper in the fleet has its own ladder — calendar 8231, contacts
+// 8241, time 8251, calc 8261, paint 8271, meds 8281, cycle 8291, baby 8301,
+// notes 8311, checklist 8791, the games 9006 / 9007 / 9033 — so no two
+// contend for a port on a phone that has both. A new wrapper takes the next
+// free ten.
 const PORT_LADDER = [8791, 8792, 8793] as const;
 
 // Load the page from `localhost`, NOT the literal `127.0.0.1`, even though the
