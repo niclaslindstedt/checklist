@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 
-import { BUILD_LABEL, DONATE_URL } from "../build-env.ts";
+import { ACHIEVEMENTS_BUILT, BUILD_LABEL, DONATE_URL } from "../build-env.ts";
 import type {
   ChecklistSummary,
   FolderSummary,
@@ -752,7 +752,7 @@ export function SideMenu({
 
       {/* The relocated burger menu, fixed at the foot of the drawer: Donate
           (the website only — `DONATE_URL` in build-env.ts),
-          the trophy, an "About" dropdown that folds away the project links
+          the trophy (the website only too — `ACHIEVEMENTS_BUILT`), an "About" dropdown that folds away the project links
           (source / privacy / what's new), and Settings pinned last under the
           thumb. Folded away via the rail above. Now the PWA renders
           fullscreen (no bottom safe-area inset lifting the panel), Settings
@@ -772,8 +772,9 @@ export function SideMenu({
           )}
           {/* The trophy, relocated from the header. It does its own
             quiet-vs-lit dispatch, so it just needs the drawer closed
-            behind it. Hides itself when achievements are disabled. */}
-          <TrophyButton onSelect={close} />
+            behind it. Hides itself when achievements are disabled, and is not
+            built into the phone or desktop app at all. */}
+          {ACHIEVEMENTS_BUILT && <TrophyButton onSelect={close} />}
           {/* About: a single row that reveals the project links in an
             upward-flipping dropdown (there's no room below at the foot of the
             drawer). It reads as a plain footer row — no chevron — and just

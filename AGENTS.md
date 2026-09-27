@@ -50,7 +50,8 @@ back into this tree, `VITE_SHELL_BUILD`, set by the shell's site build, which
 leaves the service worker out of the build and — through `__SHELL_BUILD__` —
 keeps the page from registering one or offering an update, and leaves out the
 Donate entry (as the phone build's `__NATIVE__` does — no build but the website
-may carry a payment link outside Apple's; `DONATE_URL` in `src/build-env.ts`).
+may carry a payment link outside Apple's; `DONATE_URL` in `src/build-env.ts`)
+and the achievements (`ACHIEVEMENTS_BUILT`, likewise the website's alone).
 A desktop build updates by being replaced. The package's name and identifier come from
 `APP_DISPLAY_NAME` and `APP_BUNDLE_ID` at packaging time
 (`tauri/scripts/package.mjs`), like the phone app's. See
@@ -224,6 +225,13 @@ checklist header opens the guided tour of the whole catalog when it's
 quiet; when one or more unlocks are unacknowledged it lights up with a
 badge and instead opens an unlock-notification modal listing just the new
 ones (closing that clears the queue). A fresh unlock also raises a toast.
+
+**The website's alone.** The phone and desktop apps ship no achievements —
+no trophy row, toasts, tour or Settings switch (the owner's call for every
+native build). `ACHIEVEMENTS_BUILT` in `src/build-env.ts` compiles the
+catalog, its strings and every surface out of those builds; gate any new
+achievements surface on it, and check with a `VITE_SHELL_BUILD=on` build
+that nothing of it reaches the bundle.
 
 It lives in three places that must stay in lockstep:
 

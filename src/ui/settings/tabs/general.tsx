@@ -1,3 +1,4 @@
+import { ACHIEVEMENTS_BUILT } from "../../../build-env.ts";
 import { useDevMode } from "../../../dev/useDevMode.ts";
 import { useLang, useT } from "../../../i18n";
 import { writeLanguagePreference } from "../../../i18n/language-preference.ts";
@@ -19,7 +20,8 @@ const LEAD_OFFSETS: { days: number; labelKey: string }[] = [
 // The landing tab. One bordered section per concern (mirroring the budget
 // project's General tab): the language picker (flag buttons that switch the
 // app's language live), the menu-button toggle (installed PWA on a phone /
-// tablet only), the toast-suppression toggle, the achievements switch, and
+// tablet only), the toast-suppression toggle, the achievements switch (the
+// website only — the phone and desktop apps carry no achievements), and
 // the developer-mode switch that reveals the Developer and Logs tabs.
 // List-behaviour preferences live on the Lists tab.
 export function GeneralTab({
@@ -101,14 +103,16 @@ export function GeneralTab({
         )}
       </Section>
 
-      <Section title={t("settings.general.achievementsSection")}>
-        <ToggleRow
-          label={t("settings.general.disableAchievements")}
-          hint={t("settings.general.disableAchievementsHint")}
-          checked={settings.disableAchievements}
-          onChange={(next) => onUpdate("disableAchievements", next)}
-        />
-      </Section>
+      {ACHIEVEMENTS_BUILT && (
+        <Section title={t("achievements.settings.section")}>
+          <ToggleRow
+            label={t("achievements.settings.disable")}
+            hint={t("achievements.settings.disableHint")}
+            checked={settings.disableAchievements}
+            onChange={(next) => onUpdate("disableAchievements", next)}
+          />
+        </Section>
+      )}
 
       <Section title={t("settings.general.developerSection")}>
         <ToggleRow

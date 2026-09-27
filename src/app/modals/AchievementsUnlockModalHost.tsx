@@ -7,11 +7,15 @@ import { useModalState } from "../../ui/modal-bus.ts";
 // Lists the unseen unlocks and, on close, clears the unseen queue so the
 // trophy returns to its quiet state — App passes that down as `onClear`.
 //
-// Deferred: only reached by tapping a lit trophy.
+// Deferred: only reached by tapping a lit trophy. Not in the phone or desktop
+// app at all — see `AchievementsModalHost.tsx` for why the guard tests the raw
+// defines.
 const AchievementUnlockModal = defer(() =>
-  import("../../ui/achievements/AchievementUnlockModal.tsx").then(
-    (m) => m.AchievementUnlockModal,
-  ),
+  __NATIVE__ || __SHELL_BUILD__
+    ? Promise.reject(new Error("no achievements in this build"))
+    : import("../../ui/achievements/AchievementUnlockModal.tsx").then(
+        (m) => m.AchievementUnlockModal,
+      ),
 );
 
 type Props = {

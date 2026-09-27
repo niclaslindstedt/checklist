@@ -8,6 +8,7 @@
 // the renderer composes the lookup by `id`. `hasLearnMore: true` flags entries
 // that carry an expanded body.
 
+import { ACHIEVEMENTS_BUILT } from "../build-env.ts";
 import { hasAnyTransforms, type TransformRules } from "../domain/transforms.ts";
 import type { ChecklistItem, Snapshot } from "../domain/types.ts";
 import {
@@ -129,7 +130,7 @@ const hasScheduledChecklist = (snap: Snapshot) =>
 const namespacesWithTransforms = (rules: TransformRules) =>
   Object.values(rules).filter((list) => list.length > 0).length;
 
-export const ACHIEVEMENTS: readonly Achievement[] = [
+const CATALOG: readonly Achievement[] = [
   // ──────────────────────────────────────────────────────────────
   // Beginner — "I just opened the app. What do I do?"
   // ──────────────────────────────────────────────────────────────
@@ -852,6 +853,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
   },
 ] as const;
+
+// The catalog this build carries: all of it on the website, none of it in the
+// phone or desktop app (`ACHIEVEMENTS_BUILT`), where the entries — and the
+// glyphs and predicates they pull in — fold out of the bundle.
+export const ACHIEVEMENTS: readonly Achievement[] = ACHIEVEMENTS_BUILT
+  ? CATALOG
+  : [];
 
 // Catalog lookup by id. The watcher hands us ids from the bus and from
 // `deriveUnlocks`; both consult this map to skip ids that don't match a

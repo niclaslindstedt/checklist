@@ -22,7 +22,6 @@ const settings: SettingsCatalog = {
     languageSection: "Språk",
     interfaceSection: "Gränssnitt",
     notificationsSection: "Aviseringar",
-    achievementsSection: "Bedrifter",
     developerSection: "Utvecklare",
     language: "Språk",
     languageHint:
@@ -43,9 +42,6 @@ const settings: SettingsCatalog = {
     reminderLeadOnDay: "På förfallodagen",
     reminderLeadDayBefore: "Dagen innan",
     reminderLeadWeekBefore: "En vecka innan",
-    disableAchievements: "Inaktivera bedrifter",
-    disableAchievementsHint:
-      "Sluta spåra bedrifter och dölj troféknappen. Bedrifter du redan låst upp behålls.",
   },
 
   lists: {

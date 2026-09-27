@@ -37,7 +37,8 @@ build ready" upgrade hint still appears) — and the **Disable
 achievements** toggle, which switches the achievements system off: the
 watcher stops recording unlocks and raising celebratory toasts, and the
 header trophy button is hidden. Achievements already earned are kept, so
-turning the toggle back off resumes tracking. In the installed PWA on a
+turning the toggle back off resumes tracking. The phone and desktop apps
+have no achievements, so no toggle either. In the installed PWA on a
 phone / tablet it also holds the **Show menu button** toggle. These
 choices persist to `checklist:settings:v1`. List-behaviour preferences
 live on the **Settings → Lists** tab.

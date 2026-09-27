@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock, useAchievementWatcher } from "../achievements/index.ts";
+import { ACHIEVEMENTS_BUILT } from "../build-env.ts";
 import { useDevSeed } from "../dev/useDevSeed.ts";
 import { displayItems, type DisplayOrder } from "../domain/checklists.ts";
 import { defer } from "../ui/deferred.tsx";
@@ -256,6 +257,8 @@ function AppShell() {
   // change, …) off every document / settings transition and drains the
   // manual-unlock bus (cloud connect, copy, undo, …); a fresh unlock raises
   // a celebratory toast and badges the header trophy via `AchievementsContext`.
+  // The phone and desktop apps carry none of it (`ACHIEVEMENTS_BUILT`): the
+  // watcher stays off whatever the synced setting says.
   const onAchievementsUnlocked = useCallback(
     (ids: string[]) => {
       const message =
@@ -272,7 +275,7 @@ function AppShell() {
     snapshot: checklist.snapshot,
     settings,
     loaded: checklist.loaded,
-    enabled: !settings.disableAchievements,
+    enabled: ACHIEVEMENTS_BUILT && !settings.disableAchievements,
     record: unlockAchievements,
     onUnlocked: onAchievementsUnlocked,
   });
@@ -704,7 +707,7 @@ function AppShell() {
   const achievementsValue = useMemo(
     () => ({
       unseenCount: settings.unseenAchievements.length,
-      enabled: !settings.disableAchievements,
+      enabled: ACHIEVEMENTS_BUILT && !settings.disableAchievements,
     }),
     [settings.unseenAchievements.length, settings.disableAchievements],
   );
@@ -815,11 +818,15 @@ function AppShell() {
                   onCreate={createNamespace}
                   onRemove={removeNamespace}
                 />
-                <AchievementsModalHost settings={settings} />
-                <AchievementsUnlockModalHost
-                  settings={settings}
-                  onClear={clearUnseenAchievements}
-                />
+                {ACHIEVEMENTS_BUILT && (
+                  <>
+                    <AchievementsModalHost settings={settings} />
+                    <AchievementsUnlockModalHost
+                      settings={settings}
+                      onClear={clearUnseenAchievements}
+                    />
+                  </>
+                )}
                 <ConflictResolutionModal
                   open={checklist.conflict !== null}
                   local={checklist.snapshot}

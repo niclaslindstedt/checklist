@@ -541,7 +541,7 @@ island that the checklist list scrolls behind rather than pushing away. It highl
 active list and current view. A shared `SectionHeader` renders each heading
 with its optional action. Pinned to the foot are the relocated burger-menu
 rows — an optional donate link (website only; the phone and desktop builds
-compile it out), the trophy, an **About** dropdown, and
+compile it out), the trophy (website only, likewise), an **About** dropdown, and
 settings (last, under the thumb). The About row — a plain footer row with
 no chevron — toggles the project links — "what's new", the source on
 GitHub (with the app version as a subtitle), and privacy — in a
@@ -2027,7 +2027,7 @@ toasts" toggle that drives
 `disableToasts` (suppressing the general toast stack but not the upgrade
 hint), the "Disable achievements" toggle that drives
 `disableAchievements` (switching the achievements system off — see
-**Achievements**), and, **only in the installed PWA on a phone / tablet**
+**Achievements**; the website only), and, **only in the installed PWA on a phone / tablet**
 (`useStandaloneMobile`), the "Show menu button" toggle that drives
 `showMenuButton`. List-behaviour preferences moved out to the Lists tab.
 
@@ -2390,6 +2390,20 @@ renders nothing, removing the only entry point into the modals. Earned
 progress in the `achievements` map is left untouched, and re-enabling
 re-establishes the baseline like a fresh load so the deltas produced
 while off are never backfilled.
+
+**Website only.** The phone build (`VITE_NATIVE=1`) and the desktop build
+(`VITE_SHELL_BUILD=on`) carry no achievements at all: `ACHIEVEMENTS_BUILT`
+in `src/build-env.ts` tests the raw `__NATIVE__` / `__SHELL_BUILD__`
+defines, so in those builds it is a literal `false` that folds out the
+catalog (`ACHIEVEMENTS` is empty, glyphs and predicates with it), the
+`achievements` i18n group, the trophy row, both modal hosts, the unlock
+toast (the watcher's `enabled` is false whatever the setting says) and the
+Settings → General switch. The two deferred modal hosts guard their
+`import()` with the raw defines themselves, because the bundler settles
+which chunks exist before it folds an imported constant. The synced
+`achievements` / `unseenAchievements` / `disableAchievements` fields stay
+in `Settings`, so progress earned on the website survives a round trip
+through an app.
 
 ## Storage and sync
 
@@ -2771,7 +2785,8 @@ The native build drops the PWA layer (no service worker, no update or install
 prompt): the assets already ship in the binary and updates arrive through the
 app stores. `IS_NATIVE` in `src/build-env.ts` gates the runtime half. The
 side menu's Donate entry is compiled out of it (and of the desktop build), so
-no build but the website carries a payment link outside Apple's.
+no build but the website carries a payment link outside Apple's, and so are
+the achievements (`ACHIEVEMENTS_BUILT` — see **Achievements**).
 
 An earlier `native/` rebuilt the checklist UI in React Native views over the
 shared core, including an **iOS-only iCloud key-value backend**. It covered

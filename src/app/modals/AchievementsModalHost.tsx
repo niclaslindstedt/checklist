@@ -11,10 +11,17 @@ import { useModalState } from "../../ui/modal-bus.ts";
 // the main chunk because `catalog.ts` names a glyph per entry and the unlock
 // watcher needs the catalog on every state transition; prising the glyph map
 // off the catalog is the change that would move it.
+//
+// The phone and desktop apps render no host (`ACHIEVEMENTS_BUILT` in App),
+// and their bundles must not carry the modal's chunk either. The bundler
+// settles which chunks exist before it folds an imported constant, so this
+// guard tests the raw defines, which are literals by then.
 const AchievementsModal = defer(() =>
-  import("../../ui/achievements/AchievementsModal.tsx").then(
-    (m) => m.AchievementsModal,
-  ),
+  __NATIVE__ || __SHELL_BUILD__
+    ? Promise.reject(new Error("no achievements in this build"))
+    : import("../../ui/achievements/AchievementsModal.tsx").then(
+        (m) => m.AchievementsModal,
+      ),
 );
 
 type Props = {

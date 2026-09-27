@@ -2,6 +2,7 @@
 // English counterpart; the top-level `: Catalog` annotation here is the
 // belt-and-braces safety net against an accidentally-dropped namespace.
 
+import { ACHIEVEMENTS_BUILT } from "../../../build-env.ts";
 import type { Catalog } from "../en/index";
 
 import achievements from "./achievements";
@@ -20,7 +21,10 @@ import sync from "./sync";
 import toast from "./toast";
 
 export const sv: Catalog = {
-  achievements,
+  // None in the phone or desktop app — see `en/index.ts`.
+  achievements: ACHIEVEMENTS_BUILT
+    ? achievements
+    : ({} as Catalog["achievements"]),
   app,
   changelog,
   common,

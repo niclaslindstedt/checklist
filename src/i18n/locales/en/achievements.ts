@@ -8,6 +8,13 @@ import type { Widen } from "./_widen";
 // Swedish file mirrors this shape key-for-key.
 
 const achievements = {
+  // The switch on Settings → General (the website only).
+  settings: {
+    section: "Achievements",
+    disable: "Disable achievements",
+    disableHint:
+      "Stop tracking achievements and hide the trophy button. Achievements you’ve already earned are kept.",
+  },
   button: {
     open: "Achievements",
     unseenOne: "1 new achievement",

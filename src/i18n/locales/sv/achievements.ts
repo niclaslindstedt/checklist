@@ -1,6 +1,12 @@
 import type { AchievementsCatalog } from "../en/achievements";
 
 const achievements: AchievementsCatalog = {
+  settings: {
+    section: "Bedrifter",
+    disable: "Inaktivera bedrifter",
+    disableHint:
+      "Sluta spåra bedrifter och dölj troféknappen. Bedrifter du redan låst upp behålls.",
+  },
   button: {
     open: "Bedrifter",
     unseenOne: "1 ny bedrift",

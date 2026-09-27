@@ -27,7 +27,6 @@ const settings = {
     languageSection: "Language",
     interfaceSection: "Interface",
     notificationsSection: "Notifications",
-    achievementsSection: "Achievements",
     developerSection: "Developer",
     language: "Language",
     languageHint:
@@ -48,9 +47,6 @@ const settings = {
     reminderLeadOnDay: "On the due day",
     reminderLeadDayBefore: "The day before",
     reminderLeadWeekBefore: "A week before",
-    disableAchievements: "Disable achievements",
-    disableAchievementsHint:
-      "Stop tracking achievements and hide the trophy button. Achievements you’ve already earned are kept.",
   },
 
   lists: {

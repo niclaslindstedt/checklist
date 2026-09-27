@@ -41,3 +41,11 @@ export const DONATE_URL: string | undefined =
   __NATIVE__ || __SHELL_BUILD__
     ? undefined
     : import.meta.env.VITE_DONATE_URL?.trim() || undefined;
+
+// Whether this build carries the achievements system — the website's alone.
+// The phone app and the desktop app ship without it: no trophy row, no unlock
+// toasts, no tour, no Settings switch, and neither the catalog nor its strings
+// (the owner's decision D12 for every native build of a Nird app). Like
+// `DONATE_URL` it tests the raw defines, so in those builds it is a literal
+// `false` the minifier folds, and everything it guards leaves the bundle.
+export const ACHIEVEMENTS_BUILT: boolean = !(__NATIVE__ || __SHELL_BUILD__);
