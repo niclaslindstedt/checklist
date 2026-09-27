@@ -1,9 +1,9 @@
 # Templates
 
 Some lists you write once. Others you write again and again — the same packing
-list every trip, the same release checklist every version, the same Friday shop.
+list every trip, the same release checklist every version, the same Friday grocery run.
 A **template** is one of those lists saved as a blueprint: the shape of the
-list, without any of the ticking-off.
+list, without any of the checking-off.
 
 You don't build a template from scratch. You build a checklist the way you
 always do, get it right, and then keep it.
@@ -37,7 +37,7 @@ Everything that describes *what the list is*:
 
 And nothing that describes *one particular run through it*:
 
-- **Nothing is checked.** Whatever you had ticked off comes across unticked —
+- **Nothing is checked.** Whatever you had checked off comes across unchecked —
   a blueprint is always at the start.
 - **Archived items are left behind.** You'd already hidden them from the list;
   they don't come along.
@@ -46,7 +46,7 @@ And nothing that describes *one particular run through it*:
 
 Open the template from the sidebar and press **"New list from this"** — or, on a
 computer, right-click the template and choose the same thing. You land straight
-on a brand-new checklist, everything unticked, ready to work through.
+on a brand-new checklist, everything unchecked, ready to work through.
 
 Do it as often as you like. Every list you stamp out is a fresh, complete copy.
 
@@ -70,7 +70,7 @@ edit it exactly the way you edit a list — add items, rename them, drag to
 reorder, nest sub-items, promote a category, attach a note, set a deadline.
 
 The one difference is the checkboxes. They're drawn with a dashed outline and
-can't be ticked, and a line under the header says so. A template records what
+can't be checked, and a line under the header says so. A template records what
 needs doing, never whether it's been done — so there is nothing to check off,
 and no progress counter, archive, or "archive finished" sweep while one is open.
 

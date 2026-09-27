@@ -281,7 +281,8 @@ trigger, and adds the test. Progress lives in the synced
 - **English is US English.** Every English string the app shows — the `en`
   catalog, the showcase and privacy pages, the feature docs and changelog
   the "What's new" modal renders, the demo data — spells "color", "gray",
-  "organize", "canceled". Identifiers, i18n keys and achievement ids that
+  "organize", "canceled", and uses American words: an item is "checked
+  off", not "ticked off"; a repeat "comes around", not "round". Identifiers, i18n keys and achievement ids that
   already carry a British spelling (`colours`, `categoriser`) keep it:
   they are keys, and persisted progress refers to them.
 - **`src/domain/` is pure.** No imports from `ui/`, `storage/`,

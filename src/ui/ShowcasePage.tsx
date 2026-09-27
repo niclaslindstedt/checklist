@@ -143,8 +143,8 @@ export function ShowcasePage() {
                 Repeat without a deadline
               </strong>{" "}
               — set a repeat on its own and there is nothing to be late for:
-              tick the item off and it comes back unchecked at the top of the
-              list once the cadence comes round, which is what a shopping list
+              check the item off and it comes back unchecked at the top of the
+              list once the cadence comes around, which is what a shopping list
               wants (&ldquo;buy milk every week or so&rdquo;). A daily repeat
               also picks the time of day it returns.
             </li>
@@ -225,8 +225,8 @@ export function ShowcasePage() {
             <li>
               <strong className="text-fg-bright">Home Screen widgets</strong> —
               on the native app, glance at a list&apos;s progress or what&apos;s
-              due today, and tick items off with a single tap, straight from
-              your Home or Lock Screen.
+              due today, and check items off with a single tap, right from your
+              Home or Lock Screen.
             </li>
             <li>
               <strong className="text-fg-bright">Deadline reminders</strong> —

@@ -8,7 +8,7 @@ original is right there, and the copy you take, the file that syncs, and
 the export all keep it too.
 
 Each rule starts with a pattern — a regular expression — describing the
-text to look for. Round brackets capture a piece of the match you want to
+text to look for. Parentheses capture a piece of the match you want to
 reuse; the first pair is `$1`, the second `$2`, and `$&` is the whole
 match. Then you choose what a match becomes.
 

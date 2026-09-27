@@ -333,7 +333,7 @@ function homeSnapshot(now: number): Snapshot {
       w.item("Empty ~/Downloads", { done: 6.7 }),
       w.item("Inbox to zero, then close it", { done: 6.6 }),
       w.item("Charge the bike lights", { done: 6.5 }),
-      w.item("Water the chillies", { done: 6.5 }),
+      w.item("Water the chili plants", { done: 6.5 }),
       w.item("Pick next week's three things", { done: 6.4 }),
     ],
   });
@@ -463,8 +463,8 @@ function homeSnapshot(now: number): Snapshot {
       r.item("Multi-tool + quick link", { done: 0.1 }),
     ]),
     r.group("Camp", [
-      r.item("Tent, poles — count the pegs", { done: 0.05 }),
-      r.item("Sleeping mat, check the valve"),
+      r.item("Tent, poles — count the stakes", { done: 0.05 }),
+      r.item("Sleeping pad, check the valve"),
       r.item("Quilt in its dry bag"),
     ]),
     r.group("Kitchen", [
@@ -497,7 +497,7 @@ function homeSnapshot(now: number): Snapshot {
     l.item("Laptop charger, the long cable"),
     l.item("EU plug adapter"),
     l.item("Speaker notes on the phone"),
-    l.item("Hoodie for the venue's air con"),
+    l.item("Hoodie for the venue's AC"),
     l.item("Running shoes, the river's close"),
     l.item("Book the hotel", { done: 20, archived: true }),
   ];

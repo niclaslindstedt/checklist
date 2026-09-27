@@ -1,6 +1,6 @@
 # The checklist
 
-A quiet, monospaced checklist you can fill, tick off, and reshape with a
+A quiet, monospaced checklist you can fill, check off, and reshape with a
 flick. It ships **dark by default** and stays out of your way — every item is
 a single line you act on directly, with no chrome to hunt through.
 
@@ -23,7 +23,7 @@ a single line you act on directly, with no chrome to hunt through.
    to tuck it underneath as a sub-item — drop near a row's top or bottom edge
    to drop it alongside instead, so nesting and reordering are one gesture. A
    parent indents its children and shows a small triangle that folds them
-   away; ticking the parent ticks the whole group, dragging it carries the
+   away; checking the parent checks the whole group, dragging it carries the
    group with it, and (with "sort checked to the bottom" on) finished items
    sink within each sub-list of their own. Sub-items can nest as deep as you
    like, and they survive a copy out to markdown as standard indented

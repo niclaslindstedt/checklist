@@ -66,7 +66,7 @@ const achievements = {
     },
     checkItOff: {
       name: "Check, Please",
-      condition: "Tick an item off.",
+      condition: "Check an item off.",
       learnMore:
         "Tap an item's box to mark it done. The header count tracks how many of the list's items are checked.",
     },
@@ -146,25 +146,25 @@ const achievements = {
       name: "On the Clock",
       condition: "Give an item a deadline.",
       learnMore:
-        "Swipe an item left and tap the clock to set a due date — and, if the task comes back around, a repeat like “every 2 weeks”. Dated items sink to the bottom of the unchecked list under a date row that warms from yellow to orange to red as the day nears and passes; checking off a recurring one rolls it to its next due date instead of ticking it away.",
+        "Swipe an item left and tap the clock to set a due date — and, if the task comes back around, a repeat like “every 2 weeks”. Dated items sink to the bottom of the unchecked list under a date row that warms from yellow to orange to red as the day nears and passes; checking off a recurring one rolls it to its next due date instead of checking it off for good.",
     },
     notYet: {
       name: "Not Yet",
       condition: "Hold an item back until a later day.",
       learnMore:
-        "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be ticked off. Until that day comes round the item's box stays shut and a plain gray line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
+        "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be checked off. Until that day comes around the item's box stays shut and a plain gray line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
     },
     onRepeat: {
       name: "On Repeat",
       condition: "Set an item to repeat.",
       learnMore:
-        "The clock's “Repeat” picker works with or without a due date, and the two read differently. Set a repeat beside a due date and checking the item rolls that date on one interval instead of ticking it away. Set one on its own — every day, every 3 days, every week or so — and there is nothing to be late for: you tick the item off, it rests, and once the cadence comes round it returns unchecked at the top of the list, ready to do again. That second shape is what a shopping list wants. Milk every week, bin day every Tuesday, water the plants every 2 days at 07:00 — a daily repeat picks its own time of day, since “every day” with no hour would turn over at whatever moment you last ticked the box.",
+        "The clock's “Repeat” picker works with or without a due date, and the two read differently. Set a repeat beside a due date and checking the item rolls that date on one interval instead of checking it off for good. Set one on its own — every day, every 3 days, every week or so — and there is nothing to be late for: you check the item off, it rests, and once the cadence comes around it returns unchecked at the top of the list, ready to do again. That second shape is what a shopping list wants. Milk every week, trash day every Tuesday, water the plants every 2 days at 07:00 — a daily repeat picks its own time of day, since “every day” with no hour would turn over at whatever moment you last checked the box.",
     },
     clockwork: {
       name: "Clockwork",
       condition: "Put a checklist on a reset schedule.",
       learnMore:
-        "Swipe a list to the right in the sidebar (or right-click it on a computer) and tap the clock to give it a reset schedule: every so many days, weeks, or months, or on the weekdays you pick, at a time of day you choose. When that moment comes round the list unchecks itself, so a routine you run again and again — the things to grab before leaving home, the steps to close up shop — starts fresh without you clearing it by hand. Tick “Pop up after refresh” and the freshly reset list opens in front of you the next time you open the app.",
+        "Swipe a list to the right in the sidebar (or right-click it on a computer) and tap the clock to give it a reset schedule: every so many days, weeks, or months, or on the weekdays you pick, at a time of day you choose. When that moment comes around the list unchecks itself, so a routine you run again and again — the things to grab before leaving home, the steps to close up shop — starts fresh without you clearing it by hand. Turn on “Pop up after refresh” and the freshly reset list opens in front of you the next time you open the app.",
     },
     archivist: {
       name: "Archivist",
@@ -198,7 +198,7 @@ const achievements = {
       name: "Follow the Link",
       condition: "Open a link from an item's note.",
       learnMore:
-        "A web address in an item's note is a real link: paste one in — with or without markdown [label](url) syntax — and it renders underlined once the note is open. Press it and the page opens in a new tab instead of the note dropping into edit mode, so a recipe, a ticket, or a shop page rides along with the item that needs it.",
+        "A web address in an item's note is a real link: paste one in — with or without markdown [label](url) syntax — and it renders underlined once the note is open. Press it and the page opens in a new tab instead of the note dropping into edit mode, so a recipe, a ticket, or a store page rides along with the item that needs it.",
     },
     retracedSteps: {
       name: "Retraced Steps",
@@ -239,13 +239,13 @@ const achievements = {
       name: "Clean Sweep",
       condition: "Delete every finished item at once.",
       learnMore:
-        "Long-press the add (+) button and tap Delete finished — one tap clears every checked item from the list in one go, and undo brings them back if you slipped.",
+        "Long-press the add (+) button and tap Delete finished — one tap clears every checked item from the list at once, and undo brings them back if you slipped.",
     },
     archiveEmptied: {
       name: "Empty the Vault",
       condition: "Empty the whole archive at once.",
       learnMore:
-        "Open the Archive view (foot of the side menu) and tap Empty archive in its header — one confirm wipes every archived item and archived list at once. Undo brings the whole lot back if you change your mind.",
+        "Open the Archive view (foot of the side menu) and tap Empty archive in its header — one confirm wipes every archived item and archived list at once. Undo brings it all back if you change your mind.",
     },
     seeker: {
       name: "Seeker",
@@ -312,7 +312,7 @@ const achievements = {
       name: "Section by Section",
       condition: "Copy a single category to the clipboard.",
       learnMore:
-        "Once a list has categories, the copy button opens a short menu — All, then every category in the list. Pick one and only the items under that header land on the clipboard, without the header itself: the produce aisle out of the week's shopping, ready to paste into a message.",
+        "Once a list has categories, the copy button opens a short menu — All, then every category in the list. Pick one and only the items under that header land on the clipboard, without the header itself: the produce aisle out of the week's groceries, ready to paste into a message.",
     },
     compartments: {
       name: "Compartments",
@@ -324,7 +324,7 @@ const achievements = {
       name: "Stamped Out",
       condition: "Create a new list from a template.",
       learnMore:
-        "Open a template and press “New list from this”, or right-click it in the sidebar. You get a brand-new checklist that is an independent copy of the blueprint — same items, same nesting, same categories, nothing ticked. Check things off it as much as you like; the template it came from stays pristine, ready for the next time.",
+        "Open a template and press “New list from this”, or right-click it in the sidebar. You get a brand-new checklist that is an independent copy of the blueprint — same items, same nesting, same categories, nothing checked. Check things off it as much as you like; the template it came from stays pristine, ready for the next time.",
     },
     dressUp: {
       name: "Dress Up",
@@ -392,9 +392,9 @@ const achievements = {
     },
     widgeteer: {
       name: "Widgeteer",
-      condition: "Tick off an item straight from a Home Screen widget.",
+      condition: "Check off an item right from a Home Screen widget.",
       learnMore:
-        "On the native app, add a checklist widget to your Home or Lock Screen: a progress ring, what's due today, or an interactive list you can tick off with a single tap — the check lands back in the app the next time you open it. Tap this trophy's condition once you've checked something off without opening the app.",
+        "On the native app, add a checklist widget to your Home or Lock Screen: a progress ring, what's due today, or an interactive list you can check off with a single tap — the check lands back in the app the next time you open it. Tap this trophy's condition once you've checked something off without opening the app.",
     },
     deadlineReminders: {
       name: "Right on Time",

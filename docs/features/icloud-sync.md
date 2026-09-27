@@ -1,6 +1,6 @@
 # iCloud sync
 
-In the **iOS app** you can keep your lists in step across your Apple devices through **iCloud** — with no account to make, nothing to sign into, and no server of ours in the middle. Open **Settings → Storage** and pick **iCloud**. That's the whole setup: it rides the Apple ID you're already signed into on the device, so there's no connect step, no password, and no OAuth screen. Add a list on your iPhone and it's there on your iPad; check something off on one and it ticks on the other.
+In the **iOS app** you can keep your lists in step across your Apple devices through **iCloud** — with no account to make, nothing to sign into, and no server of ours in the middle. Open **Settings → Storage** and pick **iCloud**. That's the whole setup: it rides the Apple ID you're already signed into on the device, so there's no connect step, no password, and no OAuth screen. Add a list on your iPhone and it's there on your iPad; check something off on one and it's checked on the other.
 
 This is the only sync option that asks for nothing. Dropbox needs you to sign in and grant access; iCloud uses Apple's own device-to-device sync, so your lists never pass through us and never need a cloud account you have to manage. It's offered only in the iOS app — the web version and the Android app don't show it, because there's no iCloud to reach there.
 

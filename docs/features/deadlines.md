@@ -58,7 +58,7 @@ item straight back where you put it.
 ## Holding an item back
 
 The top field in the same Timing sheet is **Not before** — the earliest
-day the item may be ticked off. It answers the opposite question from a
+day the item may be checked off. It answers the opposite question from a
 due date: not "when must this be done by", but "when can this be started
 at all". The form that isn't published until the first of the month, the
 follow-up call you shouldn't make before next week, the repair you can't
@@ -68,13 +68,13 @@ Set one, and the item's checkbox goes quiet — drawn but not pressable —
 and a plain gray date above the title says when it opens up. That date
 carries no color at all, because nothing is late: the item is simply not
 yours to do yet. Everything else about the row still works as usual —
-you can edit it, note it, nest it, drag it, archive it — only ticking it
+you can edit it, note it, nest it, drag it, archive it — only checking it
 off is out of reach.
 
 On the day itself the hold lifts. The date disappears, the box becomes an
 ordinary box, and what's left is just an item like any other. Nothing is
 left behind to tidy up. A held-back item also sits out the "Check all"
-sweep and doesn't get ticked when you check a parent item above it, so a
+sweep and doesn't get checked when you check a parent item above it, so a
 bulk action can never finish work you've deliberately postponed.
 
 ## Where held-back items sit
@@ -112,16 +112,16 @@ cleared as you watch, rather than left behind as a deadline you could
 never meet.
 
 Held-back items also stay out of the widgets. Every widget row is a
-button you tap to tick something off, and a held item can't be ticked, so
+button you tap to check something off, and a held item can't be checked, so
 it isn't offered — it reappears on the day its hold lifts.
 
 ## Repeating tasks
 
-When an item repeats **and has a due date**, checking it off doesn't tick
+When an item repeats **and has a due date**, checking it off doesn't clear
 it away — it rolls the due date forward to the next occurrence and leaves
 the item unchecked, so the task simply reappears with its new date. Water
 the plants every two weeks, renew a subscription every year, take out the
-bins every week: check it done, and it's already scheduled for next time.
+trash every week: check it done, and it's already scheduled for next time.
 If a repeating task slipped and is several periods overdue, checking it
 catches the date back up to the next future occurrence on its original
 cadence.
@@ -130,20 +130,20 @@ cadence.
 
 A repeat doesn't need a date to hang on. Leave the due date empty, set
 just a repeat, and the item behaves quite differently: there is nothing
-to be late for, so ticking it off does tick it off — and then, once the
-cadence comes round, it comes **back**, unchecked, at the top of the
+to be late for, so checking it off does check it off — and then, once the
+cadence comes around, it comes **back**, unchecked, at the top of the
 list.
 
 That's the shape a shopping list actually wants. You buy milk every week
-or so; there's no deadline anywhere in that, just a rhythm. Tick milk off
+or so; there's no deadline anywhere in that, just a rhythm. Check milk off
 when you've bought it and the line goes quiet for a week, then reappears
-at the top of the list the next time you're looking at it. Bin day, the
-water filter, the plants, restocking the cupboard — all the same.
+at the top of the list the next time you're looking at it. Trash day, the
+water filter, the plants, restocking the pantry — all the same.
 
-The clock starts when you tick the box, not when you set the repeat. Buy
+The clock starts when you check the box, not when you set the repeat. Buy
 the milk on Thursday and it's due again a week from Thursday, however
-long it had been sitting there unchecked beforehand. Unticking the box
-yourself ends the wait straight away, so an item you checked by mistake
+long it had been sitting there unchecked beforehand. Unchecking the box
+yourself ends the wait right away, so an item you checked by mistake
 comes right back.
 
 A **daily** repeat also picks a time of day — 08:00 unless you change it

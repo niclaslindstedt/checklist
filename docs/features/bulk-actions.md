@@ -1,6 +1,6 @@
 # Bulk actions on finished items
 
-When a list is mostly ticked off, clearing it one row at a time is tedious. The
+When a list is mostly checked off, clearing it one row at a time is tedious. The
 **+** button hides a second job: **long-press** it and it fans out a small row
 of bulk actions over the same spot, then morphs back the moment you're done.
 
@@ -18,7 +18,7 @@ of bulk actions over the same spot, then morphs back the moment you're done.
    because the sweep is undoable if you didn't mean it.
 
 Both actions touch only **finished** items (checked and still in the list), so
-anything you haven't ticked stays put. The buttons are dimmed and inert when
+anything you haven't checked stays put. The buttons are dimmed and inert when
 nothing is finished. Tapping outside the bar, pressing `Escape`, or running
 either action snaps the `+` straight back into place. The long-press is the
 only way in, so the bulk actions stay invisible until you reach for them.

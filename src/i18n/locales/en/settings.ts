@@ -106,7 +106,7 @@ const settings = {
     pattern: "Match",
     patternPlaceholder: "#(\\d+)",
     patternHint:
-      "A regular expression. Every match in an item's title and note is replaced. Round brackets capture a piece you can reuse as $1, $2, … in the replacement.",
+      "A regular expression. Every match in an item's title and note is replaced. Parentheses capture a piece you can reuse as $1, $2, … in the replacement.",
     patternEmpty: "Enter something to match.",
     patternInvalid: "That isn't a valid regular expression.",
     caseInsensitive: "Ignore case",

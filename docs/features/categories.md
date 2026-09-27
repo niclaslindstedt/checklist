@@ -39,7 +39,7 @@ exactly as before.
 - **You can copy just that section.** Once a list has categories, the copy
   button in the header opens a short menu — **All**, then every category in the
   list. Pick one and only the items under that header go to the clipboard,
-  without the header itself: the produce aisle out of the week's shopping, ready
+  without the header itself: the produce aisle out of the week's groceries, ready
   to paste into a message. **All** copies the whole list, exactly as the button
   always has.
 
