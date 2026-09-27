@@ -162,7 +162,17 @@ describe("the review notes are true of the build", () => {
   });
 
   itAuthored("says so, naming the bundled site", () => {
-    expect(NOTES).toMatch(/webroot\.zip/);
+    // Naming the bundle is the evidence for guideline 4.2 that the app is in
+    // the download. This app ships the built site as a FOLDER, copied into
+    // both native projects by `native/plugins/withWebroot.js` and served from
+    // there — not the fleet's `webroot.zip`, which a reviewer unpacking the
+    // .ipa would look for and not find. The name is read from the plugin, so
+    // a rename there fails here rather than in review.
+    const plugin = read("native", "plugins", "withWebroot.js");
+    const folder = /const WEBROOT = "([^"]+)"/.exec(plugin)?.[1];
+    expect(folder).toBeTruthy();
+    expect(NOTES).toContain(`${folder}/`);
+    expect(NOTES).not.toMatch(/webroot\.zip/);
   });
 
   it("is right that nothing is sold", () => {
