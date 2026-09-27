@@ -1,7 +1,12 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 
-import { ACHIEVEMENTS_BUILT, BUILD_LABEL, DONATE_URL } from "../build-env.ts";
+import {
+  ACHIEVEMENTS_BUILT,
+  BUILD_LABEL,
+  DONATE_URL,
+  IS_WEBSITE,
+} from "../build-env.ts";
 import type {
   ChecklistSummary,
   FolderSummary,
@@ -753,7 +758,7 @@ export function SideMenu({
       {/* The relocated burger menu, fixed at the foot of the drawer: Donate
           (the website only — `DONATE_URL` in build-env.ts),
           the trophy (the website only too — `ACHIEVEMENTS_BUILT`), an "About" dropdown that folds away the project links
-          (source / privacy / what's new), and Settings pinned last under the
+          (what's new / source — the website only, `IS_WEBSITE` / privacy), and Settings pinned last under the
           thumb. Folded away via the rail above. Now the PWA renders
           fullscreen (no bottom safe-area inset lifting the panel), Settings
           would otherwise sit right on the screen's edge, so the bottom
@@ -810,22 +815,29 @@ export function SideMenu({
         <MenuButton
           icon={<SparklesIcon className="h-5 w-5" />}
           label={t("menu.changelog")}
+          // The build label rides on the source row where there is one; the
+          // phone and desktop apps have none (`IS_WEBSITE`), so it moves here.
+          sublabel={IS_WEBSITE ? undefined : BUILD_LABEL}
           onClick={() => {
             setAboutOpen(false);
             pick(() => dispatch({ kind: "changelog" }));
           }}
         />
-        <MenuLink
-          icon={<CodeIcon className="h-5 w-5" />}
-          label={t("menu.source")}
-          href={SOURCE_URL}
-          external
-          sublabel={BUILD_LABEL}
-          onClick={() => {
-            setAboutOpen(false);
-            close();
-          }}
-        />
+        {/* The source link is the website's alone (`IS_WEBSITE`): the phone
+            and desktop apps carry no link back to the repository at all. */}
+        {IS_WEBSITE && (
+          <MenuLink
+            icon={<CodeIcon className="h-5 w-5" />}
+            label={t("menu.source")}
+            href={SOURCE_URL}
+            external
+            sublabel={BUILD_LABEL}
+            onClick={() => {
+              setAboutOpen(false);
+              close();
+            }}
+          />
+        )}
         <MenuLink
           icon={<ShieldIcon className="h-5 w-5" />}
           label={t("menu.privacy")}

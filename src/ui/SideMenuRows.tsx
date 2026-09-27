@@ -255,10 +255,13 @@ export function SwipeToRemove({
 export function MenuButton({
   icon,
   label,
+  sublabel,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  /** Secondary line beneath the label (e.g. the app version). */
+  sublabel?: string;
   onClick: () => void;
 }) {
   return (
@@ -269,7 +272,14 @@ export function MenuButton({
       className="flex w-full cursor-pointer items-center gap-3 px-5 py-[var(--density-row-py)] text-left text-sm text-fg hover:bg-surface-2 hover:text-fg-bright"
     >
       <span className="text-muted">{icon}</span>
-      <span className="flex-1">{label}</span>
+      {sublabel ? (
+        <span className="flex flex-1 flex-col">
+          <span>{label}</span>
+          <span className="text-xs text-muted tabular-nums">{sublabel}</span>
+        </span>
+      ) : (
+        <span className="flex-1">{label}</span>
+      )}
     </button>
   );
 }

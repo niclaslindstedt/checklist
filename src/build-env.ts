@@ -49,3 +49,13 @@ export const DONATE_URL: string | undefined =
 // `DONATE_URL` it tests the raw defines, so in those builds it is a literal
 // `false` the minifier folds, and everything it guards leaves the bundle.
 export const ACHIEVEMENTS_BUILT: boolean = !(__NATIVE__ || __SHELL_BUILD__);
+
+// Whether this is the website build — the only one that may point back at
+// where the app comes from: the source repository, its issues and releases,
+// and the website's own address (`checklist.niclaslindstedt.se`). The phone
+// app and the desktop app carry none of it — not in the side menu, the privacy
+// page, What's new or the page head (the owner's decision D17, strictly). Like
+// `ACHIEVEMENTS_BUILT` it tests the raw defines, so in those builds it is a
+// literal `false` the minifier folds and the strings leave the bundle;
+// `scripts/website-only.mjs` refuses a bundle that still carries one.
+export const IS_WEBSITE: boolean = !(__NATIVE__ || __SHELL_BUILD__);

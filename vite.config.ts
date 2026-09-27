@@ -1,4 +1,5 @@
-import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
@@ -20,6 +21,7 @@ import {
   SITE_LANGUAGE,
   SITE_NAME,
 } from "./src/site/siteConfig.ts";
+import { withoutSourceLinks } from "./src/site/source-links.ts";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.
@@ -37,10 +39,16 @@ const isNative = process.env.VITE_NATIVE === "1";
 // scheme on the machine. Set by `tauri/scripts/bundle-web.mjs`. It drops the
 // service worker for the same reason the native build does — a new version
 // arrives as a new binary, so a worker would only stand a staler cache in
-// front of files already on local disk — and nothing else: unlike the phone
-// build it keeps robots.txt and the showcase page, which cost nothing
-// in a desktop bundle. `__SHELL_BUILD__` carries the fact into the app.
+// front of files already on local disk. Unlike the phone build it keeps
+// robots.txt, which costs nothing in a desktop bundle. `__SHELL_BUILD__`
+// carries the fact into the app.
 const isShell = process.env.VITE_SHELL_BUILD === "on";
+
+// Only the website may point back at where the app comes from — the source
+// repository, its issues and releases — or name its own address. The phone
+// and desktop apps carry none of it (`IS_WEBSITE` in `src/build-env.ts`, and
+// the plugins below that keep it out of what the build writes around the app).
+const isWebsite = !isNative && !isShell;
 
 const pkg = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
@@ -118,6 +126,16 @@ const NAVIGATE_FALLBACK_DENYLIST =
     ? [/^\/preview(?:\/|\?|$)/, /^\/branch(?:\/|\?|$)/]
     : [new RegExp(`^/(?!${escapeRegex(base.slice(1))})`)];
 
+const DEFINE = {
+  __APP_VERSION__: JSON.stringify(pkg.version),
+  __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
+  // Lets the app skip browser-only surfaces that make no sense inside the
+  // wrapper — service-worker registration and the update prompt.
+  __NATIVE__: JSON.stringify(isNative),
+  // The desktop shell's build — no worker, so no registration or prompt.
+  __SHELL_BUILD__: JSON.stringify(isShell),
+};
+
 // Emit a tiny `version.json` carrying this build's BUILD_LABEL into the
 // slot root (`/version.json`, `/preview/version.json`, …). The running
 // page knows only its OWN BUILD_LABEL, so the update prompt can't name
@@ -166,7 +184,7 @@ function spliceRouteHead(html: string, route: RouteHead): string {
   }
   const head =
     `<!-- HEAD_ROUTE_START (${route.path}) -->\n    ` +
-    renderHead(route) +
+    renderHead(route, { social: isWebsite }) +
     `\n    <!-- HEAD_ROUTE_END -->`;
   const noscript =
     `<!-- NOSCRIPT_START (${route.path}) -->\n        ` +
@@ -222,6 +240,10 @@ async function renderStaticRoutes(): Promise<Record<StaticRoute, string>> {
     // is closed immediately after.
     server: { middlewareMode: true, hmr: false, watch: null },
     plugins: [preact({ prefreshEnabled: false, devToolsEnabled: false })],
+    // The same constants the app build folds, so a page that reads
+    // `src/build-env.ts` (the privacy page's `IS_WEBSITE`) renders here as it
+    // will in this build's bundle.
+    define: DEFINE,
   });
   try {
     const mod = (await server.ssrLoadModule("/src/app/prerender.tsx")) as {
@@ -315,6 +337,43 @@ function emitShowcaseAlias(): Plugin {
           ),
         });
       }
+    },
+  };
+}
+
+// The markdown the app inlines as `?raw` — CHANGELOG.md for What's new, the
+// feature docs its Learn more links open — loses every link back to the
+// source and every line naming the website's address in the phone and desktop
+// builds (`withoutSourceLinks`). A `pre` load hook, so it runs before Vite's
+// own `?raw` loader reads the file.
+const INLINED_MARKDOWN =
+  /[\\/](?:CHANGELOG|docs[\\/]features[\\/][^\\/]+)\.md\?raw$/;
+
+function stripSourceLinks(): Plugin {
+  return {
+    name: "strip-source-links",
+    enforce: "pre",
+    load(id) {
+      if (!INLINED_MARKDOWN.test(id)) return null;
+      const md = readFileSync(id.slice(0, -"?raw".length), "utf8");
+      return `export default ${JSON.stringify(withoutSourceLinks(md))};`;
+    },
+  };
+}
+
+// `public/CNAME` names the website's domain for GitHub Pages; an app's
+// webroot has no use for it, and it spells the website's address. Removed
+// after `public/` is copied in.
+function dropWebsiteFiles(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "drop-website-files",
+    apply: "build",
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
+    closeBundle() {
+      rmSync(join(outDir, "CNAME"), { force: true });
     },
   };
 }
@@ -532,10 +591,10 @@ export default defineConfig({
     // showcase alias but still ships `/privacy`, which the side menu links to.
     prerenderStaticRoutes(),
     // `/home` is the no-login marketing page Google's OAuth consent screen
-    // points at — it exists for crawlers and reviewers, and nothing inside
-    // the app links to it. `/privacy` stays: the side menu links to it as a
-    // real in-app navigation.
-    !isNative && emitShowcaseAlias(),
+    // points at — it exists for crawlers and reviewers, nothing inside the
+    // app links to it, and it links the repository. The website's alone.
+    // `/privacy` stays: the side menu links to it as a real in-app navigation.
+    isWebsite && emitShowcaseAlias(),
     emitPrivacyAlias(),
     // robots.txt addresses crawlers of the hosted site; inside an app binary
     // it is dead weight pointing at a URL the WebView never visits.
@@ -544,16 +603,10 @@ export default defineConfig({
     // in a native build, so the manifest would describe a cache that never
     // exists.
     !isNative && !isShell && emitPrecacheManifest(),
+    !isWebsite && stripSourceLinks(),
+    !isWebsite && dropWebsiteFiles(),
   ].filter(Boolean),
-  define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
-    __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
-    // Lets the app skip browser-only surfaces that make no sense inside the
-    // wrapper — service-worker registration and the update prompt.
-    __NATIVE__: JSON.stringify(isNative),
-    // The desktop shell's build — no worker, so no registration or prompt.
-    __SHELL_BUILD__: JSON.stringify(isShell),
-  },
+  define: DEFINE,
   test: {
     // Domain/storage/share tests run in node. UI tests opt into jsdom with a
     // `// @vitest-environment jsdom` docblock at the top of the file.

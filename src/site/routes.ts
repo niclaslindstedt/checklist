@@ -165,13 +165,24 @@ export const ROUTES: readonly RouteHead[] = [
 // Route-invariant tags (charset, viewport, theme-color, the noindex robots
 // meta, og:site_name, og:locale, icons, Apple tags) stay static in
 // `index.html`. Lines are joined so the splicer can indent the block.
-export function renderHead(route: RouteHead): string {
+//
+// The social cards carry the website's absolute address, so they are the
+// website's alone: the phone and desktop builds pass `social: false` and get
+// the title and description only — nothing unfurls a page inside an app.
+export function renderHead(
+  route: RouteHead,
+  { social = true }: { social?: boolean } = {},
+): string {
+  const title = [
+    `<title>${esc(route.title)}</title>`,
+    `<meta name="description" content="${esc(route.description)}" />`,
+  ];
+  if (!social) return title.join("\n    ");
   const pageUrl = absoluteUrl(route.path);
   const ogTitle = route.ogTitle ?? route.title;
   const ogImage = absoluteUrl(DEFAULT_OG_IMAGE);
   const lines = [
-    `<title>${esc(route.title)}</title>`,
-    `<meta name="description" content="${esc(route.description)}" />`,
+    ...title,
     ``,
     `<meta property="og:type" content="${route.ogType}" />`,
     `<meta property="og:title" content="${esc(ogTitle)}" />`,

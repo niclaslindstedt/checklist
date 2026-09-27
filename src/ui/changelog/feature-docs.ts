@@ -50,12 +50,17 @@ export function parseFeatureDoc(slug: string, md: string): FeatureDoc {
 // the raw defines, which are literals before the bundler decides what to
 // import. The released bullet that links it stays — it is the record of
 // what shipped — and loses its Learn more (`withoutMissingFeatureLinks`).
+//
+// Nor do they carry the desktop-app page: it is about downloading the desktop
+// app from the repository's releases page, which those builds may not link
+// (`IS_WEBSITE` in `src/build-env.ts`) and an installed app has no use for.
 const rawDocs =
   __NATIVE__ || __SHELL_BUILD__
     ? import.meta.glob<string>(
         [
           "../../../docs/features/*.md",
           "!../../../docs/features/achievements.md",
+          "!../../../docs/features/desktop-app.md",
         ],
         { query: "?raw", import: "default", eager: true },
       )

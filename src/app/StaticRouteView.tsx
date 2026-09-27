@@ -1,3 +1,4 @@
+import { IS_WEBSITE } from "../build-env.ts";
 import { PrivacyPage } from "../ui/PrivacyPage.tsx";
 import { ShowcasePage } from "../ui/ShowcasePage.tsx";
 import type { StaticRoute } from "./static-routes.ts";
@@ -15,6 +16,10 @@ import type { StaticRoute } from "./static-routes.ts";
 // this tree renderable at build time, and it also means a crawler fetching
 // `/home` no longer installs a service worker to read a static page.
 
+//
+// The showcase (`/home`) is the website's alone (`IS_WEBSITE`): it links the
+// repository and names the website's address, and the phone and desktop apps
+// neither emit the route nor carry the page — it folds out of their bundle.
 export function StaticRouteView({ route }: { route: StaticRoute }) {
-  return route === "home" ? <ShowcasePage /> : <PrivacyPage />;
+  return route === "home" && IS_WEBSITE ? <ShowcasePage /> : <PrivacyPage />;
 }

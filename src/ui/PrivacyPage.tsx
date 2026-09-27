@@ -6,7 +6,15 @@
 // the user explicitly connects one, so this policy covers both cases. It is
 // English-only by design (a legal page, not chrome), matching budget's
 // PrivacyPage.
+//
+// The phone and desktop apps carry their own copy of this page, and it names
+// neither the website's address nor the repository (`IS_WEBSITE` in
+// `src/build-env.ts`): there it says "the app", and Contact is the company's
+// support address rather than GitHub.
+import { IS_WEBSITE } from "../build-env.ts";
 import { ArrowLeftIcon } from "./icons.tsx";
+
+const SUPPORT_EMAIL = "support@agilator.se";
 
 // Last meaningful change to the policy text below. Bump this whenever the
 // wording is edited — it renders verbatim at the top of the page and is
@@ -32,24 +40,42 @@ export function PrivacyPage() {
         <Section title="Summary">
           <p>
             <span className="text-meta">checklist</span> is a local-first
-            checklist app served as a static site at{" "}
-            <span className="text-path">checklist.niclaslindstedt.se</span>. It
-            runs entirely in your browser. There is no backend of our own, no
-            account, no cookies, and no analytics or tracking. By default your
-            lists are stored only on your device and never leave it. You may
-            optionally connect a cloud backend (Dropbox) to sync your lists
-            across your own devices — in that case, and only then, your lists
-            are sent to that one provider at your explicit request. The project
-            authors never receive your lists in any configuration.
+            checklist app
+            {IS_WEBSITE ? (
+              <>
+                {" "}
+                served as a static site at{" "}
+                <span className="text-path">checklist.niclaslindstedt.se</span>.
+                It runs entirely in your browser.
+              </>
+            ) : (
+              <>. It runs entirely on your device.</>
+            )}{" "}
+            There is no backend of our own, no account, no cookies, and no
+            analytics or tracking. By default your lists are stored only on your
+            device and never leave it. You may optionally connect a cloud
+            backend (Dropbox) to sync your lists across your own devices — in
+            that case, and only then, your lists are sent to that one provider
+            at your explicit request. The project authors never receive your
+            lists in any configuration.
           </p>
         </Section>
 
         <Section title="What the app stores">
           <p>
-            On your device, inside your browser&apos;s{" "}
-            <code className="text-meta">localStorage</code> for the origin{" "}
-            <span className="text-path">checklist.niclaslindstedt.se</span>, the
-            app keeps:
+            {IS_WEBSITE ? (
+              <>
+                On your device, inside your browser&apos;s{" "}
+                <code className="text-meta">localStorage</code> for the origin{" "}
+                <span className="text-path">checklist.niclaslindstedt.se</span>,
+                the app keeps:
+              </>
+            ) : (
+              <>
+                On your device, inside the app&apos;s own{" "}
+                <code className="text-meta">localStorage</code>, the app keeps:
+              </>
+            )}
           </p>
           <ul className="ml-5 list-disc space-y-1">
             <li>
@@ -174,11 +200,12 @@ export function PrivacyPage() {
 
         <Section title="Changes to this policy">
           <p>
-            Material changes are tracked in the public commit history of the
-            source repository. The <em>Last updated</em> date at the top of this
-            page reflects the most recent edit. Should a future version add
-            another optional feature that sends data anywhere, this policy will
-            be updated to describe it before that feature ships enabled.
+            {IS_WEBSITE &&
+              "Material changes are tracked in the public commit history of the source repository. "}
+            The <em>Last updated</em> date at the top of this page reflects the
+            most recent edit. Should a future version add another optional
+            feature that sends data anywhere, this policy will be updated to
+            describe it before that feature ships enabled.
           </p>
           <p>
             The store listings link to{" "}
@@ -193,26 +220,47 @@ export function PrivacyPage() {
         </Section>
 
         <Section title="Contact">
-          <p>
-            For security reports, see{" "}
-            <a
-              href="https://github.com/niclaslindstedt/checklist/security/advisories/new"
-              className="text-link hover:underline"
-            >
-              GitHub Security Advisories
-            </a>
-            . For everything else, open an issue at{" "}
-            <a
-              href="https://github.com/niclaslindstedt/checklist/issues"
-              className="text-link hover:underline"
-            >
-              github.com/niclaslindstedt/checklist
-            </a>
-            .
-          </p>
+          {IS_WEBSITE ? (
+            <WebsiteContact />
+          ) : (
+            <p>
+              For questions about the app or this policy, and for security
+              reports, write to{" "}
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="text-link hover:underline"
+              >
+                {SUPPORT_EMAIL}
+              </a>
+              .
+            </p>
+          )}
         </Section>
       </article>
     </div>
+  );
+}
+
+// The website's contact: the repository's advisories and issues.
+function WebsiteContact() {
+  return (
+    <p>
+      For security reports, see{" "}
+      <a
+        href="https://github.com/niclaslindstedt/checklist/security/advisories/new"
+        className="text-link hover:underline"
+      >
+        GitHub Security Advisories
+      </a>
+      . For everything else, open an issue at{" "}
+      <a
+        href="https://github.com/niclaslindstedt/checklist/issues"
+        className="text-link hover:underline"
+      >
+        github.com/niclaslindstedt/checklist
+      </a>
+      .
+    </p>
   );
 }
 
