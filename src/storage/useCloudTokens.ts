@@ -27,8 +27,11 @@ import { getAuthSessionHost, isAuthCancelled } from "./auth-session.ts";
 import { isDesktopShellOrigin } from "./desktop-loopback.ts";
 import {
   completeDropboxAuth,
+  connectDropboxAuthSession,
+  connectDropboxLoopback,
   type DropboxAuthResult,
   hasPendingDropboxAuth,
+  startDropboxAuth,
 } from "./dropbox/index.ts";
 
 const log = createLogger("storage");
@@ -167,15 +170,16 @@ export function useCloudTokens(
     // error.
     const authSession = getAuthSessionHost();
     if (authSession) {
-      void import("./dropbox/index.ts")
-        .then((m) => m.connectDropboxAuthSession(authSession))
-        .then(adoptDropbox, (err: unknown) => {
+      void connectDropboxAuthSession(authSession).then(
+        adoptDropbox,
+        (err: unknown) => {
           if (isAuthCancelled(err)) {
             log.info("Dropbox sign-in canceled");
             return;
           }
           log.error("Dropbox phone sign-in failed", err);
-        });
+        },
+      );
       return;
     }
     // In the desktop app the redirect has nowhere to land (its origin is a
@@ -183,16 +187,14 @@ export function useCloudTokens(
     // shell's loopback listener hands the result back — finished here, in
     // place.
     if (isDesktopShellOrigin()) {
-      void import("./dropbox/index.ts")
-        .then((m) => m.connectDropboxLoopback())
-        .then(adoptDropbox, (err: unknown) =>
-          log.error("Dropbox desktop sign-in failed", err),
-        );
+      void connectDropboxLoopback().then(adoptDropbox, (err: unknown) =>
+        log.error("Dropbox desktop sign-in failed", err),
+      );
       return;
     }
     // Redirects away; completion (and the `cloudWalker` unlock) runs in the
     // boot effect above — a unlock queued here wouldn't survive the redirect.
-    void import("./dropbox/index.ts").then((m) => m.startDropboxAuth());
+    void startDropboxAuth();
   }, [adoptDropbox]);
 
   const disconnectDropbox = useCallback(() => {
