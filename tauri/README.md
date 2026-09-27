@@ -75,12 +75,14 @@ survive a launch.
 **The bundled site carries no service worker.** `scripts/bundle-web.mjs` builds
 it with `VITE_SHELL_BUILD=on`, which switches off the worker half of the root
 `appPwa` plugin and, through `__SHELL_BUILD__`, the in-app update prompt —
-and the side menu's Donate entry, which only the website carries. A
+and the side menu's Donate entry and the achievements, which only the website
+carries. A
 desktop build has no deployment to discover an update from — a new version
 arrives as a new binary — so a worker here would precache a copy of files
 already on local disk and then serve the page from _its_ copy, which is how a
 shell whose binary shipped a new site goes on showing the old one. The script
-fails the build if a worker is in the output anyway.
+fails the build if a worker is in the output anyway, or a Donate link or an
+achievements string (`../scripts/website-only.mjs`).
 
 **Anything that is not ours opens in the browser.** The window has no chrome, so
 an external link would otherwise replace the app with a page that has no back

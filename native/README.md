@@ -109,7 +109,9 @@ compiled out (`DONATE_URL` in `../src/build-env.ts`), because a payment link
 outside Apple's is an App Store rejection (guideline 3.1.1). The website keeps
 it. Nor does it have **achievements** — no trophy row, unlock toasts, tour or
 Settings switch; `ACHIEVEMENTS_BUILT` in `../src/build-env.ts` compiles the
-catalog and its strings out, and the website keeps them.
+catalog, its strings and its "What's new" feature page out, and the website
+keeps them. `npm run build:native` ends with `scripts/website-only.mjs`, which
+refuses a webroot that still carries either.
 
 The crawler-facing files (`robots.txt`, `sitemap.xml`, `llms.txt`) and the
 `/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —

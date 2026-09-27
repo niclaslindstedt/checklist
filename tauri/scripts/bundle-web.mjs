@@ -35,6 +35,8 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { assertWebsiteOnlyAbsent } from "../../scripts/website-only.mjs";
+
 const APP_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO_DIR = resolve(APP_DIR, "..");
 const DIST_DIR = join(REPO_DIR, "dist");
@@ -96,6 +98,15 @@ if (worker.length) {
     `✗ ${worker.join(", ")} is in the webroot — this build ran without ` +
       `VITE_SHELL_BUILD=on. Rebuild through this script rather than copying dist/.`,
   );
+  process.exit(1);
+}
+
+// Nor may it carry what only the website does — a Donate link or the
+// achievements — which the same flag compiles out (`src/build-env.ts`).
+try {
+  assertWebsiteOnlyAbsent(OUT_DIR);
+} catch (err) {
+  console.error(`✗ ${err.message}`);
   process.exit(1);
 }
 

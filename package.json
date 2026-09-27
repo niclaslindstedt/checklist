@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:demo": "VITE_SEED=demo vite",
     "build": "vite build",
-    "build:native": "VITE_NATIVE=1 vite build --outDir native/webroot --emptyOutDir",
+    "build:native": "VITE_NATIVE=1 vite build --outDir native/webroot --emptyOutDir && node scripts/website-only.mjs native/webroot",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

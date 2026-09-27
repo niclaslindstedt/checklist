@@ -42,11 +42,28 @@ export function parseFeatureDoc(slug: string, md: string): FeatureDoc {
 // Eagerly inline every `docs/features/*.md` as a raw string. The path is
 // relative to this file: `src/ui/changelog/` → repo root is three levels
 // up, then `docs/features/`.
-const rawDocs = import.meta.glob<string>("../../../docs/features/*.md", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-});
+//
+// Except the achievements page in the phone and desktop apps, which carry
+// no achievements (`ACHIEVEMENTS_BUILT` in `src/build-env.ts`): it describes
+// a feature those builds don't have, so its glob is the one in the dropped
+// branch and its text is not in those bundles at all. The condition tests
+// the raw defines, which are literals before the bundler decides what to
+// import. The released bullet that links it stays — it is the record of
+// what shipped — and loses its Learn more (`withoutMissingFeatureLinks`).
+const rawDocs =
+  __NATIVE__ || __SHELL_BUILD__
+    ? import.meta.glob<string>(
+        [
+          "../../../docs/features/*.md",
+          "!../../../docs/features/achievements.md",
+        ],
+        { query: "?raw", import: "default", eager: true },
+      )
+    : import.meta.glob<string>("../../../docs/features/*.md", {
+        query: "?raw",
+        import: "default",
+        eager: true,
+      });
 
 function buildFeatureDocs(): Record<string, FeatureDoc> {
   const out: Record<string, FeatureDoc> = {};
@@ -58,3 +75,17 @@ function buildFeatureDocs(): Record<string, FeatureDoc> {
 }
 
 export const FEATURE_DOCS: Record<string, FeatureDoc> = buildFeatureDocs();
+
+// Drop every `[label](feature:<slug>)` link whose doc this build doesn't
+// carry, with the space before it, so a changelog bullet never offers a
+// "Learn more" that opens nothing (the achievements page in the phone and
+// desktop apps). Pure, so it is testable against any doc set.
+export function withoutMissingFeatureLinks(
+  text: string,
+  docs: Record<string, unknown> = FEATURE_DOCS,
+): string {
+  return text.replace(
+    /\s*\[[^\]]+\]\(feature:([a-z0-9-]+)\)/g,
+    (link, slug: string) => (slug in docs ? link : ""),
+  );
+}

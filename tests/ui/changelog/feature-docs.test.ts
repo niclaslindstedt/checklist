@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   FEATURE_DOCS,
   parseFeatureDoc,
+  withoutMissingFeatureLinks,
 } from "../../../src/ui/changelog/feature-docs.ts";
 
 describe("parseFeatureDoc", () => {
@@ -46,5 +47,54 @@ describe("FEATURE_DOCS", () => {
   it("includes the checklist core doc the changelog links to", () => {
     expect(FEATURE_DOCS.checklist).toBeDefined();
     expect(FEATURE_DOCS.checklist!.title.length).toBeGreaterThan(0);
+  });
+});
+
+describe("withoutMissingFeatureLinks", () => {
+  const docs = { notes: {} };
+
+  it("keeps a Learn more whose doc the build carries", () => {
+    const bullet = "**Notes** — Markdown. [Learn more](feature:notes)";
+    expect(withoutMissingFeatureLinks(bullet, docs)).toBe(bullet);
+  });
+
+  it("drops a Learn more whose doc the build lacks, and the space before it", () => {
+    expect(
+      withoutMissingFeatureLinks(
+        "**Achievements** — Trophies. [Learn more](feature:achievements)",
+        docs,
+      ),
+    ).toBe("**Achievements** — Trophies.");
+  });
+});
+
+// The achievements page is the website's alone (`ACHIEVEMENTS_BUILT`): the
+// phone and desktop builds carry no achievements, so no page about them.
+describe("FEATURE_DOCS per build", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function docsFor(native: boolean, shell: boolean) {
+    vi.stubGlobal("__NATIVE__", native);
+    vi.stubGlobal("__SHELL_BUILD__", shell);
+    vi.resetModules();
+    return (await import("../../../src/ui/changelog/feature-docs.ts"))
+      .FEATURE_DOCS;
+  }
+
+  it("gives the website the achievements page", async () => {
+    expect((await docsFor(false, false)).achievements).toBeDefined();
+  });
+
+  it("gives the phone and desktop apps every page but that one", async () => {
+    for (const [native, shell] of [
+      [true, false],
+      [false, true],
+    ] as const) {
+      const docs = await docsFor(native, shell);
+      expect(docs.achievements).toBeUndefined();
+      expect(docs.notes).toBeDefined();
+    }
   });
 });

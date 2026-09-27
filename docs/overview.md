@@ -2403,7 +2403,13 @@ Settings → General switch. The two deferred modal hosts guard their
 which chunks exist before it folds an imported constant. The synced
 `achievements` / `unseenAchievements` / `disableAchievements` fields stay
 in `Settings`, so progress earned on the website survives a round trip
-through an app.
+through an app. The achievements feature page (`docs/features/achievements.md`)
+is left out of those builds too (`feature-docs.ts` globs without it), and the
+released changelog bullet that links it loses its "Learn more"
+(`withoutMissingFeatureLinks`). `scripts/website-only.mjs` refuses a phone
+webroot (`npm run build:native`) or desktop webroot
+(`tauri/scripts/bundle-web.mjs`) that still carries a Donate link or any
+achievements string.
 
 ## Storage and sync
 

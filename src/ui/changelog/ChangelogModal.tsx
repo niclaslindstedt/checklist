@@ -8,7 +8,7 @@ import {
 } from "../markdown/renderMarkdown.tsx";
 import { Modal } from "../Modal.tsx";
 import { CHANGELOG } from "./data.ts";
-import { FEATURE_DOCS } from "./feature-docs.ts";
+import { FEATURE_DOCS, withoutMissingFeatureLinks } from "./feature-docs.ts";
 import type { ChangelogEntryType } from "./parse.ts";
 
 // "What's new" dialog reached from the header menu. Lists every shipped
@@ -174,9 +174,10 @@ export function ChangelogModal({ open, onClose }: Props) {
                     <ul className="ml-4 list-disc space-y-1 text-fg">
                       {section.items.map((item, i) => (
                         <li key={i}>
-                          {renderInlineMarkdown(item, {
-                            onOpenFeature: openFeature,
-                          })}
+                          {renderInlineMarkdown(
+                            withoutMissingFeatureLinks(item),
+                            { onOpenFeature: openFeature },
+                          )}
                         </li>
                       ))}
                     </ul>
