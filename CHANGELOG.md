@@ -19,7 +19,7 @@ changelog").
 - **Empty the archive** — The archive view's header now has a button that permanently clears the whole archive — every archived item and archived list at once — behind a confirm, with undo to bring it all back.
 - **Archive typeahead** — Typing a new item now suggests matching titles from the list's archived items — fuzzy-matched, highlighted, and ranked so titles that start with what you typed lead, then by how often you've used them — press one to re-add it instantly.
 - **Archived drawer** — Swipe up at the foot of a list to reveal a drawer of just that list's archived items, and restore or delete them without leaving the list.
-- **Deadlines** — Give an item a due date (and an optional repeat like every 2 weeks) from the tap-friendly calendar on the clock revealed by a left swipe — tap its heading to jump straight to any month or year — and dated items gather at the bottom of the list under a colour-coded date row that warms from yellow to orange to red as the day nears, and checking off a recurring one rolls it to its next occurrence. [Learn more](feature:deadlines)
+- **Deadlines** — Give an item a due date (and an optional repeat like every 2 weeks) from the tap-friendly calendar on the clock revealed by a left swipe — tap its heading to jump straight to any month or year — and dated items gather at the bottom of the list under a color-coded date row that warms from yellow to orange to red as the day nears, and checking off a recurring one rolls it to its next occurrence. [Learn more](feature:deadlines)
 - **iCloud sync** — In the iOS app you can now sync your lists across your Apple devices through iCloud — no account, no sign-in, and no server of ours in the middle — chosen under Settings → Storage. [Learn more](feature:icloud-sync)
 - **Home Screen widgets** — On the native app, add checklist widgets to your Home or Lock Screen — a progress ring, what's due today across your lists, a quick-add shortcut, and an interactive list you can tick items off from with a single tap without opening the app. [Learn more](feature:widgets)
 - **Collapsible menu footer** — A thin chevron rail above the side-menu footer folds Donate, the trophy, About, and Settings away — handing the freed space to your checklist — and tap it again to bring them back; the choice is remembered per device.
@@ -41,7 +41,7 @@ changelog").
 - **Add button after delete** — The green add-item button no longer disappears when you delete the very item you just added while the add-item composer is still open.
 - **Checks stick on open** — Checking items right after opening a list no longer risks them silently un-checking when a slow cloud read finishes — an edit made while the backend load is still in flight is now kept instead of overwritten.
 - Applying an app update now saves your unsaved changes first, so an item added just before updating is no longer lost.
-- **List icons in the sidebar** — The navigation drawer now shows each checklist's own icon and accent colour on its row, instead of the same generic list mark for every list.
+- **List icons in the sidebar** — The navigation drawer now shows each checklist's own icon and accent color on its row, instead of the same generic list mark for every list.
 - **Full-height on iOS home screen** — The installed iOS app now paints all the way to the bottom of the screen instead of leaving a dead black band above the home indicator — your list and the side-menu drawer get the full screen height, the checklist and archive surfaces run edge-to-edge with the header sitting snug under the Dynamic Island and the list stretching down to the bottom.
 - **Sidebar header alignment** — The navigation drawer's top heading now lines up with the checklist page's own header instead of sitting a few pixels lower.
 - The sync details dialog now shows the real Dropbox app folder name, so the
@@ -56,15 +56,15 @@ changelog").
 
 - **Include archived in copy** — A Lists setting (off by default) that appends a list's archived items to the markdown the copy button puts on your clipboard.
 - **Drag a folder to another namespace** — Drag a whole folder onto another namespace to move the folder and every list inside it there at once.
-- **Capitalise items** — A Lists setting (off by default) that capitalises the first letter of each item as you type it, so "buy milk" is added as "Buy milk".
+- **Capitalize items** — A Lists setting (off by default) that capitalizes the first letter of each item as you type it, so "buy milk" is added as "Buy milk".
 - **Check all / Uncheck all** — Press the header's checked/total count to open a dropdown that checks or unchecks every item in the list at once.
 - **Search** — Find any checklist, item, note, or sub-item across every list from the action bar — matches highlight as you type, and you can search with fuzzy text, wildcards, or a regex. [Learn more](feature:search)
-- **List icons and colours** — Tap the mark beside a checklist's title to give that list its own icon and accent colour, shown in the header so you can tell your lists apart at a glance.
+- **List icons and colors** — Tap the mark beside a checklist's title to give that list its own icon and accent color, shown in the header so you can tell your lists apart at a glance.
 - **Swipe the sidebar away** — Swipe the open navigation drawer back toward its resting edge to slide it shut, the gesture counterpart to swiping it open.
 
 ### Fixed
 
-- **Capitalised new items** — New checklist items now capitalise their first letter on a mobile keyboard, even when the previous item didn't end with a period.
+- **Capitalized new items** — New checklist items now capitalize their first letter on a mobile keyboard, even when the previous item didn't end with a period.
 - **Long-press add button no longer mis-fires** — Lifting your finger after long-pressing the add (+) button to reveal the archive / delete bar no longer fires one of those buttons on iOS — the action now waits for a deliberate, separate tap.
 - **Safer encryption toggle** — Turning encryption off no longer risks losing checklists when a cloud backend rate-limits the change — it rides out the throttle and keeps the encrypted copy intact until every list is safely rewritten.
 - **Long item titles wrap** — A checklist item whose title is too long for one line now wraps onto the next instead of being clipped with an ellipsis.
@@ -109,7 +109,7 @@ changelog").
 - **Sub-items** — Drag one item onto another to nest it as a sub-item — or, while editing an item, tap "Add sub-item" to start adding straight underneath it (Enter keeps adding within that sub-list); sub-items read as a smaller, indented child list, parents fold their children, and checking a parent checks the whole group.
 - **Right-click menus** — On a computer, right-click a checklist item or a list in the sidebar to archive or delete it — including archiving a whole list, restorable from the archive.
 - **Folders** — Group your checklists into named, collapsible folders within a namespace — and on the file and cloud backends each folder is a real directory of markdown files you can browse with any tool.
-- **Drag lists to organise** — Drag a checklist onto a folder, another namespace, or the archive to move it there — with a press-and-hold pickup on touchscreens.
+- **Drag lists to organize** — Drag a checklist onto a folder, another namespace, or the archive to move it there — with a press-and-hold pickup on touchscreens.
 
 ### Changed
 
@@ -117,10 +117,10 @@ changelog").
 - **Namespaces sync across devices** — Your list of namespaces now travels with the cloud or folder backend: connecting Dropbox, Google Drive, or a local folder on a new device adopts the namespaces already there and uploads any it had locally, so your namespaces follow you instead of starting fresh on each device.
 - **Privacy policy covers storage backends** — The privacy policy now documents the optional Local folder, Dropbox, and Google Drive backends, OAuth token storage, and end-to-end encryption — clarifying that lists leave your device only when you explicitly connect a cloud backend.
 - **Bulk delete is one tap** — Deleting all finished items from the add (+) long-press now happens on the first tap with no confirm step, since the sweep is undoable.
-- **Redesigned settings dialog** — Settings now opens with icon-marked tabs — a left rail on desktop and a header section menu on mobile — each tab grouped into labelled sections, and edits apply only when you press Save, with Cancel to discard and Reset to defaults to start over (appearance changes still preview live while you choose).
+- **Redesigned settings dialog** — Settings now opens with icon-marked tabs — a left rail on desktop and a header section menu on mobile — each tab grouped into labeled sections, and edits apply only when you press Save, with Cancel to discard and Reset to defaults to start over (appearance changes still preview live while you choose).
 - **Achievement unlock popup as a centered card** — The "achievement unlocked" notification now appears as a compact centered card instead of a full-screen sheet on mobile, so a single new trophy no longer fills the whole screen.
 - **Erase items with Backspace** — Editing an item down to a blank line now deletes it instead of keeping an empty row, and pressing Backspace on an emptied line — or in an empty add-item draft — backs editing up into the line above so you can keep erasing items in one stroke.
-- **Achievements moved to the side menu** — The trophy moved out of the checklist header into a side-menu row that colours and badges itself with the count of new unlocks.
+- **Achievements moved to the side menu** — The trophy moved out of the checklist header into a side-menu row that colors and badges itself with the count of new unlocks.
 - **Background-less tab favicon** — The browser-tab favicon now shows the bare green check with no dark background, while the app and home-screen icons keep their badge.
 - **Cloud sync details as a centered card** — The cloud sync details dialog now opens as a compact centered card instead of a full-screen sheet on mobile, so its short status no longer fills the whole screen.
 - **Item count** — The list header's checked / total count is now a tidy badge with a progress ring that fills as you check items, and a new **Show item count** toggle on Settings → Lists lets you hide it.
@@ -129,8 +129,8 @@ changelog").
 - **Accent highlight for the active list and namespace** — The active checklist and namespace in the side menu are now marked by an accent-tinted highlight and left border instead of a swapped-in checkmark, so their own icon always stays visible.
 - **Bigger checkbox tap target** — The checkbox on each list item now has a larger touch area — easier to tap on a phone — while the box itself looks exactly the same size.
 - **Aligned add-item composer** — The "Add item…" field now shows a dimmed checkbox placeholder so its text lines up exactly with where the new item will land in the list.
-- **Cloud sync command centre** — The cloud-sync glyph now always opens a redesigned details dialog — showing the backend and at-rest encryption state side by side, a one-tap Reload, and (in developer mode) a sync log (newest entries first, and now naming a dropped connection plainly instead of a cryptic "Load failed") — and tapping the glyph is the single, predictable way in whatever the sync state.
-- **Clearer note indicator** — Items that carry a note now show a note glyph instead of a chevron — grey while the note is hidden and highlighted while it's revealed, so you can tell at a glance which items have more to read.
+- **Cloud sync command center** — The cloud-sync glyph now always opens a redesigned details dialog — showing the backend and at-rest encryption state side by side, a one-tap Reload, and (in developer mode) a sync log (newest entries first, and now naming a dropped connection plainly instead of a cryptic "Load failed") — and tapping the glyph is the single, predictable way in whatever the sync state.
+- **Clearer note indicator** — Items that carry a note now show a note glyph instead of a chevron — gray while the note is hidden and highlighted while it's revealed, so you can tell at a glance which items have more to read.
 
 ### Fixed
 
@@ -140,7 +140,7 @@ changelog").
 - **Changelog formatting** — The "What's new" changelog now renders its **bold** lead-ins and `code` spans as formatted text instead of showing the raw markdown asterisks and backticks.
 - **Bulk archive / delete on iOS** — The fan-out archive and delete buttons behind the add (+) long-press now respond to taps on iOS, where they were being covered by the dismiss overlay so every tap closed the menu instead of running the action.
 - **Unlock prompt within reach on mobile** — The passphrase unlock prompt now appears as a single centered card on a plain background — no full-screen sheet or dimmed dialog chrome — keeping the unlock button within thumb's reach on a phone.
-- **Bulk actions match the add button on desktop** — The archive / delete buttons behind the add (+) long-press now adopt the flat, tinted desktop styling of the add button and stay centred under it instead of drifting toward the docked sidebar.
+- **Bulk actions match the add button on desktop** — The archive / delete buttons behind the add (+) long-press now adopt the flat, tinted desktop styling of the add button and stay centered under it instead of drifting toward the docked sidebar.
 - **Symmetric Donate heart** — The Donate menu's heart glyph is now drawn from a balanced, symmetric shape instead of a lopsided hand-rolled path.
 - **Undo shortcuts ignored while the side menu is open** — Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z no longer reach through an open side menu to undo or redo changes to the list behind it.
 - **Cleaner "Open in" sync button** — The cloud-sync details "Open in Dropbox" button no longer trails an "(encrypted)" suffix — it names the destination service, not the at-rest encryption state.
@@ -175,7 +175,7 @@ changelog").
 - **Checklist view** — A quiet, monospaced checklist you fill, tick off, reorder by dragging the grip handle, and swipe to delete or archive — dark by default. [Learn more](feature:checklist)
 - **Installable app icon** — checklist ships a full home-screen icon set, so you can install it as a real app with a proper icon on iOS, Android, and desktop.
 - **Settings & themes** — A Settings dialog with eleven theme presets plus a fully custom theme, four fonts, an adjustable text size, and a developer mode. [Learn more](feature:themes)
-- **Update notifications** — When a new version is deployed the header title fills with colour as it downloads, then a prompt lets you reload to the named new version when it suits you. [Learn more](feature:updates)
+- **Update notifications** — When a new version is deployed the header title fills with color as it downloads, then a prompt lets you reload to the named new version when it suits you. [Learn more](feature:updates)
 - **In-app notifications** — Brief, self-dismissing toasts confirm actions whose result you can't immediately see — deleting, archiving, restoring, removing a list, namespace changes, and undo / redo — themed to match the active palette.
 - **Swedish translation** — The interface is now translatable and ships a Swedish translation, picked automatically from your browser's language on first visit.
 - **Build version label** — A version label beneath "View source" in the side menu shows the running build — semver plus the CI build number and commit hash.
@@ -187,7 +187,7 @@ changelog").
 - **Undo & redo** — Undo and Redo entries (and Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z shortcuts) step back and forth through your recent edits, restoring items you've deleted.
 - **Draggable navigation button** — Drag the floating navigation button to either side of the screen and it snaps to the nearest edge, stays above the keyboard, and remembers where you left it. [Learn more](feature:navigation)
 - **Header logo** — The app icon now sits to the left of the "checklist" wordmark in the header.
-- **Namespaces** — Keep separate checklists in named namespaces — each in its own folder on Dropbox / Google Drive — with an icon and colour that badge the side menu and re-skin the app while one is active. [Learn more](feature:namespaces)
+- **Namespaces** — Keep separate checklists in named namespaces — each in its own folder on Dropbox / Google Drive — with an icon and color that badge the side menu and re-skin the app while one is active. [Learn more](feature:namespaces)
 - **Multiple checklists** — Keep several checklists side by side, switch between them from the side menu, add new ones, and rename the current one from its header title.
 - **Local folder & markdown files** — Save your lists to a folder on your device, where each checklist becomes its own markdown file — the same per-list layout Dropbox and Google Drive now use. [Learn more](feature:local-folder)
 - **Swipe to remove in the side menu** — Swipe a checklist or namespace row left in the side menu to reveal a trash button — a checklist goes in one tap (undoable), a namespace asks for a confirming tap.

@@ -6,7 +6,7 @@ a single line you act on directly, with no chrome to hunt through.
 
 ## How it works
 
-1. **Add an item.** Tap the floating **+** button — a circular button centred
+1. **Add an item.** Tap the floating **+** button — a circular button centered
    at the bottom on phones, a clear button under the list on wider screens. It
    opens an inline draft row right where the new item will land. Type and press
    `Enter` to add it; the field clears and keeps focus, so you can type item

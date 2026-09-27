@@ -33,7 +33,7 @@ Everything that describes *what the list is*:
 - **[notes](feature:notes)** attached to items
 - required flags
 - **[deadlines](feature:deadlines)** and how they repeat
-- the list's icon and colour
+- the list's icon and color
 
 And nothing that describes *one particular run through it*:
 
@@ -74,7 +74,7 @@ can't be ticked, and a line under the header says so. A template records what
 needs doing, never whether it's been done — so there is nothing to check off,
 and no progress counter, archive, or "archive finished" sweep while one is open.
 
-Rename a template by clicking its title, and give it an icon or colour with the
+Rename a template by clicking its title, and give it an icon or color with the
 glyph button beside the title, the same as any list. Whatever you pick rides
 along into every list you stamp out of it.
 

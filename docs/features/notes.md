@@ -16,7 +16,7 @@ shows as plain text; once you close the editor it reads as formatted markdown.
    without leaving the keyboard; or tap **`Add a note`** in the editor. Write
    your note and commit.
 3. **Reveal it.** An item that carries a note shows a **note glyph** beside its
-   title — grey while the note is hidden, highlighted while it's open. Tap the
+   title — gray while the note is hidden, highlighted while it's open. Tap the
    glyph (or the title) to expand the note, rendered as markdown. Tap a link
    inside the note to follow it.
 4. **Edit it again.** With the note revealed, tap the title to edit the title

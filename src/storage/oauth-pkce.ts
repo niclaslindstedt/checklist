@@ -204,7 +204,7 @@ export async function runAuthSessionAuth(
   } catch (err) {
     sessionStorage.removeItem(config.verifierKey);
     if (err instanceof AuthCancelledError) {
-      log.info(`${config.providerName}: auth session cancelled`);
+      log.info(`${config.providerName}: auth session canceled`);
     } else {
       log.error(`${config.providerName}: auth session failed`, err);
     }

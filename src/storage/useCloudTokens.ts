@@ -171,7 +171,7 @@ export function useCloudTokens(
         .then((m) => m.connectDropboxAuthSession(authSession))
         .then(adoptDropbox, (err: unknown) => {
           if (isAuthCancelled(err)) {
-            log.info("Dropbox sign-in cancelled");
+            log.info("Dropbox sign-in canceled");
             return;
           }
           log.error("Dropbox phone sign-in failed", err);

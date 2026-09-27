@@ -9,7 +9,7 @@ hands you the choice of when to switch over.
 
 1. The app checks for a freshly deployed version while you use it.
 2. As the new version downloads, the **title in the header fills with
-   colour from the bottom up** — a quiet progress bar that tells you an
+   color from the bottom up** — a quiet progress bar that tells you an
    update is on its way.
 3. Once it is ready, a prompt appears **naming the version you are
    upgrading to**, with a **Reload** button and a **Dismiss** button.

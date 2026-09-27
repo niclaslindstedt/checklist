@@ -65,7 +65,7 @@ describe("NamespacesModal", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Groceries" },
     });
-    fireEvent.click(screen.getByLabelText("New namespace Colour #98c379"));
+    fireEvent.click(screen.getByLabelText("New namespace Color #98c379"));
     fireEvent.click(screen.getByLabelText("New namespace Icon cart"));
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
     expect(onCreate).toHaveBeenCalledWith("Groceries", {
@@ -112,7 +112,7 @@ describe("NamespacesModal", () => {
     const { onSetAppearance } = renderModal();
     // Open the default namespace's editor (the first rename affordance).
     fireEvent.click(screen.getAllByLabelText("Rename namespace")[0]!);
-    fireEvent.click(screen.getByLabelText("Colour #98c379"));
+    fireEvent.click(screen.getByLabelText("Color #98c379"));
     expect(onSetAppearance).toHaveBeenCalledWith("default", {
       color: "#98c379",
     });

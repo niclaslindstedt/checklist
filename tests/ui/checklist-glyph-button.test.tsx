@@ -25,7 +25,7 @@ function renderButton(
 }
 
 describe("ChecklistGlyphButton", () => {
-  const triggerName = "Change the list’s icon and colour";
+  const triggerName = "Change the list’s icon and color";
 
   it("renders a collapsed picker trigger", () => {
     renderButton();
@@ -34,7 +34,7 @@ describe("ChecklistGlyphButton", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 
-  it("opens the Colour + Icon picker on click", () => {
+  it("opens the Color + Icon picker on click", () => {
     renderButton();
     fireEvent.click(screen.getByRole("button", { name: triggerName }));
     expect(
@@ -49,7 +49,7 @@ describe("ChecklistGlyphButton", () => {
   it("commits a colour pick", () => {
     const { onChange } = renderButton();
     fireEvent.click(screen.getByRole("button", { name: triggerName }));
-    fireEvent.click(screen.getByRole("radio", { name: "Colour #98c379" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Color #98c379" }));
     expect(onChange).toHaveBeenCalledWith({ color: "#98c379" });
   });
 

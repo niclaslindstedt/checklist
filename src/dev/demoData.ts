@@ -326,7 +326,7 @@ function homeSnapshot(now: number): Snapshot {
     items: [
       w.item("Test-restore one file from backup", {
         done: 6.9,
-        notes: "A backup you haven't restored is a rumour.",
+        notes: "A backup you haven't restored is a rumor.",
       }),
       w.item("Swap the offsite drive", { done: 6.8 }),
       w.item("Pull the new container images", { done: 6.8 }),
@@ -457,7 +457,7 @@ function homeSnapshot(now: number): Snapshot {
   const r = builder(now, "ride");
   const rideItems = [
     r.group("Bike", [
-      r.item("Tyres to 45 psi", { done: 0.1 }),
+      r.item("Tires to 45 psi", { done: 0.1 }),
       r.item("Lube the chain", { done: 0.1 }),
       r.item("Spare tube, levers, pump", { done: 0.1 }),
       r.item("Multi-tool + quick link", { done: 0.1 }),

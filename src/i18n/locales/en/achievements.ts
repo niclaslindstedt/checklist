@@ -44,7 +44,7 @@ const achievements = {
       },
       intermediate: {
         title: "Intermediate",
-        subtitle: "You want to organise more than one list.",
+        subtitle: "You want to organize more than one list.",
       },
       pro: {
         title: "Pro",
@@ -138,9 +138,9 @@ const achievements = {
     },
     listStylist: {
       name: "List Stylist",
-      condition: "Give a checklist its own icon or colour.",
+      condition: "Give a checklist its own icon or color.",
       learnMore:
-        "Tap the mark beside a list's title to pick an icon and an accent colour just for that list — the chosen glyph replaces the generic checklist mark in the header, so you can tell your lists apart at a glance. The choice travels with the list across your devices.",
+        "Tap the mark beside a list's title to pick an icon and an accent color just for that list — the chosen glyph replaces the generic checklist mark in the header, so you can tell your lists apart at a glance. The choice travels with the list across your devices.",
     },
     onTheClock: {
       name: "On the Clock",
@@ -152,7 +152,7 @@ const achievements = {
       name: "Not Yet",
       condition: "Hold an item back until a later day.",
       learnMore:
-        "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be ticked off. Until that day comes round the item's box stays shut and a plain grey line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
+        "The same clock that sets a due date also sets a “Not before” day — the earliest day an item may be ticked off. Until that day comes round the item's box stays shut and a plain gray line above it says when it opens up; on the day itself the line disappears and the box works like any other. Use it for work that simply can't start yet: the form that isn't out until the first of the month, the follow-up call you shouldn't make before next week.",
     },
     onRepeat: {
       name: "On Repeat",
@@ -303,7 +303,7 @@ const achievements = {
 
     // ── Pro ───────────────────────────────────────────────────────────
     categoriser: {
-      name: "Categoriser",
+      name: "Categorizer",
       condition: "Promote an item to a category.",
       learnMore:
         "Long-press (or right-click) an item that has sub-items and choose Promote to category. It becomes a slim, muted header that groups the items under it — store names in a shopping list, say — and stays put when you archive or delete every finished item, ready to be refilled. Categories are still yours to rename, remove, or demote back to an ordinary item.",
@@ -328,9 +328,9 @@ const achievements = {
     },
     dressUp: {
       name: "Dress Up",
-      condition: "Give a namespace an icon or colour.",
+      condition: "Give a namespace an icon or color.",
       learnMore:
-        "A namespace can wear its own glyph and accent colour; the chosen mark badges the side menu and the browser-tab favicon so you can tell your worlds apart at a glance.",
+        "A namespace can wear its own glyph and accent color; the chosen mark badges the side menu and the browser-tab favicon so you can tell your worlds apart at a glance.",
     },
     relocated: {
       name: "Relocated",
@@ -414,7 +414,7 @@ const achievements = {
       name: "Theme Wizard",
       condition: "Build a fully custom theme.",
       learnMore:
-        "The Custom theme exposes every colour slot plus radius, density, and border weight — tune the whole look to taste, seeded from whichever preset you were on.",
+        "The Custom theme exposes every color slot plus radius, density, and border weight — tune the whole look to taste, seeded from whichever preset you were on.",
     },
     stillness: {
       name: "Stillness",
@@ -444,7 +444,7 @@ const achievements = {
     },
     capitalIdea: {
       name: "Capital Idea",
-      condition: "Turn on capitalising the first letter of each item.",
+      condition: "Turn on capitalizing the first letter of each item.",
     },
     shapeShifter: {
       name: "Shape Shifter",

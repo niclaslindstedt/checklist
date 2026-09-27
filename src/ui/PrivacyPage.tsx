@@ -141,7 +141,7 @@ export function PrivacyPage() {
 
         <Section title="Web analytics">
           <p>
-            None. The app does not load any analytics or behavioural-tracking
+            None. The app does not load any analytics or behavioral-tracking
             SDK, and the project authors collect no usage statistics from it.
           </p>
         </Section>

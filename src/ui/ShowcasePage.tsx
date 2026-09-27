@@ -152,7 +152,7 @@ export function ShowcasePage() {
               <strong className="text-fg-bright">Hold work back</strong> — the
               same clock sets a &ldquo;Not before&rdquo; day: the item&rsquo;s
               checkbox stays shut until that day arrives, and it sinks to the
-              bottom of the list under a plain grey date saying when it opens
+              bottom of the list under a plain gray date saying when it opens
               up. On the day the date disappears and the item behaves like any
               other.
             </li>
@@ -176,7 +176,7 @@ export function ShowcasePage() {
             </li>
             <li>
               <strong className="text-fg-bright">
-                Organise with namespaces
+                Organize with namespaces
               </strong>{" "}
               — keep separate sets of checklists (for example work and home)
               apart.
@@ -190,7 +190,7 @@ export function ShowcasePage() {
               directory of markdown files.
             </li>
             <li>
-              <strong className="text-fg-bright">Drag to organise</strong> —
+              <strong className="text-fg-bright">Drag to organize</strong> —
               drag a checklist onto a folder, another namespace, or the archive
               to move it there, or drag a whole folder onto another namespace to
               move it and everything inside it (press and hold on a
@@ -202,7 +202,7 @@ export function ShowcasePage() {
               </strong>{" "}
               — copy lists in and out as plain{" "}
               <code className="text-meta">- [ ]</code> markdown; on a
-              categorised list the copy button lets you take the whole thing or
+              categorized list the copy button lets you take the whole thing or
               just one category.
             </li>
             <li>
@@ -219,8 +219,8 @@ export function ShowcasePage() {
             </li>
             <li>
               <strong className="text-fg-bright">Give each list a face</strong>{" "}
-              — pick an icon and an accent colour for any checklist, shown
-              beside its title so you can tell your lists apart at a glance.
+              — pick an icon and an accent color for any checklist, shown beside
+              its title so you can tell your lists apart at a glance.
             </li>
             <li>
               <strong className="text-fg-bright">Home Screen widgets</strong> —

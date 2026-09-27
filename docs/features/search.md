@@ -4,7 +4,7 @@ Search looks across **every** checklist at once, so you never have to
 remember which list you put something on. Open it from the magnifier on the
 action bar — the bottom row of the navigation drawer, just to the right of
 undo and redo. On a phone it fills the screen; on a wider window it opens as a
-centred panel.
+centered panel.
 
 ## What it searches
 

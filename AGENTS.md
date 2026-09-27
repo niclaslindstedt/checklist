@@ -279,6 +279,12 @@ trigger, and adds the test. Progress lives in the synced
 - **Shareable URLs stay client-side.** Share payloads live in the URL
   fragment (`#...`) and must never appear in the path or query string;
   fragments are not sent to servers.
+- **English is US English.** Every English string the app shows — the `en`
+  catalog, the showcase and privacy pages, the feature docs and changelog
+  the "What's new" modal renders, the demo data — spells "color", "gray",
+  "organize", "canceled". Identifiers, i18n keys and achievement ids that
+  already carry a British spelling (`colours`, `categoriser`) keep it:
+  they are keys, and persisted progress refers to them.
 - **`src/domain/` is pure.** No imports from `ui/`, `storage/`,
   `window`, `document`, or `fetch`. Enforced by lint rule and CI.
 

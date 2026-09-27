@@ -29,7 +29,7 @@ const namespace = {
   defaultBadge: "default",
   nameRequired: "A namespace name is required.",
   appearance: "Appearance",
-  colorLabel: "Colour",
+  colorLabel: "Color",
   glyphLabel: "Icon",
   glyphNone: "Folder (default)",
 } as const;

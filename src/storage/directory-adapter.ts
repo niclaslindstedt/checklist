@@ -450,7 +450,7 @@ export function createDirectoryAdapter(
         }
         if (resolution === "conflict") {
           log.warn(
-            "save: remote moved to an unrecognised document — real conflict",
+            "save: remote moved to an unrecognized document — real conflict",
           );
           throw new ConflictError({ text: remoteDoc, revision: current });
         }

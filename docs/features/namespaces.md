@@ -16,19 +16,19 @@ it, without handing them anything in the rest of your namespaces.
 
 1. Open the namespace section at the top of the navigation menu and add a new
    namespace, giving it a name.
-2. While creating it, **pick an icon and a colour**. Both are optional and
-   independent — a colour on its own still tints the default folder icon.
+2. While creating it, **pick an icon and a color**. Both are optional and
+   independent — a color on its own still tints the default folder icon.
 3. Switch between namespaces from the same menu; the one you're in is the only
    set of checklists you see.
-4. Change a namespace's icon or colour later from its row, and the change
+4. Change a namespace's icon or color later from its row, and the change
    applies immediately.
 5. Move work between namespaces by **dragging it onto another namespace's
    row** — drag a single checklist to send just that list, or drag a whole
    folder to relocate the folder and every list inside it at once (press and
    hold to pick it up on a touchscreen).
 
-While a namespace is active, its icon and colour **badge it in the side menu**
+While a namespace is active, its icon and color **badge it in the side menu**
 (only the glyph is tinted, never the row text) and **re-skin the app** — the
-chosen icon, in its colour, replaces the app logo in the header and the
+chosen icon, in its color, replaces the app logo in the header and the
 browser-tab favicon, so a glance tells you which namespace you're working in. A
-namespace with only a colour keeps the app's own logo.
+namespace with only a color keeps the app's own logo.

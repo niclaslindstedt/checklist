@@ -40,7 +40,7 @@ For text you'd rather not have readable at a glance — a door code, a phone
 number, a policy number on a shared screen. The match is replaced with a
 mask, and you choose how much survives:
 
-- **Keep first and last three** — `076****123`, enough to recognise which
+- **Keep first and last three** — `076****123`, enough to recognize which
   number it is.
 - **Keep the last four** — `******4123`.
 - **Hide everything** — the same length, nothing readable.

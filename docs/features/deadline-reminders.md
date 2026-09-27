@@ -45,5 +45,5 @@ say yes. Allow it and reminders start; decline and nothing is scheduled.
 
 Reminders are on by default. To stop them entirely, switch **Deadline
 reminders** off under Settings → General → Notifications; every scheduled
-reminder is cancelled at once. This setting only appears on the native
+reminder is canceled at once. This setting only appears on the native
 app — the web version can't send notifications and never asks.

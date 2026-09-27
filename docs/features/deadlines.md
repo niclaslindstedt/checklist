@@ -33,7 +33,7 @@ clock with the bar to its right (`◷—|`) marks the day it's *due*. The bar
 is the boundary, and it sits on the side the boundary is.
 
 The due-date row also shows a repeat summary like "every 2 weeks" when the
-item recurs, and it changes colour as the day gets closer:
+item recurs, and it changes color as the day gets closer:
 
 - **Muted** while the deadline is more than a week away.
 - **Yellow** once it's within a week.
@@ -65,8 +65,8 @@ follow-up call you shouldn't make before next week, the repair you can't
 book until the part arrives.
 
 Set one, and the item's checkbox goes quiet — drawn but not pressable —
-and a plain grey date above the title says when it opens up. That date
-carries no colour at all, because nothing is late: the item is simply not
+and a plain gray date above the title says when it opens up. That date
+carries no color at all, because nothing is late: the item is simply not
 yours to do yet. Everything else about the row still works as usual —
 you can edit it, note it, nest it, drag it, archive it — only ticking it
 off is out of reach.
@@ -95,7 +95,7 @@ unless you turn it off.
 
 The two dates are independent. An item can be held back with no due date,
 due with no hold, or both — the two glyphs then sit side by side above the
-title, the hold in grey and the due date in its usual colour. An item
+title, the hold in gray and the due date in its usual color. An item
 that's both gated and due sinks with the held-back ones: a due date says
 when work must be finished, but a hold says it can't be started at all,
 and there's nothing useful to do at the top of a list about a task you
@@ -104,7 +104,7 @@ date come first, soonest first.
 
 What the two dates *can't* do is cross. A due date earlier than the hold
 would mean work that has to be finished before it's allowed to start, so
-the due-date calendar simply greys out every day before the hold — whole
+the due-date calendar simply grays out every day before the hold — whole
 months and years too, so you can't page back into a dead region and
 wonder why nothing responds. The hold day itself is fair game. And if you
 move the hold *past* a due date you'd already picked, that date is
@@ -158,7 +158,7 @@ it. And a list that's on a [reset schedule](feature:scheduled-resets)
 needs no repeats at all — the reset already unchecks everything on it.
 
 A repeating item shows the cadence in its date row ("every week", "every
-day at 07:00") in plain grey, with no colour and no date: nothing about
+day at 07:00") in plain gray, with no color and no date: nothing about
 it is urgent, it's just due again.
 
 Both dates and the repeat travel with your lists across devices, and on

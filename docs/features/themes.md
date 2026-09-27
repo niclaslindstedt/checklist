@@ -5,7 +5,7 @@ where you make `checklist` look the way you want. The app is dark by
 default, but you are not stuck with it.
 
 Pick from **eleven theme presets** — light and dark variants in a range of
-palettes — or choose **Custom** and dial in your own colours, corner
+palettes — or choose **Custom** and dial in your own colors, corner
 radius, density, border width, and motion. Set one of **four fonts**, and
 nudge the **text size** up or down until reading and tapping feel right.
 Every change applies the instant you make it, so you can preview a look

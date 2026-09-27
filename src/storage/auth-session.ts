@@ -66,7 +66,7 @@ export function getAuthSessionHost(
  */
 export class AuthCancelledError extends Error {
   constructor(providerName: string) {
-    super(`${providerName} sign-in was cancelled`);
+    super(`${providerName} sign-in was canceled`);
     this.name = "AuthCancelledError";
   }
 }
