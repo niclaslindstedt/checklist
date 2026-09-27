@@ -315,8 +315,10 @@ three slots into one Pages artifact:
 The base path each slot is built with comes from `VITE_BASE` (`/`,
 `/preview/`, or `/branch/`), read by `vite.config.ts`.
 
-There is no SEO and no size budget, by owner decision: every page in every
-slot carries `noindex` (from `index.html`) and is not meant to be found.
+The website is unlisted (OSS_SPEC §11.3.12): every page in every slot carries
+`noindex`, from `index.html`.
+
+oss-spec:unlisted-website: the web build is a testing surface; users install the app from its store listing
 
 > **Storage caveat.** All three slots share one origin, and
 > `localStorage` / `IndexedDB` are per-origin (not per-path), so

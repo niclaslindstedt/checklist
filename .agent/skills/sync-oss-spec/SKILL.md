@@ -127,6 +127,13 @@ fi
    done
    ```
 
+   **Leave §11.3 unmet on purpose.** The website is unlisted: `AGENTS.md`
+   carries the `oss-spec:unlisted-website:` marker, so §11.3.12 exempts it
+   from §11.3.1–§11.3.11 and §11.4.7. Do not add a sitemap, `llms.txt`,
+   JSON-LD, a canonical link, or `seo` / `lighthouse` workflows. What the
+   marker requires instead: every page keeps `<meta name="robots"
+   content="noindex">`, and `public/robots.txt` never says `Disallow: /`.
+
 3. For each failure, re-read the relevant section of `$SPEC_TMP` so the fix matches the spec's intent rather than silencing the symptom:
 
    ```sh
@@ -148,6 +155,8 @@ fi
 | §10.3 floating or under-pinned toolchain | Edit the workflow to pin at or above the minimums declared in the fetched `OSS_SPEC.md` §10.3 table |
 | §10.5 missing pin file / pin ↔ CI mismatch | Add the language's repo-root pin (`rust-toolchain.toml`, `.python-version`, `.nvmrc`, or `go.mod` `toolchain` directive) and align it with `ci.yml` |
 | §11.1 missing `docs/` content | Create the topic file, then hand off to `update-docs` |
+| §11.3 SEO scaffolding / `seo.yml` / `lighthouse.yml` missing | The `oss-spec:unlisted-website:` marker in `AGENTS.md` is missing or has lost its reason; restore it (§11.3.12) rather than adding SEO |
+| §11.3.12 no `noindex` meta, or `robots.txt` disallows the site | Put `<meta name="robots" content="noindex">` back in `index.html`; make `robots.txt` allow crawling |
 | §13.5 `prompts/<name>/` has no versioned file | Add `prompts/<name>/1_0_0.md` with the required YAML front matter (`name`, `description`, `version: 1.0.0`) and `## System` / `## User` sections |
 | §15 missing issue / PR templates | Create the templates under `.github/ISSUE_TEMPLATE/` or `.github/PULL_REQUEST_TEMPLATE.md` |
 | §19.4 missing central output module | Add `src/output.<ext>` (or `lib/output.<ext>`) with semantic helpers (`status`, `info`, `warn`, `error`, `header`) and route existing prints through it |
