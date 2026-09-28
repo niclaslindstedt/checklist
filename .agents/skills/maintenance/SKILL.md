@@ -30,7 +30,7 @@ The registry is the single source of truth for which sync skills exist in this r
 Run order matters:
 
 - `sync-oss-spec` runs **first** so every downstream skill sees the current spec — it may overwrite the local `OSS_SPEC.md` with the upstream copy, which downstream skills then read.
-- The per-artifact skills (`update-docs`, `update-readme`, `update-prompts`, `update-achievements`) run afterwards in dependency order: a skill that reads files another skill rewrites must run *after* that other skill. This project has no CLI, so there is no `update-manpages` skill — do not add one without first adding a `man/` tree.
+- The per-artifact skills (`update-docs`, `update-readme`, `update-prompts`, `update-achievements`) run afterwards in dependency order: a skill that reads files another skill rewrites must run *after* that other skill. This project has no command line, so it has no man pages and no `update-manpages` skill.
 
 ## Discovery process
 

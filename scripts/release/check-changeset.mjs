@@ -45,7 +45,6 @@ const SKIP_PATTERNS = [
   /^docs\//,
   /^scripts\//,
   /^prompts\//,
-  /^man\//,
   /^examples\//,
   // The React Native app is a separate, not-yet-deployed Expo project
   // (see native/README.md). It ships no change to the hosted web PWA, so

@@ -95,7 +95,7 @@ Walk these in order; stop at the first match.
 1. **Does the diff hit only paths in the skip-list (`SKIP_PATTERNS` in
    `scripts/release/check-changeset.mjs`)?** (tests, `.github/`,
    `.agents/`, `.claude/`, `.changes/`, `docs/`, `scripts/`, `prompts/`,
-   `man/`, `examples/`, `Makefile`, any `*.md`, the dotfiles,
+   `examples/`, `Makefile`, any `*.md`, the dotfiles,
    `eslint.config.js`, `vite.config.ts`, `tsconfig*.json`,
    `package-lock.json`.) — **No fragment.** CI accepts this without the
    label.
