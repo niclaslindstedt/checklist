@@ -27,7 +27,7 @@ import {
   deadlineStatus,
   isHeldBack,
 } from "../../src/domain/deadlines.ts";
-import { progress } from "../../src/domain/item-display.ts";
+import { isDone, progress } from "../../src/domain/item-display.ts";
 import { dueRefreshes } from "../../src/domain/item-refresh.ts";
 import { dueResets } from "../../src/domain/reset-schedule.ts";
 import { applyTransforms } from "../../src/domain/transforms.ts";
@@ -302,6 +302,21 @@ describe("the frames' premises, on every day of a year", () => {
       demoTransforms()[WORK]!,
     );
     expect(masked.some((s) => s.kind === "masked")).toBe(true);
+  });
+
+  it("frame 2: the release marks two steps required and is not done yet", () => {
+    const release = listIn(work(SHOT), DEMO_IDS.release);
+    const required = walk(release.items).filter((i) => i.required);
+    expect(required.map((i) => [i.title, i.checked])).toEqual([
+      ["Migrations tested on a prod copy", true],
+      ["Canary at 5% for an hour", false],
+    ]);
+    expect(isDone(release)).toBe(false);
+    // The template carries the flags into every run, unchecked.
+    const tpl = work(SHOT).templates.find((t) => t.id === "tpl-release")!;
+    expect(walk(tpl.items).filter((i) => i.required)).toHaveLength(2);
+    // The laptop's required steps are checked: done in the sidebar.
+    expect(isDone(listIn(work(SHOT), DEMO_IDS.laptop))).toBe(true);
   });
 
   it("frame 4: the upkeep list shows each timing, warming but never overdue", () => {

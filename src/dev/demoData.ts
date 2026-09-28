@@ -80,6 +80,8 @@ type ItemSpec = {
   /** For a checked refreshing item: back in this many days. */
   backIn?: number;
   children?: ChecklistItem[];
+  /** A step no run may skip ("Mark as required"). */
+  required?: boolean;
 };
 
 /** Mints the item ids of one list: `<list>-1`, `<list>-2`, … */
@@ -103,6 +105,7 @@ function makeItem(
   if (spec.every) item.recurrence = spec.every;
   if (spec.backIn !== undefined) item.refreshAt = at(now, spec.backIn);
   if (spec.children) item.children = spec.children;
+  if (spec.required) item.required = true;
   return item;
 }
 
@@ -137,6 +140,7 @@ function finished(
       };
       if (!i.category) out.checkedAt = when;
       if (i.category) out.category = true;
+      if (i.required) out.required = true;
       if (i.children) out.children = finished(i.children, prefix, when);
       return out;
     });
@@ -154,6 +158,7 @@ function blank(items: ChecklistItem[]): ChecklistItem[] {
       };
       if (i.notes) out.notes = i.notes;
       if (i.category) out.category = true;
+      if (i.required) out.required = true;
       if (i.children) out.children = blank(i.children);
       return out;
     });
@@ -535,12 +540,15 @@ function workSnapshot(now: number): Snapshot {
 
   // A release run from the team's template: the tag is out, the canary is
   // up. The issue numbers become links through the work namespace's rule.
+  // Two steps no run may skip are required — one done, the canary still
+  // open — so the run is not done yet.
   const r = builder(now, "rel");
   const releaseItems = [
     r.group("Before the tag", [
       r.item("CI green on main", { done: 0.3 }),
       r.item("Migrations tested on a prod copy", {
         done: 0.3,
+        required: true,
       }),
       r.item("Changelog reviewed", { done: 0.28 }),
       r.item("Bump to 2.4.0", { done: 0.27 }),
@@ -549,6 +557,7 @@ function workSnapshot(now: number): Snapshot {
       r.item("Tag v2.4.0 and push", { done: 0.1 }),
       r.item("Canary at 5% for an hour", {
         notes: CANARY_NOTE,
+        required: true,
       }),
       r.item("Roll out to 100%"),
     ]),
@@ -596,8 +605,10 @@ function workSnapshot(now: number): Snapshot {
     color: BLUE,
     age: 5,
     items: [
-      k.item("Turn on disk encryption", { done: 4 }),
-      k.item("New SSH key, old one revoked", { done: 4 }),
+      // The two that matter are required and checked, so the list shows as
+      // done in the sidebar while the rest waits.
+      k.item("Turn on disk encryption", { done: 4, required: true }),
+      k.item("New SSH key, old one revoked", { done: 4, required: true }),
       k.item("Clone the dotfiles", { done: 3.9 }),
       k.item("Toolchain at the pinned versions", { done: 3.8 }),
       k.item("Signing key for commits"),
