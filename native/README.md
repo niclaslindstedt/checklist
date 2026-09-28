@@ -233,7 +233,10 @@ project at prebuild time, so a stale `webroot/` means a stale app.
 
 ```sh
 npm run typecheck
+npx expo-doctor   # Expo's health check of the project
 ```
+
+CI's `native` job runs both.
 
 ## Not yet ported
 
