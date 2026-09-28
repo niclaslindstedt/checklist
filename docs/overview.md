@@ -1024,7 +1024,8 @@ spill-over days; `yearRangeStart` aligns the year grid to stable blocks;
 DOM-free and unit-tested like the rest of `domain/`. The component only
 renders those grids, tracks which month / view is on screen, and reads the
 active locale (`useLang` / `bcp47`) for the weekday headers, month and year
-captions, month names, and week-start column (`Intl.DateTimeFormat`).
+captions, month names (`Intl.DateTimeFormat`), and week-start column
+(`weekStartsOn`: Sunday on a US device, Monday in Britain and Sweden).
 
 ### Right-click menu
 
@@ -3256,7 +3257,14 @@ as default + fallback, other languages code-split and load on demand
 English. `useT()` returns the typed translation function (with `{name}`
 interpolation over `MessageKey`); `tFor()` is the non-component lookup.
 `src/i18n/locale.ts` defines the supported langs (`Lang` = `en | sv`)
-and initial-language detection; `src/i18n/language-preference.ts`
+and initial-language detection, and turns the language into the concrete
+locale every date and time is formatted in (`bcp47`): the language picks the
+words, the device picks the formats. Swedish is always `sv-SE`; English
+follows the device (`navigator.language`), so an `en-US` phone reads "Sep 27",
+"7:00 AM" and a Sunday-first calendar while an `en-GB` one reads "27 Sept",
+"07:00" and a Monday-first one, and a device in another language lends its
+region (`de-DE` → `en-DE`). `weekStartsOn` and `formatTimeOfDay` derive the
+week start and the clock from that locale; `src/i18n/language-preference.ts`
 mirrors the choice to localStorage (and broadcasts `LANGUAGE_EVENT`) so
 the shell renders in the right language from first paint;
 `src/i18n/LanguageRoot.tsx` is the top-level wrapper that provides the

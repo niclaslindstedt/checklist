@@ -1,15 +1,22 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { stubDeviceLocale } from "./device-locale.ts";
 import { fireDomEvent } from "./fire-dom-event.ts";
 import { TimingModal } from "../../src/ui/TimingModal.tsx";
 
 const noop = (): void => {};
 const base: ChecklistItem = { id: "i1", title: "Task", checked: false };
 
-afterEach(cleanup);
+// The dates below are spelled the British way ("1 Aug 2026"); the date
+// picker's own tests cover a US device.
+beforeEach(() => stubDeviceLocale("en-GB"));
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("TimingModal", () => {
   it("prefills the current due date and saves an edited one", () => {

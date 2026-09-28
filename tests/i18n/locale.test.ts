@@ -5,6 +5,8 @@ import {
   SUPPORTED_LANGS,
   bcp47,
   detectInitialLanguage,
+  formatTimeOfDay,
+  weekStartsOn,
 } from "../../src/i18n/locale.ts";
 import {
   LANGUAGE_EVENT,
@@ -19,9 +21,95 @@ afterEach(() => {
 });
 
 describe("bcp47", () => {
-  it("maps the supported codes to concrete locales", () => {
-    expect(bcp47("sv")).toBe("sv-SE");
+  it("keeps Swedish Swedish on any device", () => {
+    expect(bcp47("sv", "sv-SE")).toBe("sv-SE");
+    expect(bcp47("sv", "en-US")).toBe("sv-SE");
+  });
+
+  it("follows an English device's own locale", () => {
+    expect(bcp47("en", "en-US")).toBe("en-US");
+    expect(bcp47("en", "en-GB")).toBe("en-GB");
+    expect(bcp47("en", "en-AU")).toBe("en-AU");
+  });
+
+  it("borrows the region of a device in another language", () => {
+    expect(bcp47("en", "sv-SE")).toBe("en-SE");
+    expect(bcp47("en", "de-DE")).toBe("en-DE");
+  });
+
+  it("reads as US English without a usable device locale", () => {
+    expect(bcp47("en", "")).toBe("en-US");
+    expect(bcp47("en", "fr")).toBe("en-US");
+    expect(bcp47("en", "not a tag!")).toBe("en-US");
+  });
+
+  it("reads the device from navigator.language by default", () => {
+    Object.defineProperty(navigator, "language", {
+      value: "en-GB",
+      configurable: true,
+    });
     expect(bcp47("en")).toBe("en-GB");
+  });
+
+  it("prints a due date the way each locale does", () => {
+    const due = new Date(2026, 8, 27);
+    const short = (lang: "en" | "sv", device: string) =>
+      due.toLocaleDateString(bcp47(lang, device), {
+        day: "numeric",
+        month: "short",
+      });
+    expect(short("en", "en-US")).toBe("Sep 27");
+    expect(short("en", "en-GB")).toBe("27 Sept");
+    expect(short("sv", "en-US")).toBe("27 sep.");
+  });
+});
+
+describe("weekStartsOn", () => {
+  it("starts a US week on Sunday", () => {
+    expect(weekStartsOn("en-US")).toBe(0);
+    expect(weekStartsOn("en")).toBe(0);
+  });
+
+  it("starts a British and a Swedish week on Monday", () => {
+    expect(weekStartsOn("en-GB")).toBe(1);
+    expect(weekStartsOn("sv-SE")).toBe(1);
+    expect(weekStartsOn("en-SE")).toBe(1);
+  });
+
+  it("falls back to the region table without Intl week info", () => {
+    const proto = Intl.Locale.prototype as unknown as Record<string, unknown>;
+    const own = Object.getOwnPropertyDescriptor(proto, "getWeekInfo");
+    const ownInfo = Object.getOwnPropertyDescriptor(proto, "weekInfo");
+    delete proto.getWeekInfo;
+    delete proto.weekInfo;
+    try {
+      expect(weekStartsOn("en-US")).toBe(0);
+      expect(weekStartsOn("en-GB")).toBe(1);
+      expect(weekStartsOn("sv-SE")).toBe(1);
+    } finally {
+      if (own) Object.defineProperty(proto, "getWeekInfo", own);
+      if (ownInfo) Object.defineProperty(proto, "weekInfo", ownInfo);
+    }
+  });
+
+  it("starts on Monday for a tag it cannot read", () => {
+    expect(weekStartsOn("not a tag!")).toBe(1);
+  });
+});
+
+describe("formatTimeOfDay", () => {
+  it("uses the 12-hour clock in the US", () => {
+    expect(formatTimeOfDay("07:05", "en-US")).toMatch(/^7:05\sAM$/);
+    expect(formatTimeOfDay("19:30", "en-US")).toMatch(/^7:30\sPM$/);
+  });
+
+  it("keeps the 24-hour clock in Britain and Sweden", () => {
+    expect(formatTimeOfDay("07:05", "en-GB")).toBe("07:05");
+    expect(formatTimeOfDay("19:30", "sv-SE")).toBe("19:30");
+  });
+
+  it("returns a malformed time as it is", () => {
+    expect(formatTimeOfDay("soon", "en-US")).toBe("soon");
   });
 });
 

@@ -165,4 +165,7 @@ export {
   SUPPORTED_LANGS,
   bcp47,
   detectInitialLanguage,
+  formatTimeOfDay,
+  timeOfDayOptions,
+  weekStartsOn,
 } from "./locale";

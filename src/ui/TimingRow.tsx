@@ -4,7 +4,7 @@ import {
   type DeadlineStatus,
 } from "../domain/checklists.ts";
 import type { Recurrence } from "../domain/types.ts";
-import { bcp47, useLang, useT } from "../i18n";
+import { bcp47, formatTimeOfDay, useLang, useT } from "../i18n";
 import { DeadlineIcon, NotBeforeIcon, RepeatIcon } from "./icons.tsx";
 
 // The slim "date row" above a checklist item that carries any timing. It says
@@ -75,7 +75,7 @@ export function TimingRow({
   const now = new Date().toISOString();
   const held = isHeldBack({ notBefore }, now) && !sameGate;
   const status = deadline ? deadlineStatus(deadline, now) : null;
-  const summary = recurrence ? recurrenceSummary(recurrence, t) : null;
+  const summary = recurrence ? recurrenceSummary(recurrence, t, lang) : null;
 
   if (!held && !deadline && !summary) return null;
 
@@ -140,16 +140,20 @@ function formatDay(day: string, lang: ReturnType<typeof useLang>): string {
 
 /**
  * Human recurrence summary, e.g. "every 2 weeks" — pluralised per unit, with
- * a daily repeat's time of day appended ("every day at 07:00") since that is
- * the moment the item actually comes back.
+ * a daily repeat's time of day appended ("every day at 7:00 AM" / "at 07:00",
+ * the device's clock) since that is the moment the item actually comes back.
  */
 function recurrenceSummary(
   recurrence: Recurrence,
   t: ReturnType<typeof useT>,
+  lang: ReturnType<typeof useLang>,
 ): string {
   const cadence = cadenceSummary(recurrence, t);
   return recurrence.at
-    ? t("app.timing.everyAt", { cadence, time: recurrence.at })
+    ? t("app.timing.everyAt", {
+        cadence,
+        time: formatTimeOfDay(recurrence.at, bcp47(lang)),
+      })
     : cadence;
 }
 

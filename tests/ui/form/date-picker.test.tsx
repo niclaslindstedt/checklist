@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import { DatePicker } from "../../../src/ui/form/DatePicker.tsx";
+import { stubDeviceLocale } from "../device-locale.ts";
+
+// The English device is British unless a test says otherwise: "1 Aug 2026",
+// Monday first.
+beforeEach(() => stubDeviceLocale("en-GB"));
 
 afterEach(() => {
   cleanup();
@@ -23,6 +28,42 @@ describe("DatePicker", () => {
     expect(trigger.textContent).toContain("1 Aug 2026");
     // Calendar dialog is not mounted before opening.
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("follows a US device: US dates and a Sunday-first week", () => {
+    stubDeviceLocale("en-US");
+    render(
+      <DatePicker
+        value="2026-08-01"
+        onChange={() => {}}
+        ariaLabel="Due date"
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "Due date" });
+    expect(trigger.textContent).toContain("Aug 1, 2026");
+    fireEvent.click(trigger);
+    // 1 August 2026 is a Saturday: the grid opens on Sunday 26 July.
+    const days = screen
+      .getByRole("dialog")
+      .querySelectorAll("button[aria-pressed]");
+    expect(days[0]!.getAttribute("aria-label")).toBe("Sunday, July 26, 2026");
+  });
+
+  it("keeps a British device British: day first and a Monday-first week", () => {
+    render(
+      <DatePicker
+        value="2026-08-01"
+        onChange={() => {}}
+        ariaLabel="Due date"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Due date" }));
+    const days = screen
+      .getByRole("dialog")
+      .querySelectorAll("button[aria-pressed]");
+    expect(days[0]!.getAttribute("aria-label")).toMatch(
+      /^Monday,? 27 July 2026$/,
+    );
   });
 
   it("shows the placeholder when no date is selected", () => {

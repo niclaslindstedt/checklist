@@ -13,7 +13,7 @@ import type {
   ResetSchedulePatch,
   ResetScheduleUnit,
 } from "../domain/types.ts";
-import { bcp47, useLang, useT } from "../i18n";
+import { bcp47, timeOfDayOptions, useLang, useT } from "../i18n";
 import type { Lang } from "../i18n/locale.ts";
 import { FloatingPanel } from "./FloatingPanel.tsx";
 import { Modal } from "./Modal.tsx";
@@ -221,8 +221,7 @@ export function ResetScheduleModal({ list, onSubmit, onClose }: Props) {
         weekday: "short",
         day: "numeric",
         month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
+        ...timeOfDayOptions(bcp47(lang)),
       }).format(new Date(next))
     : null;
 

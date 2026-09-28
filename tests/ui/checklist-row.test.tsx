@@ -10,6 +10,7 @@ import {
 } from "@testing-library/preact";
 
 import type { ChecklistItem } from "../../src/domain/types.ts";
+import { stubDeviceLocale } from "./device-locale.ts";
 import { fireDomEvent } from "./fire-dom-event.ts";
 import { ChecklistRow } from "../../src/ui/ChecklistRow.tsx";
 import type { DragHandleProps } from "../../src/ui/hooks/useListReorder.ts";
@@ -274,11 +275,20 @@ describe("ChecklistRow date row", () => {
     expect(screen.queryByTitle("Due date")).toBeNull();
   });
 
-  it("spells out a daily repeat's time of day", () => {
+  it("spells out a daily repeat's time of day on a 24-hour device", () => {
+    stubDeviceLocale("en-GB");
     renderRow({
       item: { ...item, recurrence: { unit: "day", interval: 1, at: "07:00" } },
     });
     expect(screen.getByText("every day at 07:00")).toBeTruthy();
+  });
+
+  it("spells out a daily repeat's time of day on a US device", () => {
+    stubDeviceLocale("en-US");
+    renderRow({
+      item: { ...item, recurrence: { unit: "day", interval: 1, at: "07:00" } },
+    });
+    expect(screen.getByText(/^every day at 7:00\sAM$/)).toBeTruthy();
   });
 });
 

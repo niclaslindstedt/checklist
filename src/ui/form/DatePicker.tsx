@@ -8,7 +8,12 @@ import {
   yearRangeStart,
   type DayCell,
 } from "../../domain/calendar.ts";
-import { bcp47, useLang, useT } from "../../i18n";
+import {
+  bcp47,
+  useLang,
+  useT,
+  weekStartsOn as weekStartsOnFor,
+} from "../../i18n";
 import type { Lang } from "../../i18n/locale.ts";
 import { FloatingPanel } from "../FloatingPanel.tsx";
 import { ChevronLeftIcon, ChevronRightIcon } from "../icons.tsx";
@@ -62,11 +67,6 @@ type View = "days" | "months" | "years";
 // How many years the "years" grid shows at once (a 3×4 block, matching the
 // month grid's shape).
 const YEAR_BLOCK = 12;
-
-// Which weekday sits in the leftmost column, per language (0 = Sunday). Swedish
-// calendars start on Monday; English (en-GB here) also starts on Monday, but we
-// keep the map explicit so a future locale picks its own convention.
-const WEEK_STARTS_ON: Record<Lang, number> = { en: 1, sv: 1 };
 
 /** Short weekday headers ("Mo", "Tu", …) for the grid, ordered from
  *  `weekStartsOn`, in the active locale. */
@@ -138,7 +138,9 @@ export function DatePicker({
   const [view, setView] = useState<View>("days");
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const weekStartsOn = WEEK_STARTS_ON[lang];
+  // Which weekday sits in the leftmost column: the locale's own convention
+  // (Sunday for en-US, Monday for en-GB and Swedish).
+  const weekStartsOn = weekStartsOnFor(bcp47(lang));
 
   // Today's `YYYY-MM-DD` for the "today" marker. Read once per render from the
   // local clock — a presentation concern, so it stays out of the pure domain.

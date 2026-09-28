@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 
 import { createChecklist } from "../../src/domain/checklists.ts";
 import type { Checklist } from "../../src/domain/types.ts";
 import { ResetScheduleModal } from "../../src/ui/ResetScheduleModal.tsx";
+import { stubDeviceLocale } from "./device-locale.ts";
 import { fireDomEvent } from "./fire-dom-event.ts";
 
 const noop = (): void => {};
@@ -14,7 +15,12 @@ const base: Checklist = createChecklist(
   "2026-06-01T07:00:00.000Z",
 );
 
-afterEach(cleanup);
+// The copy below is British: a 24-hour clock. The US device has its own test.
+beforeEach(() => stubDeviceLocale("en-GB"));
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("ResetScheduleModal", () => {
   it("defaults to every 1 day at 08:00 with the pop-up off", () => {
@@ -194,6 +200,16 @@ describe("ResetScheduleModal", () => {
     );
     // Daily at 08:00 always has a next occurrence, so the line names a time.
     expect(screen.getByText(/^Next reset: /).textContent).toMatch(/08:00/);
+  });
+
+  it("previews the next reset on the device's 12-hour clock", () => {
+    stubDeviceLocale("en-US");
+    render(
+      <ResetScheduleModal list={base} onSubmit={vi.fn()} onClose={noop} />,
+    );
+    expect(screen.getByText(/^Next reset: /).textContent).toMatch(
+      /\b8:00\sAM\b/,
+    );
   });
 
   it("prefills an existing schedule and offers to remove it", () => {
