@@ -16,6 +16,13 @@ export const APP_VERSION: string = __APP_VERSION__;
 // `<version>`.
 export const BUILD_LABEL: string = __BUILD_LABEL__;
 
+// The name the app calls itself: an unnamed list's header, the settings blurb,
+// the privacy page. The phone build carries its store listing's name
+// (`APP_DISPLAY_NAME` at build time); the website, the desktop app and a
+// plain phone build carry the project's own ("checklist"). See `APP_NAME` in
+// `vite.config.ts`.
+export const APP_NAME: string = __APP_NAME__;
+
 // True only in the bundle embedded in the native wrapper (`native/`),
 // which is served from a loopback origin inside a WebView and ships
 // without a service worker. Gates the PWA surfaces — SW registration,

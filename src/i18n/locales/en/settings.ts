@@ -23,7 +23,7 @@ const settings = {
 
   general: {
     blurb:
-      "checklist is a local-first app — your lists live in this browser. Appearance settings are saved on this device.",
+      "{app} is a local-first app — your lists live in this browser. Appearance settings are saved on this device.",
     languageSection: "Language",
     interfaceSection: "Interface",
     notificationsSection: "Notifications",

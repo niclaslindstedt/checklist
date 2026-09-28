@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS_BUILT } from "../../../build-env.ts";
+import { ACHIEVEMENTS_BUILT, APP_NAME } from "../../../build-env.ts";
 import { useDevMode } from "../../../dev/useDevMode.ts";
 import { useLang, useT } from "../../../i18n";
 import { writeLanguagePreference } from "../../../i18n/language-preference.ts";
@@ -49,7 +49,9 @@ export function GeneralTab({
 
   return (
     <>
-      <p className="mb-3 text-xs text-muted">{t("settings.general.blurb")}</p>
+      <p className="mb-3 text-xs text-muted">
+        {t("settings.general.blurb", { app: APP_NAME })}
+      </p>
 
       <Section title={t("settings.general.languageSection")}>
         <LanguagePicker value={lang} onChange={writeLanguagePreference} />

@@ -2,12 +2,12 @@ import type { Widen } from "./_widen";
 
 // User-visible strings for the checklist shell itself — the header, the
 // empty state, the composer, and the per-row controls. The header title
-// shows the active checklist's name (click it to rename); `title` is the
-// document/tab fallback. Lives here so the shell has a single i18n entry
-// point.
+// shows the active checklist's name (click it to rename), and an unnamed
+// list falls back to the app's name — `APP_NAME` in `src/build-env.ts`, the
+// store listing's name in the phone build, never a translated string. Lives
+// here so the shell has a single i18n entry point.
 
 const app = {
-  title: "checklist",
   empty: "Nothing here yet — add your first item below.",
   renameChecklist: "Rename checklist",
   changeListIcon: "Change the list’s icon and color",

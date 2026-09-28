@@ -18,7 +18,7 @@ const settings: SettingsCatalog = {
 
   general: {
     blurb:
-      "checklist är en lokal-först-app — dina listor finns i den här webbläsaren. Utseendeinställningar sparas på den här enheten.",
+      "{app} är en lokal-först-app — dina listor finns i den här webbläsaren. Utseendeinställningar sparas på den här enheten.",
     languageSection: "Språk",
     interfaceSection: "Gränssnitt",
     notificationsSection: "Aviseringar",

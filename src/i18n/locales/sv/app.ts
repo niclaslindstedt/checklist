@@ -1,7 +1,6 @@
 import type { AppCatalog } from "../en/app";
 
 const app: AppCatalog = {
-  title: "checklist",
   empty: "Inget här än — lägg till din första rad nedan.",
   renameChecklist: "Byt namn på checklista",
   changeListIcon: "Ändra listans ikon och färg",

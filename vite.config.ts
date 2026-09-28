@@ -20,6 +20,7 @@ import {
   SITE_DESCRIPTION,
   SITE_LANGUAGE,
   SITE_NAME,
+  resolveAppName,
 } from "./src/site/siteConfig.ts";
 import { withoutSourceLinks } from "./src/site/source-links.ts";
 
@@ -49,6 +50,15 @@ const isShell = process.env.VITE_SHELL_BUILD === "on";
 // and desktop apps carry none of it (`IS_WEBSITE` in `src/build-env.ts`, and
 // the plugins below that keep it out of what the build writes around the app).
 const isWebsite = !isNative && !isShell;
+
+// The name the app calls itself inside: an unnamed list's header, the General
+// settings blurb, the privacy page. The phone build is the one that ships
+// under a store listing, so it reads the listing name from `APP_DISPLAY_NAME`
+// — the same variable `native/identifiers.js` gives `expo.name`, so the name
+// inside the app matches the one under its icon. The website and the desktop
+// app are the project's own and keep its name, and so does a phone build with
+// nothing set. Never committed (the repository carries the plain name only).
+const APP_NAME = resolveAppName(isNative, process.env.APP_DISPLAY_NAME);
 
 const pkg = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
@@ -129,6 +139,7 @@ const NAVIGATE_FALLBACK_DENYLIST =
 const DEFINE = {
   __APP_VERSION__: JSON.stringify(pkg.version),
   __BUILD_LABEL__: JSON.stringify(BUILD_LABEL),
+  __APP_NAME__: JSON.stringify(APP_NAME),
   // Lets the app skip browser-only surfaces that make no sense inside the
   // wrapper — service-worker registration and the update prompt.
   __NATIVE__: JSON.stringify(isNative),

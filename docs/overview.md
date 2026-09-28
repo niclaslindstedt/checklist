@@ -2795,6 +2795,14 @@ side menu's Donate entry is compiled out of it (and of the desktop build), so
 no build but the website carries a payment link outside Apple's, and so are
 the achievements (`ACHIEVEMENTS_BUILT` — see **Achievements**).
 
+**The app's name.** Inside, the phone app calls itself by its store listing's
+name — an unnamed list's header, the General settings blurb, the privacy
+page. `APP_NAME` (`src/build-env.ts`) is resolved at build time by
+`resolveAppName` (`src/site/siteConfig.ts`) from `APP_DISPLAY_NAME`, the same
+variable `native/identifiers.js` gives `expo.name`, so the name inside matches
+the one under the icon. The website, the desktop app and a phone build with
+nothing set say "checklist"; the listing name is never committed.
+
 An earlier `native/` rebuilt the checklist UI in React Native views over the
 shared core, including an **iOS-only iCloud key-value backend**. It covered
 only part of the web feature set, and was replaced by the wrapper.

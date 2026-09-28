@@ -4,6 +4,7 @@ import { unlock } from "../achievements/bus.ts";
 import { findItem, flattenForDisplay } from "../domain/checklists.ts";
 import { archivedTitlePool } from "../domain/suggestions.ts";
 import type { ChecklistItem } from "../domain/types.ts";
+import { APP_NAME } from "../build-env.ts";
 import { useT } from "../i18n";
 import { AddItemButton } from "./AddItemButton.tsx";
 import { defer } from "./deferred.tsx";
@@ -109,7 +110,7 @@ function ChecklistViewImpl() {
   // reads from `openList` and only the handful of affordances that are
   // meaningless for a blueprint branch on `templateMode`.
   const openId = templateMode ? activeTemplate!.id : activeChecklistId;
-  const activeName = openList.name || t("app.title");
+  const activeName = openList.name || APP_NAME;
 
   // Which sub-lists are collapsed (children hidden). Local, non-persisted view
   // state — the same shape as a revealed note body: expanded by default, a tap

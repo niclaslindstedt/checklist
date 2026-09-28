@@ -118,6 +118,11 @@ no releases link or website address in What's new, no social cards or `CNAME`;
 keeps them. `npm run build:native` ends with `scripts/website-only.mjs`, which
 refuses a webroot that still carries any of these.
 
+It calls itself by the store listing's name: `APP_DISPLAY_NAME`, set when
+`npm run build:native` runs, becomes `APP_NAME` (`../src/build-env.ts`) — an
+unnamed list's header, the settings blurb, the privacy page — as it becomes
+`expo.name` under the icon. Unset, it says "checklist", as the website does.
+
 `robots.txt` and the `/home` OAuth-consent marketing page are also skipped. `/privacy` is kept —
 the side menu links to it as a real in-app navigation.
 

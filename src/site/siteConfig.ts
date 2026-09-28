@@ -16,6 +16,18 @@ export const SITE_DESCRIPTION =
 
 export const SITE_LANGUAGE = "en";
 
+// The name a build calls itself inside the app. Only the phone build ships
+// under a store listing, so only it takes the listing name (`APP_DISPLAY_NAME`,
+// never committed); every other build, and a phone build with nothing set,
+// keeps the project's own. `vite.config.ts` folds the answer into
+// `APP_NAME` (`src/build-env.ts`).
+export function resolveAppName(
+  isNative: boolean,
+  displayName: string | undefined,
+): string {
+  return (isNative && displayName?.trim()) || SITE_NAME;
+}
+
 export const REPO_URL = "https://github.com/niclaslindstedt/checklist";
 
 // The app's icon doubles as its social card. It is a square 512×512 PNG,

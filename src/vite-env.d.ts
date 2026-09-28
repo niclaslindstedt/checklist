@@ -12,6 +12,9 @@
 // (`VITE_NATIVE=1`), which ships without a service worker.
 declare const __APP_VERSION__: string;
 declare const __BUILD_LABEL__: string;
+// `__APP_NAME__` is the name the app calls itself — the listing name
+// (`APP_DISPLAY_NAME`) in the phone build, the project's name elsewhere.
+declare const __APP_NAME__: string;
 declare const __NATIVE__: boolean;
 // `__SHELL_BUILD__` is true only for the bundle embedded in the desktop shell
 // (tauri/) — no service worker was emitted. See `vite.config.ts`.

@@ -11,7 +11,7 @@
 // neither the website's address nor the repository (`IS_WEBSITE` in
 // `src/build-env.ts`): there it says "the app", and Contact is the company's
 // support address rather than GitHub.
-import { IS_WEBSITE } from "../build-env.ts";
+import { APP_NAME, IS_WEBSITE } from "../build-env.ts";
 import { ArrowLeftIcon } from "./icons.tsx";
 
 const SUPPORT_EMAIL = "support@agilator.se";
@@ -31,7 +31,7 @@ export function PrivacyPage() {
             className="inline-flex items-center gap-1.5 self-start text-xs text-link hover:underline"
           >
             <ArrowLeftIcon className="h-3.5 w-3.5" />
-            Back to checklist
+            Back to {APP_NAME}
           </a>
           <h1 className="text-lg font-bold text-fg-bright">Privacy policy</h1>
           <p className="text-xs text-muted">Last updated: {LAST_UPDATED}</p>
@@ -39,7 +39,7 @@ export function PrivacyPage() {
 
         <Section title="Summary">
           <p>
-            <span className="text-meta">checklist</span> is a local-first
+            <span className="text-meta">{APP_NAME}</span> is a local-first
             checklist app
             {IS_WEBSITE ? (
               <>

@@ -93,8 +93,11 @@ sync.
 > fails the build with a clear error rather than shipping an empty app.
 >
 > ```sh
-> npm --prefix .. run build:native
+> APP_DISPLAY_NAME="<listing name>" npm --prefix .. run build:native
 > ```
+>
+> `APP_DISPLAY_NAME` is the name the app calls itself inside; set it for this
+> build as well as for `eas build`, or the app says "checklist".
 >
 > The CI workflow below does this automatically.
 
