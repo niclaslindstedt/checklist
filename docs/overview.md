@@ -1305,11 +1305,14 @@ the user clearing it by hand. Two optional fields on `Checklist`
   week); picking days of the week swaps the number for a **Days**
   multi-select — a trigger summarising the chosen days and a dropdown of
   seven `role="checkbox"` rows, Monday first, Monday–Friday preselected. An
-  **At** row takes the hour and minute in two fields (defaults 8 and 00),
-  then a **Pop up after refresh** checkbox (off by default) and a live
-  "Next reset: …" preview. Every number field is digits-only, selects its
-  contents on focus so a tap-and-type replaces the value, and normalises
-  on blur (interval ≥ 1, hour 0–23, minute 0–59 zero-padded). **Remove
+  **At** row takes the hour and minute in two fields (defaults 8 and 00) on
+  the device's clock (`TimeOfDayField`, `src/ui/form/TimeOfDayField.tsx`): a
+  12-hour locale such as en-US adds an **AM / PM** pair and takes 1–12, and
+  still accepts a 24-hour hour (19 becomes 7 PM on blur); then a **Pop up
+  after refresh** checkbox (off by default) and a live "Next reset: …"
+  preview. Every number field is digits-only, selects its contents on focus
+  so a tap-and-type replaces the value, and normalises on blur (interval ≥ 1,
+  hour within the clock, minute 0–59 zero-padded). **Remove
   schedule** clears it. Putting the first list on a schedule unlocks the
   **Clockwork** [achievement](#achievements).
 - **On disk.** The file/cloud backends write the schedule into the
@@ -1570,7 +1573,8 @@ The maths and the verbs live in `src/domain/item-refresh.ts`:
   milk on Thursday buys a week from Thursday, not a week from whenever
   the repeat was first set. A **daily** repeat also carries a time of day
   (`Recurrence.at`, `HH:MM`, default `08:00`, offered by the modal only
-  for the daily cadence) and lands at that hour; the coarser cadences
+  for the daily cadence, typed on the device's clock through
+  `TimeOfDayField` — 12-hour with AM / PM on en-US) and lands at that hour; the coarser cadences
   come back at whatever time of day the item was checked. Month and year
   steps clamp the day of the month, exactly like `addRecurrence`.
 - **Applying it.** `dueRefreshes(snapshot, now)` finds every checked item
@@ -3307,7 +3311,9 @@ follows the device (`navigator.language`), so an `en-US` phone reads "Sep 27",
 "7:00 AM" and a Sunday-first calendar while an `en-GB` one reads "27 Sept",
 "07:00" and a Monday-first one, and a device in another language lends its
 region (`de-DE` → `en-DE`). `weekStartsOn` and `formatTimeOfDay` derive the
-week start and the clock from that locale; `src/i18n/language-preference.ts`
+week start and the clock from that locale, and `usesTwelveHourClock` /
+`dayPeriodLabels` let the time fields (`TimeOfDayField`) take a time the same
+way the app prints one; `src/i18n/language-preference.ts`
 mirrors the choice to localStorage (and broadcasts `LANGUAGE_EVENT`) so
 the shell renders in the right language from first paint;
 `src/i18n/LanguageRoot.tsx` is the top-level wrapper that provides the

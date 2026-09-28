@@ -15,6 +15,7 @@ const common = {
   nextYears: "Next years",
   chooseMonth: "Choose month",
   chooseYear: "Choose year",
+  dayPeriod: "AM or PM",
 } as const;
 
 export type CommonCatalog = Widen<typeof common>;

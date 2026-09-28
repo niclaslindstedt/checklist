@@ -463,6 +463,76 @@ describe("TimingModal", () => {
       });
     });
 
+    it("keeps the 24-hour clock on a British device, with no AM / PM", () => {
+      render(<TimingModal item={base} onSubmit={vi.fn()} onClose={noop} />);
+      fireEvent.click(screen.getByRole("combobox", { name: "Repeat" }));
+      fireEvent.click(screen.getByRole("option", { name: "days" }));
+      expect(screen.queryByRole("group", { name: "AM or PM" })).toBeNull();
+    });
+
+    describe("on a US device", () => {
+      beforeEach(() => stubDeviceLocale("en-US"));
+
+      function openDaily(at: string, onSubmit = vi.fn()) {
+        render(
+          <TimingModal
+            item={{ ...base, recurrence: { unit: "day", interval: 1, at } }}
+            onSubmit={onSubmit}
+            onClose={noop}
+          />,
+        );
+        return onSubmit;
+      }
+      const hourField = () => screen.getByLabelText("Hour") as HTMLInputElement;
+      const period = (name: "AM" | "PM") =>
+        screen.getByRole("button", { name }).getAttribute("aria-pressed");
+
+      it("shows the hour on the 12-hour clock with AM / PM", () => {
+        openDaily("19:30");
+        expect(hourField().value).toBe("7");
+        expect(screen.getByRole("group", { name: "AM or PM" })).toBeTruthy();
+        expect(period("PM")).toBe("true");
+        expect(period("AM")).toBe("false");
+      });
+
+      it("saves an hour typed on the 12-hour clock with the chosen period", () => {
+        const onSubmit = openDaily("06:30");
+        fireEvent.change(hourField(), { target: { value: "9" } });
+        fireEvent.click(screen.getByRole("button", { name: "PM" }));
+        fireEvent.click(screen.getByText("Save"));
+        expect(onSubmit).toHaveBeenCalledWith({
+          notBefore: null,
+          deadline: null,
+          recurrence: { unit: "day", interval: 1, at: "21:30" },
+        });
+      });
+
+      it("reads 12 AM as midnight and 12 PM as noon", () => {
+        const onSubmit = openDaily("08:00");
+        fireEvent.change(hourField(), { target: { value: "12" } });
+        fireEvent.click(screen.getByText("Save"));
+        expect(onSubmit).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            recurrence: { unit: "day", interval: 1, at: "00:00" },
+          }),
+        );
+      });
+
+      it("accepts a 24-hour hour and shows it on the 12-hour clock", () => {
+        const onSubmit = openDaily("08:00");
+        fireEvent.change(hourField(), { target: { value: "19" } });
+        fireDomEvent(hourField(), "focusout");
+        expect(hourField().value).toBe("7");
+        expect(period("PM")).toBe("true");
+        fireEvent.click(screen.getByText("Save"));
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            recurrence: { unit: "day", interval: 1, at: "19:00" },
+          }),
+        );
+      });
+    });
+
     it("drops the time when the cadence moves off daily", () => {
       const onSubmit = vi.fn();
       render(

@@ -15,6 +15,7 @@ const common: CommonCatalog = {
   nextYears: "Nästa år",
   chooseMonth: "Välj månad",
   chooseYear: "Välj år",
+  dayPeriod: "FM eller EM",
 };
 
 export default common;

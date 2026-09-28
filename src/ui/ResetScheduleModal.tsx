@@ -20,6 +20,7 @@ import { Modal } from "./Modal.tsx";
 import { Checkbox } from "./form/Checkbox.tsx";
 import { NumberField } from "./form/NumberField.tsx";
 import { SelectPicker } from "./form/SelectPicker.tsx";
+import { TimeOfDayField } from "./form/TimeOfDayField.tsx";
 import type { FloatingPlacement } from "./hooks/useFloatingPosition.ts";
 import { CheckIcon, ChevronDownIcon, ClockIcon } from "./icons.tsx";
 
@@ -32,7 +33,8 @@ import { CheckIcon, ChevronDownIcon, ClockIcon } from "./icons.tsx";
 //
 // Every number is held as free-form text (see `NumberField`) so mid-edit
 // states — an empty field, a leading zero — don't fight a controlled number
-// input. Values normalise on blur and again on save.
+// input. Values normalise on blur and again on save. The time of day is typed
+// on the device's clock — 12-hour with AM / PM on en-US (`TimeOfDayField`).
 
 type Props = {
   list: Checklist;
@@ -43,10 +45,6 @@ type Props = {
 const DAYS_PLACEMENT: Partial<FloatingPlacement> = {
   width: { kind: "min", minPx: 200 },
 };
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
 
 /** Weekday names in the active language, keyed by JS weekday index (0 = Sunday). */
 function weekdayNames(
@@ -177,17 +175,14 @@ export function ResetScheduleModal({ list, onSubmit, onClose }: Props) {
       ? [...(existing.daysOfWeek ?? [])]
       : [...DEFAULT_DAYS_OF_WEEK],
   );
-  const [hourText, setHourText] = useState(
-    String(existing?.hour ?? DEFAULT_RESET_HOUR),
-  );
-  const [minuteText, setMinuteText] = useState(
-    String(existing?.minute ?? DEFAULT_RESET_MINUTE).padStart(2, "0"),
-  );
+  // Typed on the device's clock (`TimeOfDayField`), held as 24-hour numbers.
+  const [[hour, minute], setTime] = useState<[number, number]>([
+    existing?.hour ?? DEFAULT_RESET_HOUR,
+    existing?.minute ?? DEFAULT_RESET_MINUTE,
+  ]);
   const [popUp, setPopUp] = useState(existing?.popUp ?? false);
 
   const interval = Math.max(1, parseInt(intervalText, 10) || 1);
-  const hour = clamp(parseInt(hourText, 10) || 0, 0, 23);
-  const minute = clamp(parseInt(minuteText, 10) || 0, 0, 59);
 
   const unitOptions = [
     { value: "day" as const, label: t("app.resetSchedule.unitDay") },
@@ -298,21 +293,16 @@ export function ResetScheduleModal({ list, onSubmit, onClose }: Props) {
 
         <div className="flex flex-col gap-1">
           <span className={labelClass}>{t("app.resetSchedule.at")}</span>
-          <div className="flex items-center gap-1">
-            <NumberField
-              value={hourText}
-              ariaLabel={t("app.resetSchedule.hour")}
-              onChange={setHourText}
-              onBlur={() => setHourText(String(hour))}
-            />
-            <span className="text-sm text-muted">:</span>
-            <NumberField
-              value={minuteText}
-              ariaLabel={t("app.resetSchedule.minute")}
-              onChange={setMinuteText}
-              onBlur={() => setMinuteText(String(minute).padStart(2, "0"))}
-            />
-          </div>
+          <TimeOfDayField
+            hour={hour}
+            minute={minute}
+            locale={bcp47(lang)}
+            onChange={(h, m) => setTime([h, m])}
+            hourLabel={t("app.resetSchedule.hour")}
+            minuteLabel={t("app.resetSchedule.minute")}
+            periodLabel={t("common.dayPeriod")}
+            fieldClassName="w-16"
+          />
         </div>
 
         <div className="flex items-start gap-3">

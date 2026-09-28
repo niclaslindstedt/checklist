@@ -212,6 +212,25 @@ describe("ResetScheduleModal", () => {
     );
   });
 
+  it("takes the time on the device's 12-hour clock", () => {
+    stubDeviceLocale("en-US");
+    const onSubmit = vi.fn();
+    render(
+      <ResetScheduleModal list={base} onSubmit={onSubmit} onClose={noop} />,
+    );
+    const hour = screen.getByLabelText("Hour") as HTMLInputElement;
+    expect(hour.value).toBe("8");
+    expect(
+      screen.getByRole("button", { name: "AM" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.change(hour, { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "PM" }));
+    fireEvent.click(screen.getByText("Save"));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ hour: 18, minute: 0 }),
+    );
+  });
+
   it("prefills an existing schedule and offers to remove it", () => {
     const onSubmit = vi.fn();
     const onClose = vi.fn();

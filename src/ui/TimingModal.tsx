@@ -7,11 +7,12 @@ import type {
   RecurrenceUnit,
   TimingPatch,
 } from "../domain/types.ts";
-import { useT } from "../i18n";
+import { bcp47, useLang, useT } from "../i18n";
 import { Modal } from "./Modal.tsx";
 import { DatePicker } from "./form/DatePicker.tsx";
 import { NumberField } from "./form/NumberField.tsx";
 import { SelectPicker } from "./form/SelectPicker.tsx";
+import { TimeOfDayField } from "./form/TimeOfDayField.tsx";
 import { ClockIcon } from "./icons.tsx";
 
 // The modal the clock affordance opens: an item's whole timing in one sheet —
@@ -68,6 +69,7 @@ function splitTime(at: string | undefined): [number, number] {
 
 export function TimingModal({ item, onSubmit, onClose }: Props) {
   const t = useT();
+  const lang = useLang();
   const headingId = useId();
 
   const [notBefore, setNotBefore] = useState(item.notBefore ?? "");
@@ -87,19 +89,19 @@ export function TimingModal({ item, onSubmit, onClose }: Props) {
   const [unit, setUnit] = useState<RepeatChoice>(
     item.recurrence?.unit ?? "none",
   );
-  // The interval and the time of day are held as free-form text so mid-edit
-  // states — an empty field, a leading zero — don't fight a controlled number
-  // input (see `NumberField`). Each normalises on blur and again on save.
+  // The interval is held as free-form text so mid-edit states — an empty
+  // field, a leading zero — don't fight a controlled number input (see
+  // `NumberField`); it normalises on blur and again on save. The time of day
+  // is typed on the device's clock (`TimeOfDayField`), which reports it as
+  // 24-hour numbers.
   const [intervalText, setIntervalText] = useState(
     String(item.recurrence?.interval ?? 1),
   );
-  const [initialHour, initialMinute] = splitTime(item.recurrence?.at);
-  const [hourText, setHourText] = useState(String(initialHour));
-  const [minuteText, setMinuteText] = useState(pad(initialMinute));
+  const [[hour, minute], setTime] = useState(() =>
+    splitTime(item.recurrence?.at),
+  );
 
   const parsedInterval = Math.max(1, parseInt(intervalText, 10) || 1);
-  const hour = clamp(parseInt(hourText, 10) || 0, 0, 23);
-  const minute = clamp(parseInt(minuteText, 10) || 0, 0, 59);
 
   const repeatOptions = [
     { value: "none" as const, label: t("app.timing.noRepeat") },
@@ -204,20 +206,14 @@ export function TimingModal({ item, onSubmit, onClose }: Props) {
           {unit === "day" && (
             <div className="mt-1 flex items-center gap-2">
               <span className="text-sm text-muted">{t("app.timing.at")}</span>
-              <NumberField
-                value={hourText}
-                ariaLabel={t("app.timing.hour")}
-                onChange={setHourText}
-                onBlur={() => setHourText(String(hour))}
-                className="w-14"
-              />
-              <span className="text-sm text-muted">:</span>
-              <NumberField
-                value={minuteText}
-                ariaLabel={t("app.timing.minute")}
-                onChange={setMinuteText}
-                onBlur={() => setMinuteText(pad(minute))}
-                className="w-14"
+              <TimeOfDayField
+                hour={hour}
+                minute={minute}
+                locale={bcp47(lang)}
+                onChange={(h, m) => setTime([h, m])}
+                hourLabel={t("app.timing.hour")}
+                minuteLabel={t("app.timing.minute")}
+                periodLabel={t("common.dayPeriod")}
               />
             </div>
           )}

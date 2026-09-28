@@ -77,14 +77,35 @@ export function weekStartsOn(locale: string): number {
   return SUNDAY_FIRST_REGIONS.has(region) ? 0 : 1;
 }
 
-// Intl options for a time of day in `locale`: "7:05 AM" where the clock is
-// 12-hour, "07:05" where it is 24-hour.
-export function timeOfDayOptions(locale: string): Intl.DateTimeFormatOptions {
+// Whether `locale` reads the time on a 12-hour clock with AM / PM (en-US)
+// rather than a 24-hour one (en-GB, sv-SE).
+export function usesTwelveHourClock(locale: string): boolean {
   const cycle = new Intl.DateTimeFormat(locale, {
     hour: "numeric",
   }).resolvedOptions().hourCycle;
-  const twelveHour = cycle === "h11" || cycle === "h12";
-  return { hour: twelveHour ? "numeric" : "2-digit", minute: "2-digit" };
+  return cycle === "h11" || cycle === "h12";
+}
+
+// What `locale` calls the two halves of a 12-hour day: ["AM", "PM"] in en-US.
+export function dayPeriodLabels(locale: string): [string, string] {
+  const fmt = new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    hourCycle: "h12",
+  });
+  const period = (hour: number, fallback: string) =>
+    fmt
+      .formatToParts(new Date(2024, 0, 1, hour))
+      .find((part) => part.type === "dayPeriod")?.value ?? fallback;
+  return [period(9, "AM"), period(21, "PM")];
+}
+
+// Intl options for a time of day in `locale`: "7:05 AM" where the clock is
+// 12-hour, "07:05" where it is 24-hour.
+export function timeOfDayOptions(locale: string): Intl.DateTimeFormatOptions {
+  return {
+    hour: usesTwelveHourClock(locale) ? "numeric" : "2-digit",
+    minute: "2-digit",
+  };
 }
 
 // A stored `HH:MM` time of day, formatted for `locale`.

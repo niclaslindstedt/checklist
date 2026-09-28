@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   SUPPORTED_LANGS,
   bcp47,
+  dayPeriodLabels,
   detectInitialLanguage,
   formatTimeOfDay,
+  usesTwelveHourClock,
   weekStartsOn,
 } from "../../src/i18n/locale.ts";
 import {
@@ -94,6 +96,23 @@ describe("weekStartsOn", () => {
 
   it("starts on Monday for a tag it cannot read", () => {
     expect(weekStartsOn("not a tag!")).toBe(1);
+  });
+});
+
+describe("usesTwelveHourClock", () => {
+  it("is true where the clock reads AM and PM", () => {
+    expect(usesTwelveHourClock("en-US")).toBe(true);
+  });
+
+  it("is false where the clock runs to 23", () => {
+    expect(usesTwelveHourClock("en-GB")).toBe(false);
+    expect(usesTwelveHourClock("sv-SE")).toBe(false);
+  });
+});
+
+describe("dayPeriodLabels", () => {
+  it("names the two halves of the day in the locale's own words", () => {
+    expect(dayPeriodLabels("en-US")).toEqual(["AM", "PM"]);
   });
 });
 
