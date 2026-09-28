@@ -20,7 +20,13 @@
       "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
       "react-dom": ["./node_modules/preact/compat/"],
       "react-dom/client": ["./node_modules/preact/compat/client"],
-      "react-dom/test-utils": ["./node_modules/preact/test-utils"]
+      "react-dom/test-utils": ["./node_modules/preact/test-utils"],
+      // The phone app's native modules, which only `native/` installs: a test
+      // that imports a `native/src` file type-checks it against these stubs
+      // (the same files `test.alias` in vite.config.ts resolves to), and
+      // `native/`'s own tsc checks it against the real packages.
+      "expo-file-system/legacy": ["./tests/native/stubs/expo-file-system.ts"],
+      "expo-sharing": ["./tests/native/stubs/expo-sharing.ts"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,

@@ -624,5 +624,16 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["tests/**/*.test.{ts,tsx}"],
+    // The phone app's native modules, which only `native/` installs. A test of
+    // a `native/src` file that imports one mocks it (`vi.mock`); this only lets
+    // the import resolve in a checkout that never ran `npm ci` in `native/`.
+    alias: {
+      "expo-file-system/legacy": fileURLToPath(
+        new URL("./tests/native/stubs/expo-file-system.ts", import.meta.url),
+      ),
+      "expo-sharing": fileURLToPath(
+        new URL("./tests/native/stubs/expo-sharing.ts", import.meta.url),
+      ),
+    },
   },
 });

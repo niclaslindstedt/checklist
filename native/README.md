@@ -40,6 +40,7 @@ the bands in the page's own background (see `FRAME_EDGES` in `src/App.tsx`).
 | Start / stop the loopback server | `src/useStaticServer.ts` |
 | The WebView and its navigation rules | `src/App.tsx` |
 | Native ↔ web bridge (`window.__native`) | `src/nativeBridge.ts` |
+| Exports through the share sheet (`window.__ossShell`, `save-file`) | `src/saveFileBridge.ts` |
 | Theme → native chrome (status bar; the safe-area bands on Android) | `src/nativeTheme.ts` |
 | iCloud key-value store (iOS only) | `src/icloud.ts` |
 | Widget shared-container host | `src/widgets.ts`, `modules/widget-bridge/` |
@@ -213,6 +214,23 @@ the app's own URL and hands that URL back.
 
 `tests/native/auth-session-bridge.test.ts` runs the injected script against the
 page's own host validation, so the two halves cannot drift apart silently.
+
+## Exports through the share sheet
+
+A browser export is a download of a `blob:` URL, which a WebView has nowhere to
+put. `src/saveFileBridge.ts` is oss-framework's reference native half of its
+`save-file` contract (the framework's `docs/native-shell.md`): it injects
+`window.__ossShell = { version: 1, capabilities: ["save-file"] }` before the
+page loads, so the framework's `saveFile` posts the file's bytes instead of
+downloading; the bridge writes them to the cache (`expo-file-system`), opens
+the share sheet (`expo-sharing`), and answers the page's promise. `App.tsx`
+refuses `blob:` and `data:` navigations rather than handing them to the
+system browser, which cannot open them.
+
+The web app has no export today, so nothing sends one yet; an export added
+later calls `saveFile` and works here with no change to the wrapper.
+`tests/native/save-file-bridge.test.ts` runs the descriptor and the bridge
+against the framework's `saveFile`.
 
 ## Running it
 

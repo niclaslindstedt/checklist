@@ -26,6 +26,11 @@ import {
   isAuthSessionRequest,
 } from "./authSessionBridge";
 import { answerAuthSession, authRedirectUri } from "./authSession";
+import {
+  SAVE_FILE_DESCRIPTOR,
+  answerSaveFile,
+  isSaveFileRequest,
+} from "./saveFileBridge";
 
 // Fallback chrome shown before the page reports its theme (startup, over-scroll,
 // the server-failed screen). Matches the dark preset so nothing flashes white;
@@ -95,9 +100,9 @@ export default function App() {
     webViewRef.current?.injectJavaScript(authSessionResolveScript(id, result));
   }, []);
 
-  // One `onMessage` feeds every channel: theme reports and sign-in requests
-  // are consumed here, and everything else (the `window.__native` bridge
-  // traffic) falls through.
+  // One `onMessage` feeds every channel: theme reports, sign-in requests and
+  // exports (`saveFileBridge.ts`) are consumed here, and everything else (the
+  // `window.__native` bridge traffic) falls through.
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
       if (onThemeMessage(event)) return;
@@ -105,10 +110,16 @@ export default function App() {
       try {
         parsed = JSON.parse(event.nativeEvent.data);
       } catch {
-        // not JSON — not a sign-in request
+        // not JSON — not a sign-in request or an export
       }
       if (isAuthSessionRequest(parsed)) {
         void signIn(parsed.id, parsed.url);
+        return;
+      }
+      if (isSaveFileRequest(parsed)) {
+        void answerSaveFile(parsed, (script) =>
+          webViewRef.current?.injectJavaScript(script),
+        );
         return;
       }
       onBridgeMessage(event);
@@ -166,12 +177,16 @@ export default function App() {
   // consent page is not navigated to at all: the page asks for an
   // authentication session instead (see `authSessionBridge.ts`), since a
   // consent page in Safari redirects back to Safari, not to the app. This
-  // stays the fallback for a page that finds no session provider.
+  // stays the fallback for a page that finds no session provider. A `blob:`
+  // or `data:` URL is an export's download, which exists only inside the
+  // WebView: the system browser cannot open it, and exports reach the share
+  // sheet through `saveFileBridge.ts` instead, so it goes nowhere.
   const onShouldStartLoadWithRequest = useCallback(
     (request: WebViewNavigation) => {
       if (!origin) return false;
       if (request.url.startsWith(origin)) return true;
       if (request.url.startsWith("about:")) return true;
+      if (/^(blob|data):/i.test(request.url)) return false;
       void Linking.openURL(request.url);
       return false;
     },
@@ -221,11 +236,11 @@ export default function App() {
             incognito={false}
             allowsBackForwardNavigationGestures
             setSupportMultipleWindows={false}
-            // Native bridge: expose `window.__native` before the page loads,
-            // and answer its `postMessage` calls (see `nativeBridge.ts`).
-            injectedJavaScriptBeforeContentLoaded={
-              injectedJavaScriptBeforeContentLoaded
-            }
+            // Before the page loads: the native bridge (`window.__native`,
+            // answered over `postMessage`, see `nativeBridge.ts`) and the
+            // `window.__ossShell` descriptor that tells the page's `saveFile`
+            // this shell takes exports (see `saveFileBridge.ts`).
+            injectedJavaScriptBeforeContentLoaded={`${injectedJavaScriptBeforeContentLoaded}\n${SAVE_FILE_DESCRIPTOR}`}
             // Two scripts, one prop: the theme reporter (page background +
             // status-bar style, after the page paints and on every live theme
             // switch) and the auth-session provider the Dropbox sign-in looks
