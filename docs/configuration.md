@@ -37,8 +37,8 @@ achievements** toggle, which switches the achievements system off: the
 watcher stops recording unlocks and raising celebratory toasts, and the
 header trophy button is hidden. Achievements already earned are kept, so
 turning the toggle back off resumes tracking. The phone and desktop apps
-have no achievements, so no toggle either. In the installed PWA on a
-phone / tablet it also holds the **Show menu button** toggle. These
+have no achievements, so no toggle either. In the installed PWA and the
+phone app on a phone / tablet it also holds the **Show menu button** toggle. These
 choices persist to `checklist:settings:v1`. List-behaviour preferences
 live on the **Settings → Lists** tab.
 

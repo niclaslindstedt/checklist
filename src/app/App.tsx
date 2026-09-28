@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useStandaloneMobile } from "@niclaslindstedt/oss-framework/pwa";
 
 import { unlock, useAchievementWatcher } from "../achievements/index.ts";
 import { ACHIEVEMENTS_BUILT } from "../build-env.ts";
@@ -7,7 +8,6 @@ import { displayItems, type DisplayOrder } from "../domain/checklists.ts";
 import { defer } from "../ui/deferred.tsx";
 import { useT, type MessageKey } from "../i18n";
 import { LANGUAGE_EVENT } from "../i18n/language-preference.ts";
-import { useStandaloneMobile } from "../pwa/standalone.ts";
 import type { Settings } from "../settings/types.ts";
 import { useSettings } from "../settings/useSettings.ts";
 import { createDevSeedAdapter } from "../storage/dev-seed/index.ts";

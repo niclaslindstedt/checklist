@@ -44,6 +44,8 @@ on:
 
 permissions:
   contents: write
+  # npm ci resolves @niclaslindstedt/oss-framework from GitHub Packages.
+  packages: read
   pages: write
   id-token: write
 
@@ -64,7 +66,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@niclaslindstedt"
       - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify clean working tree
         run: |
@@ -87,6 +93,8 @@ jobs:
       - name: Reinstall deps for target commit
         if: inputs.commit != ''
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Resolve the effective bump. `auto` (the default) derives it from
       # the changeset fragments' front-matter so the release needs no
@@ -334,6 +342,8 @@ jobs:
       # permissions than it requests, so granting only `contents: read`
       # here fails the whole Release run at startup before any job runs.
       contents: write
+      # …and `packages: read`, which its npm ci needs for the framework.
+      packages: read
       pages: write
       id-token: write
     secrets: inherit

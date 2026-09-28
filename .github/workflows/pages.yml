@@ -24,6 +24,8 @@ on:
 
 permissions:
   contents: write
+  # npm ci resolves @niclaslindstedt/oss-framework from GitHub Packages.
+  packages: read
   pages: write
   id-token: write
 
@@ -50,7 +52,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@niclaslindstedt"
       - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ---- Resolve which tag to serve at `/` (if any) ----
       - name: Resolve production tag
@@ -106,6 +112,8 @@ jobs:
       - name: Reinstall deps for production tag
         if: steps.tag.outputs.has_release == 'true'
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build production
         if: steps.tag.outputs.has_release == 'true'
@@ -127,6 +135,8 @@ jobs:
       - name: Reinstall main's deps
         if: steps.tag.outputs.has_release == 'true'
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ---- Preview build (current main, /preview/ path) ----
       - name: Build preview
@@ -155,6 +165,8 @@ jobs:
       - name: Reinstall deps for dispatched ref
         if: steps.dispatch.outputs.has_dispatch == 'true'
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build /branch/
         if: steps.dispatch.outputs.has_dispatch == 'true'

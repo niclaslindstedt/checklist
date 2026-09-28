@@ -1,8 +1,9 @@
+import { useStandaloneMobile } from "@niclaslindstedt/oss-framework/pwa";
+
 import { ACHIEVEMENTS_BUILT, APP_NAME } from "../../../build-env.ts";
 import { useDevMode } from "../../../dev/useDevMode.ts";
 import { useLang, useT } from "../../../i18n";
 import { writeLanguagePreference } from "../../../i18n/language-preference.ts";
-import { useStandaloneMobile } from "../../../pwa/standalone.ts";
 import { isNotificationsAvailable } from "../../../storage/native-bridge.ts";
 import type { Settings } from "../../../settings/types.ts";
 import type { UpdateSetting } from "../../../settings/useSettings.ts";

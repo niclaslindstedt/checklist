@@ -223,3 +223,52 @@ describe("SettingsModal", () => {
     ).toBe("true");
   });
 });
+
+// The "Show menu button" opt-out (and the edge swipe that replaces the button)
+// is offered only where no browser chrome owns the screen edge: an installed
+// PWA, or the phone app's WebView. The gate is the framework's
+// `useStandaloneMobile`, which recognizes the shell by what it puts on
+// `window` — `ReactNativeWebView` or the `__ossShell` descriptor.
+describe("SettingsModal — the menu-button opt-out", () => {
+  const IPHONE =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
+  type ShellWindow = Window & {
+    ReactNativeWebView?: { postMessage: (data: string) => void };
+    __ossShell?: { version: number; capabilities: string[] };
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete (window as ShellWindow).ReactNativeWebView;
+    delete (window as ShellWindow).__ossShell;
+  });
+
+  function onPhone() {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(IPHONE);
+  }
+
+  it("stays hidden in a phone's browser tab", () => {
+    onPhone();
+    renderModal();
+    expect(screen.queryByText("Show menu button")).toBeNull();
+  });
+
+  it("shows inside the phone app's WebView (ReactNativeWebView)", () => {
+    onPhone();
+    (window as ShellWindow).ReactNativeWebView = { postMessage: vi.fn() };
+    renderModal();
+    expect(screen.getByText("Show menu button")).toBeTruthy();
+  });
+
+  it("shows inside a shell that declares itself with __ossShell", () => {
+    onPhone();
+    (window as ShellWindow).__ossShell = { version: 1, capabilities: [] };
+    renderModal();
+    expect(screen.getByText("Show menu button")).toBeTruthy();
+  });
+
+  it("stays hidden in a desktop browser", () => {
+    renderModal();
+    expect(screen.queryByText("Show menu button")).toBeNull();
+  });
+});

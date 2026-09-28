@@ -620,8 +620,9 @@ drag threshold counts as a tap (so keyboard activation still works).
 The button can be **hidden** — `SideMenu` only renders it when the nav
 context's `showButton` is true. App sets that flag from the
 `showMenuButton` setting, but only honours the opt-out in the installed
-PWA on a phone / tablet (`useStandaloneMobile`, `src/pwa/standalone.ts`);
-everywhere else the button always shows. When hidden, an inward edge
+PWA or the phone app on a phone / tablet (`useStandaloneMobile`, from
+`@niclaslindstedt/oss-framework/pwa`); everywhere else the button always
+shows. When hidden, an inward edge
 swipe opens the drawer instead (see Edge swipe to open).
 The snap / clamp math is pure in `src/ui/sideMenuPosition.ts`
 (`restingRect`, `clampRect`, `rectToPosition`, `MENU_BUTTON_SIZE`,
@@ -648,10 +649,10 @@ gated by an `enabled` flag (App enables it only while the button is
 hidden and no modal or drawer already owns the screen) and suppressed
 while a modal is mounted. It watches the edge matching
 `menuButtonPosition.side`, so the panel always pulls in from where it
-lives. Touch-only and PWA-only by design: in a normal browser tab an
-edge swipe collides with the back-swipe, so the button-hiding opt-out is
-offered only in the installed PWA. The standalone window has no browser
-chrome, but iOS still keeps its own edge swipe-back gesture alive there —
+lives. Touch-only by design, and offered only where no browser chrome owns the
+edge: in a normal browser tab an edge swipe collides with the back-swipe, so
+the button-hiding opt-out is offered only in the installed PWA and the phone
+app. The standalone window has no browser chrome, but iOS still keeps its own edge swipe-back gesture alive there —
 see "Suppress edge swipe-back" for how that native navigation is cancelled
 so it doesn't fight the drawer.
 
@@ -3350,12 +3351,15 @@ manifest and icons are configured in `vite.config.ts` (see the
 
 ### Standalone-mobile detection
 
-`src/pwa/standalone.ts` — `isStandaloneMobile()` (and the
-`useStandaloneMobile()` hook that reads it once into state) is true only
-when the app runs as an installed PWA (standalone display mode, or iOS's
-`navigator.standalone`) on Android or iOS. It's what gates the
-"Show menu button" opt-out and the edge-swipe gesture to that one
-context where the replacement gesture has a free screen edge.
+`isStandaloneMobile()` (and the `useStandaloneMobile()` hook that reads it
+once into state), from `@niclaslindstedt/oss-framework/pwa`, is true only
+when the app runs on Android or iOS with no browser chrome: as an installed
+PWA (standalone display mode, or iOS's `navigator.standalone`), or inside the
+phone app's WebView, which the framework recognizes by
+`window.ReactNativeWebView` or the `window.__ossShell` descriptor the shell
+injects. It's what gates the "Show menu button" opt-out and the edge-swipe
+gesture to the contexts where the replacement gesture has a free screen
+edge.
 
 ### Changelog / what's new
 

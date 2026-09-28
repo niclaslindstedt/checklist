@@ -48,6 +48,8 @@ concurrency:
 
 permissions:
   contents: read
+  # npm ci resolves @niclaslindstedt/oss-framework from GitHub Packages.
+  packages: read
 
 jobs:
   build:
@@ -59,6 +61,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@niclaslindstedt"
 
       # The wrapper has no UI of its own — it serves this bundle. It must be
       # built before `eas build` uploads the project, because the upload is
@@ -73,6 +77,7 @@ jobs:
           APP_DISPLAY_NAME: ${{ secrets.APP_DISPLAY_NAME }}
           VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
           VITE_DROPBOX_APP_FOLDER: ${{ secrets.VITE_DROPBOX_APP_FOLDER }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm ci
           npm run build:native
