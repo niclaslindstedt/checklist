@@ -48,6 +48,10 @@ native/store/store.config.json
 native/store/screenshots/
 native/fastlane/metadata/
 
+# The Google Play service-account key `eas submit` reads for Android. A
+# credential: it never enters the repository.
+native/play-service-account.json
+
 # The desktop shell (tauri/). Its Rust build output, the site copied in from
 # `dist/` by scripts/bundle-web.mjs, and the permission schemas tauri-build
 # generates from tauri.conf.json. The ICONS beside them are committed —
