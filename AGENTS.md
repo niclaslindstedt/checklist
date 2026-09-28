@@ -83,9 +83,10 @@ The source tree under `src/` is organized by concern, not by file type:
   `domain/` and `storage/` (via interfaces) but not the other way.
 - `src/domain/` — pure functions over the data model (templates,
   checklists, items). No DOM, no I/O. Should be trivially testable.
-- `src/storage/` — pluggable persistence. `LocalStorage` is the
-  default; `GoogleDrive` and `Dropbox` adapters implement the same
-  `StorageBackend` interface and are loaded on demand.
+- `src/storage/` — pluggable persistence. Browser storage is the
+  default; the local-folder, Dropbox and iCloud adapters implement the
+  same `StorageAdapter` interface (`src/storage/adapter.ts`) and are
+  loaded on demand.
 - `src/share/` — URL-fragment encode/decode for shareable lists.
 - `src/pwa/` — service worker, manifest, install prompt handling.
 
@@ -265,8 +266,8 @@ trigger, and adds the test. Progress lives in the synced
   analytics, no font CDNs, no error-reporting SaaS. New dependencies
   that phone home are blocked.
 - **Storage backends are interchangeable.** Anything added to one
-  backend (e.g. conflict resolution) must work for all three
-  (`LocalStorage`, `GoogleDrive`, `Dropbox`) or be expressed as
+  backend (e.g. conflict resolution) must work for all of them
+  (browser, local folder, Dropbox, iCloud) or be expressed as
   capabilities the UI can feature-detect.
 - **Shareable URLs stay client-side.** Share payloads live in the URL
   fragment (`#...`) and must never appear in the path or query string;

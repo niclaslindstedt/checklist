@@ -242,7 +242,7 @@ budget project's pattern, defined in `src/storage/adapter.ts`:
 
 ```ts
 interface StorageAdapter {
-  readonly id: "browser" | "folder" | "dropbox" | "gdrive" | "dev" | "icloud";
+  readonly id: "browser" | "folder" | "dropbox" | "dev" | "icloud";
   readonly label: string;
   readonly capabilities: ReadonlySet<AdapterCapability>;
   loadSync?(): StoredSnapshot | null;

@@ -888,7 +888,7 @@ checklist's original, it lays out, top to bottom:
 An "Open in <provider>" link (omitted for the local folder, which has no
 URL) closes it out; the provider path / URL are derived from
 `SyncInfo.backend` + `namespace` via the backends' web-URL helpers
-(`dropboxWebUrl`, `gdriveWebUrl`). Its content is short and opens no soft
+(`dropboxWebUrl`). Its content is short and opens no soft
 keyboard, so it renders as a compact `centered` card on every viewport
 rather than the full-screen mobile sheet.
 
@@ -2023,10 +2023,9 @@ per-namespace folders, so one settings file is shared by every namespace and
 travels with the synced/shared folder. `fileSettingsStore` builds one over
 any root-scoped `FileStore` (a backend's file store constructed with an empty
 namespace, so its paths resolve at the app-folder root instead of inside a
-namespace folder — the folder / Dropbox / Drive stores drop the blank
+namespace folder — the folder and Dropbox stores drop the blank
 namespace segment). Each file-based backend exports a `create*SettingsStore`
-(`createFolderSettingsStore`, `createDropboxSettingsStore`,
-`createGdriveSettingsStore`); `useStorageBackend` builds the active backend's
+(`createFolderSettingsStore`, `createDropboxSettingsStore`); `useStorageBackend` builds the active backend's
 store and exposes it as `settingsStore` (null for the browser backend, whose
 canonical settings home is `localStorage`, and while a folder grant is
 unresolved). It is independent of the namespace-scoped document adapter and
@@ -2042,8 +2041,7 @@ persists the device's **list of namespaces** as a single `namespaces.json`
 and the per-namespace folders. It is the namespace counterpart of the root
 settings file: `fileNamespaceStore` builds one over any root-scoped
 `FileStore`, and each file-based backend exports a `create*NamespaceStore`
-(`createFolderNamespaceStore`, `createDropboxNamespaceStore`,
-`createGdriveNamespaceStore`). `useStorageBackend` builds the active
+(`createFolderNamespaceStore`, `createDropboxNamespaceStore`). `useStorageBackend` builds the active
 backend's store as `namespaceStore` (null for the browser backend, whose
 only namespace home is `localStorage`, and while a folder grant is
 unresolved) and runs a **reconcile** when a file backend is (re)selected:

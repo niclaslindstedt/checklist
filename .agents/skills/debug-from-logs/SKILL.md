@@ -126,7 +126,7 @@ candidate site for "step 7: insufficient diagnostics".
 Other silent gaps to look for:
 
 - An `await` missing on a Promise-returning call (common in the
-  on-demand `GoogleDrive` / `Dropbox` storage adapters), so a
+  on-demand `Dropbox` and iCloud storage adapters), so a
   rejection becomes an unhandled rejection that never reaches the
   console.
 - A `catch` that swallows a non-`Error` value (a string, a rejected
@@ -240,9 +240,9 @@ in the same PR as the bug fix**. Concretely:
   raise a real `Error` with a descriptive message so the stack
   frame carries the cause.
 - If the bug spanned a storage backend, confirm the same coverage
-  applies to all three (`LocalStorage`, `GoogleDrive`, `Dropbox`) —
+  applies to every backend (browser, local folder, Dropbox, iCloud) —
   per `AGENTS.md`, anything added to one backend must work for all
-  three or be a feature-detectable capability.
+  of them or be a feature-detectable capability.
 
 Don't go on an instrumentation spree — the goal is the minimum set
 that makes the next reproduction self-explanatory. If you added

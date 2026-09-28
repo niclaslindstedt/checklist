@@ -226,8 +226,8 @@ changelog fragment instead (`.changes/unreleased/<unix-ts>-<slug>.md`).
   function it replaced. If the optimization needs an invalidation
   contract you can't state in one sentence, skip it.
 - **Optimizing one storage backend only**. A change in
-  `src/storage/` must hold for all three backends (`LocalStorage`,
-  `GoogleDrive`, `Dropbox`) or be a feature-detectable capability —
+  `src/storage/` must hold for every backend (browser, local folder,
+  Dropbox, iCloud) or be a feature-detectable capability —
   see `AGENTS.md`.
 
 ## Self-improvement

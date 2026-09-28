@@ -55,9 +55,9 @@ describe("requestLabel", () => {
   it("omits the query string and any access token", () => {
     expect(
       requestLabel(
-        "https://www.googleapis.com/drive/v3/files?access_token=s3cret",
+        "https://content.dropboxapi.com/2/files/upload?access_token=s3cret",
       ),
-    ).toBe("www.googleapis.com/drive/v3/files");
+    ).toBe("content.dropboxapi.com/2/files/upload");
   });
 
   it("falls back to the raw string when the URL can't be parsed", () => {

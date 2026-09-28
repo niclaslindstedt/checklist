@@ -11,7 +11,7 @@ at the app-folder root so they travel with the synced/shared folder — see
 
 | Key (in `localStorage`)          | Type                                  | Default       | Effect |
 |----------------------------------|---------------------------------------|---------------|--------|
-| `checklist:backend`              | `"browser" \| "folder" \| "dropbox" \| "gdrive" \| "icloud"`  | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends (except the local-folder connect, which seeds an empty folder from the current document). `"icloud"` is only honoured inside the iOS native wrapper (feature-detected); a stored `"icloud"` downgrades to `"browser"` on the web build. |
+| `checklist:backend`              | `"browser" \| "folder" \| "dropbox" \| "icloud"`             | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends (except the local-folder connect, which seeds an empty folder from the current document). `"icloud"` is only honoured inside the iOS native wrapper (feature-detected); a stored `"icloud"` downgrades to `"browser"` on the web build. |
 | `checklist:dropbox:token`        | string                                | (unset)       | Dropbox OAuth access token. Short-lived; silently refreshed via the refresh token. |
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
@@ -121,7 +121,7 @@ whether they're encrypted:
   native bridge, so the web build never shows it). Picking a cloud backend
   connects it: Dropbox redirects to its consent screen and returns (in the
   phone app it opens in a sign-in sheet over the app instead, and in the
-  desktop app in your browser); Google Drive opens a popup. **Local folder** prompts you to pick a directory on
+  desktop app in your browser). **Local folder** prompts you to pick a directory on
   this device — its grant is remembered in IndexedDB, and if the browser
   later asks again a **Reconnect folder** button re-grants it. **iCloud**
   needs no connect step at all: it rides your signed-in Apple account, so
@@ -256,13 +256,12 @@ reload always returns to your real lists.
 ## OAuth credentials
 
 The Dropbox backend uses a **public client ID**
-embedded in the bundle. No client secret is involved — these providers'
-PKCE / GIS-token flows are designed for static apps. They're read from
-a build-time env var (`VITE_DROPBOX_APP_KEY`); an
-unset key disables that backend in the picker. If you fork the repo,
-register your own apps (see the setup notes in `src/storage/dropbox/` and
-`src/storage/gdrive/`), set the env vars, and add your deployment origin
-to each provider's allowed JavaScript origins / redirect URIs.
+embedded in the bundle. No client secret is involved — Dropbox's PKCE flow
+is designed for static apps. It is read from a build-time env var
+(`VITE_DROPBOX_APP_KEY`); an unset key disables that backend in the picker.
+If you fork the repo, register your own Dropbox app (see the setup notes in
+`src/storage/dropbox/`), set the env var, and add your deployment origin to
+its redirect URIs.
 
 The phone app signs in through an authentication session that returns on
 `<bundle id>://oauth` — the URL scheme is the app's bundle id — so the Dropbox
