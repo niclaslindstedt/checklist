@@ -7,8 +7,8 @@
 // `VITE_NATIVE=1` is what makes it the phone build (`../../vite.config.ts`):
 // no service worker and no update prompt — the app changes only when a new
 // build ships — and none of what only the website carries: the Donate link,
-// the achievements, and every link back to the source (the owner's decision
-// D17). `APP_DISPLAY_NAME`, the store listing's name, passes through to the
+// the achievements, and every link back to the source (the owner's
+// decision). `APP_DISPLAY_NAME`, the store listing's name, passes through to the
 // build, which calls the app by it; a `production` bundle is headed for a
 // store, so it refuses to be built without it.
 //

@@ -2,7 +2,7 @@
 // link (App Store guideline 3.1.1 — `DONATE_URL` in `src/build-env.ts`), the
 // achievements (`ACHIEVEMENTS_BUILT`, the same file), any link back to the
 // source or the website's address (`IS_WEBSITE`, the same file — the owner's
-// decision D17, strictly), or a service worker (`sw.js`, `workbox-*.js`: an
+// decision, strictly), or a service worker (`sw.js`, `workbox-*.js`: an
 // app serves files already on the device and updates by a new binary, so a
 // worker would only stand a staler cache in front of them). All are compiled
 // out of the phone build (`VITE_NATIVE=1`) and the desktop build

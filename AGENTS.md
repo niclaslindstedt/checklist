@@ -44,7 +44,7 @@ may carry a payment link outside Apple's; `DONATE_URL` in `src/build-env.ts`)
 and the achievements (`ACHIEVEMENTS_BUILT`, likewise the website's alone),
 and every link back to the source — repository, issues, releases, sponsor — or
 to the website's address (`IS_WEBSITE`; strictly forbidden in any app build,
-the owner's decision D17): no `niclaslindstedt` anywhere in the bundle.
+the owner's decision): no `niclaslindstedt` anywhere in the bundle.
 `scripts/website-only.mjs` refuses a bundle that carries any of these.
 A desktop build updates by being replaced. The package's name and identifier come from
 `APP_DISPLAY_NAME` and `APP_BUNDLE_ID` at packaging time
