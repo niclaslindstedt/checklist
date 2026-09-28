@@ -121,7 +121,7 @@ You don't have to build from a laptop. Two **manual-only** workflows drive
 EAS from CI (they never run on push/PR, so no build is ever queued unless a
 maintainer asks — this is the cost control):
 
-- **Native build (EAS)** (`.github/workflows/native-build.yml`) — dispatch
+- **Native build (EAS)** (`.github/workflows/native.yml`) — dispatch
   with a `platform` (all/android/ios), a `profile`
   (development/preview/production), and an optional `submit` toggle
   (production only). It queues the build on EAS and exits (`--no-wait`), so it

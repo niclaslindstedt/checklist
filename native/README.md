@@ -209,7 +209,7 @@ the app's own URL and hands that URL back.
   must be listed under **Redirect URIs** on the Dropbox app (see
   `RELEASING.md`), or Dropbox refuses the sign-in.
 - Dropbox appears in the app only when the embedded bundle was built with
-  `VITE_DROPBOX_APP_KEY`; `native-build.yml` passes it (and
+  `VITE_DROPBOX_APP_KEY`; `native.yml` passes it (and
   `VITE_DROPBOX_APP_FOLDER`) to the bundle step from the repository secrets.
 
 `tests/native/auth-session-bridge.test.ts` runs the injected script against the

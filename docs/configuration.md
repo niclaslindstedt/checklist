@@ -282,7 +282,7 @@ For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
 `VITE_DROPBOX_APP_FOLDER` are stored as GitHub Actions **repository
 secrets** and threaded into every build slot (production, `/preview/`,
 and `/branch/`) by `.github/workflows/pages.yml` — and the two Dropbox ones
-into the phone app's embedded bundle by `.github/workflows/native-build.yml`.
+into the phone app's embedded bundle by `.github/workflows/native.yml`.
 A fork enables the cloud backends by adding the same-named secrets to its own
 repository.
 

@@ -5,7 +5,7 @@
 #
 #   native/webroot/ is NOT ignored. It is the built web app — the checklist
 #   itself — produced by `npm run build:native` at the repo root (in CI by
-#   native-build.yml, which bakes the Dropbox key into it). It is gitignored as
+#   native.yml, which bakes the Dropbox key into it). It is gitignored as
 #   build output; left out of the upload, the withWebroot config plugin fails
 #   `expo prebuild` on the EAS worker, since it is what copies that tree into
 #   the native projects.

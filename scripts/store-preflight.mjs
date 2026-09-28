@@ -236,7 +236,7 @@ if (existsSync(webroot)) {
     "native/webroot has not been built",
     "`npm run build:native`. It is the copy of the site that ships INSIDE the app, " +
       "which is the whole argument that this is not a browser pointed at a website " +
-      "(guideline 4.2). native-build.yml builds it before every EAS build.",
+      "(guideline 4.2). native.yml builds it before every EAS build.",
   );
 }
 

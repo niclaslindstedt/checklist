@@ -10,7 +10,7 @@ name: Native submit (EAS)
 # (`--latest`); pass a specific `build_id` to submit a particular one.
 #
 # Requires:
-#   - `EXPO_TOKEN` secret (see native-build.yml).
+#   - `EXPO_TOKEN` secret (see native.yml).
 #   - Store credentials wired into eas.json → submit.production
 #     (Apple appleId/ascAppId/appleTeamId; Android service-account key).
 #     See native/RELEASING.md.

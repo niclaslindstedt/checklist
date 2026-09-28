@@ -46,7 +46,7 @@ jobs:
   # dependency tree, so nothing in the `build` job above touches it. This job
   # is the guard that it still installs from its lockfile and that its
   # sources still compile — cheap, because it never builds a native binary;
-  # that only happens on manual dispatch (see native-build.yml).
+  # that only happens on manual dispatch (see native.yml).
   native:
     runs-on: ubuntu-latest
     defaults:

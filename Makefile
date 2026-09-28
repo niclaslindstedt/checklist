@@ -1,4 +1,4 @@
-.PHONY: demo build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check store-preflight store-metadata store-upload tauri tauri-bundle tauri-clean tauri-fast tauri-fmt tauri-fmt-check tauri-install tauri-lint tauri-package tauri-package-debug tauri-test
+.PHONY: demo build test lint fmt fmt-check shellcheck actionlint changelog clean docs install bench icons icons-check native-install native-bundle native-typecheck native-prebuild store-preflight store-metadata store-upload tauri tauri-bundle tauri-clean tauri-fast tauri-fmt tauri-fmt-check tauri-install tauri-lint tauri-package tauri-package-debug tauri-test
 
 
 build:
@@ -77,6 +77,27 @@ docs:
 
 # ---------------------------------------------------------------------------
 # SHIPPING TO THE STORE (native/store/)
+# ---------------------------------------------------------------------------
+# The phone app (native/) — a thin Expo wrapper with a dependency tree of its
+# own: `make install` and the root `npm ci` do not touch it.
+
+native-install:
+	npm --prefix native ci
+
+# Build the web app into native/webroot/ — the copy the phone app serves — and
+# refuse it if it carries what only the website may. Set APP_DISPLAY_NAME to
+# the listing's name; `ARGS="--profile production"` refuses without it.
+native-bundle:
+	node native/scripts/bundle-web.mjs $(ARGS)
+
+native-typecheck:
+	npm --prefix native run typecheck
+
+# Regenerate native/ios and native/android from app.config.js and the config
+# plugins (bundling first — the withWebroot plugin copies the webroot in).
+native-prebuild:
+	npm --prefix native run prebuild
+
 # ---------------------------------------------------------------------------
 # One authored listing compiles into the files the upload tools read. The
 # RULES are committed; the WORDS are not — see native/store/README.md.

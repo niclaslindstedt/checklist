@@ -51,6 +51,26 @@ A desktop build updates by being replaced. The package's name and identifier com
 (`tauri/scripts/package.mjs`), like the phone app's. See
 [`tauri/README.md`](tauri/README.md).
 
+The phone app in `native/` is an Expo project with a dependency tree of its
+own — `make install` and the root `npm ci` do not touch it:
+
+```sh
+make native-install    # npm --prefix native ci
+make native-bundle     # build the web app (VITE_NATIVE=1) into native/webroot/
+make native-typecheck  # the wrapper's own tsc
+make native-prebuild   # regenerate native/ios + native/android (bundles first)
+```
+
+`native/scripts/bundle-web.mjs` is the one way the phone app's web bundle is
+built: `VITE_NATIVE=1` leaves out the service worker, the update prompt, the
+Donate entry, the achievements and every link back to the source, and the
+script ends with `scripts/website-only.mjs`, which refuses a webroot that still
+carries any of them (or a `sw.js`). A `production` bundle refuses to build
+without `APP_DISPLAY_NAME`. Two dispatch-only workflows ship it:
+`native.yml` bundles the web app and queues an EAS build, and
+`native-submit.yml` resubmits a build that already exists on EAS to TestFlight
+or Play's internal track without spending a new one.
+
 The phone app (`native/`) signs in to Dropbox the third way: it OFFERS the
 page an authentication session at `window.__ossAuthSession`
 (`native/src/authSessionBridge.ts`), and the page's connect asks
