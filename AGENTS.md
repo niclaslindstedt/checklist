@@ -147,7 +147,6 @@ guessing — then record the answer so the next agent doesn't have to.
 | Tests                | `tests/...` (mirror the `src/` path) |
 | Docs update          | `docs/...` |
 | Example template     | `examples/<slug>.json` |
-| LLM prompt           | `prompts/<name>/<major>_<minor>_<patch>.md` (see `prompts/README.md`) |
 | Changelog entry      | `.changes/unreleased/<unix-ts>-<slug>.md` (see `Releases and changelog`) |
 | Feature doc (large feature's "Learn more") | `docs/features/<slug>.md` (see `Releases and changelog` → "Feature docs and Learn more") |
 
@@ -161,14 +160,14 @@ guessing — then record the answer so the next agent doesn't have to.
   is hard to test, that's a signal to make it more testable (extract a pure
   function, inject the dependency), not to skip the test.
 - **All tests live in separate files** — never inline in source files. No test harnesses inside source modules.
-- Test files use the `.test.ts` suffix (e.g. `share.test.ts`) so the stem matches `_?[Tt]ests?$` per §20 of `OSS_SPEC.md`.
+- Test files use the `.test.ts` suffix (e.g. `share.test.ts`), so the stem matches `_?[Tt]ests?$`. Run all of them with `make test`, one with `npx vitest run tests/share/share.test.ts`.
 - Tests live in `tests/`, mirroring the `src/` tree. Use Vitest. Mock the storage layer at the `StorageBackend` interface — never reach into `localStorage` directly from a test.
 - Domain code in `src/domain/` should have unit tests with no DOM. UI tests use Vitest's `jsdom` environment.
 
 ## Source file size
 
-- Non-test source files must stay under **1000 physical lines** (§20.5 of `OSS_SPEC.md`). When a file grows past the limit, prefer splitting by concern (extracting submodules, helpers, or sibling files) over relaxing the cap.
-- A file may opt out by placing `oss-spec:allow-large-file: <reason>` in any comment within its first 20 lines. The reason must be non-empty and motivate why the file genuinely cannot be split (generated code, cohesive state machine, third-party snapshot, inherently dense rule catalogue).
+- Non-test source files must stay under **1000 physical lines**. When a file grows past the limit, prefer splitting by concern (extracting submodules, helpers, or sibling files) over relaxing the cap.
+- A file may opt out by placing `guidelines:allow-large-file: <reason>` in any comment within its first 20 lines. The reason must be non-empty and motivate why the file genuinely cannot be split (generated code, cohesive state machine, third-party snapshot, inherently dense rule catalogue); a marked file is split when next touched.
 
 ## Documentation sync points
 
@@ -315,10 +314,9 @@ three slots into one Pages artifact:
 The base path each slot is built with comes from `VITE_BASE` (`/`,
 `/preview/`, or `/branch/`), read by `vite.config.ts`.
 
-The website is unlisted (OSS_SPEC §11.3.12): every page in every slot carries
-`noindex`, from `index.html`.
-
-oss-spec:unlisted-website: the web build is a testing surface; users install the app from its store listing
+The website is unlisted — a testing surface; people install the app from its
+store listing. Every page in every slot carries `noindex`, from `index.html`,
+and there is no sitemap, `llms.txt`, JSON-LD or canonical link.
 
 > **Storage caveat.** All three slots share one origin, and
 > `localStorage` / `IndexedDB` are per-origin (not per-path), so
@@ -475,15 +473,13 @@ untouched. Reconciling `main` afterwards is the maintainer's job.
 
 ## Maintenance skills
 
-Per §21 of `OSS_SPEC.md`, this repo ships agent skills for keeping drift-prone artifacts in sync with their sources of truth. Skills live under `.agents/skills/<name>/` and are also accessible via the `.claude/skills` symlink.
+This repo ships agent skills for keeping drift-prone artifacts in sync with their sources of truth. Skills live under `.agents/skills/<name>/` and are also accessible via the `.claude/skills` symlink.
 
 | Skill | When to run |
 |---|---|
 | `maintenance`    | When several artifacts have likely drifted at once — umbrella skill that runs every `update-*` skill in the correct order. |
-| `sync-oss-spec`  | Before a release, or any time `OSS_SPEC.md` upstream has likely moved. |
 | `update-docs`    | After any change to the `StorageBackend` interface, user-facing settings, or share-URL format. |
 | `update-readme`  | After any change to install/build commands, the user-visible feature set, or the hosted URL. |
-| `update-prompts` | After any change to an LLM prompt's source of truth. |
 | `update-achievements` | After shipping (or removing) a user-facing feature — keep the achievements catalog and its English/Swedish copy in sync with the feature surface. |
 
 Each skill has a `SKILL.md` (the playbook) and a `.last-updated` file (the baseline commit hash). Run a skill by loading its `SKILL.md` and following the discovery process and update checklist. The skill rewrites `.last-updated` at the end of a successful run, and improves itself in place when it discovers new mapping entries. The `maintenance` skill owns a **Registry** table listing every `update-*` skill — add a row whenever you create a new sync skill.

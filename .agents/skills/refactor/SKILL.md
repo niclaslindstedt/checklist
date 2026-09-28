@@ -122,8 +122,8 @@ still real:
 ```sh
 # Line counts shift; the severity rubric reads them as a proxy for
 # "size of the affected surface". Refresh the count for any file
-# the candidate names. The 1000-line cap (§20.5 of OSS_SPEC.md) is
-# a hard signal here.
+# the candidate names. The 1000-line cap is a hard
+# signal here.
 wc -l <files-the-candidate-touches>
 
 # Grep for the exact smell shape — a candidate that called out
@@ -279,8 +279,8 @@ to it:
 
 - **Largest files first.** `find src -name '*.ts' -exec wc -l {} +
 | sort -rn | head` — read each large file with the rubric in mind.
-  Anything approaching the **1000-line cap** (§20.5 of OSS_SPEC.md)
-  without an `oss-spec:allow-large-file:` opt-out is a standing
+  Anything approaching the **1000-line cap** without a
+  `guidelines:allow-large-file:` opt-out is a standing
   candidate to split by concern.
 - **Per-layer audit.** Read every file in one layer at a time:
   - `src/domain/` — **purity.** Pure functions over the data model

@@ -65,7 +65,7 @@ jobs:
       - run: npx expo-doctor
 
   # Lint workflow YAML with actionlint and shell scripts with
-  # shellcheck (OSS_SPEC §16.1). shellcheck is preinstalled on
+  # shellcheck. shellcheck is preinstalled on
   # ubuntu-latest; actionlint is fetched via its official installer.
   shell-lint:
     runs-on: ubuntu-latest

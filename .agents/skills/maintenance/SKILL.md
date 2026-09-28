@@ -5,7 +5,7 @@ description: "Use when you want to bring every drift-prone artifact in the repo 
 
 # Maintenance
 
-This is the umbrella skill for checklist, mandated by §21.6 of `OSS_SPEC.md`. It does no rewriting itself — it decides which sync skills are stale, runs each one, and reports a combined summary. Use it when you do not know which specific artifact is out of date, or when several have likely drifted at once (for example, after a large merge).
+This is the umbrella skill for checklist. It does no rewriting itself — it decides which sync skills are stale, runs each one, and reports a combined summary. Use it when you do not know which specific artifact is out of date, or when several have likely drifted at once (for example, after a large merge).
 
 ## When to run
 
@@ -19,18 +19,13 @@ Do **not** use this skill for a targeted fix — if you know exactly which artif
 
 The registry is the single source of truth for which sync skills exist in this repo. Every `update-*` directory under `.agents/skills/` must appear here exactly once. New projects start with the entries below; add rows whenever you create a new sync skill.
 
-| Skill | Fixes | Spec sections | Run order |
-|---|---|---|---|
-| `sync-oss-spec`   | Repo contents vs. the latest `OSS_SPEC.md` fetched from GitHub (standalone — no external validator binary) | all structural §§ + §21.5 | 1 — run first so every downstream skill reads the freshest spec |
-| `update-docs`     | `docs/*.md` vs. source of truth                                                                             | §11.1                     | 2 |
-| `update-readme`   | `README.md` vs. current public surface                                                                      | §3                        | 3 |
-| `update-prompts`  | `prompts/**` vs. code and embedded sources                                                                  | §13.5                     | 4 |
-| `update-achievements` | The achievements catalog (`src/achievements/catalog.ts` + `src/i18n/locales/{en,sv}/achievements.ts`) vs. the current user-facing feature surface | §21.6 | 5 |
+| Skill | Fixes | Run order |
+|---|---|---|
+| `update-docs`     | `docs/*.md` vs. source of truth | 1 |
+| `update-readme`   | `README.md` vs. current public surface | 2 |
+| `update-achievements` | The achievements catalog (`src/achievements/catalog.ts` + `src/i18n/locales/{en,sv}/achievements.ts`) vs. the current user-facing feature surface | 3 |
 
-Run order matters:
-
-- `sync-oss-spec` runs **first** so every downstream skill sees the current spec — it may overwrite the local `OSS_SPEC.md` with the upstream copy, which downstream skills then read.
-- The per-artifact skills (`update-docs`, `update-readme`, `update-prompts`, `update-achievements`) run afterwards in dependency order: a skill that reads files another skill rewrites must run *after* that other skill. This project has no command line, so it has no man pages and no `update-manpages` skill.
+Run order matters: a skill that reads files another skill rewrites must run *after* that other skill — the README links into `docs/`, so `update-readme` follows `update-docs`.
 
 ## Discovery process
 

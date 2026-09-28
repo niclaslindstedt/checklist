@@ -8,7 +8,7 @@ description: "Use whenever you want to bring a feature, look, modal, button, com
 checklist, [`budget`](https://github.com/niclaslindstedt/budget), and
 [`notes`](https://github.com/niclaslindstedt/notes) are sibling apps that
 **inspire each other** — same stack (Vite + React 19 + Tailwind v4 +
-`vite-plugin-pwa` + Vitest), same `OSS_SPEC.md` conventions, same `src/`-by-concern
+`vite-plugin-pwa` + Vitest), same repository conventions, same `src/`-by-concern
 layout, same CSS-variable token vocabulary, same i18n (en/sv) + achievements +
 changeset machinery. `notes` in particular is the closest sibling — it shares
 checklist's exact storage layer (the directory adapter, the markdown codec, the

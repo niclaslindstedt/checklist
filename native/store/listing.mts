@@ -41,10 +41,8 @@
 // submits them; the words are authored once, here and in `copy.mts`, because
 // they describe one app.
 //
-// A TypeScript module rather than a YAML catalog, for the reason the rest of
-// this repo's small fixed catalogs are (docs/spec-conformance.md, §24): the
-// tests and the generator read the same typed rows with no schema layer and no
-// parser dependency.
+// A TypeScript module rather than a YAML catalog: the tests and the generator
+// read the same typed rows with no schema layer and no parser dependency.
 //
 // TWO MORE KINDS OF FIELD, NEITHER OF WHICH IS HERE:
 //

@@ -1,6 +1,6 @@
 name: version-bump
 
-# §10.3 — manual-only entry point that computes the next semver and kicks
+# The manual-only entry point that computes the next semver and kicks
 # off the release pipeline. In this repo the Release workflow (release.yml)
 # derives the version from the .changes/unreleased/ fragments and creates
 # the v* tag itself, so this workflow's job is to preview the derived bump

@@ -17,8 +17,8 @@ storage backends (LocalStorage, Dropbox) sit behind one
 `StorageBackend` interface and must stay interchangeable — anything added to
 one works for all, or is a capability the UI can feature-detect.
 
-Non-test source files stay under the 1000-line cap (§20.5 of `OSS_SPEC.md`);
-a file nearing it without an `oss-spec:allow-large-file:` opt-out is a
+Non-test source files stay under the 1000-line cap; a file nearing it
+without a `guidelines:allow-large-file:` opt-out is a
 standing candidate to split by concern.
 
 ## Severity rubric

@@ -5,8 +5,6 @@ description: "Use when the achievements catalog is stale relative to a newly-shi
 
 # Updating the achievements catalog and modal
 
-**Governing spec sections:** §21.6 (achievements are a drift-prone artifact that mirrors the user-facing feature surface).
-
 The achievements system, ported from the budget project, lives in three
 places that must stay in lockstep:
 
