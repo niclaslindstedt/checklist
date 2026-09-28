@@ -299,6 +299,12 @@ trigger, and adds the test. Progress lives in the synced
   off", not "ticked off"; a repeat "comes around", not "round". Identifiers, i18n keys and achievement ids that
   already carry a British spelling (`colours`, `categoriser`) keep it:
   they are keys, and persisted progress refers to them.
+- **The phone app's bridges are pinned from both sides.** Each
+  `native/src/*Bridge.ts` (and the injected script in
+  `native/src/nativeBridgeScript.ts`) has a test under `tests/native/` that
+  runs the native half against the page's real reader — `saveFile`,
+  `getAuthSessionHost`, `src/storage/native-bridge.ts`. Change a name on one
+  side and that test fails.
 - **`src/domain/` is pure.** No imports from `ui/`, `storage/`,
   `window`, `document`, or `fetch`. Enforced by lint rule and CI.
 

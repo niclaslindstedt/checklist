@@ -2,7 +2,8 @@
 // capabilities the WebView otherwise walls off. It has two halves:
 //
 //  1. A tiny JS shim injected into the page *before it loads*
-//     (`buildInjectedBridge`), which defines `window.__native` — the exact
+//     (`buildInjectedBridge`, in the import-free `nativeBridgeScript.ts` so
+//     the root suite can run it), which defines `window.__native` — the exact
 //     shape the web build's `src/storage/native-bridge.ts` reads. Each method
 //     posts a `{ id, method, key, text }` request out through
 //     `window.ReactNativeWebView.postMessage` and parks a promise keyed by
@@ -27,6 +28,7 @@ import { Platform } from "react-native";
 import type { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { getICloudKVS } from "./icloud";
+import { buildInjectedBridge } from "./nativeBridgeScript";
 import { getNotificationHost } from "./notifications";
 import { getWidgetHost } from "./widgets";
 
@@ -55,89 +57,6 @@ function encode(value: unknown): string {
   return JSON.stringify(value ?? null)
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029");
-}
-
-/**
- * Build the JS injected into the page before it loads. Defines
- * `window.__native` with a promise-based API over `postMessage`. `icloud` is
- * present only when `hasICloud` — so the web build feature-detects the
- * capability rather than assuming it from the platform.
- */
-export function buildInjectedBridge(
-  platform: string,
-  hasICloud: boolean,
-  hasWidgets: boolean,
-  hasNotifications: boolean,
-): string {
-  // Kept as one IIFE string: the platform string and the capability flags are
-  // interpolated in; everything else runs verbatim inside the WebView.
-  return `(function () {
-  if (window.__native) return;
-  var pending = {};
-  var seq = 0;
-  var listeners = [];
-  var widgetListeners = [];
-  window.__nativeBridgeResolve = function (id, result) {
-    var p = pending[id];
-    if (p) { delete pending[id]; p.resolve(result); }
-  };
-  window.__nativeBridgeReject = function (id, message) {
-    var p = pending[id];
-    if (p) { delete pending[id]; p.reject(new Error(message || "native bridge error")); }
-  };
-  window.__nativeBridgeChange = function (changedKeys) {
-    for (var i = 0; i < listeners.length; i++) {
-      try { listeners[i](changedKeys); } catch (e) {}
-    }
-  };
-  window.__nativeBridgeWidgetAction = function () {
-    for (var i = 0; i < widgetListeners.length; i++) {
-      try { widgetListeners[i](); } catch (e) {}
-    }
-  };
-  function call(method, key, text) {
-    return new Promise(function (resolve, reject) {
-      var id = ++seq;
-      pending[id] = { resolve: resolve, reject: reject };
-      try {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          __checklistBridge: true, id: id, method: method, key: key, text: text
-        }));
-      } catch (e) { delete pending[id]; reject(e); }
-    });
-  }
-  var icloud = ${hasICloud ? "true" : "false"} ? {
-    load: function (key) { return call("load", key); },
-    save: function (key, text) { return call("save", key, text); },
-    remove: function (key) { return call("remove", key); },
-    getRevision: function (key) { return call("getRevision", key); },
-    subscribe: function (listener) {
-      listeners.push(listener);
-      return function () {
-        var i = listeners.indexOf(listener);
-        if (i >= 0) listeners.splice(i, 1);
-      };
-    }
-  } : undefined;
-  var widgets = ${hasWidgets ? "true" : "false"} ? {
-    publish: function (json) { return call("widgetPublish", "", json); },
-    pending: function () { return call("widgetPending", ""); },
-    subscribe: function (listener) {
-      widgetListeners.push(listener);
-      return function () {
-        var i = widgetListeners.indexOf(listener);
-        if (i >= 0) widgetListeners.splice(i, 1);
-      };
-    }
-  } : undefined;
-  var notifications = ${hasNotifications ? "true" : "false"} ? {
-    getPermission: function () { return call("notificationPermission", ""); },
-    requestPermission: function () { return call("notificationRequest", ""); },
-    publish: function (json) { return call("notificationPublish", "", json); }
-  } : undefined;
-  window.__native = { platform: ${JSON.stringify(platform)}, icloud: icloud, widgets: widgets, notifications: notifications };
-})();
-true;`;
 }
 
 /**
