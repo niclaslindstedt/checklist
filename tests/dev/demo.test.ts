@@ -2,7 +2,8 @@
 // The presentation demo (`VITE_SEED=demo`, src/dev/demo.ts + demoData.ts):
 // held to the app's own formats, to carrying nothing of the device but its
 // look, to dates that never age, and to the premise of each App Store frame —
-// for every day of a year as "now", so the frames hold whenever they're shot.
+// for every day of a year as "now", each at a different hour of the day, so
+// the frames hold whenever they're shot.
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -47,9 +48,11 @@ const DAY = 86_400_000;
 // The day the store's status bars were captured, at the bar's 9:41.
 const SHOT = new Date(2026, 8, 26, 9, 41).getTime();
 
-/** Every moment a year of frames could be shot at: 09:41 on each day. */
+/** A year of moments frames could be shot at: one opening a day, the hour
+ *  rotating with the day (00:41 on the first, 01:41 on the second, …), so
+ *  across the year every hour of the day is walked on some fifteen days. */
 const YEAR = Array.from({ length: 366 }, (_, i) => {
-  const d = new Date(2026, 0, 1 + i, 9, 41);
+  const d = new Date(2026, 0, 1 + i, i % 24, 41);
   return d.getTime();
 });
 
@@ -265,6 +268,12 @@ describe("demoStorage — nothing of the device but its look", () => {
 });
 
 describe("the frames' premises, on every day of a year", () => {
+  it("walks every day of the year, and every hour of the day", () => {
+    expect(new Date(YEAR[0]!).getFullYear()).toBe(2026);
+    expect(new Date(YEAR[365]!).getFullYear()).toBe(2027);
+    expect(new Set(YEAR.map((t) => new Date(t).getHours())).size).toBe(24);
+  });
+
   it("frame 1: opening the app resets the weekly list, with its card, and nothing else", () => {
     for (const now of YEAR) {
       const iso = new Date(now).toISOString();
