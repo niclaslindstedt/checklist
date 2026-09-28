@@ -141,15 +141,15 @@ pins above. No install needed.
 
 ## 6. Verify, ship, close
 
-Run the exact chain CI's `test` job runs (`.github/workflows/ci.yml`):
+Run the exact chain CI's `build` job runs (`.github/workflows/ci.yml`):
 
 ```
-npm run build && npm test && npm run lint && npm run fmt:check && make icons-check
+make fmt-check && make lint && make test && make build && make icons-check
 ```
 
-(`npm run lint` is `eslint . && tsc --noEmit` — it _is_ the typecheck;
-there is no separate `make typecheck`. **CI's `test` job _does_ gate
-`npm run fmt:check`** (`prettier --check .`) — it runs after `lint`. The
+(`make lint` is `eslint . && tsc --noEmit` — it _is_ the typecheck;
+there is no separate `make typecheck`. **CI's `build` job _does_ gate
+`make fmt-check`** (`prettier --check .`) — it runs first. The
 trap: `rm -rf package-lock.json && npm install` floats _every_ dep to
 latest-in-range, not just the Dependabot targets, so a `prettier` patch
 inside its existing caret (e.g. 3.8→3.9, which collapses short union
@@ -197,7 +197,7 @@ package-lock.json` before trusting the trace.
 - New `recommended` lint rules from a major → disable (with a comment),
   don't refactor. `eslint-plugin-react-hooks` 7 adds
   `react-hooks/set-state-in-effect` and `react-hooks/refs`.
-- CI's `test` job **does** gate `fmt:check`. A full lock regen floats
+- CI's `build` job **does** gate `fmt-check`. A full lock regen floats
   `prettier` within its caret (3.8→3.9 reflows short unions / arrow-return
   objects), reformatting preexisting files → `prettier --write` the
   flagged files and commit them (`style:`). This `SKILL.md` is itself

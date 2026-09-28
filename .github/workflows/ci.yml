@@ -18,7 +18,9 @@ permissions:
   packages: read
 
 jobs:
-  test:
+  # The Makefile targets, in the order a contributor runs them — CI calls them
+  # rather than restating their commands.
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,16 +34,16 @@ jobs:
       - run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm run build
-      - run: npm test
-      - run: npm run lint
-      - run: npm run fmt:check
+      - run: make fmt-check
+      - run: make lint
+      - run: make test
+      - run: make build
       # Fail if public/favicon.svg was edited without rerunning
       # `make icons` and committing the regenerated PNG/ICO set.
       - run: make icons-check
 
   # The native wrapper (native/) is a separate Expo app with its own
-  # dependency tree, so nothing in the `test` job above touches it. This job
+  # dependency tree, so nothing in the `build` job above touches it. This job
   # is the guard that it still installs from its lockfile and that its
   # sources still compile — cheap, because it never builds a native binary;
   # that only happens on manual dispatch (see native-build.yml).
