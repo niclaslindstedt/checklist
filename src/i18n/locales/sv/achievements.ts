@@ -72,7 +72,7 @@ const achievements: AchievementsCatalog = {
       name: "Måste-ha",
       condition: "Markera en post som obligatorisk.",
       learnMore:
-        "Obligatoriska poster är de som en lista inte räknas som klar utan — de absolut nödvändiga.",
+        "Högerklicka på en rad (eller håll fingret på den på en pekskärm) och välj ”Markera som obligatorisk”. Obligatoriska poster är de som en lista inte räknas som klar utan — de absolut nödvändiga: var och en bär en liten ”obligatorisk”-etikett, den kan inte arkiveras förrän den är avbockad, och när alla är avbockade får listan en bock bredvid namnet.",
     },
     interiorDesigner: {
       name: "Inredaren",

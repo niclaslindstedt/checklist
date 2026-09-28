@@ -19,6 +19,7 @@ import { useSwipeReveal } from "./hooks/useSwipeReveal.ts";
 import { CHECKLIST_DROP_ATTR } from "./checklist-drag-context.ts";
 import {
   CaretRightIcon,
+  CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
@@ -111,6 +112,7 @@ export function NavItem({
   label,
   active,
   badge,
+  done,
   disabled = false,
   indent = false,
   onClick,
@@ -124,6 +126,9 @@ export function NavItem({
   label: string;
   active: boolean;
   badge?: number;
+  /** A check at the row's end, labelled for screen readers — a list whose
+   *  required items are all checked (`isDone`). */
+  done?: { label: string };
   disabled?: boolean;
   /** Nudge the row right one level — used by lists nested inside a folder. */
   indent?: boolean;
@@ -168,6 +173,16 @@ export function NavItem({
         {icon}
       </span>
       <span className="flex-1">{label}</span>
+      {done && (
+        <span
+          role="img"
+          aria-label={done.label}
+          title={done.label}
+          className="shrink-0 text-accent"
+        >
+          <CheckIcon className="h-4 w-4" />
+        </span>
+      )}
       {badge !== undefined && (
         <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs text-muted tabular-nums">
           {badge}

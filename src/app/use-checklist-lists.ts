@@ -28,6 +28,7 @@ import {
   extractTemplate,
   flattenItems,
   instantiate,
+  isDone,
   nextChecklistName,
   progress,
   removeTemplate as removeTemplateOp,
@@ -72,6 +73,11 @@ export interface ChecklistSummary {
    * is on, so the badge matches the header's checked / total tally.
    */
   remaining: number;
+  /**
+   * Every required item on the list is checked (`isDone`) — the switcher row
+   * shows a check. Absent otherwise, and on a list with no required items.
+   */
+  done?: true;
   /** The folder this list is grouped under, or undefined when ungrouped. */
   folderId?: string;
   /** The list's chosen glyph, so the switcher row draws its own mark. */
@@ -777,6 +783,7 @@ export function useChecklistLists(deps: {
         name: c.name,
         remaining: total - checked,
       };
+      if (isDone(c)) summary.done = true;
       if (c.folderId) summary.folderId = c.folderId;
       if (c.glyph) summary.glyph = c.glyph;
       if (c.color) summary.color = c.color;

@@ -58,6 +58,9 @@ type Props = {
    * marks it as held back.
    */
   sameGate?: boolean;
+  /** The item is **required** — the list isn't done without it. Drawn as a
+   *  small "required" tag at the head of the row. */
+  required?: boolean;
 };
 
 // `ml-16` lines the row up under the item **title**, clearing the caret and
@@ -69,6 +72,7 @@ export function TimingRow({
   deadline,
   recurrence,
   sameGate = false,
+  required = false,
 }: Props) {
   const t = useT();
   const lang = useLang();
@@ -77,10 +81,19 @@ export function TimingRow({
   const status = deadline ? deadlineStatus(deadline, now) : null;
   const summary = recurrence ? recurrenceSummary(recurrence, t, lang) : null;
 
-  if (!held && !deadline && !summary) return null;
+  if (!held && !deadline && !summary && !required) return null;
 
   return (
     <div className="ml-16 flex items-center gap-2 pt-1 pb-0.5 text-[0.7rem] leading-none font-medium tracking-wide">
+      {required && (
+        <span
+          className="shrink-0 text-accent"
+          title={t("app.requiredTagLabel")}
+        >
+          <span aria-hidden>{t("app.requiredTag")}</span>
+          <span className="sr-only">{t("app.requiredTagLabel")}</span>
+        </span>
+      )}
       {held && (
         <span
           className="flex items-center gap-1 truncate text-muted"

@@ -303,11 +303,28 @@ export function moveDisplayedItem<L extends ItemList>(
   return moveItem(checklist, itemId, docIndex, now);
 }
 
+/** The list's required items still on it: active (not archived), and not
+ *  category headers, which group rather than ask to be done. */
+function requiredItems(checklist: ItemList): ChecklistItem[] {
+  return flattenItems(activeItems(checklist)).filter(
+    (it) => it.required && !it.category,
+  );
+}
+
 /** True when every required item is checked (or there are no required ones). */
 export function isComplete(checklist: ItemList): boolean {
-  return flattenItems(checklist.items)
-    .filter((it) => it.required)
-    .every((it) => it.checked);
+  return requiredItems(checklist).every((it) => it.checked);
+}
+
+/**
+ * Whether a list is **done**: it has required items and every one of them is
+ * checked (`isComplete`), whatever the optional ones say. The sidebar row and
+ * the list header show a check for it. A list with no required items is never
+ * "done" this way — it keeps its plain count, as before.
+ */
+export function isDone(checklist: ItemList): boolean {
+  const required = requiredItems(checklist);
+  return required.length > 0 && required.every((it) => it.checked);
 }
 
 /**

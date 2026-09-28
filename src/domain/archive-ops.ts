@@ -15,6 +15,20 @@ import {
 import type { ChecklistItem, ItemList, Snapshot } from "./types.ts";
 
 /**
+ * Whether archiving `item` would take an unchecked **required** item off the
+ * list: the item itself, or any item still active in its subtree (a subtree
+ * travels into the archive with its root). A required item has to be checked
+ * off before it may leave, so the archive verbs refuse it — the swipe springs
+ * back and the menu's Archive says why. A category header is never itself
+ * "required" here: it groups, it isn't a task.
+ */
+export function blocksArchive(item: ChecklistItem): boolean {
+  if (item.archived) return false;
+  if (item.required && !item.checked && !item.category) return true;
+  return item.children?.some(blocksArchive) ?? false;
+}
+
+/**
  * Archive every finished (checked) item still in the active list in one
  * sweep — the bulk counterpart to `setArchived`. Archived items are left
  * untouched (they're already out of the active list). **Category** headers
@@ -27,19 +41,15 @@ export function archiveChecked<L extends ItemList>(
   checklist: L,
   now: string,
 ): L {
-  if (
-    !flattenItems(checklist.items).some(
-      (it) => it.checked && !it.archived && !it.category,
-    )
-  ) {
-    return checklist;
-  }
+  // A finished item whose subtree still holds an unchecked required one stays
+  // put — archiving it would carry that task off with it (`blocksArchive`).
+  const sweeps = (it: ChecklistItem) =>
+    it.checked && !it.archived && !it.category && !blocksArchive(it);
+  if (!flattenItems(checklist.items).some(sweeps)) return checklist;
   return withItems(
     checklist,
     mapTree(checklist.items, (it) =>
-      it.checked && !it.archived && !it.category
-        ? { ...it, archived: true }
-        : it,
+      sweeps(it) ? { ...it, archived: true } : it,
     ),
     now,
   );

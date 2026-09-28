@@ -337,6 +337,29 @@ export function setCategory<L extends ItemList>(
 }
 
 /**
+ * Mark an item **required** or not — a task the list is not done without
+ * (`isDone`), which may not be archived while unchecked (`blocksArchive`). A
+ * no-op (already in the requested state, or no such item) returns the same
+ * list, so it never writes.
+ */
+export function setRequired<L extends ItemList>(
+  checklist: L,
+  itemId: string,
+  required: boolean,
+  now: string,
+): L {
+  const items = updateItem(checklist.items, itemId, (it) => {
+    if (required) return it.required ? it : { ...it, required: true };
+    if (!it.required) return it;
+    const next = { ...it };
+    delete next.required;
+    return next;
+  });
+  if (items === checklist.items) return checklist;
+  return withItems(checklist, items, now);
+}
+
+/**
  * The **category** headers a list currently shows, in document order — every
  * active (non-archived) item flagged `category`, at any nesting depth. An empty
  * array is how a caller tells the list isn't grouped at all: the copy button

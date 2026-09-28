@@ -22,6 +22,7 @@ import {
   addItems as addItemsOp,
   addItemsAfter as addItemsAfterOp,
   archiveChecked as archiveCheckedOp,
+  blocksArchive,
   deleteChecked as deleteCheckedOp,
   deleteItem as deleteItemOp,
   editItem as editItemOp,
@@ -31,6 +32,7 @@ import {
   setAllChecked as setAllCheckedOp,
   setArchived,
   setCategory as setCategoryOp,
+  setRequired as setRequiredOp,
   setItemTiming as setItemTimingOp,
   toggleItem as toggleItemOp,
   type DropMode,
@@ -155,7 +157,19 @@ export interface ChecklistEdits {
    * looking; the step is still recorded so undo can resurrect it.
    */
   removeEmpty: (itemId: string) => void;
+  /**
+   * Archive one item. Refused — with a short warning toast instead of the
+   * archive — while the item, or an item in its subtree, is required and
+   * unchecked (`blocksArchive`): a required task has to be checked off first.
+   */
   archive: (itemId: string) => void;
+  /**
+   * Toggle whether an item is **required** — a task the list isn't done
+   * without, which can't be archived until it is checked. The row's
+   * long-press / right-click menu drives this. A no-op (the id has gone)
+   * leaves the list untouched.
+   */
+  setRequired: (itemId: string) => void;
   /**
    * Toggle whether an item is a **category** header — promote a plain item
    * (offered only on one that has sub-items) or demote a category back to an
@@ -529,11 +543,34 @@ export function useChecklistEdits(deps: {
       // Nothing in a template is ever archived — extraction leaves archived
       // items behind, and the view offers no archive affordance on one.
       if (templateModeRef.current) return;
+      const target = findItem(listRef.current.items, itemId);
+      if (target && blocksArchive(target)) {
+        notify(t("toast.requiredNotArchived"), "warning");
+        return;
+      }
       const label = t("toast.itemArchived", { title: titleOf(itemId) });
       commit(setArchived(listRef.current, itemId, true, now()), label);
       notify(label);
     },
     [commit, notify, titleOf, t],
+  );
+
+  const setRequired = useCallback(
+    (itemId: string) => {
+      const found = findOwner(itemId);
+      if (!found) return;
+      const required = !found.item.required;
+      const next = setRequiredOp(found.checklist, itemId, required, now());
+      if (next === found.checklist) return;
+      const label = required
+        ? t("toast.itemRequired", { title: found.item.title })
+        : t("toast.itemNotRequired", { title: found.item.title });
+      // The required-item trophy unlocks off the derived flag (see the
+      // catalog), so no manual unlock is fired here.
+      commit(next, label);
+      notify(label);
+    },
+    [commit, findOwner, notify, t],
   );
 
   const setCategory = useCallback(
@@ -570,13 +607,17 @@ export function useChecklistEdits(deps: {
 
   const archiveFinished = useCallback(() => {
     if (templateModeRef.current) return;
-    const count = finishedCount();
+    // A finished item still holding an unchecked required one stays behind
+    // (`archiveChecked`), so it doesn't count toward what the toast reports.
+    const count = flattenItems(listRef.current.items).filter(
+      (it) => it.checked && !it.archived && !blocksArchive(it),
+    ).length;
     if (count === 0) return;
     const label = t("toast.itemsArchived", { count });
     commit(archiveCheckedOp(listRef.current, now()), label);
     notify(label);
     unlock("springClean");
-  }, [commit, finishedCount, notify, t]);
+  }, [commit, notify, t]);
 
   const deleteFinished = useCallback(() => {
     if (templateModeRef.current) return;
@@ -637,6 +678,7 @@ export function useChecklistEdits(deps: {
       remove,
       removeEmpty,
       archive,
+      setRequired,
       setCategory,
       archiveFinished,
       deleteFinished,
@@ -658,6 +700,7 @@ export function useChecklistEdits(deps: {
       remove,
       removeEmpty,
       archive,
+      setRequired,
       setCategory,
       archiveFinished,
       deleteFinished,

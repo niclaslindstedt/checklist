@@ -111,6 +111,15 @@ export function ShowcasePage() {
               finished item, ready to be refilled.
             </li>
             <li>
+              <strong className="text-fg-bright">
+                Mark what&apos;s required
+              </strong>{" "}
+              — long-press (or right-click) an item and mark it required: it
+              wears a small &ldquo;required&rdquo; tag, it can&apos;t be
+              archived until it&apos;s checked, and once every required item is
+              checked the list gets a check beside its name.
+            </li>
+            <li>
               <strong className="text-fg-bright">Attach a note</strong> — give
               an item a longer note under its title, written in markdown and
               shown formatted once you open it. A web address in a note is a

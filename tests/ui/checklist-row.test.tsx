@@ -1369,3 +1369,39 @@ describe("ChecklistRow long-press menu (touch)", () => {
     vi.useRealTimers();
   });
 });
+
+describe("ChecklistRow required items", () => {
+  const required: ChecklistItem = {
+    id: "i1",
+    title: "Buy milk",
+    checked: false,
+    required: true,
+  };
+
+  it("tags a required item, with a label for screen readers", () => {
+    renderRow({ item: required });
+    expect(screen.getByText("required")).toBeTruthy();
+    expect(screen.getByText("Required item")).toBeTruthy();
+  });
+
+  it("draws no tag on an optional item", () => {
+    renderRow();
+    expect(screen.queryByText("required")).toBeNull();
+  });
+
+  it("springs an unchecked required item back instead of sliding it off", () => {
+    const onArchive = vi.fn();
+    renderRow({ item: required, onArchive });
+    const fg = foreground();
+    stubPointerCapture(fg);
+
+    dispatchPointer(fg, "pointerdown", { x: 0, y: 0 });
+    dispatchPointer(fg, "pointermove", { x: 120, y: 0 });
+    dispatchPointer(fg, "pointerup", { x: 120, y: 0 });
+
+    // At once, with no slide-off timer: the archive verb refuses it and says
+    // why, and the row is back in place.
+    expect(onArchive).toHaveBeenCalledWith("i1");
+    expect(fg.style.transform).toMatch(/translateX\(0(px)?\)/);
+  });
+});

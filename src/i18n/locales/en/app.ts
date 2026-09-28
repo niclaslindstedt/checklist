@@ -25,6 +25,14 @@ const app = {
   delete: "Delete",
   promoteToCategory: "Promote to category",
   demoteFromCategory: "Remove category",
+  markRequired: "Mark as required",
+  markNotRequired: "Not required",
+  // The small tag on a required item's meta line, and what a screen reader
+  // hears for it.
+  requiredTag: "required",
+  requiredTagLabel: "Required item",
+  // The check beside a list's name once every required item is checked.
+  listDone: "Done — every required item is checked",
   setTiming: "Set timing",
   timing: {
     title: "Timing",

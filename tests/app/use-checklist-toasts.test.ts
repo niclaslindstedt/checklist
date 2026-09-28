@@ -121,6 +121,58 @@ describe("useChecklist action toasts", () => {
     expect(notify).toHaveBeenCalledWith("Restored “eggs”", "success");
   });
 
+  it("marks an item required, refuses to archive it unchecked, then lets it go", async () => {
+    const notify = vi.fn();
+    const adapter = memoryAdapter();
+    const { result } = renderHook(() =>
+      useChecklist(adapter, "bottom", notify),
+    );
+    await act(async () => {});
+
+    act(() => {
+      result.current.addItem("passport");
+    });
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    const id = result.current.items[0]!.id;
+
+    act(() => {
+      result.current.setRequired(id);
+    });
+    await waitFor(() => expect(result.current.items[0]?.required).toBe(true));
+    expect(notify).toHaveBeenCalledWith("“passport” is required");
+    expect(result.current.checklists[0]?.done).toBeUndefined();
+
+    // Unchecked, it stays on the list and the toast says why.
+    notify.mockClear();
+    act(() => {
+      result.current.archive(id);
+    });
+    expect(notify).toHaveBeenCalledWith("Required — check it first", "warning");
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.archivedGroups).toHaveLength(0);
+
+    // Checked, the list is done — and the item may be archived.
+    act(() => {
+      result.current.toggle(id);
+    });
+    await waitFor(() => expect(result.current.checklists[0]?.done).toBe(true));
+    act(() => {
+      result.current.archive(id);
+    });
+    await waitFor(() =>
+      expect(result.current.archivedGroups[0]?.items).toHaveLength(1),
+    );
+
+    // Unmarking it says so.
+    notify.mockClear();
+    act(() => {
+      result.current.setRequired(id);
+    });
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith("“passport” is no longer required"),
+    );
+  });
+
   it("toasts removing a checklist by name", async () => {
     const notify = vi.fn();
     const adapter = memoryAdapter();

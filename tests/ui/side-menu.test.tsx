@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { fireEvent, render, screen, within } from "@testing-library/preact";
 import type { ReactElement } from "react";
 
 import { SideMenu } from "../../src/ui/SideMenu.tsx";
@@ -190,6 +190,27 @@ describe("SideMenu", () => {
     expect(
       screen.getByRole("menuitem", { name: /Packing/ }).textContent,
     ).not.toContain("0");
+  });
+
+  it("checks a list whose required items are all checked", () => {
+    renderMenu({
+      nav: { open: true },
+      checklist: {
+        checklists: [
+          { id: "c1", name: "Trip", remaining: 1, done: true },
+          { id: "c2", name: "Groceries", remaining: 0 },
+        ],
+        activeChecklistId: "c1",
+      },
+    });
+    const trip = screen.getByRole("menuitem", { name: /Trip/ });
+    expect(
+      within(trip).getByRole("img", {
+        name: "Done — every required item is checked",
+      }),
+    ).toBeTruthy();
+    const groceries = screen.getByRole("menuitem", { name: /Groceries/ });
+    expect(within(groceries).queryByRole("img")).toBeNull();
   });
 
   it("draws a checklist's picked glyph tinted with its accent colour", () => {

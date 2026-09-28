@@ -8,7 +8,11 @@ import {
 } from "react";
 
 import { unlock } from "../achievements/bus.ts";
-import { isHeldBack, type DropMode } from "../domain/checklists.ts";
+import {
+  blocksArchive,
+  isHeldBack,
+  type DropMode,
+} from "../domain/checklists.ts";
 import { applyTransforms, type TransformRule } from "../domain/transforms.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { useT } from "../i18n";
@@ -257,7 +261,9 @@ function ChecklistRowImpl({
     if (templateMode) return;
     onArchive(item.id);
   }, [onArchive, item.id, templateMode]);
-  const swipe = useRowSwipe(archive);
+  // An unchecked required item — or one holding such an item beneath it — may
+  // not be archived: the swipe springs back and the archive verb says why.
+  const swipe = useRowSwipe(archive, !templateMode && blocksArchive(item));
   const longPress = useLongPress(
     useCallback((x, y) => onLongPress?.(item.id, x, y), [onLongPress, item.id]),
   );
@@ -563,14 +569,15 @@ function ChecklistRowImpl({
           !desktop && swipe.animating ? "transition-transform duration-200" : ""
         }`}
       >
-        {/* The slim date row above a timed item's title — the muted "not
-            before" gate while it holds, the colour-coded due date, or both.
-            Renders nothing when the item carries neither. */}
+        {/* The slim meta row above the item's title — the "required" tag, the
+            muted "not before" gate while it holds, the colour-coded due date.
+            Renders nothing when the item carries none of them. */}
         <TimingRow
           notBefore={item.notBefore}
           deadline={item.deadline}
           recurrence={item.recurrence}
           sameGate={sameGate}
+          required={Boolean(item.required) && !category}
         />
 
         {/* The whole row line is a pointer target for editing: a click that

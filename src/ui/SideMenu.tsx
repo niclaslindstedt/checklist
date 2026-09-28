@@ -310,6 +310,7 @@ export function SideMenu({
           c.id === activeChecklistId && current === "checklist" && !templateMode
         }
         badge={c.remaining > 0 ? c.remaining : undefined}
+        done={c.done ? { label: t("app.listDone") } : undefined}
         indent={indent}
         onClick={() => {
           selectChecklist(c.id);

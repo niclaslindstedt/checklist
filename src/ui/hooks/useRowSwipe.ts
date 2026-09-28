@@ -8,6 +8,9 @@
 //                   a deliberate two-step so a delete is never one flick).
 //   • swipe RIGHT → archive once past the threshold; the foreground slides
 //                   off and the caller drops the row on the next render.
+//                   A `locked` row (an unchecked required item) springs
+//                   back instead, and `onArchive` runs at once so the
+//                   archive verb can say why it refused.
 //
 // The caller spreads `handlers` onto the sliding foreground element and
 // applies `translateX(offset)` with `animating` gating the CSS transition.
@@ -40,7 +43,7 @@ export interface RowSwipe {
   };
 }
 
-export function useRowSwipe(onArchive: () => void): RowSwipe {
+export function useRowSwipe(onArchive: () => void, locked = false): RowSwipe {
   const [offset, setOffset] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [open, setOpen] = useState(false);
@@ -108,6 +111,11 @@ export function useRowSwipe(onArchive: () => void): RowSwipe {
       setAnimating(true);
       if (traveled >= ARCHIVE_AT) {
         setOpen(false);
+        if (locked) {
+          setOffset(0);
+          onArchive();
+          return;
+        }
         setOffset(e.currentTarget.offsetWidth);
         window.setTimeout(onArchive, ARCHIVE_MS);
         return;
@@ -120,7 +128,7 @@ export function useRowSwipe(onArchive: () => void): RowSwipe {
       setOpen(false);
       setOffset(0);
     },
-    [onArchive],
+    [onArchive, locked],
   );
 
   // Swallow the click that trails a drag (so a swipe never toggles the

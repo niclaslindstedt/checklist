@@ -18,6 +18,11 @@ const app: AppCatalog = {
   delete: "Ta bort",
   promoteToCategory: "Gör till kategori",
   demoteFromCategory: "Ta bort kategori",
+  markRequired: "Markera som obligatorisk",
+  markNotRequired: "Inte obligatorisk",
+  requiredTag: "obligatorisk",
+  requiredTagLabel: "Obligatorisk rad",
+  listDone: "Klar — alla obligatoriska rader är avbockade",
   setTiming: "Ange tidsplan",
   timing: {
     title: "Tidsplan",

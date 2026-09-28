@@ -49,6 +49,7 @@ export {
   archiveChecked,
   archivedByChecklist,
   archivedItems,
+  blocksArchive,
   deleteChecked,
   emptyArchive,
   setArchived,
@@ -66,6 +67,7 @@ export {
   setAllChecked,
   setCategory,
   setItemTiming,
+  setRequired,
   toggleItem,
 } from "./item-ops.ts";
 
@@ -108,6 +110,7 @@ export {
   flattenForDisplay,
   floatDatedToTop,
   isComplete,
+  isDone,
   moveDisplayedItem,
   moveItem,
   moveItemInto,

@@ -80,7 +80,7 @@ const achievements = {
       name: "Non-Negotiable",
       condition: "Mark an item required.",
       learnMore:
-        "Required items are the ones a list can't be considered done without — the don't-leave-without-it essentials.",
+        "Right-click an item (or long-press it on a touchscreen) and choose “Mark as required”. Required items are the ones a list can't be considered done without — the don't-leave-without-it essentials: each wears a small “required” tag, it can't be archived until it's checked, and once every one is checked the list gets a check beside its name.",
     },
     interiorDesigner: {
       name: "Interior Designer",

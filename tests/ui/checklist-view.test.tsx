@@ -874,3 +874,91 @@ describe("ChecklistView category add button", () => {
     expect(addItem).toHaveBeenCalledWith("Bread", "p");
   });
 });
+
+describe("ChecklistView required items", () => {
+  const rowFor = (id: string) =>
+    document.querySelector(`[data-reorder-id="${id}"]`) as HTMLElement;
+
+  it("offers Mark as required in the row menu and fires setRequired", () => {
+    const setRequired = vi.fn();
+    renderView({
+      items: [{ id: "a", title: "Passport", checked: false }],
+      setRequired,
+    });
+    fireEvent.contextMenu(rowFor("a"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Mark as required" }));
+    expect(setRequired).toHaveBeenCalledWith("a");
+  });
+
+  it("offers Not required on a required item", () => {
+    renderView({
+      items: [{ id: "a", title: "Passport", checked: false, required: true }],
+    });
+    fireEvent.contextMenu(rowFor("a"));
+    expect(screen.getByRole("menuitem", { name: "Not required" })).toBeTruthy();
+  });
+
+  it("does not offer the toggle on a category header", () => {
+    renderView({
+      items: [
+        {
+          id: "p",
+          title: "Store",
+          checked: false,
+          category: true,
+          children: [{ id: "k", title: "Milk", checked: false }],
+        },
+      ],
+    });
+    fireEvent.contextMenu(rowFor("p"));
+    expect(
+      screen.queryByRole("menuitem", { name: "Mark as required" }),
+    ).toBeNull();
+  });
+
+  it("checks the header once every required item is checked", () => {
+    const items: ChecklistItem[] = [
+      { id: "a", title: "Passport", checked: true, required: true },
+      { id: "b", title: "Sunglasses", checked: false },
+    ];
+    renderView({
+      items,
+      activeList: { ...namedList("Trip"), items },
+      activeChecklistId: "list-0",
+    });
+    expect(
+      screen.getByRole("img", {
+        name: "Done — every required item is checked",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("shows no check while a required item is open, or with none", () => {
+    const open: ChecklistItem[] = [
+      { id: "a", title: "Passport", checked: false, required: true },
+    ];
+    const { unmount } = renderView({
+      items: open,
+      activeList: { ...namedList("Trip"), items: open },
+      activeChecklistId: "list-0",
+    });
+    expect(
+      screen.queryByRole("img", {
+        name: "Done — every required item is checked",
+      }),
+    ).toBeNull();
+    unmount();
+
+    const plain: ChecklistItem[] = [{ id: "a", title: "Milk", checked: true }];
+    renderView({
+      items: plain,
+      activeList: { ...namedList("Groceries"), items: plain },
+      activeChecklistId: "list-0",
+    });
+    expect(
+      screen.queryByRole("img", {
+        name: "Done — every required item is checked",
+      }),
+    ).toBeNull();
+  });
+});

@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { unlock } from "../achievements/bus.ts";
-import { findItem, flattenForDisplay } from "../domain/checklists.ts";
+import { findItem, flattenForDisplay, isDone } from "../domain/checklists.ts";
 import { archivedTitlePool } from "../domain/suggestions.ts";
 import type { ChecklistItem } from "../domain/types.ts";
 import { APP_NAME } from "../build-env.ts";
@@ -33,7 +33,9 @@ import { useListReorder } from "./hooks/useListReorder.ts";
 import { useReorderFlip } from "./hooks/useReorderFlip.ts";
 import { useSwipeUpReveal } from "./hooks/useSwipeUpReveal.ts";
 import {
+  AlertTriangleIcon,
   ArchiveIcon,
+  CheckIcon,
   ClockIcon,
   FolderIcon,
   TemplateIcon,
@@ -81,6 +83,7 @@ function ChecklistViewImpl() {
     removeEmpty,
     archive,
     setCategory,
+    setRequired,
     archiveFinished,
     deleteFinished,
     unarchive,
@@ -111,6 +114,9 @@ function ChecklistViewImpl() {
   // meaningless for a blueprint branch on `templateMode`.
   const openId = templateMode ? activeTemplate!.id : activeChecklistId;
   const activeName = openList.name || APP_NAME;
+  // Every required item checked — a check beside the name. A list with no
+  // required items (and a template, which has nothing to check) shows none.
+  const done = !templateMode && isDone(openList);
 
   // Which sub-lists are collapsed (children hidden). Local, non-persisted view
   // state — the same shape as a revealed note body: expanded by default, a tap
@@ -268,6 +274,17 @@ function ChecklistViewImpl() {
           onSelect: () => setCategory(id),
         });
       }
+      // A category header groups rather than asks to be done, so it is never
+      // required; every other row (a template's too) can be.
+      if (!target?.category) {
+        menu.push({
+          label: target?.required
+            ? t("app.markNotRequired")
+            : t("app.markRequired"),
+          icon: <AlertTriangleIcon className="h-4 w-4" />,
+          onSelect: () => setRequired(id),
+        });
+      }
       menu.push({
         label: t("app.setTiming"),
         icon: <ClockIcon className="h-4 w-4" />,
@@ -289,7 +306,7 @@ function ChecklistViewImpl() {
       });
       return menu;
     },
-    [t, setCategory, archive, remove, openTiming],
+    [t, setCategory, setRequired, archive, remove, openTiming],
   );
   const openRowMenu = useCallback(
     (id: string, e: React.MouseEvent<HTMLElement>) =>
@@ -522,6 +539,16 @@ function ChecklistViewImpl() {
                 : renameChecklist(openId, next)
             }
           />
+          {done && (
+            <span
+              role="img"
+              aria-label={t("app.listDone")}
+              title={t("app.listDone")}
+              className="shrink-0 text-accent"
+            >
+              <CheckIcon className="h-4 w-4" />
+            </span>
+          )}
         </h1>
         <div className="flex shrink-0 items-center gap-2">
           {/* A template has no progress to report — every box is inert — so

@@ -1601,7 +1601,8 @@ flag without destroying it. `activeItems` / `archivedItems` partition a
 single list into the checklist view and the archive view;
 `archivedByChecklist` rolls the archived items up across the whole
 snapshot into per-list groups for the archive view. Swiping a row right
-archives; Restore in the archive view unarchives. Because the archive
+archives — except an unchecked [required](#required-items) item, which
+springs back; Restore in the archive view unarchives. Because the archive
 spans every list, the restore / delete verbs (`useChecklistEdits`)
 resolve the owning checklist from the document rather than the active
 list.
@@ -1611,7 +1612,8 @@ list.
 `archiveChecked` / `deleteChecked` (`src/domain/checklists.ts`) — the bulk
 counterparts to `setArchived` / `deleteItem`: each sweeps **every finished
 (checked, still-active) item** in one pass, leaving archived items
-untouched. A [**category**](#categories) header is the one exception: both
+untouched. The archive sweep also leaves a finished item whose subtree still
+holds an unchecked [required](#required-items) one. A [**category**](#categories) header is the one exception: both
 sweeps skip it even when it's checked (the delete still recurses into it to
 clear its finished children), so a category stays put to be refilled. Both
 no-op (return the same checklist, so they never write) when nothing sweepable
@@ -1785,8 +1787,40 @@ achievement; a plain sibling reorder keeps **Reshuffle**.
 
 `progress` and `isComplete` (`src/domain/checklists.ts`) — `progress`
 returns checked/total over the visible items (the header count is the
-hook's own `checkedCount`); `isComplete` is true when every `required`
-item is checked. Required-item gating has no UI surface yet.
+hook's own `checkedCount`); `isComplete` is true when every active
+[required](#required-items) item is checked, and `isDone` adds that the list
+has at least one — the **done check** beside the list's name in the header
+and on its sidebar row (`ChecklistSummary.done`). A list with no required
+items is never "done" this way and keeps its plain count.
+
+### Required items
+
+A **required** item is a task the list isn't done without — the passport on a
+packing list. The flag is `Item.required` (`src/domain/types.ts`), toggled by
+`setRequired` (`src/domain/item-ops.ts`) through the `setRequired` edit verb
+(`src/app/use-checklist-edits.ts`), which raises a toast and records one
+undoable step. It is offered from the **row's action menu** — "Mark as
+required" / "Not required" on a right-click or a touch long-press (see
+[Right-click menu](#right-click-menu)) — on any row but a
+[category](#categories) header, in a template too. Three things follow from
+it:
+
+- **The tag.** The row's meta line (`TimingRow`, `src/ui/TimingRow.tsx`, the
+  slim line above the title that also carries the dates) opens with a small
+  "required" tag in the accent colour, labelled "Required item" for screen
+  readers.
+- **No archiving while unchecked.** `blocksArchive`
+  (`src/domain/archive-ops.ts`) is true for an unchecked required item, or
+  any item whose active subtree holds one. The `archive` verb refuses it with
+  a warning toast, "Required — check it first"; the row's swipe
+  (`useRowSwipe`, locked) springs back instead of sliding off and the menu's
+  Archive says the same. The bulk [archive finished](#archive--delete-finished)
+  sweep leaves such a subtree in place.
+- **The done check.** See [Progress / completion](#progress--completion).
+
+It round-trips on the file/cloud backends as a trailing `*(required)*`
+marker in the markdown codec, and the `nonNegotiable` achievement unlocks off
+the flag appearing (the website's only).
 
 ## Templates
 
