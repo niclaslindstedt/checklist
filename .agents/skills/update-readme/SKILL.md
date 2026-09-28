@@ -54,7 +54,7 @@ Extend this table every time you find a new source-of-truth file that feeds the 
 - [ ] Read the current `README.md`
 - [ ] Walk the mapping table and update each affected section
 - [ ] Verify every shell example is still syntactically valid
-- [ ] Run `make test` and the project's own conformance check
+- [ ] Run `make test` and `make lint`
 - [ ] Write the new baseline:
 
       git rev-parse HEAD > .agents/skills/update-readme/.last-updated
