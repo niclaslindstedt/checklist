@@ -143,9 +143,10 @@ jobs:
           npm-token: ${{ secrets.GITHUB_TOKEN }}
           display-name: ${{ secrets.APP_DISPLAY_NAME }}
           bundle-id: ${{ secrets.APP_BUNDLE_ID }}
-          # macOS signing exactly as release.yml does it — so a dispatch here
-          # rehearses the certificate and the notarization credentials without
-          # tagging a version. No certificate means the ad-hoc signature, which
+          # macOS signing exactly as release.yml does it — package-desktop
+          # hands these to the shared .github/actions/apple-signing — so a
+          # dispatch here rehearses the certificate and the notarization
+          # credentials without tagging a version. No certificate means the ad-hoc signature, which
           # is the minimum an arm64 app needs to run at all.
           mac-certificate: ${{ secrets.MAC_CSC_LINK }}
           mac-certificate-password: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
