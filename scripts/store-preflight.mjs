@@ -21,8 +21,9 @@
 // something is genuinely missing; a warning is something that is fine today
 // and has to be true before the listing goes live.
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { join, dirname, relative } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -75,6 +76,29 @@ const fail = (message, hint, gate) =>
 
 const env = nativeEnv(root);
 
+// Where the site's static files live: `pwa/public/` in a workspace layout,
+// `public/` at the root otherwise.
+const publicDir = existsSync(at("pwa", "public"))
+  ? at("pwa", "public")
+  : at("public");
+
+// THE DEPLOYMENT'S COORDINATES, read the way `native/app.config.js` reads
+// them: from `native/identifiers.js`, which takes the listing's name, bundle
+// id and EAS project from the environment and falls back to the project's own
+// name and a development id. It reads `process.env` when it is loaded, so the
+// values in `native/.env` are put there first — the process environment
+// still wins, as it does for every tool that reads the file.
+for (const key of ["APP_DISPLAY_NAME", "APP_BUNDLE_ID", "EAS_PROJECT_ID"]) {
+  if (!process.env[key] && env.value(key)) process.env[key] = env.value(key);
+}
+let identifiers = null;
+let identifiersError = "";
+try {
+  identifiers = createRequire(import.meta.url)(at("native", "identifiers.js"));
+} catch (error) {
+  identifiersError = error instanceof Error ? error.message : String(error);
+}
+
 // ---------------------------------------------------------------------------
 // 1. THE LISTING. The half that is entirely ours, and the half that is
 //    therefore finishable today.
@@ -104,7 +128,8 @@ const run = (script, ...scriptArgs) =>
 
 // THE COPY IS NOT IN THE REPOSITORY, so the first thing to say about a
 // listing is which words it is built from. `native/store/copy.mts` is
-// gitignored — the game is paid on the App Store and open source on GitHub —
+// gitignored — the listing's words are the owner's, and this repository is
+// public —
 // and `copy.example.mts` is a committed skeleton whose strings are
 // placeholders. A submission compiled from the skeleton passes every check in
 // this file and ships a subtitle reading "SUBTITLE — the hook, 30", so the
@@ -167,7 +192,7 @@ for (const [page, why] of [
   ],
   ["support", "Apple requires an http(s) support URL and rejects a mailto:"],
 ]) {
-  const file = at("pwa", "public", page, "index.html");
+  const file = join(publicDir, page, "index.html");
   const url =
     page === "privacy" ? RULES.brand?.privacyUrl : RULES.brand?.supportUrl;
   if (existsSync(file)) {
@@ -201,17 +226,17 @@ if (existsSync(distIndex)) {
   );
 }
 
-const webroot = at("native", "assets", "webroot.zip");
+// The site the app serves from inside itself: a native-flavoured build into
+// `native/webroot/`, which `plugins/withWebroot.js` copies into the binary.
+const webroot = at("native", "webroot", "index.html");
 if (existsSync(webroot)) {
-  ok(
-    `native/assets/webroot.zip present (${(statSync(webroot).size / 1e6).toFixed(1)} MB)`,
-  );
+  ok("native/webroot is built");
 } else {
   warn(
-    "native/assets/webroot.zip has not been built",
-    "`make native-bundle`. It is the copy of the game that ships INSIDE the app, " +
+    "native/webroot has not been built",
+    "`npm run build:native`. It is the copy of the site that ships INSIDE the app, " +
       "which is the whole argument that this is not a browser pointed at a website " +
-      "(guideline 4.2). The `build:*` scripts and the CI workflow bundle it for you.",
+      "(guideline 4.2). native-build.yml builds it before every EAS build.",
   );
 }
 
@@ -228,36 +253,42 @@ if (appleShots > 0) ok(`${appleShots} App Store screenshots staged`);
 else
   warn(
     "no App Store screenshots have been captured",
-    "`make store-shots`. Apple requires at least one per device family, and " +
-      "fastlane uploads text only without them.",
+    "they are taken of the demo (`make demo`) outside this repository and " +
+      "staged into native/store/screenshots/en-US/ — see native/store/README.md. " +
+      "Apple requires at least one per device family, and fastlane uploads text " +
+      "only without them.",
   );
 
-const macShots = pngCount(at("tauri", "store", "screenshots", "mac-2880"));
-if (macShots > 0) ok(`${macShots} Mac App Store screenshots staged`);
-else
-  warn(
-    "no Mac App Store screenshots have been captured",
-    '`make store-shots ARGS="--only mac-2880"`. Apple wants at least one, at one of ' +
-      "its four Mac rasters, and they are DESKTOP frames — a phone screenshot " +
-      "upscaled is the fastest way to look like a port.",
-  );
+// The desktop storefronts' captures are asked for only when the listing
+// ships there (`RULES.storefronts`).
+if (SHIPS.macAppStore) {
+  const macShots = pngCount(at("tauri", "store", "screenshots", "mac-2880"));
+  if (macShots > 0) ok(`${macShots} Mac App Store screenshots staged`);
+  else
+    warn(
+      "no Mac App Store screenshots have been captured",
+      '`make store-shots ARGS="--only mac-2880"`. Apple wants at least one, at one of ' +
+        "its four Mac rasters, and they are DESKTOP frames — a phone screenshot " +
+        "upscaled is the fastest way to look like a port.",
+    );
+}
 
-const steamShots = pngCount(at("tauri", "store", "screenshots"));
-if (steamShots > 0) ok(`${steamShots} Steam screenshots staged`);
-else
-  warn(
-    "no Steam screenshots have been captured",
-    '`make store-shots ARGS="--only steam"`. Valve requires five at 1920×1080.',
-  );
+if (SHIPS.steam) {
+  const steamShots = pngCount(at("tauri", "store", "screenshots"));
+  if (steamShots > 0) ok(`${steamShots} Steam screenshots staged`);
+  else
+    warn(
+      "no Steam screenshots have been captured",
+      '`make store-shots ARGS="--only steam"`. Valve requires five at 1920×1080.',
+    );
+}
 
 // The icon set every storefront reads, and the one artifact here that is
 // generated from the app's own mark rather than drawn.
-const icons = [
-  "icons/pwa-512.png",
-  "icons/apple-touch-icon-180.png",
-  "og.png",
-].filter((f) => !existsSync(at("pwa", "public", f)));
-if (icons.length === 0) ok("the icon set and the share card are generated");
+const icons = ["pwa-512x512.png", "apple-touch-icon-180x180.png"].filter(
+  (f) => !existsSync(join(publicDir, f)),
+);
+if (icons.length === 0) ok("the icon set is generated");
 else warn(`missing generated art: ${icons.join(", ")}`, "`make icons`");
 
 // ---------------------------------------------------------------------------
@@ -269,7 +300,10 @@ section("APP RECORD");
 const easJson = JSON.parse(readFileSync(at("native", "eas.json"), "utf8"));
 const iosSubmit = easJson.submit?.production?.ios ?? {};
 
-if (!env.exists) {
+// The file is one home for the review phone and the API key, not the only
+// one — the environment serves as well — so it is asked for only when
+// something it would hold is missing.
+if (!env.exists && (!phone || ascCredentials(root).missing.length > 0)) {
   warn(`${rel(env.file)} does not exist`, "cp native/.env.example native/.env");
 }
 
@@ -294,33 +328,46 @@ if (/^[A-Z0-9]{10}$/i.test(String(iosSubmit.appleTeamId ?? ""))) {
   );
 }
 
-// THE BUNDLE ID IS DEFINED ONCE AND REPEATED ONCE. app.config.js owns it; the
-// fastlane Appfile restates it and cannot import a JavaScript module, so a
-// drift would upload this listing onto a different app. Checked rather than
-// derived, for exactly that reason.
-const appConfig = readFileSync(at("native", "app.config.js"), "utf8");
-const configBundle = /const BUNDLE_ID = "([^"]+)"/.exec(appConfig)?.[1];
+// THE BUNDLE ID IS A DEPLOYMENT COORDINATE, not a literal: `app.config.js`
+// takes it from `identifiers.js`, which reads APP_BUNDLE_ID and falls back to
+// a development id. The fastlane Appfile is Ruby and cannot import a
+// JavaScript module, so it reads the same variable — or, in an older layout,
+// restates the id, and then the two are compared: a drift would upload this
+// listing onto a different app.
 const appfilePath = at("native", "fastlane", "Appfile");
-if (!configBundle) {
-  fail("could not read BUNDLE_ID from native/app.config.js");
+if (!identifiers) {
+  fail(
+    "native/identifiers.js could not be loaded",
+    identifiersError ||
+      "it is where app.config.js reads the listing's name and bundle id.",
+  );
 } else if (!existsSync(appfilePath)) {
   warn(
     `no ${rel(appfilePath)} — fastlane cannot upload without one`,
-    `it names the same bundle id app.config.js does (${configBundle}) plus the ` +
-      "Apple account. See native/store/README.md.",
+    `it names the same bundle id app.config.js does (${identifiers.BUNDLE_ID}) ` +
+      "plus the Apple account. See native/store/README.md.",
     "apple",
   );
 } else {
-  const appfileBundle = /app_identifier\("([^"]+)"\)/.exec(
-    readFileSync(appfilePath, "utf8"),
-  )?.[1];
-  if (appfileBundle === configBundle)
-    ok(`bundle id ${configBundle}, agreed by fastlane`);
-  else {
+  const appfile = readFileSync(appfilePath, "utf8");
+  const appfileBundle = /app_identifier\("([^"]+)"\)/.exec(appfile)?.[1];
+  const readsEnv = /ENV(?:\.fetch\(|\[)"APP_BUNDLE_ID"/.test(appfile);
+  if (identifiers.BUNDLE_ID === identifiers.DEV_BUNDLE_ID) {
+    warn(
+      `APP_BUNDLE_ID is not set — this checkout builds as ${identifiers.DEV_BUNDLE_ID}`,
+      "the store build takes the listing's id from the APP_BUNDLE_ID secret (and " +
+        "EAS environment variable); `make store-upload` needs it too, with " +
+        `APP_DISPLAY_NAME, in ${rel(env.file)} or the environment.`,
+    );
+  } else if (readsEnv || appfileBundle === identifiers.BUNDLE_ID) {
+    ok(
+      `bundle id ${identifiers.BUNDLE_ID}, ${readsEnv ? "read by fastlane from the same APP_BUNDLE_ID" : "agreed by fastlane"}`,
+    );
+  } else {
     fail(
-      `bundle id drift: app.config.js says ${configBundle}, the Appfile says ${appfileBundle}`,
-      "the Appfile is Ruby and cannot import app.config.js, so the two are kept in " +
-        "step by hand. app.config.js is the source of truth.",
+      `bundle id drift: app.config.js says ${identifiers.BUNDLE_ID}, the Appfile says ${appfileBundle}`,
+      "the Appfile is Ruby and cannot import identifiers.js; read APP_BUNDLE_ID " +
+        'there (`app_identifier(ENV.fetch("APP_BUNDLE_ID"))`) as the builds do.',
     );
   }
 }
@@ -371,16 +418,12 @@ if (
   );
 }
 
-if (
-  /EAS_PROJECT_ID = process\.env/.test(appConfig) &&
-  !env.value("EAS_PROJECT_ID")
-) {
-  warn(
-    "the EAS project id is not pinned in app.config.js and is not in the environment",
-    "run `eas init` in native/, then pin the id it prints as EAS_PROJECT_ID in " +
-      "app.config.js so nobody needs the variable.",
-    "apple",
-  );
+// The EAS project is a deployment coordinate too, never committed: the
+// `native` workflow reads the repository secret and EAS its own environment
+// variable. Unset here, a local `eas build` just asks which project — so it is
+// reported when present and not asked for when absent.
+if (identifiers?.EAS_PROJECT_ID) {
+  ok(`EAS project ${identifiers.EAS_PROJECT_ID}`);
 }
 
 // ---------------------------------------------------------------------------
