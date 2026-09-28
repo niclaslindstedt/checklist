@@ -11,8 +11,7 @@ export const SITE_NAME = "checklist";
 
 export const SITE_DESCRIPTION =
   "A fast, local-first checklist PWA that works offline with no account. " +
-  "Reusable templates, shareable links, and optional encrypted Google " +
-  "Drive or Dropbox sync.";
+  "Reusable templates, shareable links, and optional encrypted Dropbox sync.";
 
 export const SITE_LANGUAGE = "en";
 

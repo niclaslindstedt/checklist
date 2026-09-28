@@ -573,11 +573,11 @@ export default defineConfig({
             "**/opendyslexic-*.woff2",
           ],
           cleanupOutdatedCaches: true,
-          // No runtime caching for the cloud-storage hosts (Dropbox / Google
-          // Drive). The service worker must NOT intercept those API calls:
+          // No runtime caching for the cloud-storage host (Dropbox). The
+          // service worker must NOT intercept those API calls:
           //
           // 1. They are almost all authenticated POSTs (Dropbox `list_folder` /
-          //    `download` / `upload`; Drive uploads). A Workbox caching strategy
+          //    `download` / `upload`). A Workbox caching strategy
           //    runs `Cache.put()`, which rejects for non-GET requests — and that
           //    rejection can make the SW's `respondWith` reject, surfacing to the
           //    page as a bare `TypeError: Load failed`. The symptom: cloud sync

@@ -1,8 +1,8 @@
 // Markdown codec: turns a domain `Snapshot` into a set of individual
 // markdown files (one per checklist, one per template) and back. This is
-// what makes the file-based backends (local folder, Dropbox, Google
-// Drive) store human-readable, tool-interoperable `.md` files instead of
-// one opaque JSON blob — open a checklist in any editor, render it on
+// what makes the file-based backends (local folder, Dropbox) store
+// human-readable, tool-interoperable `.md` files instead of one opaque
+// JSON blob — open a checklist in any editor, render it on
 // GitHub, or commit it to git and the standard `- [ ]` / `- [x]` task
 // syntax just works.
 //

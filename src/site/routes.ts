@@ -136,16 +136,16 @@ export const PRIVACY_ROUTE: RouteHead = {
 };
 
 // The `/home` showcase: a no-login marketing page that identifies the app,
-// describes what it does, and explains why it requests Dropbox / Dropbox
-// access — the page linked as the "app homepage" on the OAuth consent screen.
+// describes what it does, and explains why it requests Dropbox access —
+// the page linked as the "app homepage" on the OAuth consent screen.
 // Served from `dist/home/index.html` by the `emit-showcase-alias` plugin in
 // `vite.config.ts`; `main.tsx` mounts `ShowcasePage` for the `/home` path.
 export const SHOWCASE_ROUTE: RouteHead = {
   path: "/home/",
   title: "checklist — what it does & why it asks for access",
   description:
-    "What checklist does, where your data lives, and why it requests Google " +
-    "Drive or Dropbox access — only when you turn on optional cloud sync.",
+    "What checklist does, where your data lives, and why it requests " +
+    "Dropbox access — only when you turn on optional cloud sync.",
   ogType: "website",
   noscriptBody: noscript("checklist — a local-first checklist PWA", [
     "checklist is a fast, local-first checklist and template app that runs entirely in your browser, works offline, and needs no account. By default your lists are stored only on your device and never leave it. You can optionally turn on cloud sync, at which point — and only then — the app asks for access to an app-specific folder in your Dropbox, purely to save and load your own lists across your devices.",
