@@ -12,6 +12,57 @@ changelog").
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-17
+
+### Added
+
+- **Count categories** — The checked / total counter and the sidebar's badge now leave category headers out, so a grouped list finishes at n/n — Settings → Lists → "Count categories" puts them back.
+- **Transforms** — Settings → Transform lets each namespace have its own rules that rewrite how your items read — turning a reference like `#134` into a link to that issue, swapping one phrase for another, or masking a code as `076****123` — without changing the text your lists actually store. [Learn more](feature:transforms)
+- **Not before** — An item can now be held back until a day you choose: its checkbox stays shut and it waits at the bottom of the list under a plain gray date saying when it opens up, set from the deadline sheet — now renamed **Timing** — which won't offer a due date earlier than that day.
+- **Date sorting** — Items with a due date now lead the list and held-back items sink below the rest of your open work, both soonest-first and both switchable in Settings → Lists.
+- **Scheduled resets** — Swipe a list right in the sidebar (or right-click it) and tap the clock to make it uncheck itself on a schedule — every so many days, weeks or months, or on chosen weekdays, at a time of day you pick — optionally popping the fresh list up the next time you open the app; the template button now lives on that same right swipe. [Learn more](feature:scheduled-resets)
+- **Repeat without a due date** — A repeat no longer needs a deadline to hang on: set one on its own and checking the item off simply rests it until the cadence comes around, when it returns unchecked at the top of the list — and a new **daily** repeat picks the time of day it comes back.
+- **Checklist on the desktop** — Checklist now has a desktop download for Windows, macOS and Linux, attached to every release. It is the same app with a window around it, it needs no network, and it keeps its own checklists on your machine. [Learn more](feature:desktop-app)
+- **Dropbox in the desktop app** — The desktop app can now connect Dropbox: signing in opens your usual browser, and the app picks up the result once you approve.
+- **Required items** — Mark an item required from its menu: it wears a "required" tag, can't be archived until it's checked, and once every required item is checked the list shows a check beside its name.
+- **Hide the menu button in the phone app** — The phone app now offers Settings → General → Show menu button, as the installed web app does: turn it off and swipe in from the screen's edge to open the menu.
+
+### Changed
+
+- **Faster first load** — The app now runs on Preact instead of React, cutting the download it needs before it can show you anything by about a quarter — a shorter wait on a cold start and on every update, and less to store offline.
+- **Instant About and Privacy pages** — The About and Privacy pages are now built as finished pages rather than assembled in your browser, so they appear the moment they load and can be read by link previews and anything else that doesn't run scripts.
+- **Quicker to open** — The app now loads only what it needs to show you your list, fetching dialogs like Settings and What's new the first time you open them — so it starts faster, and a screen you never visit costs you nothing.
+- **Naming a list** — A list you create now opens its name field ready to type, and on a phone pressing a list's name raises the keyboard with it — and a press anywhere in the list puts it away again.
+- **App icon** — The home-screen and launcher icon now sits on a near-black background so it blends in with the other icons on a dark home screen.
+- **The macOS download is signed and notarized** — The macOS app is now signed with a Developer ID certificate and notarized by Apple, so it opens like any other app instead of being refused on first launch until it is allowed in System Settings.
+- **US spelling** — The English interface now spells and speaks the American way — "Color", "Capitalize items", "organize", items you "check off" rather than "tick off", a repeat that "comes around" — to match the App Store listing. The categories guide's shopping list is sorted by the grocery store and the pharmacy rather than by two Swedish chains.
+- **The website asks search engines not to index it** — People should find checklist through its App Store page and apps.agilator.se, so every page of checklist.niclaslindstedt.se now carries a `noindex` robots tag, and the sitemap, structured data and `llms.txt` are gone.
+- **Dates follow your device** — In English, due dates, times, the time fields and the calendar now follow your device's region — "Sep 27", "7:00 AM" and weeks from Sunday in the US, "27 Sept", "07:00" and weeks from Monday in Britain — while Swedish stays Swedish.
+
+### Fixed
+
+- Checking an item off no longer leaves its row stuck open for editing — unstruck, and still behaving as the active row even after you pressed something else — and a checked item now stays locked until you uncheck it, though its note still opens to read.
+- Tapping the add button now raises the keyboard with the new-item field on a phone or tablet, instead of leaving the field focused but the keyboard down until you tapped it a second time.
+- A Dropbox item typed just as the session's access token expired no longer disappears when the app silently reconnects.
+- The **+** on a category header now shows the click pointer on hover, like every other button in a list, instead of the plain arrow.
+- **The privacy policy covers the app as well as the website** — The policy said the app is served by GitHub Pages. That is true of the website; the App Store and Google Play app serves its own copy on the device and sends no such request. The policy now says both, and links to the one the store listing uses.
+- The floating menu button keeps clear of the notch and the home indicator: it can no longer rest or be dragged under the status bar, the Dynamic Island or the home indicator on an iPhone.
+- **The iOS app fills the screen edge to edge, like the installed PWA** — The App Store build framed the page inside the safe area, leaving flat bands above and below it, so the side menu stopped short of the status bar and the home indicator. The page now runs full-bleed on iOS and pads itself around the notch and home indicator exactly as the PWA does.
+- **The iOS app no longer closes at launch** — The wrapper subscribed to iCloud changes through a method the iCloud key-value module does not have, which threw as soon as the page mounted and closed the app. It now listens for the module's change event, so remote iCloud edits reach the list and the app opens.
+
+### Removed
+
+- **Google Drive sync** — Google Drive is no longer one of the places a checklist can be kept. This
+  device, a folder you pick, Dropbox and iCloud remain.
+  
+  If you had Drive connected, the app falls back to this device. Your lists stay
+  in their app folder in your own Drive, where you can read, export or delete
+  them as you would any other file — nothing is removed from your account.
+- **No Donate link in the phone and desktop apps** — The side menu's Donate entry is the website's alone now: the App Store and desktop apps leave it out, link and all, because an app from a store may not point at a payment page outside it.
+- **No achievements in the phone and desktop apps** — Achievements, the trophy row, unlock toasts and their Settings switch are the website's alone now; the App Store and desktop apps leave them out, and anything earned on the website is kept.
+- **No links to the source in the phone and desktop apps** — The App Store and desktop apps no longer link to the source code or its releases: the side menu's source row is the website's alone, and the in-app privacy page gives the support address, support@agilator.se, as its contact. The website keeps its links.
+- **Phone app storage** — The phone app keeps your lists on this device or, on an iPhone or iPad, in your own iCloud — the only two places its Storage settings offer — and a phone that synced them anywhere else now keeps its last copy on the device, leaving the other copy where it was.
+
 ## [1.4.0] - 2026-08-07
 
 ### Added
