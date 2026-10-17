@@ -23,11 +23,17 @@ const {
   ICLOUD_KVS,
 } = require("./identifiers.js");
 
+// The marketing version — what the store shows — is the release's: the
+// Release workflow bumps the root package.json and tags `v<version>` from it,
+// so the phone app reads the same number rather than keeping one of its own.
+// EAS numbers each build itself (`appVersionSource: "remote"` in eas.json).
+const { version: RELEASE_VERSION } = require("../package.json");
+
 module.exports = () => ({
   expo: {
     name: DISPLAY_NAME,
     slug: "checklist",
-    version: "0.1.0",
+    version: RELEASE_VERSION,
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
