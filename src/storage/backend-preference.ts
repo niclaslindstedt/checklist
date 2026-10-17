@@ -6,7 +6,9 @@
 // `backend-preference.ts`, collapsed to a single-user model (the
 // checklist has no accounts) and a thin localStorage shim.
 
+import { DROPBOX_BUILT } from "../build-env.ts";
 import { createLogger } from "../dev/logger.ts";
+import { namespaceLocalKey } from "./namespaces.ts";
 import { isICloudAvailable } from "./native-bridge.ts";
 
 const log = createLogger("backend-pref");
@@ -63,7 +65,14 @@ export function clearRetiredGdriveToken(): void {
 
 export function getBackend(): BackendId {
   const raw = read(BACKEND_KEY);
-  if (raw === "dropbox") return "dropbox";
+  if (raw === "dropbox") {
+    if (DROPBOX_BUILT) return "dropbox";
+    // The phone app no longer offers Dropbox. An install that had it selected
+    // (a test build from before) moves to this device, keeping what it last
+    // synced, and the lists in the user's Dropbox are left as they are.
+    retireDropbox();
+    return "browser";
+  }
   // Dropbox was removed as a backend; a device that had it selected
   // falls through to browser storage, where `adoptRetiredGdriveDocument` in
   // backend-factory.ts has already put its last synced copy.
@@ -76,6 +85,40 @@ export function getBackend(): BackendId {
   // Legacy value "local" predates the rename to "browser" — silently
   // migrate. Any unknown / missing value also falls through to browser.
   return "browser";
+}
+
+const DROPBOX_CACHE_PREFIX = "checklist:cache:dropbox:";
+
+// Move a phone install off Dropbox, once: each namespace's offline copy of
+// its Dropbox lists (`withLocalCache`, the same bytes the device backend
+// reads, encrypted or not) becomes that namespace's device document wherever
+// the device has none, then the choice and the tokens are cleared.
+function retireDropbox(): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const cacheKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(DROPBOX_CACHE_PREFIX)) cacheKeys.push(key);
+    }
+    for (const key of cacheKeys) {
+      const target = namespaceLocalKey(key.slice(DROPBOX_CACHE_PREFIX.length));
+      const cached = JSON.parse(localStorage.getItem(key) ?? "null") as {
+        text?: unknown;
+      } | null;
+      if (
+        localStorage.getItem(target) === null &&
+        typeof cached?.text === "string"
+      ) {
+        localStorage.setItem(target, cached.text);
+        log.info(`adopted the Dropbox copy of [${target}] on this device`);
+      }
+    }
+  } catch (err) {
+    log.warn("could not adopt the Dropbox copy", err);
+  }
+  write(BACKEND_KEY, "browser");
+  clearDropboxTokens();
 }
 
 export function setBackend(backend: BackendId): void {

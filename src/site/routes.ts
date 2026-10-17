@@ -153,6 +153,35 @@ export const SHOWCASE_ROUTE: RouteHead = {
   ]),
 };
 
+// The phone app offers no Dropbox, so the two pages it carries describe the
+// sync it has instead: the user's own iCloud on an iPhone or iPad. Only the
+// description and the <noscript> fallback differ; `vite.config.ts` swaps them
+// in through `routeHeadFor` when it builds the phone bundle.
+const PHONE_COPY: Readonly<
+  Record<string, Pick<RouteHead, "description" | "noscriptBody">>
+> = {
+  [HOME_ROUTE.path]: {
+    description:
+      "A fast, local-first checklist app that works offline. Reusable " +
+      "templates, shareable links, and optional encrypted iCloud sync.",
+  },
+  [PRIVACY_ROUTE.path]: {
+    description:
+      "checklist privacy: local-first by default — no account, no cookies, " +
+      "no analytics, no tracking. Optional iCloud sync only when you choose it.",
+    noscriptBody: noscript("Privacy policy — checklist", [
+      "checklist is a local-first checklist app. It runs entirely on your device: there is no backend of our own, no account, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. On an iPhone or iPad you can optionally keep them in your own iCloud to sync them across your Apple devices — only then are they kept by Apple, under your Apple Account. The project authors never receive them.",
+      "The full privacy policy needs JavaScript to render. Enable JavaScript and reload.",
+    ]),
+  },
+};
+
+/** The head a route gets in this build: the phone app's copy names no Dropbox. */
+export function routeHeadFor(route: RouteHead, isNative: boolean): RouteHead {
+  const phone = isNative ? PHONE_COPY[route.path] : undefined;
+  return phone ? { ...route, ...phone } : route;
+}
+
 export const ROUTES: readonly RouteHead[] = [
   HOME_ROUTE,
   SHOWCASE_ROUTE,

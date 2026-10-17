@@ -16,6 +16,7 @@
 //
 // Ported and pared from the budget project's `dropbox-adapter.ts`.
 
+import { DROPBOX_BUILT } from "../../build-env.ts";
 import { createLogger } from "../../dev/logger.ts";
 import { AuthError, RateLimitError, type StorageAdapter } from "../adapter.ts";
 import {
@@ -64,8 +65,12 @@ const log = createLogger("dropbox");
 // `startDropboxAuth` derives the URI from `window.location.origin` and
 // Dropbox requires an exact match — plus the desktop app's loopback URIs
 // (`connectDropboxLoopback`) and the phone app's `se.agilator.checklist://oauth`
-// (`connectDropboxAuthSession`).
-export const DROPBOX_APP_KEY = import.meta.env.VITE_DROPBOX_APP_KEY ?? "";
+// (`connectDropboxAuthSession`) — kept for the record: the phone app no
+// longer offers Dropbox (`DROPBOX_BUILT` in `src/build-env.ts`), so its build
+// never carries the key, even when the environment sets one.
+export const DROPBOX_APP_KEY = DROPBOX_BUILT
+  ? (import.meta.env.VITE_DROPBOX_APP_KEY ?? "")
+  : "";
 
 export function isDropboxConfigured(): boolean {
   return DROPBOX_APP_KEY.length > 0;

@@ -44,20 +44,11 @@ npm ci
 eas init
 ```
 
-**Dropbox redirect URI.** The phone app signs in to Dropbox through an
-authentication session that returns on `<bundle id>://oauth`. In the Dropbox
-App Console (the app whose key is `VITE_DROPBOX_APP_KEY`) → **Settings → OAuth 2
-→ Redirect URIs**, add:
-
-```
-se.agilator.checklist://oauth
-```
-
-(and `dev.local.checklist://oauth` to sign in from a local dev build). Without
-it Dropbox shows an "invalid redirect_uri" page inside the sheet. The native
-build bakes the Dropbox key into the embedded web bundle from the
-`VITE_DROPBOX_APP_KEY` / `VITE_DROPBOX_APP_FOLDER` repository secrets; a build
-without them offers no Dropbox at all.
+**No Dropbox.** The phone app does not offer Dropbox (the owner's decision):
+`native.yml` passes no Dropbox key to the bundle, and the phone build drops one
+even if it is set. Its lists stay on the device or, on iOS, in the user's own
+iCloud. The Dropbox app's `se.agilator.checklist://oauth` redirect URI is no
+longer used by any build.
 
 ## 1. Set the marketing version
 
@@ -156,8 +147,8 @@ needs the credentials wired into `eas.json` → `submit.production` (steps 4–5
 4. Complete the Play Console listing: short + full description, 512×512 icon,
    1024×500 feature graphic, ≥2 phone screenshots, content-rating
    questionnaire, and the **Data safety** form. Declare: no data collected by
-   us; cloud sync only when the user opts into a backend (Dropbox or
-   Dropbox).
+   us; the lists stay on the device (Android has no iCloud, and the phone app
+   offers no Dropbox).
    Point the privacy-policy URL at `https://checklist.niclaslindstedt.se/privacy`.
 
 ## 5. Apple App Store submission
@@ -174,7 +165,7 @@ needs the credentials wired into `eas.json` → `submit.production` (steps 4–5
 3. Complete the App Store Connect listing: description, keywords, screenshots
    for the required device sizes (6.7", 6.5", and iPad since
    `ios.supportsTablet` is true), the **App Privacy** "nutrition label" (no
-   tracking; any cloud sync goes to the user's own Drive/Dropbox account),
+   tracking; the only sync is the user's own iCloud, which the system does),
    and the privacy-policy
    URL above. Then submit for review.
 

@@ -1,6 +1,6 @@
 # Cloud sync
 
-`checklist` runs entirely in your browser and has no server of its own — so when you sync, your lists go to **your** cloud, not ours. Open **Settings → Storage** and pick **Dropbox**, sign in, and the app keeps your lists in that account from then on, ready to pick up on your next device.
+`checklist` runs entirely in your browser and has no server of its own — so when you sync, your lists go to **your** cloud, not ours. Open **Settings → Storage** and pick **Dropbox**, sign in, and the app keeps your lists in that account from then on, ready to pick up on your next device. They are kept there the way a [local folder](feature:local-folder) keeps them: one markdown file per list, which you can open with any tool.
 
 You can lock your lists down at the same time. Turn on **encryption** with a passphrase and your lists are scrambled (AES-GCM) before they ever leave the device. The passphrase itself never leaves your device and is never stored anywhere — there is no recovery, so if you forget it the data can't be read. After a reload the app asks you to re-enter it before showing your lists. Your appearance and list settings stay readable either way, so the unlock screen still wears your theme — see [local folder](feature:local-folder) for where those live.
 

@@ -11,6 +11,7 @@ import {
   HOME_ROUTE,
   PRIVACY_ROUTE,
   SHOWCASE_ROUTE,
+  routeHeadFor,
   type RouteHead,
   renderHead,
   resolveNoscriptBody,
@@ -179,7 +180,8 @@ const HEAD_ROUTE_RE =
 const NOSCRIPT_RE =
   /<!-- NOSCRIPT_START[\s\S]*?-->[\s\S]*?<!-- NOSCRIPT_END -->/;
 
-function spliceRouteHead(html: string, route: RouteHead): string {
+function spliceRouteHead(html: string, buildRoute: RouteHead): string {
+  const route = routeHeadFor(buildRoute, isNative);
   if (!HEAD_ROUTE_RE.test(html)) {
     throw new Error(
       "checklist-head: HEAD_ROUTE markers missing from index.html — cannot " +

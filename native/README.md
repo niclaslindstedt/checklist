@@ -187,6 +187,12 @@ Info.plist is generated and gitignored.
 
 ## Signing in to Dropbox
 
+**The phone app no longer offers Dropbox** (the owner's decision): the bundle
+is built without it (`DROPBOX_BUILT` in `../src/build-env.ts`), so the Storage
+tab lists this device and, on iOS, iCloud only. The authentication session
+below stays in the wrapper for any later backend that signs in; this is how
+Dropbox used it.
+
 The page's usual Dropbox sign-in is a redirect back to its own origin, and on
 the phone that origin is `http://localhost:<port>` inside the app — Dropbox
 will not redirect there, and consent in Safari would come back to Safari, not
@@ -208,9 +214,9 @@ the app's own URL and hands that URL back.
   for the store build, `dev.local.checklist://oauth` for a local dev build. It
   must be listed under **Redirect URIs** on the Dropbox app (see
   `RELEASING.md`), or Dropbox refuses the sign-in.
-- Dropbox appears in the app only when the embedded bundle was built with
-  `VITE_DROPBOX_APP_KEY`; `native.yml` passes it (and
-  `VITE_DROPBOX_APP_FOLDER`) to the bundle step from the repository secrets.
+- `native.yml` passes no `VITE_DROPBOX_APP_KEY` / `VITE_DROPBOX_APP_FOLDER` to
+  the bundle step, and the phone build drops the key even if the environment
+  sets one.
 
 `tests/native/auth-session-bridge.test.ts` runs the injected script against the
 page's own host validation, so the two halves cannot drift apart silently.

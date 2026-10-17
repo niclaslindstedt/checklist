@@ -11,7 +11,7 @@ at the app-folder root so they travel with the synced/shared folder — see
 
 | Key (in `localStorage`)          | Type                                  | Default       | Effect |
 |----------------------------------|---------------------------------------|---------------|--------|
-| `checklist:backend`              | `"browser" \| "folder" \| "dropbox" \| "icloud"`             | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends (except the local-folder connect, which seeds an empty folder from the current document). `"icloud"` is only honoured inside the iOS native wrapper (feature-detected); a stored `"icloud"` downgrades to `"browser"` on the web build. |
+| `checklist:backend`              | `"browser" \| "folder" \| "dropbox" \| "icloud"`             | `"browser"`   | Which storage backend is active (the **Settings → Storage** tab). Per-device; switching is a pure pointer flip — the dataset is not copied between backends (except the local-folder connect, which seeds an empty folder from the current document). `"icloud"` is only honoured inside the iOS native wrapper (feature-detected); a stored `"icloud"` downgrades to `"browser"` on the web build. `"dropbox"` is never honoured in the phone app, which offers no Dropbox: a stored one becomes `"browser"`, each namespace's offline Dropbox copy becomes its device document where the device has none, and the Dropbox tokens are cleared. |
 | `checklist:dropbox:token`        | string                                | (unset)       | Dropbox OAuth access token. Short-lived; silently refreshed via the refresh token. |
 | `checklist:dropbox:refresh`      | string                                | (unset)       | Dropbox refresh token, used to mint fresh access tokens without re-prompting. |
 | `checklist:encryption`           | `"encrypted" \| "plaintext"`          | `"plaintext"` | Whether stored bytes are wrapped in the AES-GCM envelope before saving. The passphrase itself is **never** stored — it lives in memory for the session only. |
@@ -113,15 +113,15 @@ The **Settings → Storage** tab chooses where your lists are saved and
 whether they're encrypted:
 
 - **Backend** — **This device** (localStorage, the default), **iCloud**,
-  **Local folder** or **Dropbox**. The cloud option
-  appear only when the build was given the matching app key / client id (see
+  **Local folder** or **Dropbox**. **Dropbox** is not in the phone app at all
+  (the owner's decision); on the website and in the desktop app it is enabled
+  only when the build was given its app key (see
   _Build-time configuration_); **Local folder** appears only in browsers
   that support the File System Access API directory picker (Chromium-based
   today); **iCloud** appears only inside the iOS native app (it needs the
   native bridge, so the web build never shows it). Picking a cloud backend
   connects it: Dropbox redirects to its consent screen and returns (in the
-  phone app it opens in a sign-in sheet over the app instead, and in the
-  desktop app in your browser). **Local folder** prompts you to pick a directory on
+  desktop app it opens in your browser). **Local folder** prompts you to pick a directory on
   this device — its grant is remembered in IndexedDB, and if the browser
   later asks again a **Reconnect folder** button re-grants it. **iCloud**
   needs no connect step at all: it rides your signed-in Apple account, so
@@ -259,14 +259,16 @@ The Dropbox backend uses a **public client ID**
 embedded in the bundle. No client secret is involved — Dropbox's PKCE flow
 is designed for static apps. It is read from a build-time env var
 (`VITE_DROPBOX_APP_KEY`); an unset key disables that backend in the picker.
+The phone app offers no Dropbox: `native.yml` passes it no key, and the phone
+build (`VITE_NATIVE=1`) drops the key even when one is set.
 If you fork the repo, register your own Dropbox app (see the setup notes in
 `src/storage/dropbox/`), set the env var, and add your deployment origin to
 its redirect URIs.
 
-The phone app signs in through an authentication session that returns on
-`<bundle id>://oauth` — the URL scheme is the app's bundle id — so the Dropbox
-app must also list **`se.agilator.checklist://oauth`** (and
-`dev.local.checklist://oauth` for local dev builds). See
+The phone app used to sign in through an authentication session that returns
+on `<bundle id>://oauth` — the URL scheme is the app's bundle id — which is why
+the Dropbox app lists **`se.agilator.checklist://oauth`** (and
+`dev.local.checklist://oauth` for local dev builds); no build uses it now. See
 [`native/README.md`](../native/README.md#signing-in-to-dropbox).
 
 ## Build-time configuration
@@ -275,14 +277,15 @@ app must also list **`se.agilator.checklist://oauth`** (and
 |-------------------|---------------------|---------|--------|
 | `VITE_BASE`       | `vite.config.ts`    | `/`     | Public path the bundle is served from. The Pages workflow sets it per slot: `/` for the released production build, `/preview/` for `main`, `/branch/` for the optional feature-branch preview. |
 | `VITE_DONATE_URL` | `src/build-env.ts` | _unset_ | **Website only.** When set to a URL, the side menu shows a **Donate** entry linking to it. Unset or blank hides the entry. The phone build (`VITE_NATIVE=1`) and the desktop build (`VITE_SHELL_BUILD=on`) compile the entry and its URL out whatever this says — a payment link outside Apple's is an App Store rejection (guideline 3.1.1). See [`.env.example`](../.env.example). |
-| `VITE_DROPBOX_APP_KEY` | `src/storage/dropbox/` | _unset_ | Dropbox app key (PKCE public client). Unset hides the Dropbox backend in the picker. |
+| `VITE_DROPBOX_APP_KEY` | `src/storage/dropbox/` | _unset_ | Dropbox app key (PKCE public client). Unset leaves the Dropbox backend disabled in the picker. Ignored by the phone build (`VITE_NATIVE=1`), which offers no Dropbox. |
 | `VITE_DROPBOX_APP_FOLDER` | `src/storage/dropbox/` | `free-checklist` | Name of the Dropbox **App folder** the registered app owns. Display-only — it is the file location shown in the sync-details dialog and the target of the "Open in Dropbox" link; API paths are already relative to the app folder. Set it if your fork's Dropbox app uses a different folder name. |
 
 For the hosted deployment, `VITE_DONATE_URL`, `VITE_DROPBOX_APP_KEY`, and
 `VITE_DROPBOX_APP_FOLDER` are stored as GitHub Actions **repository
 secrets** and threaded into every build slot (production, `/preview/`,
 and `/branch/`) by `.github/workflows/pages.yml` — and the two Dropbox ones
-into the phone app's embedded bundle by `.github/workflows/native.yml`.
+into the desktop app's build. The phone app's embedded bundle gets neither
+(`.github/workflows/native.yml`): it offers no Dropbox.
 A fork enables the cloud backends by adding the same-named secrets to its own
 repository.
 

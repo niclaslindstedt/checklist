@@ -74,16 +74,15 @@ jobs:
       # what carries `native/webroot` to the EAS worker where `expo prebuild`
       # runs. The root `.easignore` is what keeps the artifact in the upload
       # despite being gitignored.
-      # The Dropbox key is baked into the bundle like on the website; without
-      # it the phone app offers no Dropbox at all. APP_DISPLAY_NAME is the
-      # listing name the app calls itself inside, as it is under its icon.
+      # The phone app offers no Dropbox (the owner's decision), so the Dropbox
+      # key and folder are not passed here; the website and the desktop app
+      # keep theirs. APP_DISPLAY_NAME is the listing name the app calls itself
+      # inside, as it is under its icon.
       # `--profile` makes a production bundle refuse to build without the
       # listing's name.
       - name: Bundle the web app
         env:
           APP_DISPLAY_NAME: ${{ secrets.APP_DISPLAY_NAME }}
-          VITE_DROPBOX_APP_KEY: ${{ secrets.VITE_DROPBOX_APP_KEY }}
-          VITE_DROPBOX_APP_FOLDER: ${{ secrets.VITE_DROPBOX_APP_FOLDER }}
           PROFILE: ${{ inputs.profile }}
         run: node native/scripts/bundle-web.mjs --profile "$PROFILE"
 

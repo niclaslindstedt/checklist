@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { DROPBOX_BUILT } from "../../../build-env.ts";
 import { useT } from "../../../i18n";
 import type { BackendId } from "../../../storage/backend-preference.ts";
 import type {
@@ -17,7 +18,8 @@ import {
 import { Section } from "../shared.tsx";
 
 // Storage settings: pick the backend that persists the document (this
-// device / Dropbox) and toggle at-rest encryption.
+// device / iCloud / a local folder / Dropbox) and toggle at-rest encryption.
+// The phone app has no Dropbox option at all (`DROPBOX_BUILT`).
 // Modelled on the budget project's storage tab, pared to the checklist's
 // account-less, single-document model.
 
@@ -69,11 +71,17 @@ export function StorageTab({ storage }: Props) {
       label: t("settings.storage.backendFolder"),
       disabled: !folderAvailable,
     },
-    {
-      value: "dropbox",
-      label: t("settings.storage.backendDropbox"),
-      disabled: !dropboxConfigured,
-    },
+    // Not in the phone app at all; on the website and the desktop app it is
+    // listed always and enabled when the build carries an app key.
+    ...(DROPBOX_BUILT
+      ? [
+          {
+            value: "dropbox" as const,
+            label: t("settings.storage.backendDropbox"),
+            disabled: !dropboxConfigured,
+          },
+        ]
+      : []),
   ];
 
   const onPickBackend = (next: BackendId) => {
@@ -174,7 +182,7 @@ export function StorageTab({ storage }: Props) {
           </div>
         )}
 
-        {backend === "dropbox" && (
+        {DROPBOX_BUILT && backend === "dropbox" && (
           <div className="flex flex-col gap-2">
             <p className="text-xs text-muted">
               {dropboxConnected

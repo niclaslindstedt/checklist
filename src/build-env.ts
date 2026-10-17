@@ -57,6 +57,17 @@ export const DONATE_URL: string | undefined =
 // folds, and everything it guards leaves the bundle.
 export const ACHIEVEMENTS_BUILT: boolean = !(__NATIVE__ || __SHELL_BUILD__);
 
+// Whether this build offers Dropbox as a storage backend at all. The phone app
+// does not (the owner's decision): its lists stay on the device or go to the
+// user's own iCloud, so its Storage tab has no Dropbox option — not a disabled
+// one — and no screen, privacy text or bundled doc names it. The website and
+// the desktop app keep it, offered whenever the build carries an app key
+// (`isDropboxConfigured`) and shown disabled when it does not. Like the
+// constants above it tests the raw define, so in the phone build it is a
+// literal `false` the minifier folds. A phone install that had Dropbox
+// selected falls back to this device (`getBackend`).
+export const DROPBOX_BUILT: boolean = !__NATIVE__;
+
 // Whether this is the website build — the only one that may point back at
 // where the app comes from: the source repository, its issues and releases,
 // and the website's own address (`checklist.niclaslindstedt.se`). The phone

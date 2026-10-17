@@ -2708,7 +2708,8 @@ namespace logo — that slot now belongs to the per-list checklist glyph.)
 ### Storage tab
 
 `src/ui/settings/tabs/storage.tsx` — the UI for picking the backend
-(This device / Dropbox), connecting / disconnecting a
+(This device / iCloud / Local folder / Dropbox — the phone app has no Dropbox
+option at all, `DROPBOX_BUILT`), connecting / disconnecting a
 cloud provider, and turning on at-rest encryption with a passphrase
 (with the too-short / mismatch validation). Deep-linked from the sync
 glyph. Turning encryption on or off is the heaviest thing the tab does
@@ -2801,7 +2802,10 @@ under `/<namespace>/checklists/` (`deleteDropboxNamespace` removes the
 whole folder). Uses PKCE OAuth with refresh tokens and a silent
 access-token refresh on 401 (then `AuthError`); a 429 surfaces as
 `RateLimitError`. `isDropboxConfigured()` gates the connect button on the
-build-time app key. `DROPBOX_APP_FOLDER` names the scoped folder itself
+build-time app key. The phone app offers no Dropbox: `DROPBOX_BUILT`
+(`src/build-env.ts`) leaves the option out of its Storage tab and the key out
+of its bundle, and `getBackend` moves a phone install that had it selected to
+this device, adopting each namespace's offline copy. `DROPBOX_APP_FOLDER` names the scoped folder itself
 (`free-checklist`, overridable at build time with
 `VITE_DROPBOX_APP_FOLDER`): an app-folder-scoped app addresses everything
 relative to that folder, so the name never reaches an API path — it is

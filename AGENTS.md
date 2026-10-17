@@ -5,7 +5,7 @@ repo. `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `GEMINI.md`,
 `.aider.conf.md`, and `.github/copilot-instructions.md` are symlinks to this
 file.
 
-Fleet guidelines: APP_GUIDELINES 1.2.0
+Fleet guidelines: APP_GUIDELINES 2.0.0
 
 ## Build and test commands
 
@@ -63,7 +63,8 @@ make native-prebuild   # regenerate native/ios + native/android (bundles first)
 
 `native/scripts/bundle-web.mjs` is the one way the phone app's web bundle is
 built: `VITE_NATIVE=1` leaves out the service worker, the update prompt, the
-Donate entry, the achievements and every link back to the source, and the
+Donate entry, the achievements, Dropbox (`DROPBOX_BUILT` in
+`src/build-env.ts`) and every link back to the source, and the
 script ends with `scripts/website-only.mjs`, which refuses a webroot that still
 carries any of them (or a `sw.js`). A `production` bundle refuses to build
 without `APP_DISPLAY_NAME`. Two dispatch-only workflows ship it:
@@ -71,7 +72,15 @@ without `APP_DISPLAY_NAME`. Two dispatch-only workflows ship it:
 `native-submit.yml` resubmits a build that already exists on EAS to TestFlight
 or Play's internal track without spending a new one.
 
-The phone app (`native/`) signs in to Dropbox the third way: it OFFERS the
+**The phone app offers no Dropbox** (the owner's decision): its Storage tab
+lists this device and, on iOS, iCloud — no Dropbox option, not even a disabled
+one — and its privacy page, page head and bundled docs name none. `native.yml`
+passes no Dropbox key to the bundle, and the build drops one even if it is set.
+A phone install that had Dropbox selected moves to this device, keeping its
+offline copy (`getBackend`). The website and the desktop app keep Dropbox.
+
+The auth-session plumbing below stays, for any later backend that signs in.
+The phone app (`native/`) signed in to Dropbox the third way: it OFFERS the
 page an authentication session at `window.__ossAuthSession`
 (`native/src/authSessionBridge.ts`), and the page's connect asks
 `getAuthSessionHost()` (`src/storage/auth-session.ts`) first, then

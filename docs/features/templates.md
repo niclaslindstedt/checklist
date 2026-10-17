@@ -87,9 +87,10 @@ itself can be undone.
 ## Where templates live
 
 Templates are stored alongside your checklists, in the same place and by the
-same [sync](feature:cloud-sync) you already use, so they travel to your other
-devices with everything else. On the folder and cloud backends each template is
-its own readable markdown file in a `templates/` folder, next to the
+same sync you already use, so they travel to your other devices with
+everything else. Where your lists are kept as files (see
+[local folder](feature:local-folder)), each template is its own readable
+markdown file in a `templates/` folder, next to the
 `checklists/` folder — so you can open, read, and edit one in any text editor.
 
 Templates sit outside the folder structure your checklists are filed into: they
