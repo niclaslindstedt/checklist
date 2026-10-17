@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import {
   cpSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -117,8 +118,13 @@ describe("phoneMarkdown", () => {
 
 // The next release, written by the release's own collator from every waiting
 // fragment into a copy of CHANGELOG.md — the file What's new will inline once
-// the release lands.
-function nextReleaseChangelog(): string {
+// the release lands. Right after a release nothing waits, and the collator
+// refuses to write an empty release, so there is no next release to check.
+function nextReleaseChangelog(): string | null {
+  const waiting = readdirSync(".changes/unreleased").filter((f) =>
+    f.endsWith(".md"),
+  );
+  if (waiting.length === 0) return null;
   const dir = mkdtempSync(join(tmpdir(), "phone-whats-new-"));
   try {
     cpSync(".changes", join(dir, ".changes"), { recursive: true });
@@ -146,15 +152,16 @@ function whatsNewText(md: string): string {
 describe("What's new in the phone app", () => {
   const released = readFileSync("CHANGELOG.md", "utf8");
   const next = nextReleaseChangelog();
+  const changelogs = next === null ? [released] : [released, next];
 
-  it("covers the waiting fragments that name what the phone lacks", () => {
-    expect(next).toContain("## [99.0.0]");
-    expect(next).toMatch(/Dropbox in the desktop app/);
-    expect(next).toMatch(/Google Drive sync/);
+  it("has history that names what the phone lacks, so the cut is tested", () => {
+    expect(released).toMatch(/Dropbox in the desktop app/);
+    expect(released).toMatch(/Google Drive sync/);
+    if (next !== null) expect(next).toContain("## [99.0.0]");
   });
 
   it("names none of it, today or after the next release", () => {
-    for (const md of [released, next]) {
+    for (const md of changelogs) {
       const phone = appMarkdown(md, true);
       expect(phone).not.toMatch(NOT_ON_PHONE);
       expect(phone).not.toMatch(/\bdrive\b/i);
@@ -168,13 +175,13 @@ describe("What's new in the phone app", () => {
     }
   });
 
-  it("keeps the rest of the next release", () => {
-    const phone = whatsNewText(appMarkdown(next, true));
+  it("keeps the rest of a release", () => {
+    const phone = whatsNewText(appMarkdown(next ?? released, true));
     expect(phone).toMatch(/Phone app storage/);
   });
 
   it("is untouched on the desktop app and the website", () => {
-    for (const md of [released, next]) {
+    for (const md of changelogs) {
       expect(whatsNewText(appMarkdown(md, false))).toMatch(/Dropbox/);
       expect(whatsNewText(md)).toMatch(/Dropbox/);
       expect(whatsNewText(md)).toMatch(/Google Drive/);
