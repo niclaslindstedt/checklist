@@ -64,7 +64,8 @@ make native-prebuild   # regenerate native/ios + native/android (bundles first)
 `native/scripts/bundle-web.mjs` is the one way the phone app's web bundle is
 built: `VITE_NATIVE=1` leaves out the service worker, the update prompt, the
 Donate entry, the achievements, Dropbox (`DROPBOX_BUILT` in
-`src/build-env.ts`) and every link back to the source, and the
+`src/build-env.ts`), the local folder (`LOCAL_FOLDER_BUILT`) and every link
+back to the source, and the
 script ends with `scripts/website-only.mjs`, which refuses a webroot that still
 carries any of them (or a `sw.js`). A `production` bundle refuses to build
 without `APP_DISPLAY_NAME`. Two dispatch-only workflows ship it:
@@ -78,6 +79,14 @@ one — and its privacy page, page head and bundled docs name none. `native.yml`
 passes no Dropbox key to the bundle, and the build drops one even if it is set.
 A phone install that had Dropbox selected moves to this device, keeping its
 offline copy (`getBackend`). The website and the desktop app keep Dropbox.
+**Nor a local folder** (`LOCAL_FOLDER_BUILT`): its WebView has no directory
+picker, so the option is left out rather than shown disabled, the privacy page
+leaves it out, and a stored folder choice reads as this device. What's new and
+the feature docs it carries are loaded through `phoneMarkdown`
+(`src/site/phone-markdown.ts`, applied by `vite.config.ts` to every inlined
+`.md?raw`), which drops each section, list item or paragraph naming Dropbox,
+Google Drive or a local folder — so a feature doc keeps those in their own
+paragraphs, and `CHANGELOG.md` and the fragments are never rewritten for it.
 
 The auth-session plumbing below stays, for any later backend that signs in.
 The phone app (`native/`) signed in to Dropbox the third way: it OFFERS the

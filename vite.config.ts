@@ -23,7 +23,7 @@ import {
   SITE_NAME,
   resolveAppName,
 } from "./src/site/siteConfig.ts";
-import { withoutSourceLinks } from "./src/site/source-links.ts";
+import { appMarkdown } from "./src/site/phone-markdown.ts";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.
@@ -357,19 +357,22 @@ function emitShowcaseAlias(): Plugin {
 // The markdown the app inlines as `?raw` — CHANGELOG.md for What's new, the
 // feature docs its Learn more links open — loses every link back to the
 // source and every line naming the website's address in the phone and desktop
-// builds (`withoutSourceLinks`). A `pre` load hook, so it runs before Vite's
-// own `?raw` loader reads the file.
+// builds (`withoutSourceLinks`), and in the phone build every section, item
+// and paragraph about storage it does not offer (`phoneMarkdown`): the
+// released history and the fragments stay whole, and so does the website's
+// What's new. A `pre` load hook, so it runs before Vite's own `?raw` loader
+// reads the file.
 const INLINED_MARKDOWN =
   /[\\/](?:CHANGELOG|docs[\\/]features[\\/][^\\/]+)\.md\?raw$/;
 
-function stripSourceLinks(): Plugin {
+function appInlinedMarkdown(): Plugin {
   return {
-    name: "strip-source-links",
+    name: "app-inlined-markdown",
     enforce: "pre",
     load(id) {
       if (!INLINED_MARKDOWN.test(id)) return null;
       const md = readFileSync(id.slice(0, -"?raw".length), "utf8");
-      return `export default ${JSON.stringify(withoutSourceLinks(md))};`;
+      return `export default ${JSON.stringify(appMarkdown(md, isNative))};`;
     },
   };
 }
@@ -616,7 +619,7 @@ export default defineConfig({
     // in a native build, so the manifest would describe a cache that never
     // exists.
     !isNative && !isShell && emitPrecacheManifest(),
-    !isWebsite && stripSourceLinks(),
+    !isWebsite && appInlinedMarkdown(),
     !isWebsite && dropWebsiteFiles(),
   ].filter(Boolean),
   define: DEFINE,

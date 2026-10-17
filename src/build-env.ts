@@ -68,6 +68,18 @@ export const ACHIEVEMENTS_BUILT: boolean = !(__NATIVE__ || __SHELL_BUILD__);
 // selected falls back to this device (`getBackend`).
 export const DROPBOX_BUILT: boolean = !__NATIVE__;
 
+// Whether this build offers the local folder as a storage backend at all. The
+// phone app does not: its WebView has no directory picker, so the option could
+// only ever sit there disabled. Its Storage tab leaves it out (not a disabled
+// one), its privacy page does not describe it, and What's new and the feature
+// docs it carries leave out what they say about it (`phoneMarkdown` in
+// `src/site/phone-markdown.ts`). The website and the desktop app keep it,
+// shown disabled where the browser has no directory picker. Like
+// `DROPBOX_BUILT` it tests the raw define, so in the phone build it is a
+// literal `false` the minifier folds. A stored folder choice on a phone
+// install reads as this device (`getBackend`).
+export const LOCAL_FOLDER_BUILT: boolean = !__NATIVE__;
+
 // Whether this is the website build — the only one that may point back at
 // where the app comes from: the source repository, its issues and releases,
 // and the website's own address (`checklist.niclaslindstedt.se`). The phone

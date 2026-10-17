@@ -13,8 +13,15 @@
 // support address rather than GitHub.
 //
 // The phone app offers no Dropbox (`DROPBOX_BUILT`), so its copy names none:
-// there the optional sync is the user's own iCloud on an iPhone or iPad.
-import { APP_NAME, DROPBOX_BUILT, IS_WEBSITE } from "../build-env.ts";
+// there the optional sync is the user's own iCloud on an iPhone or iPad. Nor
+// does it offer a local folder (`LOCAL_FOLDER_BUILT`), so its copy leaves that
+// backend out too.
+import {
+  APP_NAME,
+  DROPBOX_BUILT,
+  IS_WEBSITE,
+  LOCAL_FOLDER_BUILT,
+} from "../build-env.ts";
 import { ArrowLeftIcon } from "./icons.tsx";
 
 const SUPPORT_EMAIL = "support@agilator.se";
@@ -133,12 +140,14 @@ export function PrivacyPage() {
               <code className="text-meta">localStorage</code> and are never
               transmitted anywhere.
             </li>
-            <li>
-              <strong className="text-fg-bright">Local folder</strong> — lists
-              are written as files to a folder you pick on this device, using
-              the browser&apos;s File System Access API. The data stays on your
-              device; the folder-access grant is remembered in IndexedDB.
-            </li>
+            {LOCAL_FOLDER_BUILT && (
+              <li>
+                <strong className="text-fg-bright">Local folder</strong> — lists
+                are written as files to a folder you pick on this device, using
+                the browser&apos;s File System Access API. The data stays on
+                your device; the folder-access grant is remembered in IndexedDB.
+              </li>
+            )}
             {DROPBOX_BUILT ? (
               <li>
                 <strong className="text-fg-bright">Dropbox</strong> — only when

@@ -2708,8 +2708,9 @@ namespace logo — that slot now belongs to the per-list checklist glyph.)
 ### Storage tab
 
 `src/ui/settings/tabs/storage.tsx` — the UI for picking the backend
-(This device / iCloud / Local folder / Dropbox — the phone app has no Dropbox
-option at all, `DROPBOX_BUILT`), connecting / disconnecting a
+(This device / iCloud / Local folder / Dropbox — the phone app has neither a
+Dropbox nor a Local folder option at all, `DROPBOX_BUILT` and
+`LOCAL_FOLDER_BUILT`), connecting / disconnecting a
 cloud provider, and turning on at-rest encryption with a passphrase
 (with the too-short / mismatch validation). Deep-linked from the sync
 glyph. Turning encryption on or off is the heaviest thing the tab does
@@ -2762,7 +2763,9 @@ surfaces a Reconnect cue and falls back to the browser store so editing
 keeps working. Namespaces are subfolders of the picked directory
 (`<picked>/<namespace>/…`). The backend is only offered in browsers that
 expose `showDirectoryPicker` (`isFolderBackendAvailable`, Chromium-only
-today). The adapter is built on the shared **markdown file store** below;
+today), and never in the phone app (`LOCAL_FOLDER_BUILT`), whose WebView has
+no picker: its Storage tab leaves the option out, and `getBackend` reads a
+stored `"folder"` there as this device. The adapter is built on the shared **markdown file store** below;
 per-file `lastModified` timestamps drive conflict detection. The hook's
 `connectFolder` / `reconnectFolder` / `disconnectFolder` own the
 lifecycle (pick + seed, re-grant, mirror-back-to-browser).
@@ -3381,7 +3384,13 @@ Each bullet's inline markdown (the **bold** lead-in, `code` spans) is
 rendered with `renderInlineMarkdown` from the item-note renderer
 (`src/ui/markdown/renderMarkdown.tsx`) rather than printed raw. A bullet
 carrying a `[Learn more](feature:<slug>)` link drills into the matching
-feature doc in place (see "Feature docs / Learn more").
+feature doc in place (see "Feature docs / Learn more"). In the phone and
+desktop builds `vite.config.ts` loads the inlined markdown through
+`appMarkdown` (`src/site/phone-markdown.ts`): both lose their links back to
+the source, and the phone build also loses every section, list item and
+paragraph that names storage it does not offer — Dropbox, Google Drive, a
+local folder (`phoneMarkdown`) — with any heading left empty. `CHANGELOG.md`
+and the fragments are never rewritten; the website's What's new keeps it all.
 
 ### Feature docs / "Learn more"
 

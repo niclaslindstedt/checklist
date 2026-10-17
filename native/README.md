@@ -188,8 +188,9 @@ Info.plist is generated and gitignored.
 ## Signing in to Dropbox
 
 **The phone app no longer offers Dropbox** (the owner's decision): the bundle
-is built without it (`DROPBOX_BUILT` in `../src/build-env.ts`), so the Storage
-tab lists this device and, on iOS, iCloud only. The authentication session
+is built without it (`DROPBOX_BUILT` in `../src/build-env.ts`), and without the
+local folder its WebView could never open (`LOCAL_FOLDER_BUILT`), so the
+Storage tab lists this device and, on iOS, iCloud only. The authentication session
 below stays in the wrapper for any later backend that signs in; this is how
 Dropbox used it.
 

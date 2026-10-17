@@ -6,7 +6,7 @@
 // `backend-preference.ts`, collapsed to a single-user model (the
 // checklist has no accounts) and a thin localStorage shim.
 
-import { DROPBOX_BUILT } from "../build-env.ts";
+import { DROPBOX_BUILT, LOCAL_FOLDER_BUILT } from "../build-env.ts";
 import { createLogger } from "../dev/logger.ts";
 import { namespaceLocalKey } from "./namespaces.ts";
 import { isICloudAvailable } from "./native-bridge.ts";
@@ -76,7 +76,10 @@ export function getBackend(): BackendId {
   // Dropbox was removed as a backend; a device that had it selected
   // falls through to browser storage, where `adoptRetiredGdriveDocument` in
   // backend-factory.ts has already put its last synced copy.
-  if (raw === "folder") return "folder";
+  // The phone app offers no local folder (`LOCAL_FOLDER_BUILT`), and its
+  // WebView could never pick one, so the lists of a phone install with a
+  // stored folder choice are on this device all along: read it as this device.
+  if (raw === "folder") return LOCAL_FOLDER_BUILT ? "folder" : "browser";
   // iCloud is only selectable inside the iOS native wrapper. All three web
   // deploy slots share one origin (and localStorage), so a stored "icloud"
   // preference could otherwise follow the user into a plain browser where the

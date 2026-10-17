@@ -250,7 +250,7 @@ names. Honour these when naming a new file, key, or string.
 | ------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **Service worker** / **app update** / **install** | `usePwaUpdate` (`src/pwa/usePwaUpdate.ts`); manifest + icons in `vite.config.ts`. [→](overview.md#service-worker--app-update) |
 | **Standalone-mobile detection** / **PWA on Android/iOS** / **inside the phone app** | `isStandaloneMobile`, `useStandaloneMobile` (`@niclaslindstedt/oss-framework/pwa`). [→](overview.md#standalone-mobile-detection) |
-| **Changelog** / **what's new**                    | `src/ui/changelog/ChangelogModal.tsx`, `src/ui/changelog/data.ts`, `parseChangelog` (`src/ui/changelog/parse.ts`). [→](overview.md#changelog--whats-new) |
+| **Changelog** / **what's new**                    | `src/ui/changelog/ChangelogModal.tsx`, `src/ui/changelog/data.ts`, `parseChangelog` (`src/ui/changelog/parse.ts`); the app builds' markdown pipeline `appMarkdown` / `phoneMarkdown` (`src/site/phone-markdown.ts`). [→](overview.md#changelog--whats-new) |
 | **Feature doc** / **"Learn more"**                | `docs/features/<slug>.md`; loaded by `FEATURE_DOCS` (`src/ui/changelog/feature-docs.ts`); `feature:<slug>` links handled in `renderMarkdown.tsx`. [→](overview.md#feature-docs--learn-more) |
 | **Privacy page** / **privacy policy**             | `src/ui/PrivacyPage.tsx` (route `/privacy`). [→](overview.md#privacy-page)         |
 | **Showcase page** / **homepage** / **landing page** | `src/ui/ShowcasePage.tsx` (route `/home`); title and description in `SHOWCASE_ROUTE` (`src/site/routes.ts`). [→](overview.md#showcase-page) |

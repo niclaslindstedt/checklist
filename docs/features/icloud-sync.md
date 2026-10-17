@@ -6,4 +6,6 @@ It asks for nothing: iCloud uses Apple's own device-to-device sync, so your list
 
 Because your lists live in a store the system syncs in the background, an edit made on another device flows in on its own — you don't have to pull to refresh, though you still can. The header cloud icon shows the same save status it does for the other sync backends, and tapping it opens the sync details if you ever want to see what's happening.
 
-A couple of things worth knowing. iCloud syncs your **lists**; your appearance settings and your set of [namespaces](feature:namespaces) stay on each device rather than traveling with it, so if you keep several namespaces you'll set them up per device. And iCloud is Apple's key-value store rather than a folder of files, so unlike a [local folder](feature:local-folder) there are no per-list markdown files to open — the trade for needing no account at all.
+A couple of things worth knowing. iCloud syncs your **lists**; your appearance settings and your set of [namespaces](feature:namespaces) stay on each device rather than traveling with it, so if you keep several namespaces you'll set them up per device. And iCloud is Apple's key-value store rather than a folder of files, so there are no per-list markdown files to open — the trade for needing no account at all.
+
+That is where it differs from a [local folder](feature:local-folder), which keeps each list as a markdown file you can open with any tool.

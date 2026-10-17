@@ -56,8 +56,11 @@ export function parseFeatureDoc(slug: string, md: string): FeatureDoc {
 // (`IS_WEBSITE` in `src/build-env.ts`) and an installed app has no use for.
 //
 // The phone app also leaves out the cloud-sync page: it is about Dropbox, which
-// the phone app does not offer (`DROPBOX_BUILT` in `src/build-env.ts`). Its
-// released bullet loses its Learn more the same way.
+// the phone app does not offer (`DROPBOX_BUILT` in `src/build-env.ts`), and the
+// local-folder page, a backend it does not offer either (`LOCAL_FOLDER_BUILT`).
+// Their released bullets lose their Learn more the same way, and the docs it
+// does carry lose what they say about either (`phoneMarkdown`, applied as
+// `vite.config.ts` loads each one).
 const rawDocs = __NATIVE__
   ? import.meta.glob<string>(
       [
@@ -65,6 +68,7 @@ const rawDocs = __NATIVE__
         "!../../../docs/features/achievements.md",
         "!../../../docs/features/desktop-app.md",
         "!../../../docs/features/cloud-sync.md",
+        "!../../../docs/features/local-folder.md",
       ],
       { query: "?raw", import: "default", eager: true },
     )
