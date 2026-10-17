@@ -157,8 +157,11 @@ needs the credentials wired into `eas.json` → `submit.production` (steps 4–5
 ## 5. Apple App Store submission
 
 1. In **App Store Connect**, create the app once and note its **Apple ID**
-   (the numeric `ascAppId`). Fill `appleId`, `ascAppId`, and `appleTeamId`
-   in `eas.json` → `submit.production.ios` (or pass them at submit time).
+   (the numeric `ascAppId`). The record exists, and `eas.json` →
+   `submit.production.ios` already carries its `ascAppId` and the team's
+   `appleTeamId`. `appleId` (the Apple Account's email) stays out of the
+   repository: EAS asks for it at submit time, or an App Store Connect API key
+   stands in for it.
 2. Submit the build:
    ```sh
    eas submit --platform ios --profile production --latest
