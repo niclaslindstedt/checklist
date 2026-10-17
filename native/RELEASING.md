@@ -80,6 +80,11 @@ sync.
 
 ## 3. Build
 
+> **EAS builds on the Node `eas.json` pins** (`build.<profile>.node`, the
+> same major as `.nvmrc`). Without it EAS uses its image's default Node, whose
+> npm 10 reads the lockfile npm 11 wrote differently and stops at `npm ci`
+> ("Missing: typescript@5.9.3 from lock file"). Move the pin with `.nvmrc`.
+
 > **Build the embedded web bundle first.** The wrapper has no UI of its own —
 > it serves `native/webroot`, produced by `npm run build:native` at the repo
 > root. That directory is gitignored, so the root `.easignore` is what keeps it
