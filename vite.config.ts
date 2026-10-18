@@ -23,7 +23,7 @@ import {
   SITE_NAME,
   resolveAppName,
 } from "./src/site/siteConfig.ts";
-import { appMarkdown } from "./src/site/phone-markdown.ts";
+import { withoutSourceLinks } from "./src/site/source-links.ts";
 
 // The GitHub Pages base path is injected by the `pages.yml` workflow via
 // VITE_BASE so the same bundle works at `/`, `/checklist/`, or any subpath.
@@ -356,12 +356,14 @@ function emitShowcaseAlias(): Plugin {
 
 // The markdown the app inlines as `?raw` — CHANGELOG.md for What's new, the
 // feature docs its Learn more links open — loses every link back to the
-// source and every line naming the website's address in the phone and desktop
-// builds (`withoutSourceLinks`), and in the phone build every section, item
-// and paragraph about storage it does not offer (`phoneMarkdown`): the
-// released history and the fragments stay whole, and so does the website's
-// What's new. A `pre` load hook, so it runs before Vite's own `?raw` loader
-// reads the file.
+// source and every line naming the website's address in the desktop build
+// (`withoutSourceLinks`): the released history and the fragments stay whole,
+// and so does the website's What's new. The phone build has no What's new at
+// all (`CHANGELOG_BUILT` in `src/build-env.ts` — the App Store's What's New is
+// its version history): what imports them folds away there before the
+// bundler builds its module graph, so a `.md` it still reaches means an import
+// that escaped the gate, and the build stops on it rather than ship the text.
+// A `pre` load hook, so it runs before Vite's own `?raw` loader reads the file.
 const INLINED_MARKDOWN =
   /[\\/](?:CHANGELOG|docs[\\/]features[\\/][^\\/]+)\.md\?raw$/;
 
@@ -371,8 +373,14 @@ function appInlinedMarkdown(): Plugin {
     enforce: "pre",
     load(id) {
       if (!INLINED_MARKDOWN.test(id)) return null;
+      if (isNative) {
+        this.error(
+          `${id} reached the phone build, which carries no What's new — ` +
+            `gate its import on __NATIVE__ (CHANGELOG_BUILT in src/build-env.ts).`,
+        );
+      }
       const md = readFileSync(id.slice(0, -"?raw".length), "utf8");
-      return `export default ${JSON.stringify(appMarkdown(md, isNative))};`;
+      return `export default ${JSON.stringify(withoutSourceLinks(md))};`;
     },
   };
 }

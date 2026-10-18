@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStandaloneMobile } from "@niclaslindstedt/oss-framework/pwa";
 
 import { unlock, useAchievementWatcher } from "../achievements/index.ts";
-import { ACHIEVEMENTS_BUILT } from "../build-env.ts";
+import { ACHIEVEMENTS_BUILT, CHANGELOG_BUILT } from "../build-env.ts";
 import { useDevSeed } from "../dev/useDevSeed.ts";
 import { displayItems, type DisplayOrder } from "../domain/checklists.ts";
 import { defer } from "../ui/deferred.tsx";
@@ -795,7 +795,10 @@ function AppShell() {
                   onPreviewAppearance={setAppearancePreview}
                   storage={storage}
                 />
-                <ChangelogModalHost />
+                {/* What's new is the website's and the desktop app's alone
+                    (`CHANGELOG_BUILT`): the phone app's history is the App
+                    Store's What's New. */}
+                {CHANGELOG_BUILT && <ChangelogModalHost />}
                 <SearchModalHost />
                 <ResetScheduleModalHost />
                 {resetPopupList && (

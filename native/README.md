@@ -110,10 +110,15 @@ compiled out (`DONATE_URL` in `../src/build-env.ts`), because a payment link
 outside Apple's is an App Store rejection (guideline 3.1.1). The website keeps
 it. Nor does it have **achievements** — no trophy row, unlock toasts, tour or
 Settings switch; `ACHIEVEMENTS_BUILT` in `../src/build-env.ts` compiles the
-catalog, its strings and its "What's new" feature page out, and the website
-keeps them. Nor does it link back to the source — no source row in the menu,
-no GitHub contact on the privacy page (the company's support address instead),
-no releases link or website address in What's new, no social cards or `CNAME`;
+catalog and its strings out, and the website keeps them. Nor does it have
+**What's new** — its version history is the App Store's What's New, so the
+About menu has no What's new entry, and `CHANGELOG_BUILT` in
+`../src/build-env.ts` compiles the modal, `CHANGELOG.md` and every feature doc
+out (the build fails if one is still reached; the build label shows on the
+About menu's privacy row instead). The website and the desktop app keep it.
+Nor does it link back to the source — no source row in the menu, no GitHub
+contact on the privacy page (the company's support address instead), no social
+cards or `CNAME`;
 `IS_WEBSITE` in `../src/build-env.ts` and the website-only plugins in
 `../vite.config.ts` keep every `niclaslindstedt` string out, and the website
 keeps them. `npm run build:native` ends with `scripts/website-only.mjs`, which

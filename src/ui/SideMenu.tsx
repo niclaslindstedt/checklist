@@ -4,6 +4,7 @@ import { flushSync } from "react-dom";
 import {
   ACHIEVEMENTS_BUILT,
   BUILD_LABEL,
+  CHANGELOG_BUILT,
   DONATE_URL,
   IS_WEBSITE,
 } from "../build-env.ts";
@@ -98,8 +99,8 @@ const ABOUT_PLACEMENT: FloatingPlacement = {
 // The Namespace heading carries a cogwheel that opens the combined
 // manage-and-create namespaces dialog. Pinned to
 // the bottom is what used to be the top-right
-// burger menu — settings, "what's new", and the project links (privacy,
-// source with the app version as a subtitle, optional donate), in inverted
+// burger menu — settings, "what's new" (not in the phone app), and the project
+// links (privacy, source with the app version as a subtitle, optional donate), in inverted
 // order so the whole of it sits flush at the foot of the drawer. The drawer
 // itself slides in from its resting edge on open (see the `drawer-*`
 // keyframes in styles/theme.css). The open/current/position state comes
@@ -759,7 +760,7 @@ export function SideMenu({
       {/* The relocated burger menu, fixed at the foot of the drawer: Donate
           (the website only — `DONATE_URL` in build-env.ts),
           the trophy (the website only too — `ACHIEVEMENTS_BUILT`), an "About" dropdown that folds away the project links
-          (what's new / source — the website only, `IS_WEBSITE` / privacy), and Settings pinned last under the
+          (what's new — not the phone app, `CHANGELOG_BUILT` / source — the website only, `IS_WEBSITE` / privacy), and Settings pinned last under the
           thumb. Folded away via the rail above. Now the PWA renders
           fullscreen (no bottom safe-area inset lifting the panel), Settings
           would otherwise sit right on the screen's edge, so the bottom
@@ -813,17 +814,22 @@ export function SideMenu({
         placement={ABOUT_PLACEMENT}
         className="py-1"
       >
-        <MenuButton
-          icon={<SparklesIcon className="h-5 w-5" />}
-          label={t("menu.changelog")}
-          // The build label rides on the source row where there is one; the
-          // phone and desktop apps have none (`IS_WEBSITE`), so it moves here.
-          sublabel={IS_WEBSITE ? undefined : BUILD_LABEL}
-          onClick={() => {
-            setAboutOpen(false);
-            pick(() => dispatch({ kind: "changelog" }));
-          }}
-        />
+        {/* What's new is the website's and the desktop app's alone
+            (`CHANGELOG_BUILT`): the phone app's version history is the App
+            Store's What's New, so it has no entry here at all. */}
+        {CHANGELOG_BUILT && (
+          <MenuButton
+            icon={<SparklesIcon className="h-5 w-5" />}
+            label={t("menu.changelog")}
+            // The build label rides on the source row where there is one; the
+            // desktop app has none (`IS_WEBSITE`), so it moves here.
+            sublabel={IS_WEBSITE ? undefined : BUILD_LABEL}
+            onClick={() => {
+              setAboutOpen(false);
+              pick(() => dispatch({ kind: "changelog" }));
+            }}
+          />
+        )}
         {/* The source link is the website's alone (`IS_WEBSITE`): the phone
             and desktop apps carry no link back to the repository at all. */}
         {IS_WEBSITE && (
@@ -843,6 +849,9 @@ export function SideMenu({
           icon={<ShieldIcon className="h-5 w-5" />}
           label={t("menu.privacy")}
           href={privacyUrl}
+          // The phone app has neither a source row nor What's new, so the
+          // build label rides here — the one place it shows what it runs.
+          sublabel={CHANGELOG_BUILT ? undefined : BUILD_LABEL}
           onClick={() => {
             setAboutOpen(false);
             close();

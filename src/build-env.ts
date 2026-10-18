@@ -57,6 +57,17 @@ export const DONATE_URL: string | undefined =
 // folds, and everything it guards leaves the bundle.
 export const ACHIEVEMENTS_BUILT: boolean = !(__NATIVE__ || __SHELL_BUILD__);
 
+// Whether this build carries What's new — the version history and the feature
+// docs its Learn more links open. The phone app does not (the owner's
+// decision): the App Store's own What's New tells a phone user what changed, so
+// the app has no What's new entry in its About menu and neither the modal nor
+// `CHANGELOG.md` nor `docs/features/` is in its bundle. The website and the
+// desktop app keep it. Like the constants above it tests the raw define, so in
+// the phone build it is a literal `false` the minifier folds, together with the
+// deferred import of the modal; `vite.config.ts` refuses to inline a `.md` into
+// that build at all.
+export const CHANGELOG_BUILT: boolean = !__NATIVE__;
+
 // Whether this build offers Dropbox as a storage backend at all. The phone app
 // does not (the owner's decision): its lists stay on the device or go to the
 // user's own iCloud, so its Storage tab has no Dropbox option — not a disabled
@@ -71,9 +82,8 @@ export const DROPBOX_BUILT: boolean = !__NATIVE__;
 // Whether this build offers the local folder as a storage backend at all. The
 // phone app does not: its WebView has no directory picker, so the option could
 // only ever sit there disabled. Its Storage tab leaves it out (not a disabled
-// one), its privacy page does not describe it, and What's new and the feature
-// docs it carries leave out what they say about it (`phoneMarkdown` in
-// `src/site/phone-markdown.ts`). The website and the desktop app keep it,
+// one) and its privacy page does not describe it. The website and the desktop
+// app keep it,
 // shown disabled where the browser has no directory picker. Like
 // `DROPBOX_BUILT` it tests the raw define, so in the phone build it is a
 // literal `false` the minifier folds. A stored folder choice on a phone

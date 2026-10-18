@@ -543,8 +543,10 @@ with its optional action. Pinned to the foot are the relocated burger-menu
 rows — an optional donate link (website only; the phone and desktop builds
 compile it out), the trophy (website only, likewise), an **About** dropdown, and
 settings (last, under the thumb). The About row — a plain footer row with
-no chevron — toggles the project links — "what's new", the source on
-GitHub (with the app version as a subtitle), and privacy — in a
+no chevron — toggles the project links — "what's new" (not in the phone
+app, `CHANGELOG_BUILT`), the source on GitHub (with the app version as a
+subtitle; the website only), and privacy (carrying the app version in the
+phone app, which has neither of the others) — in a
 `FloatingPanel` that flips **upward** (there is no room below at the foot
 of the drawer). A thin **footer collapse rail** (`FooterCollapseRail` in
 `SideMenuRows.tsx`) sits just above that footer: a full-width chevron
@@ -3384,13 +3386,21 @@ Each bullet's inline markdown (the **bold** lead-in, `code` spans) is
 rendered with `renderInlineMarkdown` from the item-note renderer
 (`src/ui/markdown/renderMarkdown.tsx`) rather than printed raw. A bullet
 carrying a `[Learn more](feature:<slug>)` link drills into the matching
-feature doc in place (see "Feature docs / Learn more"). In the phone and
-desktop builds `vite.config.ts` loads the inlined markdown through
-`appMarkdown` (`src/site/phone-markdown.ts`): both lose their links back to
-the source, and the phone build also loses every section, list item and
-paragraph that names storage it does not offer — Dropbox, Google Drive, a
-local folder (`phoneMarkdown`) — with any heading left empty. `CHANGELOG.md`
-and the fragments are never rewritten; the website's What's new keeps it all.
+feature doc in place (see "Feature docs / Learn more"). In the desktop
+build `vite.config.ts` loads the inlined markdown through
+`withoutSourceLinks` (`src/site/source-links.ts`), so it loses its links back
+to the source; `CHANGELOG.md` and the fragments are never rewritten, and the
+website's What's new keeps it all.
+
+The phone app has no What's new at all (`CHANGELOG_BUILT` in
+`src/build-env.ts`, the owner's decision): the App Store's own What's New is
+its version history. Its About menu has no What's new row, and
+`ChangelogModalHost` tests the raw `__NATIVE__` define, so the deferred import
+of the modal — and with it `CHANGELOG.md` and every feature doc — is gone
+before the bundler builds its graph; `vite.config.ts` fails a phone build that
+still reaches an inlined `.md?raw`. `tests/app/changelog-built.test.tsx` builds
+both apps for real and checks the latest release's heading is in the website's
+bundle and nowhere in the phone app's.
 
 ### Feature docs / "Learn more"
 
@@ -3407,7 +3417,8 @@ in `renderMarkdown.tsx` (the `onOpenFeature` option): instead of
 navigating, it calls back into `ChangelogModal`, which swaps the release
 list for the doc body (rendered with the block `renderMarkdown`) behind a
 back button. A slug with no bundled doc is ignored, so the link is inert
-rather than a dead end.
+rather than a dead end. The phone app carries no feature doc: What's new is
+the only way to one, and it has none.
 
 ### Privacy page
 

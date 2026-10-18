@@ -5,12 +5,10 @@
 // in its bundle, and no privacy text, page head or bundled doc that names
 // them. The build flags are compile-time defines in a real build; here each
 // case stubs them as globals and imports the modules afresh.
-import { readFileSync } from "node:fs";
 
 import { cleanup, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { appMarkdown } from "../../src/site/phone-markdown.ts";
 import type { UseStorageBackend } from "../../src/storage/useStorageBackend.ts";
 
 type Build = { native: boolean; shell: boolean };
@@ -250,32 +248,5 @@ describe("what the phone app says", () => {
       expect(resolveNoscriptBody(phone)).not.toMatch(/dropbox|folder/i);
       expect(routeHeadFor(route, false)).toBe(route);
     }
-  });
-
-  it("its bundled feature docs name neither Dropbox nor a local folder", async () => {
-    stubBuild(PHONE);
-    const { FEATURE_DOCS, parseFeatureDoc } =
-      await import("../../src/ui/changelog/feature-docs.ts");
-    expect(FEATURE_DOCS["cloud-sync"]).toBeUndefined();
-    expect(FEATURE_DOCS["local-folder"]).toBeUndefined();
-    // Each doc the phone glob carries, as the phone build loads it: the
-    // markdown `vite.config.ts` hands the bundle (`appMarkdown`).
-    for (const slug of Object.keys(FEATURE_DOCS)) {
-      const doc = parseFeatureDoc(
-        slug,
-        appMarkdown(readFileSync(`docs/features/${slug}.md`, "utf8"), true),
-      );
-      const text = `${doc.title}\n${doc.body}`;
-      expect(text, slug).not.toMatch(/dropbox|google drive|local[ -]folder/i);
-      // No doc in the phone app links a page it does not carry.
-      for (const [, link] of doc.body.matchAll(/\(feature:([a-z0-9-]+)\)/g)) {
-        expect(FEATURE_DOCS[link!], `${slug} → ${link}`).toBeDefined();
-      }
-    }
-
-    stubBuild(DESKTOP);
-    const desktop = await import("../../src/ui/changelog/feature-docs.ts");
-    expect(desktop.FEATURE_DOCS["cloud-sync"]).toBeDefined();
-    expect(desktop.FEATURE_DOCS["local-folder"]).toBeDefined();
   });
 });

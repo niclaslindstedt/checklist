@@ -81,12 +81,19 @@ A phone install that had Dropbox selected moves to this device, keeping its
 offline copy (`getBackend`). The website and the desktop app keep Dropbox.
 **Nor a local folder** (`LOCAL_FOLDER_BUILT`): its WebView has no directory
 picker, so the option is left out rather than shown disabled, the privacy page
-leaves it out, and a stored folder choice reads as this device. What's new and
-the feature docs it carries are loaded through `phoneMarkdown`
-(`src/site/phone-markdown.ts`, applied by `vite.config.ts` to every inlined
-`.md?raw`), which drops each section, list item or paragraph naming Dropbox,
-Google Drive or a local folder — so a feature doc keeps those in their own
-paragraphs, and `CHANGELOG.md` and the fragments are never rewritten for it.
+leaves it out, and a stored folder choice reads as this device.
+
+**Nor What's new** (`CHANGELOG_BUILT` in `src/build-env.ts`, the owner's
+decision): the App Store's own What's New is the phone app's version history,
+so its About menu has no What's new entry, and neither the modal, nor
+`CHANGELOG.md`, nor any `docs/features/` page is in its bundle (a feature doc
+is only reachable through What's new). `ChangelogModalHost` tests the raw
+`__NATIVE__` define so the deferred import folds away before the bundler builds
+its graph, and `vite.config.ts` fails a phone build that still reaches an
+inlined `.md?raw`; `tests/app/changelog-built.test.tsx` builds the phone app
+and the website for real and checks the latest release's heading is in the one
+and not the other. Its build label rides on the About menu's privacy row. The
+website and the desktop app keep What's new.
 
 The auth-session plumbing below stays, for any later backend that signs in.
 The phone app (`native/`) signed in to Dropbox the third way: it OFFERS the
@@ -177,7 +184,7 @@ guessing — then record the answer so the next agent doesn't have to.
 | Docs update          | `docs/...` |
 | Example template     | `examples/<slug>.json` |
 | Changelog entry      | `.changes/unreleased/<unix-ts>-<slug>.md` (see `Releases and changelog`) |
-| Feature doc (large feature's "Learn more") | `docs/features/<slug>.md` (see `Releases and changelog` → "Feature docs and Learn more") |
+| Feature doc (large feature's "Learn more") | `docs/features/<slug>.md` (see `Releases and changelog` → "Feature docs and Learn more"; the website and the desktop app only — the phone app has no What's new) |
 
 ## Test conventions
 
@@ -412,7 +419,8 @@ valid fragment is — an unknown `type:`, a malformed front-matter line, or
 an empty body fails the run loudly.
 
 **Keep the bullet to one sentence.** The title + one-sentence summary
-shape is what keeps the in-app "What's new" modal scannable — if you
+shape is what keeps the in-app "What's new" modal (the website's and the
+desktop app's; the phone app has none, `CHANGELOG_BUILT`) scannable — if you
 catch yourself writing a second or third clause, the depth belongs in a
 feature doc, not the bullet.
 

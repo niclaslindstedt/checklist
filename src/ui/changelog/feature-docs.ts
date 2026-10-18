@@ -43,36 +43,23 @@ export function parseFeatureDoc(slug: string, md: string): FeatureDoc {
 // relative to this file: `src/ui/changelog/` → repo root is three levels
 // up, then `docs/features/`.
 //
-// Except the achievements page in the phone and desktop apps, which carry
-// no achievements (`ACHIEVEMENTS_BUILT` in `src/build-env.ts`): it describes
-// a feature those builds don't have, so its glob is the one in the dropped
-// branch and its text is not in those bundles at all. The condition tests
-// the raw defines, which are literals before the bundler decides what to
-// import. The released bullet that links it stays — it is the record of
-// what shipped — and loses its Learn more (`withoutMissingFeatureLinks`).
+// The phone app carries none of them: it has no What's new
+// (`CHANGELOG_BUILT` in `src/build-env.ts`), and nothing else opens a feature
+// doc, so this module never reaches its bundle.
 //
-// Nor do they carry the desktop-app page: it is about downloading the desktop
-// app from the repository's releases page, which those builds may not link
+// The desktop app leaves out the achievements page, as it carries no
+// achievements (`ACHIEVEMENTS_BUILT` in `src/build-env.ts`): it describes a
+// feature that build doesn't have, so its glob is the one in the dropped
+// branch and its text is not in that bundle at all. The condition tests the
+// raw define, which is a literal before the bundler decides what to import.
+// The released bullet that links it stays — it is the record of what shipped —
+// and loses its Learn more (`withoutMissingFeatureLinks`).
+//
+// Nor does it carry the desktop-app page: it is about downloading the desktop
+// app from the repository's releases page, which that build may not link
 // (`IS_WEBSITE` in `src/build-env.ts`) and an installed app has no use for.
-//
-// The phone app also leaves out the cloud-sync page: it is about Dropbox, which
-// the phone app does not offer (`DROPBOX_BUILT` in `src/build-env.ts`), and the
-// local-folder page, a backend it does not offer either (`LOCAL_FOLDER_BUILT`).
-// Their released bullets lose their Learn more the same way, and the docs it
-// does carry lose what they say about either (`phoneMarkdown`, applied as
-// `vite.config.ts` loads each one).
-const rawDocs = __NATIVE__
-  ? import.meta.glob<string>(
-      [
-        "../../../docs/features/*.md",
-        "!../../../docs/features/achievements.md",
-        "!../../../docs/features/desktop-app.md",
-        "!../../../docs/features/cloud-sync.md",
-        "!../../../docs/features/local-folder.md",
-      ],
-      { query: "?raw", import: "default", eager: true },
-    )
-  : __SHELL_BUILD__
+const rawDocs =
+  __NATIVE__ || __SHELL_BUILD__
     ? import.meta.glob<string>(
         [
           "../../../docs/features/*.md",
@@ -100,8 +87,7 @@ export const FEATURE_DOCS: Record<string, FeatureDoc> = buildFeatureDocs();
 
 // Drop every `[label](feature:<slug>)` link whose doc this build doesn't
 // carry, with the space before it, so a changelog bullet never offers a
-// "Learn more" that opens nothing (the achievements page in the phone and
-// desktop apps). Pure, so it is testable against any doc set.
+// "Learn more" that opens nothing (the achievements page in the desktop app). Pure, so it is testable against any doc set.
 export function withoutMissingFeatureLinks(
   text: string,
   docs: Record<string, unknown> = FEATURE_DOCS,

@@ -69,7 +69,8 @@ describe("withoutMissingFeatureLinks", () => {
 });
 
 // The achievements page is the website's alone (`ACHIEVEMENTS_BUILT`): the
-// phone and desktop builds carry no achievements, so no page about them.
+// desktop build carries no achievements, so no page about them. (The phone
+// build carries no feature docs at all — `CHANGELOG_BUILT`.)
 describe("FEATURE_DOCS per build", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -87,14 +88,9 @@ describe("FEATURE_DOCS per build", () => {
     expect((await docsFor(false, false)).achievements).toBeDefined();
   });
 
-  it("gives the phone and desktop apps every page but that one", async () => {
-    for (const [native, shell] of [
-      [true, false],
-      [false, true],
-    ] as const) {
-      const docs = await docsFor(native, shell);
-      expect(docs.achievements).toBeUndefined();
-      expect(docs.notes).toBeDefined();
-    }
+  it("gives the desktop app every page but that one", async () => {
+    const docs = await docsFor(false, true);
+    expect(docs.achievements).toBeUndefined();
+    expect(docs.notes).toBeDefined();
   });
 });
