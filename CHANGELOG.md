@@ -12,6 +12,20 @@ changelog").
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-18
+
+### Changed
+
+- **Sign-up wording** — Where the app talks about signing up, it now says plainly that there is nothing to sign up for and nothing to sign in to.
+
+### Fixed
+
+- **Phone app privacy page** — In the phone app, the privacy page now describes the phone app alone: everything it runs comes inside the download, it sends nothing when it starts, and its only network traffic is the iCloud sync you turn on.
+
+### Removed
+
+- **What's new in the phone app** — The phone app no longer has its own What's new, because its version history now lives in the App Store's What's New, while the website and the desktop app keep theirs.
+
 ## [1.5.0] - 2026-10-17
 
 ### Added
