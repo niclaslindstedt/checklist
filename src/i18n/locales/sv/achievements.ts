@@ -343,13 +343,13 @@ const achievements: AchievementsCatalog = {
       name: "Molnvandraren",
       condition: "Anslut en molnlagring.",
       learnMore:
-        "Dropbox eller Dropbox håller dina listor synkade mellan enheter. Inget konto här — du ansluter ditt eget moln, och appen pratar bara med det.",
+        "Dropbox håller dina listor synkade mellan enheter. Ingen registrering här — du ansluter ditt eget moln, och appen pratar bara med det.",
     },
     icloudSync: {
       name: "Huvudet i iCloud",
       condition: "Synka dina listor via iCloud i iOS-appen.",
       learnMore:
-        "I iOS-appen håller iCloud dina listor synkade mellan dina Apple-enheter utan konto och utan inloggning — lagringen följer ditt inloggade Apple-ID, och inget lämnar Apples synk mellan enheter.",
+        "I iOS-appen håller iCloud dina listor synkade mellan dina Apple-enheter utan registrering och utan inloggning — lagringen följer ditt inloggade Apple-ID, och inget lämnar Apples synk mellan enheter.",
     },
     freshPull: {
       name: "Färskt drag",

@@ -204,7 +204,7 @@ const settings = {
     browserHint:
       "Your lists live in this browser's storage. Nothing leaves this device.",
     icloudConnected:
-      "Your lists sync across your Apple devices through iCloud — no account here, no sign-in, nothing leaves Apple's store.",
+      "Your lists sync across your Apple devices through iCloud — nothing to sign up for, no sign-in, nothing leaves Apple's store.",
     folderConnected:
       "Connected. Each list is saved as a markdown file in your folder — open or edit it with any tool.",
     folderUnconnected:

@@ -125,12 +125,12 @@ export const PRIVACY_ROUTE: RouteHead = {
   path: "/privacy/",
   title: `Privacy — ${SITE_NAME}`,
   description:
-    "checklist privacy: local-first by default — no account, no cookies, no " +
+    "checklist privacy: local-first by default — no sign-up, no cookies, no " +
     "analytics, no tracking. Optional Dropbox sync only when " +
     "you connect it.",
   ogType: "article",
   noscriptBody: noscript("Privacy policy — checklist", [
-    "checklist is a local-first checklist app served as a static site. It runs entirely in your browser: there is no backend of our own, no account, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. You can optionally connect a cloud backend (Dropbox) to sync them across your own devices — only then are your lists sent to that one provider, at your explicit request. The project authors never receive them.",
+    "checklist is a local-first checklist app served as a static site. It runs entirely in your browser: there is no backend of our own, nothing to sign up for, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. You can optionally connect a cloud backend (Dropbox) to sync them across your own devices — only then are your lists sent to that one provider, at your explicit request. The project authors never receive them.",
     "The full privacy policy needs JavaScript to render. Enable JavaScript and reload, or read the source on GitHub.",
   ]),
 };
@@ -148,29 +148,36 @@ export const SHOWCASE_ROUTE: RouteHead = {
     "Dropbox access — only when you turn on optional cloud sync.",
   ogType: "website",
   noscriptBody: noscript("checklist — a local-first checklist PWA", [
-    "checklist is a fast, local-first checklist and template app that runs entirely in your browser, works offline, and needs no account. By default your lists are stored only on your device and never leave it. You can optionally turn on cloud sync, at which point — and only then — the app asks for access to an app-specific folder in your Dropbox, purely to save and load your own lists across your devices.",
+    "checklist is a fast, local-first checklist and template app that runs entirely in your browser, works offline, and has nothing to sign up for. By default your lists are stored only on your device and never leave it. You can optionally turn on cloud sync, at which point — and only then — the app asks for access to an app-specific folder in your Dropbox, purely to save and load your own lists across your devices.",
     "This page needs JavaScript to render fully. Enable JavaScript and reload.",
   ]),
 };
 
 // The phone app offers no Dropbox, so the two pages it carries describe the
-// sync it has instead: the user's own iCloud on an iPhone or iPad. Only the
-// description and the <noscript> fallback differ; `vite.config.ts` swaps them
-// in through `routeHeadFor` when it builds the phone bundle.
+// sync it has instead: the user's own iCloud on an iPhone or iPad. Nor do they
+// name another edition of the app — no PWA, no website, no browser: the app
+// and its files come inside the download. Only the title, the description and
+// the <noscript> fallback differ; `vite.config.ts` swaps them in through
+// `routeHeadFor` when it builds the phone bundle.
 const PHONE_COPY: Readonly<
-  Record<string, Pick<RouteHead, "description" | "noscriptBody">>
+  Record<
+    string,
+    Partial<Pick<RouteHead, "title">> &
+      Pick<RouteHead, "description" | "noscriptBody">
+  >
 > = {
   [HOME_ROUTE.path]: {
+    title: `${SITE_NAME} — local-first checklist & template app`,
     description:
       "A fast, local-first checklist app that works offline. Reusable " +
       "templates, shareable links, and optional encrypted iCloud sync.",
   },
   [PRIVACY_ROUTE.path]: {
     description:
-      "checklist privacy: local-first by default — no account, no cookies, " +
+      "checklist privacy: local-first by default — no sign-up, no cookies, " +
       "no analytics, no tracking. Optional iCloud sync only when you choose it.",
     noscriptBody: noscript("Privacy policy — checklist", [
-      "checklist is a local-first checklist app. It runs entirely on your device: there is no backend of our own, no account, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. On an iPhone or iPad you can optionally keep them in your own iCloud to sync them across your Apple devices — only then are they kept by Apple, under your Apple Account. The project authors never receive them.",
+      "checklist is a local-first checklist app. The app and every file it runs come inside the download, and it runs entirely on your device: it sends nothing when it starts, there is no server of our own, nothing to sign up for, no cookies, and no analytics or tracking. By default your lists stay on your device and never leave it. On an iPhone or iPad you can optionally keep them in your own iCloud to sync them across your Apple devices — that sync, which you turn on, is the only network traffic the app causes, and only then are your lists kept by Apple, under your Apple Account. The project authors never receive them.",
       "The full privacy policy needs JavaScript to render. Enable JavaScript and reload.",
     ]),
   },

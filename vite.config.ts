@@ -385,6 +385,35 @@ function appInlinedMarkdown(): Plugin {
   };
 }
 
+// The phone app's pages name no other edition of the app. `index.html` is
+// written for the website: its HTML comments talk about the browser tab, the
+// installed PWA and the website's indexing, and its route-invariant share tags
+// (og:site_name, og:locale) describe a link to it. None of it is read by
+// anything on a phone, so the phone build's documents — `index.html` and the
+// `privacy/` alias — ship without them. Runs after the alias plugins, which
+// still need the HEAD_ROUTE markers (comments) to splice into.
+function phoneOnlyHtml(): Plugin {
+  return {
+    name: "phone-only-html",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle) {
+      for (const file of Object.values(bundle)) {
+        if (file.type !== "asset" || !file.fileName.endsWith(".html")) {
+          continue;
+        }
+        file.source = String(file.source)
+          .replace(/[ \t]*<!--[\s\S]*?-->\n?/g, "")
+          .replace(
+            /[ \t]*<meta\b[^>]*\b(?:property="og:|name="twitter:)[^>]*>\n?/g,
+            "",
+          )
+          .replace(/\n(?:[ \t]*\n)+/g, "\n");
+      }
+    },
+  };
+}
+
 // `public/CNAME` names the website's domain for GitHub Pages; an app's
 // webroot has no use for it, and it spells the website's address. Removed
 // after `public/` is copied in.
@@ -620,6 +649,8 @@ export default defineConfig({
     // `/privacy` stays: the side menu links to it as a real in-app navigation.
     isWebsite && emitShowcaseAlias(),
     emitPrivacyAlias(),
+    // After both aliases, so they still find the markers they splice into.
+    isNative && phoneOnlyHtml(),
     // robots.txt addresses crawlers of the hosted site; inside an app binary
     // it is dead weight pointing at a URL the WebView never visits.
     !isNative && emitRobotsTxt(),

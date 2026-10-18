@@ -83,6 +83,20 @@ offline copy (`getBackend`). The website and the desktop app keep Dropbox.
 picker, so the option is left out rather than shown disabled, the privacy page
 leaves it out, and a stored folder choice reads as this device.
 
+**Its privacy page names no other edition of itself** (the owner's decision):
+no website, static site or web host and its server logs, no browser, no PWA,
+no localStorage. Its copy is true of the phone app alone — everything comes
+inside the download, nothing is sent on launch, the only traffic is the iCloud
+sync the user turns on, and deleting the app erases its data. Every gate in
+`src/ui/PrivacyPage.tsx` tests the raw `__NATIVE__` define at the use site, so
+the other builds' wording leaves the bundle; `phoneOnlyHtml` in
+`vite.config.ts` drops `index.html`'s HTML comments and share tags from the
+phone build's documents. Pinned in `tests/ui/privacy-page.test.tsx`, which
+also builds the phone app for real.
+
+**No build says "no account"** (the owner's decision): the copy says what is
+true instead — nothing to sign up for, no sign-in — in every locale.
+
 **Nor What's new** (`CHANGELOG_BUILT` in `src/build-env.ts`, the owner's
 decision): the App Store's own What's New is the phone app's version history,
 so its About menu has no What's new entry, and neither the modal, nor

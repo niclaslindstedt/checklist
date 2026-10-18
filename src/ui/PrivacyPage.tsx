@@ -1,7 +1,7 @@
 // Standalone privacy policy, served at `/privacy` (see `app/main.tsx`'s
 // path switch and the `emit-privacy-alias` plugin in `vite.config.ts`).
-// The checklist is local-first — by default no backend, no accounts, no
-// analytics — but it also ships optional storage backends (a local folder,
+// The checklist is local-first — by default no backend, nothing to sign up
+// for, no analytics — but it also ships optional storage backends (a local folder,
 // and Dropbox) that send list data to a provider only when
 // the user explicitly connects one, so this policy covers both cases. It is
 // English-only by design (a legal page, not chrome), matching budget's
@@ -15,13 +15,17 @@
 // The phone app offers no Dropbox (`DROPBOX_BUILT`), so its copy names none:
 // there the optional sync is the user's own iCloud on an iPhone or iPad. Nor
 // does it offer a local folder (`LOCAL_FOLDER_BUILT`), so its copy leaves that
-// backend out too.
-import {
-  APP_NAME,
-  DROPBOX_BUILT,
-  IS_WEBSITE,
-  LOCAL_FOLDER_BUILT,
-} from "../build-env.ts";
+// backend out too. And it names no other edition of itself — no website, no
+// web host and its server logs, no browser, no PWA, no localStorage: it is
+// true of the phone app alone. Everything the app runs comes inside the
+// download, it sends nothing when it starts, and the only network traffic is
+// the iCloud sync the reader turns on.
+//
+// Every gate here tests the raw `__NATIVE__` / `__SHELL_BUILD__` defines at
+// the use site rather than a constant derived from them (`IS_WEBSITE`,
+// `DROPBOX_BUILT`, …): what one build's copy says has to leave the other
+// builds' bundles, not ride along in them as dead code.
+import { APP_NAME } from "../build-env.ts";
 import { ArrowLeftIcon } from "./icons.tsx";
 
 const SUPPORT_EMAIL = "support@agilator.se";
@@ -29,7 +33,7 @@ const SUPPORT_EMAIL = "support@agilator.se";
 // Last meaningful change to the policy text below. Bump this whenever the
 // wording is edited — it renders verbatim at the top of the page and is
 // the only line readers have to look at to see how fresh the policy is.
-const LAST_UPDATED = "2026-10-17";
+const LAST_UPDATED = "2026-10-18";
 
 export function PrivacyPage() {
   return (
@@ -51,7 +55,14 @@ export function PrivacyPage() {
           <p>
             <span className="text-meta">{APP_NAME}</span> is a local-first
             checklist app
-            {IS_WEBSITE ? (
+            {__NATIVE__ ? (
+              <>
+                . The app and every file it runs come inside the download, and
+                it runs entirely on your device: it sends nothing when it
+                starts, and the only network traffic it ever causes is the sync
+                you turn on yourself.
+              </>
+            ) : !__SHELL_BUILD__ ? (
               <>
                 {" "}
                 served as a static site at{" "}
@@ -61,10 +72,10 @@ export function PrivacyPage() {
             ) : (
               <>. It runs entirely on your device.</>
             )}{" "}
-            There is no backend of our own, no account, no cookies, and no
-            analytics or tracking. By default your lists are stored only on your
-            device and never leave it.{" "}
-            {DROPBOX_BUILT ? (
+            There is no {__NATIVE__ ? "server" : "backend"} of our own, nothing
+            to sign up for, no cookies, and no analytics or tracking. By default
+            your lists are stored only on your device and never leave it.{" "}
+            {!__NATIVE__ ? (
               <>
                 You may optionally connect a cloud backend (Dropbox) to sync
                 your lists across your own devices — in that case, and only
@@ -85,7 +96,12 @@ export function PrivacyPage() {
 
         <Section title="What the app stores">
           <p>
-            {IS_WEBSITE ? (
+            {__NATIVE__ ? (
+              <>
+                On your device, inside the app&apos;s own private storage, the
+                app keeps:
+              </>
+            ) : !__SHELL_BUILD__ ? (
               <>
                 On your device, inside your browser&apos;s{" "}
                 <code className="text-meta">localStorage</code> for the origin{" "}
@@ -108,7 +124,7 @@ export function PrivacyPage() {
               Per-device preferences — your chosen theme, font, text size, and
               other appearance settings.
             </li>
-            {DROPBOX_BUILT ? (
+            {!__NATIVE__ ? (
               <li>
                 Which storage backend you&apos;ve chosen, and — if you&apos;ve
                 connected Dropbox — the OAuth access and refresh tokens for that
@@ -120,12 +136,20 @@ export function PrivacyPage() {
               <li>Which storage backend you&apos;ve chosen.</li>
             )}
           </ul>
-          <p>
-            This data is stored as plain JSON on your own device. Clearing your
-            browser&apos;s site data for this origin erases it permanently — if
-            you have not connected a cloud backend, there is no copy elsewhere
-            to restore from.
-          </p>
+          {__NATIVE__ ? (
+            <p>
+              This data is stored as plain JSON on your own device. Deleting the
+              app erases it permanently — if you have not turned on iCloud,
+              there is no copy elsewhere to restore from.
+            </p>
+          ) : (
+            <p>
+              This data is stored as plain JSON on your own device. Clearing
+              your browser&apos;s site data for this origin erases it
+              permanently — if you have not connected a cloud backend, there is
+              no copy elsewhere to restore from.
+            </p>
+          )}
         </Section>
 
         <Section title="Storage backends">
@@ -134,13 +158,21 @@ export function PrivacyPage() {
             you choose where your lists are saved:
           </p>
           <ul className="ml-5 list-disc space-y-1">
-            <li>
-              <strong className="text-fg-bright">This device</strong> (the
-              default) — lists stay in your browser&apos;s{" "}
-              <code className="text-meta">localStorage</code> and are never
-              transmitted anywhere.
-            </li>
-            {LOCAL_FOLDER_BUILT && (
+            {__NATIVE__ ? (
+              <li>
+                <strong className="text-fg-bright">This device</strong> (the
+                default) — lists stay in the app&apos;s own storage on this
+                device and are never transmitted anywhere.
+              </li>
+            ) : (
+              <li>
+                <strong className="text-fg-bright">This device</strong> (the
+                default) — lists stay in your browser&apos;s{" "}
+                <code className="text-meta">localStorage</code> and are never
+                transmitted anywhere.
+              </li>
+            )}
+            {!__NATIVE__ && (
               <li>
                 <strong className="text-fg-bright">Local folder</strong> — lists
                 are written as files to a folder you pick on this device, using
@@ -148,7 +180,7 @@ export function PrivacyPage() {
                 your device; the folder-access grant is remembered in IndexedDB.
               </li>
             )}
-            {DROPBOX_BUILT ? (
+            {!__NATIVE__ ? (
               <li>
                 <strong className="text-fg-bright">Dropbox</strong> — only when
                 you explicitly connect it, your lists are stored in your Dropbox
@@ -185,37 +217,57 @@ export function PrivacyPage() {
         </Section>
 
         <Section title="Network requests">
-          <p>
-            With the default <em>This device</em> backend the app makes no
-            third-party network calls. The only requests your browser makes are
-            to fetch the app&apos;s own static files (HTML, JavaScript, CSS,
-            fonts, and icons) from its origin, and once loaded it works fully
-            offline as an installed PWA.{" "}
-            {DROPBOX_BUILT ? (
-              <>
-                The one exception is the cloud backends: if — and only if — you
-                connect Dropbox, the app talks to that provider&apos;s API to
-                read and write your lists.
-              </>
-            ) : (
-              <>
-                If you choose iCloud, the system syncs your lists with Apple;
-                the app itself sends them nowhere.
-              </>
-            )}{" "}
-            No fonts, analytics scripts, error-reporting services, or
-            advertising networks are ever loaded.
-          </p>
+          {__NATIVE__ ? (
+            <p>
+              With no sync turned on, the app makes no network request at all —
+              not when it starts, and not while you use it. Everything it runs
+              (its code, fonts, and icons) comes inside the download, so it
+              works fully offline. The only network traffic is the sync you turn
+              on: iCloud, through your own Apple Account — and even then the
+              system syncs your lists with Apple; the app itself sends them
+              nowhere. No analytics scripts, error-reporting services, or
+              advertising networks are ever loaded.
+            </p>
+          ) : (
+            <p>
+              With the default <em>This device</em> backend the app makes no
+              third-party network calls. The only requests your browser makes
+              are to fetch the app&apos;s own static files (HTML, JavaScript,
+              CSS, fonts, and icons) from its origin, and once loaded it works
+              fully offline as an installed PWA.{" "}
+              {!__NATIVE__ ? (
+                <>
+                  The one exception is the cloud backends: if — and only if —
+                  you connect Dropbox, the app talks to that provider&apos;s API
+                  to read and write your lists.
+                </>
+              ) : (
+                <>
+                  If you choose iCloud, the system syncs your lists with Apple;
+                  the app itself sends them nowhere.
+                </>
+              )}{" "}
+              No fonts, analytics scripts, error-reporting services, or
+              advertising networks are ever loaded.
+            </p>
+          )}
         </Section>
 
         <Section title="Cookies">
-          <p>
-            The app sets no cookies. All persistence uses{" "}
-            <code className="text-meta">localStorage</code>.
-          </p>
+          {__NATIVE__ ? (
+            <p>
+              The app sets no cookies. Everything it keeps is in its own storage
+              on the device and, if you turn it on, in your iCloud.
+            </p>
+          ) : (
+            <p>
+              The app sets no cookies. All persistence uses{" "}
+              <code className="text-meta">localStorage</code>.
+            </p>
+          )}
         </Section>
 
-        <Section title="Web analytics">
+        <Section title={__NATIVE__ ? "Analytics" : "Web analytics"}>
           <p>
             None. The app does not load any analytics or behavioral-tracking
             SDK, and the project authors collect no usage statistics from it.
@@ -223,22 +275,30 @@ export function PrivacyPage() {
         </Section>
 
         <Section title="Server logs">
-          <p>
-            The website is served by{" "}
-            <strong className="text-fg-bright">GitHub Pages</strong>. GitHub may
-            collect standard request metadata (IP address, user agent, request
-            path) for operating the service. This is covered by{" "}
-            <a
-              href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
-              className="text-link hover:underline"
-            >
-              GitHub&apos;s privacy statement
-            </a>
-            . The app from the App Store or Google Play carries its own copy of
-            the site and serves it on the device, so opening it sends no such
-            request. The project authors do not run an additional logging
-            service.
-          </p>
+          {__NATIVE__ ? (
+            <p>
+              There are none. The app has no server of ours to talk to:
+              everything it runs comes inside the download, so opening it sends
+              no request, and there is nothing to log.
+            </p>
+          ) : (
+            <p>
+              The website is served by{" "}
+              <strong className="text-fg-bright">GitHub Pages</strong>. GitHub
+              may collect standard request metadata (IP address, user agent,
+              request path) for operating the service. This is covered by{" "}
+              <a
+                href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+                className="text-link hover:underline"
+              >
+                GitHub&apos;s privacy statement
+              </a>
+              . The app from the App Store or Google Play carries its own copy
+              of the site and serves it on the device, so opening it sends no
+              such request. The project authors do not run an additional logging
+              service.
+            </p>
+          )}
         </Section>
 
         <Section title="Children">
@@ -250,7 +310,7 @@ export function PrivacyPage() {
 
         <Section title="Changes to this policy">
           <p>
-            {IS_WEBSITE &&
+            {!(__NATIVE__ || __SHELL_BUILD__) &&
               "Material changes are tracked in the public commit history of the source repository. "}
             The <em>Last updated</em> date at the top of this page reflects the
             most recent edit. Should a future version add another optional
@@ -270,7 +330,7 @@ export function PrivacyPage() {
         </Section>
 
         <Section title="Contact">
-          {IS_WEBSITE ? (
+          {!(__NATIVE__ || __SHELL_BUILD__) ? (
             <WebsiteContact />
           ) : (
             <p>

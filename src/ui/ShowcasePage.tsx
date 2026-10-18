@@ -32,7 +32,7 @@ export function ShowcasePage() {
           <h1 className="text-2xl font-bold text-fg-bright">checklist</h1>
           <p className="max-w-md text-muted">
             A fast, local-first checklist app that runs entirely in your
-            browser, works offline, and needs no account.
+            browser, works offline, and has nothing to sign up for.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <a
@@ -282,7 +282,7 @@ export function ShowcasePage() {
             In the <strong className="text-fg-bright">iOS app</strong> you can
             also choose <strong className="text-fg-bright">iCloud</strong>,
             which syncs your lists across your Apple devices through
-            Apple&apos;s own iCloud — with no account, no sign-in, and no server
+            Apple&apos;s own iCloud — with no sign-up, no sign-in, and no server
             of ours in the middle. Nothing leaves Apple&apos;s device-to-device
             sync.
           </p>

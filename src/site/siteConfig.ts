@@ -10,7 +10,7 @@ export const SITE_URL = "https://checklist.niclaslindstedt.se";
 export const SITE_NAME = "checklist";
 
 export const SITE_DESCRIPTION =
-  "A fast, local-first checklist PWA that works offline with no account. " +
+  "A fast, local-first checklist PWA that works offline, with nothing to sign up for. " +
   "Reusable templates, shareable links, and optional encrypted Dropbox sync.";
 
 export const SITE_LANGUAGE = "en";
