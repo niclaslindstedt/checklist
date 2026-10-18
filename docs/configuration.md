@@ -133,8 +133,8 @@ whether they're encrypted:
   or back up your lists with any other tool. Turning on encryption replaces
   the per-list markdown with a single encrypted file, since an encrypted
   list can't be plain markdown. **iCloud** is a flat key-value store rather
-  than files: it syncs the document across your Apple devices with no
-  account and no sign-in of ours, but there are no per-list files to open.
+  than files: it syncs the document across your Apple devices with
+  nothing to sign up for and no sign-in of ours, but there are no per-list files to open.
 - **Encryption** — turn it on with a passphrase to wrap your lists in an
   AES-GCM envelope (PBKDF2-SHA256, 600k iterations) before they're saved,
   on this device and in the cloud. There is **no recovery**: forget the
